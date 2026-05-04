@@ -1,0 +1,142 @@
+import type {
+  AcquiredDocument,
+  DocumentAcquisitionRequest,
+  DocumentCandidate,
+} from './document-acquisition';
+import { isLawfulDocumentCandidate } from './document-acquisition';
+import type { QBittorrentClient } from './qbittorrent-client';
+import {
+  documentRefId,
+  documentStatus,
+  fileMatchScore,
+  preferredTorrentFile,
+} from './qbittorrent-selection';
+import type { TorrentFile, TorrentInfo } from './qbittorrent-types';
+import {
+  basename,
+  contentTypeFromPath,
+  joinStoragePath,
+  PDF_MIME,
+  sourceContentKindFromPath,
+  TEXT_MIME,
+} from './qbittorrent-file-kinds';
+
+async function selectedTorrentFile(
+  client: QBittorrentClient,
+  info: TorrentInfo,
+  request: DocumentAcquisitionRequest,
+): Promise<TorrentFile | null> {
+  if (!info.hash) return null;
+  const files = await client.torrentFiles(info.hash).catch(() => []);
+  const selected = preferredTorrentFile(files, request);
+  const selectedIndex = selected?.index;
+  if (selectedIndex != null) {
+    const otherIndexes = files
+      .map((file) => file.index)
+      .filter((index): index is number => index != null && index !== selectedIndex);
+    await client.setFilePriority(info.hash, otherIndexes, 0);
+    await client.setFilePriority(info.hash, [selectedIndex], 7);
+  }
+  return selected;
+}
+
+async function readCompletedDocument(
+  client: QBittorrentClient,
+  storagePath: string,
+  contentType: string,
+  status: string,
+): Promise<{ text?: string; bytes?: Uint8Array }> {
+  if (status !== 'complete') return {};
+  if (contentType === TEXT_MIME) {
+    return { text: await client.readTextDocument(storagePath).catch(() => undefined) };
+  }
+  if (contentType !== PDF_MIME) return {};
+  const text = await client.readTextDocument(storagePath).catch(() => undefined);
+  if (text) return { text };
+  return { bytes: await client.readByteDocument(storagePath).catch(() => undefined) };
+}
+
+export async function acquireTorrentDocument(
+  client: QBittorrentClient,
+  candidate: DocumentCandidate,
+  request: DocumentAcquisitionRequest,
+): Promise<AcquiredDocument | null> {
+  if (!isLawfulDocumentCandidate(candidate, request.policy)) return null;
+  await client.login();
+  let info = await client.torrentInfo(candidate);
+  if (!info) {
+    await client.addTorrent(candidate);
+    info = await client.torrentInfo(candidate);
+  }
+  const savePath = await client.effectiveSavePath();
+  let storagePath = info?.content_path ?? info?.save_path ?? savePath ?? candidate.title;
+  let selected: TorrentFile | null = null;
+  if (info?.hash) {
+    selected = await selectedTorrentFile(client, info, request);
+    if (selected?.index != null) {
+      storagePath = joinStoragePath(info.save_path ?? savePath, selected.name ?? storagePath);
+    }
+    await client.resumeTorrent(info.hash);
+  }
+
+  const contentType = contentTypeFromPath(storagePath ?? candidate.sourceUrl);
+  const status = documentStatus(info, selected);
+  const { text, bytes } = await readCompletedDocument(client, storagePath, contentType, status);
+  const now = new Date().toISOString();
+  const fileName = basename(storagePath);
+  const progress = selected?.progress ?? info?.progress ?? 0;
+  const contentKind = sourceContentKindFromPath(storagePath, candidate.contentKind);
+  const refStatus =
+    text || bytes
+      ? 'complete'
+      : status === 'complete' && (contentKind === 'text' || contentKind === 'ocr_text')
+        ? 'unreadable'
+        : status;
+
+  return {
+    candidateId: candidate.id,
+    provider: 'qbittorrent',
+    sourceUrl: candidate.sourceUrl,
+    storagePath,
+    contentType,
+    accessBasis: candidate.accessBasis ?? 'user_provided',
+    confidence: candidate.confidence,
+    text,
+    bytes,
+    acquiredAt: now,
+    documentRef: {
+      id: documentRefId(info?.hash, selected?.index, storagePath),
+      provider: 'qbittorrent',
+      sourceUrl: candidate.sourceUrl,
+      torrentHash: info?.hash,
+      fileIndex: selected?.index,
+      fileName,
+      storagePath,
+      contentKind,
+      contentType,
+      accessBasis: candidate.accessBasis ?? 'user_provided',
+      status: refStatus,
+      matchScore: selected
+        ? fileMatchScore(selected, request)
+        : candidate.matchScore ?? candidate.confidence,
+      availability: {
+        seeders: candidate.seeders ?? null,
+        peers: candidate.peers ?? null,
+        progress,
+        state: info?.state ?? (info ? 'tracked' : 'unknown'),
+        reason: status === 'stalled'
+          ? 'Torrent is stalled or has no active download progress.'
+          : undefined,
+      },
+      provenance: {
+        provider: 'qbittorrent',
+        sourceUrl: candidate.sourceUrl,
+        fetchedAt: now,
+        confidence: candidate.confidence,
+        strategy: 'background_acquisition',
+      },
+      createdAt: now,
+      updatedAt: now,
+    },
+  };
+}

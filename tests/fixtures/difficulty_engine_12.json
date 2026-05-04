@@ -1,0 +1,4345 @@
+{
+  "books": {
+    "complex_analysis_mo5ad8yg": {
+      "title": "Complex Analysis",
+      "authors": [
+        "Theodore W. Gamelin"
+      ],
+      "short": "Complex Analysis",
+      "category": "Mathematics",
+      "intrinsic": 7.8,
+      "pages": 471,
+      "prereqs": [
+        "fourier_analysis_mo5agzrp"
+      ],
+      "isbn": "9780387950693",
+      "subjects": [
+        "Mathematical analysis",
+        "Functions of complex variables",
+        "Mathematics"
+      ],
+      "completed": false,
+      "editionKeys": [
+        "OL7448715M",
+        "OL37150449M",
+        "OL7448703M"
+      ],
+      "iaIds": [
+        "complexanalysis00game"
+      ],
+      "mutuals": []
+    },
+    "make_analog_synthesizers_mo5ado70": {
+      "title": "Make : Analog Synthesizers",
+      "authors": [
+        "Ray Wilson"
+      ],
+      "short": "Make",
+      "category": "Electronics + Audio",
+      "intrinsic": 4,
+      "pages": 184,
+      "prereqs": [],
+      "isbn": "9781449345228",
+      "subjects": [
+        "Synthesizer (Musical instrument)",
+        "Analog electronic systems",
+        "Computer sound processing"
+      ],
+      "completed": false,
+      "editionKeys": [
+        "OL27592090M"
+      ],
+      "mutuals": []
+    },
+    "the_art_of_electronics_mo5aduug": {
+      "title": "The art of electronics",
+      "authors": [
+        "Paul Horowitz",
+        "Winfield Hill"
+      ],
+      "short": "The art of electronics",
+      "category": "Electronics + Audio",
+      "intrinsic": 7,
+      "pages": 1125,
+      "prereqs": [
+        "make_analog_synthesizers_mo5ado70",
+        "practical_electronics_for_mo6i27ol"
+      ],
+      "isbn": "0521370957",
+      "subjects": [
+        "Electronic circuit design",
+        "Electronics",
+        "Elektronica",
+        "Electronique",
+        "Circuit électronique",
+        "Calcul",
+        "Circuits électroniques",
+        "Electrónica",
+        "Électronique",
+        "Long Now Manual for Civilization"
+      ],
+      "completed": false,
+      "editionKeys": [
+        "OL50559079M",
+        "OL50558854M",
+        "OL43125659M",
+        "OL39918631M",
+        "OL41405924M",
+        "OL15311647M",
+        "OL26462574M",
+        "OL26015110M",
+        "OL4422691M",
+        "OL2182743M",
+        "OL18308449M",
+        "OL21570041M",
+        "OL15058621M",
+        "OL17186794M",
+        "OL31676319M",
+        "OL7742760M",
+        "OL1535146M",
+        "OL21020098M",
+        "OL21505082M",
+        "OL4256022M",
+        "OL28956683M"
+      ],
+      "iaIds": [
+        "artofelectronics0000horo_g9l7",
+        "artelectronics00horo_262",
+        "isbn_9780521377096"
+      ],
+      "mutuals": []
+    },
+    "real_analysis_mo5ael4s": {
+      "title": "Real Analysis",
+      "authors": [
+        "Elias M. Stein",
+        "Rami Shakarchi"
+      ],
+      "short": "Real Analysis",
+      "category": "Mathematics",
+      "intrinsic": 8.8,
+      "pages": 392,
+      "prereqs": [
+        "complex_analysis_mo5ad8yg",
+        "fourier_analysis_mo5agzrp",
+        "make_analog_synthesizers_mo5ado70",
+        "the_art_of_electronics_mo5aduug"
+      ],
+      "isbn": "1400835569",
+      "subjects": [
+        "Mathematical analysis",
+        "Functional analysis",
+        "Measure theory",
+        "Generalized Integrals",
+        "Maattheorie",
+        "Hilbertruimten",
+        "Integrals, generalized"
+      ],
+      "completed": false,
+      "mutuals": []
+    },
+    "fourier_analysis_mo5agzrp": {
+      "title": "Fourier Analysis",
+      "authors": [
+        "Elias M. Stein",
+        "Elias M. M. Stein",
+        "Rami Shakarchi"
+      ],
+      "short": "Fourier Analysis",
+      "category": "Mathematics",
+      "intrinsic": 8,
+      "pages": 328,
+      "prereqs": [
+        "calculus_an_intuitive_and_mo7zmlcu",
+        "linear_algebra_done_right_mo7zl33d"
+      ],
+      "isbn": "9789785462593",
+      "subjects": [],
+      "completed": false,
+      "lockDiff": false,
+      "noPropOut": false,
+      "editionKeys": [
+        "OL40223589M",
+        "OL29593131M",
+        "OL32100191M",
+        "OL3696250M",
+        "OL5444782M",
+        "OL487056M",
+        "OL29317948M",
+        "OL1737880M"
+      ],
+      "iaIds": [
+        "fourieranalysisi0000stei",
+        "fourieranalysis01stei",
+        "introductiontofo0000stei",
+        "essaysonfouriera00feff"
+      ],
+      "mutuals": []
+    },
+    "introduction_to_electrody_mo6hhpxq": {
+      "title": "Introduction to electrodynamics",
+      "authors": [
+        "David Jeffrey Griffiths"
+      ],
+      "short": "Introduction to electrodynam",
+      "category": "Physics",
+      "intrinsic": 9,
+      "pages": 598,
+      "prereqs": [
+        "complex_analysis_mo5ad8yg",
+        "fourier_analysis_mo5agzrp",
+        "real_analysis_mo5ael4s",
+        "the_art_of_electronics_mo5aduug"
+      ],
+      "isbn": "1108420419",
+      "subjects": [
+        "Electrodynamics",
+        "Elektrodynamica",
+        "Électrodynamique",
+        "Textbooks",
+        "33.16 electromagnetism",
+        "ELECTRODYNAMIC FIELDS",
+        "ELECTRODYNAMIC RADIATION",
+        "Science",
+        "Electromagnetism",
+        "Electrodynamics--textbooks"
+      ],
+      "completed": false,
+      "editionKeys": [
+        "OL48193830M",
+        "OL29410925M",
+        "OL50564852M",
+        "OL40913321M",
+        "OL26777153M",
+        "OL34722149M",
+        "OL27987097M",
+        "OL29135149M",
+        "OL29310928M",
+        "OL2057545M",
+        "OL25840902M",
+        "OL28964363M",
+        "OL43224664M",
+        "OL4097232M",
+        "OL26198283M",
+        "OL387513M"
+      ],
+      "iaIds": [
+        "introductiontoel00grif",
+        "introductiontoel0000grif_h9m0",
+        "introductiontoel00grif_0"
+      ],
+      "mutuals": []
+    },
+    "dsp_with_fpgas_mo6hn8yd": {
+      "title": "DSP with FPGAs",
+      "authors": [
+        "Uwe Meyer-Baese"
+      ],
+      "short": "DSP with FPGAs",
+      "category": "DSP / FPGA / Code",
+      "intrinsic": 9,
+      "pages": 953,
+      "prereqs": [
+        "discrete_time_signal_proc_mo6ho3x9",
+        "programming_in_c_mo6i890z"
+      ],
+      "isbn": "0975549499",
+      "subjects": [],
+      "completed": false,
+      "editionKeys": [
+        "OL9490483M"
+      ],
+      "mutuals": [
+        "designing_digital_systems_mo8bcgv6"
+      ],
+      "lockDiff": false,
+      "noPropOut": false,
+      "allowPrereqOverlap": false,
+      "ignored": false,
+      "constantRD": false
+    },
+    "discrete_time_signal_proc_mo6ho3x9": {
+      "title": "Discrete-time Signal Processing, 2nd, Second Edition",
+      "authors": [
+        "Ronald W. Oppenheim Alan V. / Schafer"
+      ],
+      "short": "Discrete-time Signal Process",
+      "category": "DSP / FPGA / Code",
+      "intrinsic": 8,
+      "pages": 900,
+      "prereqs": [],
+      "isbn": "9788131704929",
+      "subjects": [],
+      "completed": false,
+      "editionKeys": [
+        "OL50509883M"
+      ],
+      "mutuals": []
+    },
+    "wavelet_tour_of_signal_pr_mo6hpr3t": {
+      "title": "Wavelet Tour of Signal Processing",
+      "authors": [
+        "Stéphane Mallat"
+      ],
+      "short": "Wavelet Tour of Signal Proce",
+      "category": "Mathematics",
+      "intrinsic": 6.7,
+      "pages": 300,
+      "prereqs": [
+        "complex_analysis_mo5ad8yg",
+        "discrete_time_signal_proc_mo6ho3x9",
+        "fourier_analysis_mo5agzrp",
+        "real_analysis_mo5ael4s"
+      ],
+      "isbn": "0080922023",
+      "subjects": [
+        "Wavelets (mathematics)"
+      ],
+      "completed": false,
+      "editionKeys": [
+        "OL34594226M",
+        "OL34582980M",
+        "OL15954191M"
+      ],
+      "mutuals": []
+    },
+    "mathematics_of_the_discre_mo6hwwdq": {
+      "title": "Mathematics of the Discrete Fourier Transform",
+      "authors": [
+        "Julius Smith"
+      ],
+      "short": "Mathematics of the Discrete ",
+      "category": "Mathematics",
+      "intrinsic": 6,
+      "pages": 322,
+      "prereqs": [
+        "discrete_time_signal_proc_mo6ho3x9"
+      ],
+      "isbn": "1439208875",
+      "subjects": [],
+      "completed": false,
+      "editionKeys": [
+        "OL54273159M",
+        "OL9782886M",
+        "OL27073377M"
+      ],
+      "iaIds": [
+        "mathematicsofdis0000smit"
+      ],
+      "mutuals": []
+    },
+    "practical_electronics_for_mo6i27ol": {
+      "title": "Practical Electronics for Inventors",
+      "authors": [
+        "Paul Scherz"
+      ],
+      "short": "Practical Electronics for In",
+      "category": "Electronics + Audio",
+      "intrinsic": 5,
+      "pages": 952,
+      "prereqs": [],
+      "isbn": "9780070580787",
+      "subjects": [
+        "Electronics",
+        "Engineering",
+        "Nonfiction",
+        "Technology",
+        "Amateurs' manuals",
+        "Electronics, amateurs' manuals",
+        "Electronics, handbooks, manuals, etc.",
+        "Inventors",
+        "TECHNOLOGY & ENGINEERING",
+        "Microelectronics"
+      ],
+      "completed": false,
+      "editionKeys": [
+        "OL9255658M",
+        "OL6806252M",
+        "OL7300981M",
+        "OL24294289M",
+        "OL27097060M",
+        "OL27148193M",
+        "OL29729449M"
+      ],
+      "iaIds": [
+        "practicalelectro0000sche_q3u0",
+        "practicalelectro00sche_364",
+        "practicalelectro0000sche_x1w7",
+        "practicalelectro0000sche_03ed"
+      ],
+      "mutuals": []
+    },
+    "programming_in_c_mo6i890z": {
+      "title": "Programming in C",
+      "authors": [
+        "Stephen G. Kochan"
+      ],
+      "short": "Programming in C",
+      "category": "DSP / FPGA / Code",
+      "intrinsic": 5,
+      "pages": 373,
+      "prereqs": [],
+      "isbn": "0768663598",
+      "subjects": [
+        "C (Computer program language)",
+        "Computer Technology",
+        "Nonfiction",
+        "Unix (computer operating system)",
+        "C (programming language)",
+        "C++ (Computer program language)"
+      ],
+      "completed": false,
+      "editionKeys": [
+        "OL2412529M",
+        "OL19697827M",
+        "OL2801166M",
+        "OL24277619M",
+        "OL9808404M",
+        "OL3312676M",
+        "OL3694657M",
+        "OL24253572M",
+        "OL1445322M",
+        "OL2065155M",
+        "OL26838068M",
+        "OL2027669M",
+        "OL2410776M",
+        "OL27141912M",
+        "OL25032581M",
+        "OL25102237M"
+      ],
+      "iaIds": [
+        "programminginc0000koch_rev",
+        "programminginc00koch",
+        "programmingc00koch_845",
+        "topicsincprogram0000koch",
+        "topicsincprogram00koch",
+        "programminginobj00koch"
+      ],
+      "mutuals": []
+    },
+    "naive_lie_theory_mo6ijbu2": {
+      "title": "Naive Lie Theory",
+      "authors": [
+        "John C. Stillwell"
+      ],
+      "short": "Naive Lie Theory",
+      "category": "Mathematics",
+      "intrinsic": 9.5,
+      "pages": 234,
+      "prereqs": [
+        "introduction_to_electrody_mo6hhpxq",
+        "real_analysis_mo5ael4s"
+      ],
+      "isbn": "9781441926814",
+      "subjects": [
+        "Lie groups",
+        "Lie algebras"
+      ],
+      "completed": false,
+      "editionKeys": [
+        "OL22682744M",
+        "OL28284072M",
+        "OL28164928M",
+        "OL37094605M"
+      ],
+      "iaIds": [
+        "naivelietheoryun00stil"
+      ],
+      "mutuals": [],
+      "lockDiff": false,
+      "noPropOut": false,
+      "allowPrereqOverlap": false,
+      "ignored": false,
+      "constantRD": false
+    },
+    "introduction_to_digital_f_mo6k4k6w": {
+      "title": "Introduction to Digital Filters",
+      "authors": [
+        "Julius O. Smith III"
+      ],
+      "short": "Introduction to Digital Filt",
+      "category": "DSP / FPGA / Code",
+      "intrinsic": 4.5,
+      "pages": 478,
+      "prereqs": [
+        "mathematics_of_the_discre_mo6hwwdq"
+      ],
+      "isbn": "9780974560717",
+      "subjects": [],
+      "completed": false,
+      "editionKeys": [
+        "OL11804257M"
+      ],
+      "mutuals": []
+    },
+    "spectral_audio_signal_pro_mo6l02ta": {
+      "title": "Spectral Audio Signal Processing",
+      "authors": [
+        "Julius O. Smith III"
+      ],
+      "short": "Spectral Audio Signal Proces",
+      "category": "DSP / FPGA / Code",
+      "intrinsic": 5.3,
+      "pages": 674,
+      "prereqs": [
+        "introduction_to_digital_f_mo6k4k6w"
+      ],
+      "isbn": "0974560731",
+      "subjects": [],
+      "completed": false,
+      "editionKeys": [
+        "OL37770716M"
+      ],
+      "mutuals": [],
+      "lockDiff": false,
+      "noPropOut": false,
+      "allowPrereqOverlap": false,
+      "ignored": false,
+      "constantRD": false
+    },
+    "linear_algebra_done_right_mo7zl33d": {
+      "title": "Linear Algebra Done Right",
+      "authors": [
+        "Sheldon Axler"
+      ],
+      "short": "Linear Algebra Done Right",
+      "category": "Mathematics",
+      "intrinsic": 5.8,
+      "pages": 357,
+      "prereqs": [],
+      "isbn": "9783031410253",
+      "subjects": [],
+      "publisher": "Springer International Publishing AG",
+      "olWorkKey": "/works/OL34875242W",
+      "olEditionKey": "OL47230713M",
+      "editionKeys": [
+        "OL47230713M",
+        "OL49266176M",
+        "OL35792181M",
+        "OL7449615M",
+        "OL808156M",
+        "OL670720M",
+        "OL26876034M"
+      ],
+      "iaIds": [
+        "linearalgebradon0000axle_h2m2",
+        "linearalgebradon0000axle"
+      ],
+      "completed": false,
+      "mutuals": [
+        "calculus_an_intuitive_and_mo7zmlcu"
+      ],
+      "lockDiff": false,
+      "noPropOut": false,
+      "allowPrereqOverlap": false,
+      "ignored": false,
+      "constantRD": false
+    },
+    "calculus_an_intuitive_and_mo7zmlcu": {
+      "title": "Calculus, An Intuitive and Physical Approach",
+      "authors": [
+        "Morris Kline"
+      ],
+      "short": "Calculus, An Intuitive and P",
+      "category": "Mathematics",
+      "intrinsic": 5.5,
+      "pages": 960,
+      "prereqs": [],
+      "isbn": "0471034797",
+      "subjects": [],
+      "publisher": "Wiley",
+      "olWorkKey": "/works/OL11371090W",
+      "olEditionKey": "OL15052615M",
+      "editionKeys": [
+        "OL15052615M"
+      ],
+      "iaIds": [
+        "calculusintuitiv0000morr"
+      ],
+      "completed": false,
+      "mutuals": [
+        "linear_algebra_done_right_mo7zl33d"
+      ]
+    },
+    "designing_digital_systems_mo8bcgv6": {
+      "title": "Designing Digital Systems with SystemVerilog (v2. 1)",
+      "authors": [
+        "Brent E. Nelson"
+      ],
+      "short": "Designing Digital Systems wi",
+      "category": "DSP / FPGA / Code",
+      "intrinsic": 4.8,
+      "pages": 300,
+      "prereqs": [],
+      "mutuals": [
+        "dsp_with_fpgas_mo6hn8yd"
+      ],
+      "ignored": false,
+      "constantRD": false,
+      "isbn": "9798727537466",
+      "subjects": [],
+      "publisher": "Independently Published",
+      "olWorkKey": "/works/OL34477958W",
+      "olEditionKey": "OL46767034M",
+      "editionKeys": [
+        "OL46767034M"
+      ],
+      "iaIds": [],
+      "completed": false
+    }
+  },
+  "damp": 0.5,
+  "gam": 1.75,
+  "mode": "difficulty",
+  "tl": 20,
+  "par": 3,
+  "hpd": 3.96,
+  "dpw": 6,
+  "pt": 0.5,
+  "bmp": 20,
+  "sd": "2026-04-22",
+  "minPg": 7,
+  "maxPg": 25,
+  "schedAlgo": "critical",
+  "studentProfile": "custom",
+  "userProfiles": {},
+  "skimRatio": 0.25,
+  "tocCache": {
+    "isbn:9781441926814": {
+      "lines": [
+        "Geometry of complex numbers and quaternions",
+        "Groups",
+        "Generalized rotation groups",
+        "The exponential map",
+        "The tangent space",
+        "Structure of Lie algebras",
+        "The matrix logarithm",
+        "Topology",
+        "Simply connected Lie groups."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:27:31.333Z"
+    },
+    "work:/works/OL20805336W": {
+      "lines": [
+        "Geometry of complex numbers and quaternions",
+        "Groups",
+        "Generalized rotation groups",
+        "The exponential map",
+        "The tangent space",
+        "Structure of Lie algebras",
+        "The matrix logarithm",
+        "Topology",
+        "Simply connected Lie groups."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:27:31.333Z"
+    },
+    "edition:/books/OL28284072M": {
+      "lines": [
+        "Geometry of complex numbers and quaternions",
+        "Groups",
+        "Generalized rotation groups",
+        "The exponential map",
+        "The tangent space",
+        "Structure of Lie algebras",
+        "The matrix logarithm",
+        "Topology",
+        "Simply connected Lie groups."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:27:31.333Z"
+    },
+    "title:naive lie theory|author:john c stillwell": {
+      "lines": [
+        "Geometry of complex numbers and quaternions",
+        "Groups",
+        "Generalized rotation groups",
+        "The exponential map",
+        "The tangent space",
+        "Structure of Lie algebras",
+        "The matrix logarithm",
+        "Topology",
+        "Simply connected Lie groups."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:27:31.333Z"
+    },
+    "isbn:1400835569": {
+      "lines": [
+        "Foreword",
+        "Introduction",
+        "Fourier series: completion",
+        "Limits of continuous functions",
+        "Length of curves",
+        "Differentiation and integration",
+        "The problem of measure",
+        "Measure Theory",
+        "Preliminaries",
+        "The exterior measure",
+        "Measurable sets and the Lebesgue measure",
+        "Measurable functions",
+        "Definition and basic properties",
+        "App roximation by simple functions or step functions",
+        "Littlewood's three principles",
+        "The Brunn-Minkowski inequality",
+        "Exercises",
+        "Problems",
+        "Integration Theory",
+        "The Lebesgue integral: basic properties and convergence theorems",
+        "The space L^1 of integrable functions",
+        "Fubini's theorem",
+        "Statement and proof of the theorem",
+        "App lications of Fubini's theorem",
+        "A Fourier inversion formula",
+        "Differentiation and Integration",
+        "Differentiation of the integral",
+        "The Hardy-Littlewood maximal function",
+        "The Lebesgue differentiation theorem",
+        "Good kernels and approximations to the identity",
+        "Differentiability of functions",
+        "Functions of bounded variation",
+        "Absolutely continuous functions",
+        "Differentiability of jump functions",
+        "Rectifiable curves and the isoperimetric inequality",
+        "Minkowski content of a curve",
+        "Isoperimetric inequality",
+        "Hilbert Spaces: An Introduction",
+        "The Hilbert space L^2",
+        "Hilbert spaces",
+        "Orthogonality",
+        "Unitary mappings",
+        "Pre-Hilbert spaces",
+        "Fourier series and Fatou's theorem",
+        "Fatou's theorem",
+        "Closed subspaces and orthogonal projections",
+        "Linear transformations",
+        "Linear functionals and the Riesz representation theorem",
+        "Adjoints",
+        "Examples",
+        "Compact operators",
+        "Hilbert Spaces: Several Examples",
+        "1 The Fourier transform on L^2",
+        "2 The Hardy space of the upper half-plane",
+        "Constant coefficient partial differential equations",
+        "Weak solutions",
+        "The main theorem and key estimate",
+        "The Dirichlet principle",
+        "Harmonic functions",
+        "The boundary value problem and Dirichlet's principle",
+        "Abstract Measure and Integration Theory",
+        "Abstract measure spaces",
+        "Exterior measures and Carathéodory's theorem",
+        "Metric exterior measures",
+        "The extension theorem",
+        "Integration on a measure space",
+        "Product measures and a general Fubini theorem",
+        "Integration formula for polar coordinates",
+        "Borel measures on R and the Lebesgue-Stieltjes integral",
+        "Absolute continuity of measures",
+        "Signed measures",
+        "Absolute continuity",
+        "Ergodic theorems",
+        "Mean ergodic theorem",
+        "Maximal ergodic theorem",
+        "Pointwise ergodic theorem",
+        "Ergodic measure-preserving transformations",
+        "Appendix : the spectral theorem",
+        "Statement of the theorem",
+        "Positive operators",
+        "Proof of the theorem",
+        "Spectrum",
+        "Hausdorff Measure and Fractals",
+        "Hausdorff measure",
+        "Hausdorff dimension",
+        "Self-similarity",
+        "Space-filling curves",
+        "Quartic intervals and dyadic squares",
+        "Dyadic correspondence",
+        "Construction of the Peano mapping",
+        "Besicovitch sets and regularity",
+        "The Radon transform",
+        "Regularity of sets when d >=",
+        "Besicovitch sets have dimension",
+        "Construction of a Besicovitch set",
+        "Notes and References",
+        "Bibliography",
+        "Symbol Glossary",
+        "Index"
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:24:16.236Z"
+    },
+    "work:/works/OL15624842W": {
+      "lines": [
+        "Foreword",
+        "Introduction",
+        "Fourier series: completion",
+        "Limits of continuous functions",
+        "Length of curves",
+        "Differentiation and integration",
+        "The problem of measure",
+        "Measure Theory",
+        "Preliminaries",
+        "The exterior measure",
+        "Measurable sets and the Lebesgue measure",
+        "Measurable functions",
+        "Definition and basic properties",
+        "App roximation by simple functions or step functions",
+        "Littlewood's three principles",
+        "The Brunn-Minkowski inequality",
+        "Exercises",
+        "Problems",
+        "Integration Theory",
+        "The Lebesgue integral: basic properties and convergence theorems",
+        "The space L^1 of integrable functions",
+        "Fubini's theorem",
+        "Statement and proof of the theorem",
+        "App lications of Fubini's theorem",
+        "A Fourier inversion formula",
+        "Differentiation and Integration",
+        "Differentiation of the integral",
+        "The Hardy-Littlewood maximal function",
+        "The Lebesgue differentiation theorem",
+        "Good kernels and approximations to the identity",
+        "Differentiability of functions",
+        "Functions of bounded variation",
+        "Absolutely continuous functions",
+        "Differentiability of jump functions",
+        "Rectifiable curves and the isoperimetric inequality",
+        "Minkowski content of a curve",
+        "Isoperimetric inequality",
+        "Hilbert Spaces: An Introduction",
+        "The Hilbert space L^2",
+        "Hilbert spaces",
+        "Orthogonality",
+        "Unitary mappings",
+        "Pre-Hilbert spaces",
+        "Fourier series and Fatou's theorem",
+        "Fatou's theorem",
+        "Closed subspaces and orthogonal projections",
+        "Linear transformations",
+        "Linear functionals and the Riesz representation theorem",
+        "Adjoints",
+        "Examples",
+        "Compact operators",
+        "Hilbert Spaces: Several Examples",
+        "1 The Fourier transform on L^2",
+        "2 The Hardy space of the upper half-plane",
+        "Constant coefficient partial differential equations",
+        "Weak solutions",
+        "The main theorem and key estimate",
+        "The Dirichlet principle",
+        "Harmonic functions",
+        "The boundary value problem and Dirichlet's principle",
+        "Abstract Measure and Integration Theory",
+        "Abstract measure spaces",
+        "Exterior measures and Carathéodory's theorem",
+        "Metric exterior measures",
+        "The extension theorem",
+        "Integration on a measure space",
+        "Product measures and a general Fubini theorem",
+        "Integration formula for polar coordinates",
+        "Borel measures on R and the Lebesgue-Stieltjes integral",
+        "Absolute continuity of measures",
+        "Signed measures",
+        "Absolute continuity",
+        "Ergodic theorems",
+        "Mean ergodic theorem",
+        "Maximal ergodic theorem",
+        "Pointwise ergodic theorem",
+        "Ergodic measure-preserving transformations",
+        "Appendix : the spectral theorem",
+        "Statement of the theorem",
+        "Positive operators",
+        "Proof of the theorem",
+        "Spectrum",
+        "Hausdorff Measure and Fractals",
+        "Hausdorff measure",
+        "Hausdorff dimension",
+        "Self-similarity",
+        "Space-filling curves",
+        "Quartic intervals and dyadic squares",
+        "Dyadic correspondence",
+        "Construction of the Peano mapping",
+        "Besicovitch sets and regularity",
+        "The Radon transform",
+        "Regularity of sets when d >=",
+        "Besicovitch sets have dimension",
+        "Construction of a Besicovitch set",
+        "Notes and References",
+        "Bibliography",
+        "Symbol Glossary",
+        "Index"
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:24:16.236Z"
+    },
+    "edition:/books/OL29593241M": {
+      "lines": [
+        "Foreword",
+        "Introduction",
+        "Fourier series: completion",
+        "Limits of continuous functions",
+        "Length of curves",
+        "Differentiation and integration",
+        "The problem of measure",
+        "Measure Theory",
+        "Preliminaries",
+        "The exterior measure",
+        "Measurable sets and the Lebesgue measure",
+        "Measurable functions",
+        "Definition and basic properties",
+        "App roximation by simple functions or step functions",
+        "Littlewood's three principles",
+        "The Brunn-Minkowski inequality",
+        "Exercises",
+        "Problems",
+        "Integration Theory",
+        "The Lebesgue integral: basic properties and convergence theorems",
+        "The space L^1 of integrable functions",
+        "Fubini's theorem",
+        "Statement and proof of the theorem",
+        "App lications of Fubini's theorem",
+        "A Fourier inversion formula",
+        "Differentiation and Integration",
+        "Differentiation of the integral",
+        "The Hardy-Littlewood maximal function",
+        "The Lebesgue differentiation theorem",
+        "Good kernels and approximations to the identity",
+        "Differentiability of functions",
+        "Functions of bounded variation",
+        "Absolutely continuous functions",
+        "Differentiability of jump functions",
+        "Rectifiable curves and the isoperimetric inequality",
+        "Minkowski content of a curve",
+        "Isoperimetric inequality",
+        "Hilbert Spaces: An Introduction",
+        "The Hilbert space L^2",
+        "Hilbert spaces",
+        "Orthogonality",
+        "Unitary mappings",
+        "Pre-Hilbert spaces",
+        "Fourier series and Fatou's theorem",
+        "Fatou's theorem",
+        "Closed subspaces and orthogonal projections",
+        "Linear transformations",
+        "Linear functionals and the Riesz representation theorem",
+        "Adjoints",
+        "Examples",
+        "Compact operators",
+        "Hilbert Spaces: Several Examples",
+        "1 The Fourier transform on L^2",
+        "2 The Hardy space of the upper half-plane",
+        "Constant coefficient partial differential equations",
+        "Weak solutions",
+        "The main theorem and key estimate",
+        "The Dirichlet principle",
+        "Harmonic functions",
+        "The boundary value problem and Dirichlet's principle",
+        "Abstract Measure and Integration Theory",
+        "Abstract measure spaces",
+        "Exterior measures and Carathéodory's theorem",
+        "Metric exterior measures",
+        "The extension theorem",
+        "Integration on a measure space",
+        "Product measures and a general Fubini theorem",
+        "Integration formula for polar coordinates",
+        "Borel measures on R and the Lebesgue-Stieltjes integral",
+        "Absolute continuity of measures",
+        "Signed measures",
+        "Absolute continuity",
+        "Ergodic theorems",
+        "Mean ergodic theorem",
+        "Maximal ergodic theorem",
+        "Pointwise ergodic theorem",
+        "Ergodic measure-preserving transformations",
+        "Appendix : the spectral theorem",
+        "Statement of the theorem",
+        "Positive operators",
+        "Proof of the theorem",
+        "Spectrum",
+        "Hausdorff Measure and Fractals",
+        "Hausdorff measure",
+        "Hausdorff dimension",
+        "Self-similarity",
+        "Space-filling curves",
+        "Quartic intervals and dyadic squares",
+        "Dyadic correspondence",
+        "Construction of the Peano mapping",
+        "Besicovitch sets and regularity",
+        "The Radon transform",
+        "Regularity of sets when d >=",
+        "Besicovitch sets have dimension",
+        "Construction of a Besicovitch set",
+        "Notes and References",
+        "Bibliography",
+        "Symbol Glossary",
+        "Index"
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:24:16.236Z"
+    },
+    "title:real analysis|author:elias m stein": {
+      "lines": [
+        "Foreword",
+        "Introduction",
+        "Fourier series: completion",
+        "Limits of continuous functions",
+        "Length of curves",
+        "Differentiation and integration",
+        "The problem of measure",
+        "Measure Theory",
+        "Preliminaries",
+        "The exterior measure",
+        "Measurable sets and the Lebesgue measure",
+        "Measurable functions",
+        "Definition and basic properties",
+        "App roximation by simple functions or step functions",
+        "Littlewood's three principles",
+        "The Brunn-Minkowski inequality",
+        "Exercises",
+        "Problems",
+        "Integration Theory",
+        "The Lebesgue integral: basic properties and convergence theorems",
+        "The space L^1 of integrable functions",
+        "Fubini's theorem",
+        "Statement and proof of the theorem",
+        "App lications of Fubini's theorem",
+        "A Fourier inversion formula",
+        "Differentiation and Integration",
+        "Differentiation of the integral",
+        "The Hardy-Littlewood maximal function",
+        "The Lebesgue differentiation theorem",
+        "Good kernels and approximations to the identity",
+        "Differentiability of functions",
+        "Functions of bounded variation",
+        "Absolutely continuous functions",
+        "Differentiability of jump functions",
+        "Rectifiable curves and the isoperimetric inequality",
+        "Minkowski content of a curve",
+        "Isoperimetric inequality",
+        "Hilbert Spaces: An Introduction",
+        "The Hilbert space L^2",
+        "Hilbert spaces",
+        "Orthogonality",
+        "Unitary mappings",
+        "Pre-Hilbert spaces",
+        "Fourier series and Fatou's theorem",
+        "Fatou's theorem",
+        "Closed subspaces and orthogonal projections",
+        "Linear transformations",
+        "Linear functionals and the Riesz representation theorem",
+        "Adjoints",
+        "Examples",
+        "Compact operators",
+        "Hilbert Spaces: Several Examples",
+        "1 The Fourier transform on L^2",
+        "2 The Hardy space of the upper half-plane",
+        "Constant coefficient partial differential equations",
+        "Weak solutions",
+        "The main theorem and key estimate",
+        "The Dirichlet principle",
+        "Harmonic functions",
+        "The boundary value problem and Dirichlet's principle",
+        "Abstract Measure and Integration Theory",
+        "Abstract measure spaces",
+        "Exterior measures and Carathéodory's theorem",
+        "Metric exterior measures",
+        "The extension theorem",
+        "Integration on a measure space",
+        "Product measures and a general Fubini theorem",
+        "Integration formula for polar coordinates",
+        "Borel measures on R and the Lebesgue-Stieltjes integral",
+        "Absolute continuity of measures",
+        "Signed measures",
+        "Absolute continuity",
+        "Ergodic theorems",
+        "Mean ergodic theorem",
+        "Maximal ergodic theorem",
+        "Pointwise ergodic theorem",
+        "Ergodic measure-preserving transformations",
+        "Appendix : the spectral theorem",
+        "Statement of the theorem",
+        "Positive operators",
+        "Proof of the theorem",
+        "Spectrum",
+        "Hausdorff Measure and Fractals",
+        "Hausdorff measure",
+        "Hausdorff dimension",
+        "Self-similarity",
+        "Space-filling curves",
+        "Quartic intervals and dyadic squares",
+        "Dyadic correspondence",
+        "Construction of the Peano mapping",
+        "Besicovitch sets and regularity",
+        "The Radon transform",
+        "Regularity of sets when d >=",
+        "Besicovitch sets have dimension",
+        "Construction of a Besicovitch set",
+        "Notes and References",
+        "Bibliography",
+        "Symbol Glossary",
+        "Index"
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:24:16.236Z"
+    },
+    "isbn:9789785462593": {
+      "lines": [
+        "The Genesis of Fourier Analysis",
+        "The vibrating string",
+        "Derivation of the wave equation",
+        "Solution to the wave equation",
+        "Example: the plucked string",
+        "The heat equation",
+        "Derivation of the heat equation",
+        "Steady-state heat equation in the disc",
+        "Exercises",
+        "Problem",
+        "Basic Properties of Fourier Series",
+        "Examples and formulation of the problem",
+        "Main definitions and some examples",
+        "Uniqueness of Fourier series",
+        "Convulusions",
+        "Good kernels",
+        "Cesaro and Abel summability: applications to Fourier series",
+        "Cesaro means and summation",
+        "Fejer's theorem",
+        "Abel means and summation",
+        "The Poisson kernel and Dirichlet's problem in the unit disc",
+        "Problems",
+        "Convergence of Fourier Series",
+        "Mean-square convergence of Fourier series",
+        "Vector spaces and inner products",
+        "Proof of mean-square convergence",
+        "Return to pointwise convergence",
+        "A local result",
+        "A continuous function with diverging Fourier series",
+        "Some Applications of Fourier Series",
+        "The isoperimetric inequality",
+        "Weyl's equidistribution theorem",
+        "A continuous but nowhere differentiable function",
+        "The heat equation on the circle",
+        "The Fourier Transform on R",
+        "Elementary theory of the Fourier transform",
+        "Integration of functions on the real line",
+        "Definition of the Fourier transform",
+        "The Schwartz space",
+        "The Fourier transform on S",
+        "The Fourier inversion",
+        "The Plancherel formula",
+        "Extension to functions of moderate decrease",
+        "The Weierstrass approximation theorem",
+        "App lications to some partial differential equations",
+        "The time-dependent heat equation on the real line",
+        "The steady-state heat equation in the upper half-plane",
+        "The Poisson summation formula",
+        "Theta and zeta functions",
+        "Heat kernels",
+        "Poisson kernels",
+        "The Heisenberg uncertainty principle",
+        "The Fourier Transform on Rd",
+        "Preliminaries",
+        "Symmetries",
+        "Integration on Rd",
+        "The wave equation in Rd x R",
+        "Solution in terms of Fourier transforms",
+        "The wave equation in R3 x R",
+        "The wave equation in IR2 x R: descent",
+        "Radial symmetry and Bessel functions",
+        "The Radon transform and some of its applications",
+        "The X-ray transform in R2",
+        "The Radon transform in R3",
+        "A note about plane waves",
+        "Finite Fourier Analysis",
+        "Fourier analysis on Z(N)",
+        "The group Z(N)",
+        "Fourier inversion theorem and Plancherel identity on Z(N)",
+        "The fast Fourier transform",
+        "Fourier analysis on finite abelian groups",
+        "Abelian groups",
+        "Characters",
+        "The orthogonality relations",
+        "Characters as a total family",
+        "Fourier inversion and Plancherel formula",
+        "Dirichlet's Theorem",
+        "A little elementary number theory",
+        "The fundamental theorem of arithmetic",
+        "The infinitude of primes",
+        "Dirichlet's theorem",
+        "Fourier analysis, Dirichlet characters, and reduction of the theorem",
+        "Dirichlet L-functions",
+        "Proof of the theorem",
+        "Logarithms",
+        "functions",
+        "Non-vanishing of the L-function",
+        "Appendix : Integration",
+        "Definition of the Riemann integral",
+        "Basic properties",
+        "Sets of measure zero and discontinuities of integrable functions",
+        "Multiple integrals",
+        "The Riemann integral in Rd",
+        "Repeated integrals",
+        "The change of variables formula",
+        "Spherical coordinates",
+        "Improper integrals. Integration over Rd",
+        "Integration of functions of moderate decrease",
+        "Notes and References",
+        "Bibliography",
+        "Symbol Glossary."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:24:18.809Z"
+    },
+    "work:/works/OL21744006W": {
+      "lines": [
+        "The Genesis of Fourier Analysis",
+        "The vibrating string",
+        "Derivation of the wave equation",
+        "Solution to the wave equation",
+        "Example: the plucked string",
+        "The heat equation",
+        "Derivation of the heat equation",
+        "Steady-state heat equation in the disc",
+        "Exercises",
+        "Problem",
+        "Basic Properties of Fourier Series",
+        "Examples and formulation of the problem",
+        "Main definitions and some examples",
+        "Uniqueness of Fourier series",
+        "Convulusions",
+        "Good kernels",
+        "Cesaro and Abel summability: applications to Fourier series",
+        "Cesaro means and summation",
+        "Fejer's theorem",
+        "Abel means and summation",
+        "The Poisson kernel and Dirichlet's problem in the unit disc",
+        "Problems",
+        "Convergence of Fourier Series",
+        "Mean-square convergence of Fourier series",
+        "Vector spaces and inner products",
+        "Proof of mean-square convergence",
+        "Return to pointwise convergence",
+        "A local result",
+        "A continuous function with diverging Fourier series",
+        "Some Applications of Fourier Series",
+        "The isoperimetric inequality",
+        "Weyl's equidistribution theorem",
+        "A continuous but nowhere differentiable function",
+        "The heat equation on the circle",
+        "The Fourier Transform on R",
+        "Elementary theory of the Fourier transform",
+        "Integration of functions on the real line",
+        "Definition of the Fourier transform",
+        "The Schwartz space",
+        "The Fourier transform on S",
+        "The Fourier inversion",
+        "The Plancherel formula",
+        "Extension to functions of moderate decrease",
+        "The Weierstrass approximation theorem",
+        "App lications to some partial differential equations",
+        "The time-dependent heat equation on the real line",
+        "The steady-state heat equation in the upper half-plane",
+        "The Poisson summation formula",
+        "Theta and zeta functions",
+        "Heat kernels",
+        "Poisson kernels",
+        "The Heisenberg uncertainty principle",
+        "The Fourier Transform on Rd",
+        "Preliminaries",
+        "Symmetries",
+        "Integration on Rd",
+        "The wave equation in Rd x R",
+        "Solution in terms of Fourier transforms",
+        "The wave equation in R3 x R",
+        "The wave equation in IR2 x R: descent",
+        "Radial symmetry and Bessel functions",
+        "The Radon transform and some of its applications",
+        "The X-ray transform in R2",
+        "The Radon transform in R3",
+        "A note about plane waves",
+        "Finite Fourier Analysis",
+        "Fourier analysis on Z(N)",
+        "The group Z(N)",
+        "Fourier inversion theorem and Plancherel identity on Z(N)",
+        "The fast Fourier transform",
+        "Fourier analysis on finite abelian groups",
+        "Abelian groups",
+        "Characters",
+        "The orthogonality relations",
+        "Characters as a total family",
+        "Fourier inversion and Plancherel formula",
+        "Dirichlet's Theorem",
+        "A little elementary number theory",
+        "The fundamental theorem of arithmetic",
+        "The infinitude of primes",
+        "Dirichlet's theorem",
+        "Fourier analysis, Dirichlet characters, and reduction of the theorem",
+        "Dirichlet L-functions",
+        "Proof of the theorem",
+        "Logarithms",
+        "functions",
+        "Non-vanishing of the L-function",
+        "Appendix : Integration",
+        "Definition of the Riemann integral",
+        "Basic properties",
+        "Sets of measure zero and discontinuities of integrable functions",
+        "Multiple integrals",
+        "The Riemann integral in Rd",
+        "Repeated integrals",
+        "The change of variables formula",
+        "Spherical coordinates",
+        "Improper integrals. Integration over Rd",
+        "Integration of functions of moderate decrease",
+        "Notes and References",
+        "Bibliography",
+        "Symbol Glossary."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:24:18.809Z"
+    },
+    "edition:/books/OL40223589M": {
+      "lines": [
+        "The Genesis of Fourier Analysis",
+        "The vibrating string",
+        "Derivation of the wave equation",
+        "Solution to the wave equation",
+        "Example: the plucked string",
+        "The heat equation",
+        "Derivation of the heat equation",
+        "Steady-state heat equation in the disc",
+        "Exercises",
+        "Problem",
+        "Basic Properties of Fourier Series",
+        "Examples and formulation of the problem",
+        "Main definitions and some examples",
+        "Uniqueness of Fourier series",
+        "Convulusions",
+        "Good kernels",
+        "Cesaro and Abel summability: applications to Fourier series",
+        "Cesaro means and summation",
+        "Fejer's theorem",
+        "Abel means and summation",
+        "The Poisson kernel and Dirichlet's problem in the unit disc",
+        "Problems",
+        "Convergence of Fourier Series",
+        "Mean-square convergence of Fourier series",
+        "Vector spaces and inner products",
+        "Proof of mean-square convergence",
+        "Return to pointwise convergence",
+        "A local result",
+        "A continuous function with diverging Fourier series",
+        "Some Applications of Fourier Series",
+        "The isoperimetric inequality",
+        "Weyl's equidistribution theorem",
+        "A continuous but nowhere differentiable function",
+        "The heat equation on the circle",
+        "The Fourier Transform on R",
+        "Elementary theory of the Fourier transform",
+        "Integration of functions on the real line",
+        "Definition of the Fourier transform",
+        "The Schwartz space",
+        "The Fourier transform on S",
+        "The Fourier inversion",
+        "The Plancherel formula",
+        "Extension to functions of moderate decrease",
+        "The Weierstrass approximation theorem",
+        "App lications to some partial differential equations",
+        "The time-dependent heat equation on the real line",
+        "The steady-state heat equation in the upper half-plane",
+        "The Poisson summation formula",
+        "Theta and zeta functions",
+        "Heat kernels",
+        "Poisson kernels",
+        "The Heisenberg uncertainty principle",
+        "The Fourier Transform on Rd",
+        "Preliminaries",
+        "Symmetries",
+        "Integration on Rd",
+        "The wave equation in Rd x R",
+        "Solution in terms of Fourier transforms",
+        "The wave equation in R3 x R",
+        "The wave equation in IR2 x R: descent",
+        "Radial symmetry and Bessel functions",
+        "The Radon transform and some of its applications",
+        "The X-ray transform in R2",
+        "The Radon transform in R3",
+        "A note about plane waves",
+        "Finite Fourier Analysis",
+        "Fourier analysis on Z(N)",
+        "The group Z(N)",
+        "Fourier inversion theorem and Plancherel identity on Z(N)",
+        "The fast Fourier transform",
+        "Fourier analysis on finite abelian groups",
+        "Abelian groups",
+        "Characters",
+        "The orthogonality relations",
+        "Characters as a total family",
+        "Fourier inversion and Plancherel formula",
+        "Dirichlet's Theorem",
+        "A little elementary number theory",
+        "The fundamental theorem of arithmetic",
+        "The infinitude of primes",
+        "Dirichlet's theorem",
+        "Fourier analysis, Dirichlet characters, and reduction of the theorem",
+        "Dirichlet L-functions",
+        "Proof of the theorem",
+        "Logarithms",
+        "functions",
+        "Non-vanishing of the L-function",
+        "Appendix : Integration",
+        "Definition of the Riemann integral",
+        "Basic properties",
+        "Sets of measure zero and discontinuities of integrable functions",
+        "Multiple integrals",
+        "The Riemann integral in Rd",
+        "Repeated integrals",
+        "The change of variables formula",
+        "Spherical coordinates",
+        "Improper integrals. Integration over Rd",
+        "Integration of functions of moderate decrease",
+        "Notes and References",
+        "Bibliography",
+        "Symbol Glossary."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:24:18.809Z"
+    },
+    "title:fourier analysis|author:elias m stein": {
+      "lines": [
+        "The Genesis of Fourier Analysis",
+        "The vibrating string",
+        "Derivation of the wave equation",
+        "Solution to the wave equation",
+        "Example: the plucked string",
+        "The heat equation",
+        "Derivation of the heat equation",
+        "Steady-state heat equation in the disc",
+        "Exercises",
+        "Problem",
+        "Basic Properties of Fourier Series",
+        "Examples and formulation of the problem",
+        "Main definitions and some examples",
+        "Uniqueness of Fourier series",
+        "Convulusions",
+        "Good kernels",
+        "Cesaro and Abel summability: applications to Fourier series",
+        "Cesaro means and summation",
+        "Fejer's theorem",
+        "Abel means and summation",
+        "The Poisson kernel and Dirichlet's problem in the unit disc",
+        "Problems",
+        "Convergence of Fourier Series",
+        "Mean-square convergence of Fourier series",
+        "Vector spaces and inner products",
+        "Proof of mean-square convergence",
+        "Return to pointwise convergence",
+        "A local result",
+        "A continuous function with diverging Fourier series",
+        "Some Applications of Fourier Series",
+        "The isoperimetric inequality",
+        "Weyl's equidistribution theorem",
+        "A continuous but nowhere differentiable function",
+        "The heat equation on the circle",
+        "The Fourier Transform on R",
+        "Elementary theory of the Fourier transform",
+        "Integration of functions on the real line",
+        "Definition of the Fourier transform",
+        "The Schwartz space",
+        "The Fourier transform on S",
+        "The Fourier inversion",
+        "The Plancherel formula",
+        "Extension to functions of moderate decrease",
+        "The Weierstrass approximation theorem",
+        "App lications to some partial differential equations",
+        "The time-dependent heat equation on the real line",
+        "The steady-state heat equation in the upper half-plane",
+        "The Poisson summation formula",
+        "Theta and zeta functions",
+        "Heat kernels",
+        "Poisson kernels",
+        "The Heisenberg uncertainty principle",
+        "The Fourier Transform on Rd",
+        "Preliminaries",
+        "Symmetries",
+        "Integration on Rd",
+        "The wave equation in Rd x R",
+        "Solution in terms of Fourier transforms",
+        "The wave equation in R3 x R",
+        "The wave equation in IR2 x R: descent",
+        "Radial symmetry and Bessel functions",
+        "The Radon transform and some of its applications",
+        "The X-ray transform in R2",
+        "The Radon transform in R3",
+        "A note about plane waves",
+        "Finite Fourier Analysis",
+        "Fourier analysis on Z(N)",
+        "The group Z(N)",
+        "Fourier inversion theorem and Plancherel identity on Z(N)",
+        "The fast Fourier transform",
+        "Fourier analysis on finite abelian groups",
+        "Abelian groups",
+        "Characters",
+        "The orthogonality relations",
+        "Characters as a total family",
+        "Fourier inversion and Plancherel formula",
+        "Dirichlet's Theorem",
+        "A little elementary number theory",
+        "The fundamental theorem of arithmetic",
+        "The infinitude of primes",
+        "Dirichlet's theorem",
+        "Fourier analysis, Dirichlet characters, and reduction of the theorem",
+        "Dirichlet L-functions",
+        "Proof of the theorem",
+        "Logarithms",
+        "functions",
+        "Non-vanishing of the L-function",
+        "Appendix : Integration",
+        "Definition of the Riemann integral",
+        "Basic properties",
+        "Sets of measure zero and discontinuities of integrable functions",
+        "Multiple integrals",
+        "The Riemann integral in Rd",
+        "Repeated integrals",
+        "The change of variables formula",
+        "Spherical coordinates",
+        "Improper integrals. Integration over Rd",
+        "Integration of functions of moderate decrease",
+        "Notes and References",
+        "Bibliography",
+        "Symbol Glossary."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:24:18.809Z"
+    },
+    "isbn:9780070580787": {
+      "lines": [
+        "Introduction to electronics",
+        "Theory",
+        "Basic electronic circuit components",
+        "Semiconductors",
+        "Optoelectronics",
+        "Sensors",
+        "Handson electronics",
+        "Operational amplifiers",
+        "Filters",
+        "Oscillators and timers",
+        "Voltage regulators and power supplies",
+        "Digital electronics",
+        "Microcontrollers",
+        "Appendix A",
+        "Appendix B",
+        "Appendix C."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:26:02.185Z"
+    },
+    "work:/works/OL222976W": {
+      "lines": [
+        "Introduction to electronics",
+        "Theory",
+        "Basic electronic circuit components",
+        "Semiconductors",
+        "Optoelectronics",
+        "Sensors",
+        "Handson electronics",
+        "Operational amplifiers",
+        "Filters",
+        "Oscillators and timers",
+        "Voltage regulators and power supplies",
+        "Digital electronics",
+        "Microcontrollers",
+        "Appendix A",
+        "Appendix B",
+        "Appendix C."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:26:02.185Z"
+    },
+    "edition:/books/OL6806252M": {
+      "lines": [
+        "Introduction to electronics",
+        "Theory",
+        "Basic electronic circuit components",
+        "Semiconductors",
+        "Optoelectronics",
+        "Sensors",
+        "Handson electronics",
+        "Operational amplifiers",
+        "Filters",
+        "Oscillators and timers",
+        "Voltage regulators and power supplies",
+        "Digital electronics",
+        "Microcontrollers",
+        "Appendix A",
+        "Appendix B",
+        "Appendix C."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:26:02.185Z"
+    },
+    "title:practical electronics for inventors|author:paul scherz": {
+      "lines": [
+        "Introduction to electronics",
+        "Theory",
+        "Basic electronic circuit components",
+        "Semiconductors",
+        "Optoelectronics",
+        "Sensors",
+        "Handson electronics",
+        "Operational amplifiers",
+        "Filters",
+        "Oscillators and timers",
+        "Voltage regulators and power supplies",
+        "Digital electronics",
+        "Microcontrollers",
+        "Appendix A",
+        "Appendix B",
+        "Appendix C."
+      ],
+      "source": "edition",
+      "ts": "2026-04-21T07:26:02.185Z"
+    }
+  },
+  "prereqRetention": 0.45,
+  "propLiftCap": 2.2,
+  "propMix": 0.65,
+  "blendMode": "harmonic",
+  "alphaCap": 0.5,
+  "absFloor": 0.6,
+  "compressMode": "auto",
+  "compressExp": 0.65,
+  "diffMapMode": "gaussian",
+  "diffMapMin": 3,
+  "diffMapMax": 9.5,
+  "diffRamp": 1.15,
+  "manualSched": {
+    "programming_in_c_mo6i890z": {
+      "ds": 244,
+      "days": 53
+    }
+  },
+  "calDeferred": {},
+  "applyOverlapSkim": true,
+  "boostUnused": true,
+  "boostStrength": 1,
+  "mutualEnabled": true,
+  "mutualOversize": "batch",
+  "autoRD": true,
+  "rdMinChain": 3,
+  "rdMinSlope": 0.35,
+  "dismissedIneffKey": "",
+  "cw": {
+    "Mathematics": 1,
+    "DSP / FPGA / Code": 1,
+    "Electronics + Audio": 1,
+    "Physics": 1
+  },
+  "tr": true,
+  "part": false,
+  "excComp": true,
+  "calDone": {},
+  "hideSec": {
+    "debugLogSec": true,
+    "calSec": false,
+    "tableSec": true,
+    "schedDiffSec": true,
+    "dagSec": false,
+    "ganttSec": false
+  },
+  "activeTab": "dashboard",
+  "overlapView": "hypergraph",
+  "lattice": {
+    "books": {
+      "complex_analysis_mo5ad8yg": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "Mathematical analysis",
+          "Functions of complex variables",
+          "Mathematics",
+          "Mathematical Analysis",
+          "Functions of a Complex Variable"
+        ],
+        "description": "Includes bibliographical references and index.",
+        "lcClass": "QA299.6-433",
+        "dewey": "515-dc21",
+        "authorWorks": [
+          {
+            "key": "/works/OL118137W",
+            "title": "Introduction to Topology"
+          },
+          {
+            "key": "/works/OL4304385W",
+            "title": "Complex dynamics"
+          },
+          {
+            "key": "/works/OL16962651W",
+            "title": "Uniform Algebras and Jensen Measures"
+          },
+          {
+            "key": "/works/OL118138W",
+            "title": "Uniform algebras"
+          },
+          {
+            "key": "/works/OL13590745W",
+            "title": "Complex Analysis"
+          }
+        ],
+        "olWorkKey": "/works/OL13590745W",
+        "olEditionKey": "/books/OL7448703M",
+        "manualPinned": false,
+        "archiveId": "complexanalysis00game"
+      },
+      "make_analog_synthesizers_mo5ado70": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "Synthesizer (Musical instrument)",
+          "Analog electronic systems",
+          "Computer sound processing"
+        ],
+        "description": "Source title: Make: Analog Synthesizers: Make Electronic Sounds the Synth-DIY Way",
+        "lcClass": "TK7881.4 .W554 2013",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL40765777W",
+            "title": "Road Map to the Road Show"
+          },
+          {
+            "key": "/works/OL40611322W",
+            "title": "Chicago Rhapsody"
+          },
+          {
+            "key": "/works/OL40465492W",
+            "title": "Entrepreneur Mindset"
+          },
+          {
+            "key": "/works/OL31528964W",
+            "title": "Holy orders"
+          },
+          {
+            "key": "/works/OL35704169W",
+            "title": "Special Branch : A History"
+          },
+          {
+            "key": "/works/OL34330407W",
+            "title": "Make"
+          },
+          {
+            "key": "/works/OL30268600W",
+            "title": "Obstacle Crusher"
+          },
+          {
+            "key": "/works/OL29883050W",
+            "title": "Percy for Sheriff"
+          },
+          {
+            "key": "/works/OL29590325W",
+            "title": "Damascus Conspiracy"
+          },
+          {
+            "key": "/works/OL25694139W",
+            "title": "Weeping Willow"
+          },
+          {
+            "key": "/works/OL23437624W",
+            "title": "Special Branch"
+          },
+          {
+            "key": "/works/OL21433861W",
+            "title": "Gloucestershire Woollen Mills Through Ti"
+          },
+          {
+            "key": "/works/OL20377081W",
+            "title": "Make : Analog Synthesizers"
+          },
+          {
+            "key": "/works/OL19484693W",
+            "title": "King's Lynn in old picture postcards"
+          },
+          {
+            "key": "/works/OL2778694W",
+            "title": "An Apple for Alex"
+          },
+          {
+            "key": "/works/OL2778695W",
+            "title": "The Birth of Immortality"
+          },
+          {
+            "key": "/works/OL2778696W",
+            "title": "Black Buffalo"
+          },
+          {
+            "key": "/works/OL2778697W",
+            "title": "Bought, not sold"
+          },
+          {
+            "key": "/works/OL2778698W",
+            "title": "My life in soccer"
+          },
+          {
+            "key": "/works/OL2778699W",
+            "title": "Red alert"
+          },
+          {
+            "key": "/works/OL2778700W",
+            "title": "WISDOM AND COMMON SENSE FOR THE YOUNG MAN"
+          }
+        ],
+        "olWorkKey": "/works/OL20377081W",
+        "olEditionKey": "/books/OL27592090M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "the_art_of_electronics_mo5aduug": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "Electronic circuit design",
+          "Electronics",
+          "Elektronica",
+          "Electronique",
+          "Circuit électronique",
+          "Calcul",
+          "Circuits électroniques",
+          "Electrónica",
+          "Électronique",
+          "Long Now Manual for Civilization",
+          "Electronic circuits",
+          "Design and construction",
+          "Analog electronic systems",
+          "Handbooks, manuals",
+          "Physics",
+          "Technology",
+          "Electronics [mesh]",
+          "Tk7815 .h67 1989",
+          "W27 hor",
+          "621.381",
+          "Electronics.",
+          "Electronic circuit design.",
+          "Engineering",
+          "Laboratory manuals",
+          "Electronics & Communications Engineering",
+          "Electronics--laboratory manuals",
+          "Electronic circuit design--laboratory manuals",
+          "Tk7818 .h39 1989",
+          "Electronics, laboratory manuals"
+        ],
+        "description": "\"The Art of Electronics: The x-Chapters expands on topics introduced in the best selling third edition of The Art of Electronics, completing the broad discussions begun in the latter. In addition to covering more advanced materials relevant to its companion, The x-Chapters also includes extensive treatment of many topics in electronics that are particularly novel, important, or just exotic and intriguing. You'll find here techniques and circuits that are available nowhere else. The x-Chapters can be thought of as the missing pieces of The Art of Electronics, to be used either as its complement, or as a direct route to exploring some of the most exciting and oft-overlooked topics in advanced electronic engineering. This enticing spread of electronics wisdom and expertise will be an invaluable addition to the library of any student, researcher, or practitioner with even a passing interest in the design and analysis of electronic circuits and instruments. Why the \"x-Chapters\"? Simple answer: they are the eXtra Chapters that couldn't be shoehorned into the 1250-page third edition of The Art of Electronics; they are the completion of the broad discussions begun in the latter\"--",
+        "lcClass": "",
+        "dewey": "621.381",
+        "authorWorks": [],
+        "olWorkKey": "/works/OL4770496W",
+        "olEditionKey": "/books/OL41405924M",
+        "manualPinned": false,
+        "archiveId": "isbn_9780521377096"
+      },
+      "real_analysis_mo5ael4s": {
+        "tocSource": "edition",
+        "chapters": [
+          {
+            "idx": 0,
+            "title": "Foreword",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 1,
+            "title": "Introduction",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 2,
+            "title": "Fourier series: completion",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 3,
+            "title": "Limits of continuous functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 4,
+            "title": "Length of curves",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 5,
+            "title": "Differentiation and integration",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 6,
+            "title": "The problem of measure",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 7,
+            "title": "Measure Theory",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 8,
+            "title": "Preliminaries",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 9,
+            "title": "The exterior measure",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 10,
+            "title": "Measurable sets and the Lebesgue measure",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 11,
+            "title": "Measurable functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 12,
+            "title": "Definition and basic properties",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 13,
+            "title": "App roximation by simple functions or step functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 14,
+            "title": "Littlewood's three principles",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 15,
+            "title": "The Brunn-Minkowski inequality",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 16,
+            "title": "Exercises",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 17,
+            "title": "Problems",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 18,
+            "title": "Integration Theory",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 19,
+            "title": "The Lebesgue integral: basic properties and convergence theorems",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 20,
+            "title": "The space L^1 of integrable functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 21,
+            "title": "Fubini's theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 22,
+            "title": "Statement and proof of the theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 23,
+            "title": "App lications of Fubini's theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 24,
+            "title": "A Fourier inversion formula",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 25,
+            "title": "Differentiation and Integration",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 26,
+            "title": "Differentiation of the integral",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 27,
+            "title": "The Hardy-Littlewood maximal function",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 28,
+            "title": "The Lebesgue differentiation theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 29,
+            "title": "Good kernels and approximations to the identity",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 30,
+            "title": "Differentiability of functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 31,
+            "title": "Functions of bounded variation",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 32,
+            "title": "Absolutely continuous functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 33,
+            "title": "Differentiability of jump functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 34,
+            "title": "Rectifiable curves and the isoperimetric inequality",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 35,
+            "title": "Minkowski content of a curve",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 36,
+            "title": "Isoperimetric inequality",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 37,
+            "title": "Hilbert Spaces: An Introduction",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 38,
+            "title": "The Hilbert space L^2",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 39,
+            "title": "Hilbert spaces",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 40,
+            "title": "Orthogonality",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 41,
+            "title": "Unitary mappings",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 42,
+            "title": "Pre-Hilbert spaces",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 43,
+            "title": "Fourier series and Fatou's theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 44,
+            "title": "Fatou's theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 45,
+            "title": "Closed subspaces and orthogonal projections",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 46,
+            "title": "Linear transformations",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 47,
+            "title": "Linear functionals and the Riesz representation theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 48,
+            "title": "Adjoints",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 49,
+            "title": "Examples",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 50,
+            "title": "Compact operators",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 51,
+            "title": "Hilbert Spaces: Several Examples",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 52,
+            "title": "1 The Fourier transform on L^2",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 53,
+            "title": "2 The Hardy space of the upper half-plane",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 54,
+            "title": "Constant coefficient partial differential equations",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 55,
+            "title": "Weak solutions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 56,
+            "title": "The main theorem and key estimate",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 57,
+            "title": "The Dirichlet principle",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 58,
+            "title": "Harmonic functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 59,
+            "title": "The boundary value problem and Dirichlet's principle",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 60,
+            "title": "Abstract Measure and Integration Theory",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 61,
+            "title": "Abstract measure spaces",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 62,
+            "title": "Exterior measures and Carathéodory's theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 63,
+            "title": "Metric exterior measures",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 64,
+            "title": "The extension theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 65,
+            "title": "Integration on a measure space",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 66,
+            "title": "Product measures and a general Fubini theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 67,
+            "title": "Integration formula for polar coordinates",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 68,
+            "title": "Borel measures on R and the Lebesgue-Stieltjes integral",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 69,
+            "title": "Absolute continuity of measures",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 70,
+            "title": "Signed measures",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 71,
+            "title": "Absolute continuity",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 72,
+            "title": "Ergodic theorems",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 73,
+            "title": "Mean ergodic theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 74,
+            "title": "Maximal ergodic theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 75,
+            "title": "Pointwise ergodic theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 76,
+            "title": "Ergodic measure-preserving transformations",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 77,
+            "title": "Appendix : the spectral theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 78,
+            "title": "Statement of the theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 79,
+            "title": "Positive operators",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 80,
+            "title": "Proof of the theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 81,
+            "title": "Spectrum",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 82,
+            "title": "Hausdorff Measure and Fractals",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 83,
+            "title": "Hausdorff measure",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 84,
+            "title": "Hausdorff dimension",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 85,
+            "title": "Self-similarity",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 86,
+            "title": "Space-filling curves",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 87,
+            "title": "Quartic intervals and dyadic squares",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 88,
+            "title": "Dyadic correspondence",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 89,
+            "title": "Construction of the Peano mapping",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 90,
+            "title": "Besicovitch sets and regularity",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 91,
+            "title": "The Radon transform",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 92,
+            "title": "Regularity of sets when d >=",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 93,
+            "title": "Besicovitch sets have dimension",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 94,
+            "title": "Construction of a Besicovitch set",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 95,
+            "title": "Notes and References",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 96,
+            "title": "Bibliography",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 97,
+            "title": "Symbol Glossary",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 98,
+            "title": "Index",
+            "topicIds": [],
+            "depth": 2
+          }
+        ],
+        "olSubjects": [
+          "Mathematical analysis",
+          "Functional analysis",
+          "Measure theory",
+          "Generalized Integrals",
+          "Maattheorie",
+          "Hilbertruimten",
+          "Integrals, generalized",
+          "Real analysis",
+          "Mathematics",
+          "Science/Mathematics",
+          "Calculus",
+          "Mathematical Analysis",
+          "Mathematics / Mathematical Analysis"
+        ],
+        "description": "",
+        "lcClass": "QA300",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL27400072W",
+            "title": "Algebras of Singular Integral Operators with Kernels Controlled by Multiple Norms"
+          },
+          {
+            "key": "/works/OL27288336W",
+            "title": "Fukuso kaiseki"
+          },
+          {
+            "key": "/works/OL25717746W",
+            "title": "Wolf Prize in Mathematics, Volume 3"
+          },
+          {
+            "key": "/works/OL25623874W",
+            "title": "Wolf Prize in Mathematics, Volume 4"
+          },
+          {
+            "key": "/works/OL25470515W",
+            "title": "Hardy Spaces on Homogeneous Groups. (MN-28), Volume 28"
+          },
+          {
+            "key": "/works/OL21775125W",
+            "title": "Functional Analysis"
+          },
+          {
+            "key": "/works/OL21744006W",
+            "title": "Fourier Analysis"
+          },
+          {
+            "key": "/works/OL21594110W",
+            "title": "Singular Integrals and Differentiability Properties of Functions (PMS-30), Volume 30"
+          },
+          {
+            "key": "/works/OL21594108W",
+            "title": "Harmonic Analysis , Volume 43"
+          },
+          {
+            "key": "/works/OL21594105W",
+            "title": "Introduction to Fourier Analysis on Euclidean Spaces (PMS-32), Volume 32"
+          },
+          {
+            "key": "/works/OL21593236W",
+            "title": "Topics in Harmonic Analysis Related to the Littlewood-Paley Theory. (AM-63), Volume 63"
+          },
+          {
+            "key": "/works/OL21592978W",
+            "title": "Beijing Lectures in Harmonic Analysis. (AM-112), Volume 112"
+          },
+          {
+            "key": "/works/OL21524155W",
+            "title": "Complex Analysis"
+          },
+          {
+            "key": "/works/OL21130160W",
+            "title": "Boundary Behavior of Holomorphic Functions of Several Complex Variables. (MN-11)"
+          },
+          {
+            "key": "/works/OL21129688W",
+            "title": "Lectures on Pseudo-Differential Operators"
+          },
+          {
+            "key": "/works/OL13046267W",
+            "title": "Princeton lectures in analysis"
+          },
+          {
+            "key": "/works/OL13046268W",
+            "title": "Singular integrals and differentiability properties of functions"
+          }
+        ],
+        "olWorkKey": "/works/OL15624842W",
+        "olEditionKey": "/books/OL29593241M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "fourier_analysis_mo5agzrp": {
+        "tocSource": "edition",
+        "chapters": [
+          {
+            "idx": 0,
+            "title": "The Genesis of Fourier Analysis",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 1,
+            "title": "The vibrating string",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 2,
+            "title": "Derivation of the wave equation",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 3,
+            "title": "Solution to the wave equation",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 4,
+            "title": "Example: the plucked string",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 5,
+            "title": "The heat equation",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 6,
+            "title": "Derivation of the heat equation",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 7,
+            "title": "Steady-state heat equation in the disc",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 8,
+            "title": "Exercises",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 9,
+            "title": "Problem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 10,
+            "title": "Basic Properties of Fourier Series",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 11,
+            "title": "Examples and formulation of the problem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 12,
+            "title": "Main definitions and some examples",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 13,
+            "title": "Uniqueness of Fourier series",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 14,
+            "title": "Convulusions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 15,
+            "title": "Good kernels",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 16,
+            "title": "Cesaro and Abel summability: applications to Fourier series",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 17,
+            "title": "Cesaro means and summation",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 18,
+            "title": "Fejer's theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 19,
+            "title": "Abel means and summation",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 20,
+            "title": "The Poisson kernel and Dirichlet's problem in the unit disc",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 21,
+            "title": "Problems",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 22,
+            "title": "Convergence of Fourier Series",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 23,
+            "title": "Mean-square convergence of Fourier series",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 24,
+            "title": "Vector spaces and inner products",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 25,
+            "title": "Proof of mean-square convergence",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 26,
+            "title": "Return to pointwise convergence",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 27,
+            "title": "A local result",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 28,
+            "title": "A continuous function with diverging Fourier series",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 29,
+            "title": "Some Applications of Fourier Series",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 30,
+            "title": "The isoperimetric inequality",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 31,
+            "title": "Weyl's equidistribution theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 32,
+            "title": "A continuous but nowhere differentiable function",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 33,
+            "title": "The heat equation on the circle",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 34,
+            "title": "The Fourier Transform on R",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 35,
+            "title": "Elementary theory of the Fourier transform",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 36,
+            "title": "Integration of functions on the real line",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 37,
+            "title": "Definition of the Fourier transform",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 38,
+            "title": "The Schwartz space",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 39,
+            "title": "The Fourier transform on S",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 40,
+            "title": "The Fourier inversion",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 41,
+            "title": "The Plancherel formula",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 42,
+            "title": "Extension to functions of moderate decrease",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 43,
+            "title": "The Weierstrass approximation theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 44,
+            "title": "Applications to some partial differential equations",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 45,
+            "title": "The time-dependent heat equation on the real line",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 46,
+            "title": "The steady-state heat equation in the upper half-plane",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 47,
+            "title": "The Poisson summation formula",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 48,
+            "title": "Theta and zeta functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 49,
+            "title": "Heat kernels",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 50,
+            "title": "Poisson kernels",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 51,
+            "title": "The Heisenberg uncertainty principle",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 52,
+            "title": "The Fourier Transform on Rd",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 53,
+            "title": "Preliminaries",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 54,
+            "title": "Symmetries",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 55,
+            "title": "Integration on Rd",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 56,
+            "title": "The wave equation in Rd x R",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 57,
+            "title": "Solution in terms of Fourier transforms",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 58,
+            "title": "The wave equation in R3 x R",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 59,
+            "title": "The wave equation in IR2 x R: descent",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 60,
+            "title": "Radial symmetry and Bessel functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 61,
+            "title": "The Radon transform and some of its applications",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 62,
+            "title": "The X-ray transform in R2",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 63,
+            "title": "The Radon transform in R3",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 64,
+            "title": "A note about plane waves",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 65,
+            "title": "Finite Fourier Analysis",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 66,
+            "title": "Fourier analysis on Z(N)",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 67,
+            "title": "The group Z(N)",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 68,
+            "title": "Fourier inversion theorem and Plancherel identity on Z(N)",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 69,
+            "title": "The fast Fourier transform",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 70,
+            "title": "Fourier analysis on finite abelian groups",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 71,
+            "title": "Abelian groups",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 72,
+            "title": "Characters",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 73,
+            "title": "The orthogonality relations",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 74,
+            "title": "Characters as a total family",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 75,
+            "title": "Fourier inversion and Plancherel formula",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 76,
+            "title": "Dirichlet's Theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 77,
+            "title": "A little elementary number theory",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 78,
+            "title": "The fundamental theorem of arithmetic",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 79,
+            "title": "The infinitude of primes",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 80,
+            "title": "Dirichlet's theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 81,
+            "title": "Fourier analysis, Dirichlet characters, and reduction of the theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 82,
+            "title": "Dirichlet L-functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 83,
+            "title": "Proof of the theorem",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 84,
+            "title": "Logarithms",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 85,
+            "title": "functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 86,
+            "title": "Non-vanishing of the L-function",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 87,
+            "title": "Appendix: Integration",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 88,
+            "title": "Definition of the Riemann integral",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 89,
+            "title": "Basic properties",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 90,
+            "title": "Sets of measure zero and discontinuities of integrable functions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 91,
+            "title": "Multiple integrals",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 92,
+            "title": "The Riemann integral in Rd",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 93,
+            "title": "Repeated integrals",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 94,
+            "title": "The change of variables formula",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 95,
+            "title": "Spherical coordinates",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 96,
+            "title": "Improper integrals. Integration over Rd",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 97,
+            "title": "Integration of functions of moderate decrease",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 98,
+            "title": "Notes and References",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 99,
+            "title": "Bibliography",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 100,
+            "title": "Symbol Glossary.",
+            "topicIds": [],
+            "depth": 2
+          }
+        ],
+        "olSubjects": [
+          "Fourier analysis",
+          "Harmonic analysis",
+          "Harmonic functions",
+          "Fourier transformations",
+          "Congresses"
+        ],
+        "description": "Source title: Fourier Analysis: An Introduction (Princeton Lectures in Analysis)",
+        "lcClass": "",
+        "dewey": "515/.2433",
+        "authorWorks": [
+          {
+            "key": "/works/OL27400072W",
+            "title": "Algebras of Singular Integral Operators with Kernels Controlled by Multiple Norms"
+          },
+          {
+            "key": "/works/OL27288336W",
+            "title": "Fukuso kaiseki"
+          },
+          {
+            "key": "/works/OL25717746W",
+            "title": "Wolf Prize in Mathematics, Volume 3"
+          },
+          {
+            "key": "/works/OL25623874W",
+            "title": "Wolf Prize in Mathematics, Volume 4"
+          },
+          {
+            "key": "/works/OL25470515W",
+            "title": "Hardy Spaces on Homogeneous Groups. (MN-28), Volume 28"
+          },
+          {
+            "key": "/works/OL21775125W",
+            "title": "Functional Analysis"
+          },
+          {
+            "key": "/works/OL21744006W",
+            "title": "Fourier Analysis"
+          },
+          {
+            "key": "/works/OL21594110W",
+            "title": "Singular Integrals and Differentiability Properties of Functions (PMS-30), Volume 30"
+          },
+          {
+            "key": "/works/OL21594108W",
+            "title": "Harmonic Analysis , Volume 43"
+          },
+          {
+            "key": "/works/OL21594105W",
+            "title": "Introduction to Fourier Analysis on Euclidean Spaces (PMS-32), Volume 32"
+          },
+          {
+            "key": "/works/OL21593236W",
+            "title": "Topics in Harmonic Analysis Related to the Littlewood-Paley Theory. (AM-63), Volume 63"
+          },
+          {
+            "key": "/works/OL21592978W",
+            "title": "Beijing Lectures in Harmonic Analysis. (AM-112), Volume 112"
+          },
+          {
+            "key": "/works/OL21524155W",
+            "title": "Complex Analysis"
+          },
+          {
+            "key": "/works/OL21130160W",
+            "title": "Boundary Behavior of Holomorphic Functions of Several Complex Variables. (MN-11)"
+          },
+          {
+            "key": "/works/OL21129688W",
+            "title": "Lectures on Pseudo-Differential Operators"
+          },
+          {
+            "key": "/works/OL13046267W",
+            "title": "Princeton lectures in analysis"
+          },
+          {
+            "key": "/works/OL13046268W",
+            "title": "Singular integrals and differentiability properties of functions"
+          }
+        ],
+        "olWorkKey": "/works/OL21744006W",
+        "olEditionKey": "/books/OL40223589M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "introduction_to_electrody_mo6hhpxq": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "Electrodynamics",
+          "Elektrodynamica",
+          "Électrodynamique",
+          "Textbooks",
+          "33.16 electromagnetism",
+          "ELECTRODYNAMIC FIELDS",
+          "ELECTRODYNAMIC RADIATION",
+          "Science",
+          "Electromagnetism",
+          "Electrodynamics--textbooks",
+          "Qc680 .g74 2013",
+          "537.6",
+          "Physics",
+          "Electrodynamics."
+        ],
+        "description": "Includes index.",
+        "lcClass": "QC680.G74 2013",
+        "dewey": "537.6",
+        "authorWorks": [
+          {
+            "key": "/works/OL26345018W",
+            "title": "Sidney Coleman's Lectures on Relativity"
+          },
+          {
+            "key": "/works/OL29064066W",
+            "title": "Einfuehrung in die Elementarteilchenphysik"
+          },
+          {
+            "key": "/works/OL26208889W",
+            "title": "Temel Parçacıklara Giriş - Introduction to Elementary Particles"
+          },
+          {
+            "key": "/works/OL21435477W",
+            "title": "Introduction to Elementary Particles"
+          },
+          {
+            "key": "/works/OL8054262W",
+            "title": "Introduction to Elementary Particles"
+          },
+          {
+            "key": "/works/OL29343729W",
+            "title": "Multi Pack"
+          },
+          {
+            "key": "/works/OL27970886W",
+            "title": "Quantenmechanik"
+          },
+          {
+            "key": "/works/OL1999763W",
+            "title": "Introduction to electrodynamics"
+          },
+          {
+            "key": "/works/OL29228985W",
+            "title": "Introduction to quantum mechanics -- Instructor's solutions manual"
+          },
+          {
+            "key": "/works/OL1999759W",
+            "title": "Introduction to Quantum Mechanics (2nd Edition) by David J. Griffiths"
+          },
+          {
+            "key": "/works/OL21042873W",
+            "title": "Revolutions in Twentieth-Century Physics"
+          },
+          {
+            "key": "/works/OL36648124W",
+            "title": "Elektrodynamik Epdf"
+          },
+          {
+            "key": "/works/OL36648070W",
+            "title": "Einführung in Die Physik des 20. Jahrhunderts"
+          },
+          {
+            "key": "/works/OL34960554W",
+            "title": "Quantum mechanics"
+          },
+          {
+            "key": "/works/OL26208725W",
+            "title": "Kuantum Mekanigine Giris"
+          },
+          {
+            "key": "/works/OL21182650W",
+            "title": "Liang zi li xue gai lun"
+          },
+          {
+            "key": "/works/OL1999760W",
+            "title": "Solutions Manual for Introduction to Quantum Mechanics"
+          },
+          {
+            "key": "/works/OL1999762W",
+            "title": "Introduction to elementary particles"
+          }
+        ],
+        "olWorkKey": "/works/OL1999763W",
+        "olEditionKey": "/books/OL27987097M",
+        "manualPinned": false,
+        "archiveId": "introductiontoel00grif_0"
+      },
+      "dsp_with_fpgas_mo6hn8yd": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [],
+        "description": "",
+        "lcClass": "",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL20863437W",
+            "title": "Embedded Microprocessor System Design using FPGAs"
+          },
+          {
+            "key": "/works/OL19843304W",
+            "title": "Digital Signal Processing with Field Programmable Gate Arrays"
+          },
+          {
+            "key": "/works/OL9074819W",
+            "title": "DSP with FPGAs"
+          },
+          {
+            "key": "/works/OL9074820W",
+            "title": "Digital Signal Processing with Field Programmable Gate Arrays (Signals and Communication Technology)"
+          }
+        ],
+        "olWorkKey": "/works/OL9074819W",
+        "olEditionKey": "/books/OL9490483M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "discrete_time_signal_proc_mo6ho3x9": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [],
+        "description": "",
+        "lcClass": "",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL37488058W",
+            "title": "Discrete-time Signal Processing, 2nd, Second Edition"
+          }
+        ],
+        "olWorkKey": "/works/OL37488058W",
+        "olEditionKey": "/books/OL50509883M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "wavelet_tour_of_signal_pr_mo6hpr3t": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "Fourier analysis",
+          "Signal processing",
+          "Wavelets (mathematics)",
+          "Mathematics",
+          "Wavelets (Mathematics)"
+        ],
+        "description": "",
+        "lcClass": "TK5102.9.M34 1999",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL37675004W",
+            "title": "Review of Multifrequency Channel Decompositions of Images and Wavelet Models"
+          },
+          {
+            "key": "/works/OL28549180W",
+            "title": "Characterization of Signals from Multiscale Edges"
+          },
+          {
+            "key": "/works/OL28512928W",
+            "title": "Complete Signal Representation with Multiscale Edges"
+          },
+          {
+            "key": "/works/OL25725044W",
+            "title": "Wavelet Tour of Signal Processing"
+          },
+          {
+            "key": "/works/OL10287069W",
+            "title": "Protesis Parcial Removiable Colada"
+          },
+          {
+            "key": "/works/OL10287070W",
+            "title": "Protesis Parcial Removible y Sobredentadura"
+          }
+        ],
+        "olWorkKey": "/works/OL25725044W",
+        "olEditionKey": "/books/OL34594226M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "mathematics_of_the_discre_mo6hwwdq": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "Fourier transformations",
+          "Signal processing",
+          "Music",
+          "Acoustics and physics",
+          "Digital techniques"
+        ],
+        "description": "",
+        "lcClass": "",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL41196888W",
+            "title": "Thoughts and Meditations"
+          },
+          {
+            "key": "/works/OL39850255W",
+            "title": "Mathematics of the Discrete Fourier Transform"
+          },
+          {
+            "key": "/works/OL7837915W",
+            "title": "Ten years in Burma"
+          }
+        ],
+        "olWorkKey": "/works/OL39850255W",
+        "olEditionKey": "/books/OL54273159M",
+        "manualPinned": false,
+        "archiveId": "mathematicsofdis0000smit"
+      },
+      "practical_electronics_for_mo6i27ol": {
+        "tocSource": "edition",
+        "chapters": [
+          {
+            "idx": 0,
+            "title": "Introduction to electronics",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 1,
+            "title": "Theory",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 2,
+            "title": "Basic electronic circuit components",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 3,
+            "title": "Semiconductors",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 4,
+            "title": "Optoelectronics",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 5,
+            "title": "Sensors",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 6,
+            "title": "Handson electronics",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 7,
+            "title": "Operational amplifiers",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 8,
+            "title": "Filters",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 9,
+            "title": "Oscillators and timers",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 10,
+            "title": "Voltage regulators and power supplies",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 11,
+            "title": "Digital electronics",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 12,
+            "title": "Microcontrollers",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 13,
+            "title": "Appendix A",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 14,
+            "title": "Appendix B",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 15,
+            "title": "Appendix C.",
+            "topicIds": [],
+            "depth": 2
+          }
+        ],
+        "olSubjects": [
+          "Electronics",
+          "Engineering",
+          "Nonfiction",
+          "Technology",
+          "Amateurs' manuals",
+          "Electronics, amateurs' manuals",
+          "Electronics, handbooks, manuals, etc.",
+          "Inventors",
+          "TECHNOLOGY & ENGINEERING",
+          "Microelectronics",
+          "Digital",
+          "Electrical engineering",
+          "Technology & Industrial Arts",
+          "Science/Mathematics",
+          "Electronics - Circuits - General",
+          "Technology / Electronics / Circuits / General",
+          "Textbooks",
+          "Electronics--textbooks",
+          "Electronique",
+          "Manuels",
+          "Elektronik",
+          "Tk7816 .s347 2016",
+          "621.381"
+        ],
+        "description": "Spark your creativity and gain the electronics skills required to transform your innovative ideas into functioning gadgets. This hands-on, updated guide outlines electrical principles and provides thorough, easy-to-follow instructions, schematics, and illustrations. Find out how to select components, safely assemble circuits, perform error tests, and build plug-and-play prototypes. Practical Electronics for Inventors, Third Edition, features all-new chapters on sensors, microcontrollers, modular electronics, and the latest software tools.",
+        "lcClass": "TK7816 .S347 2013",
+        "dewey": "621.381",
+        "authorWorks": [
+          {
+            "key": "/works/OL38046440W",
+            "title": "Encountering Artificial Intelligence"
+          },
+          {
+            "key": "/works/OL38016266W",
+            "title": "Ethics of Precision Medicine"
+          },
+          {
+            "key": "/works/OL21820421W",
+            "title": "Practical Electronics for Inventors, Fourth Edition"
+          },
+          {
+            "key": "/works/OL21679776W",
+            "title": "Evening of Life"
+          },
+          {
+            "key": "/works/OL21204396W",
+            "title": "Science and Christian Ethics"
+          },
+          {
+            "key": "/works/OL19912477W",
+            "title": "Practical electronics for inventors"
+          },
+          {
+            "key": "/works/OL19967988W",
+            "title": "Practical electronics for inventors"
+          },
+          {
+            "key": "/works/OL222976W",
+            "title": "Practical Electronics for Inventors"
+          }
+        ],
+        "olWorkKey": "/works/OL222976W",
+        "olEditionKey": "/books/OL6806252M",
+        "manualPinned": false,
+        "archiveId": "practicalelectro0000sche_x1w7"
+      },
+      "programming_in_c_mo6i890z": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "C (Computer program language)",
+          "Computer Technology",
+          "Nonfiction",
+          "Unix (computer operating system)",
+          "C (programming language)",
+          "C++ (Computer program language)",
+          "Programming Languages - General",
+          "Computers - Languages / Programming",
+          "Object-oriented programming (Computer science)",
+          "Macintosh (Computer)",
+          "Programming",
+          "C (computer program language)",
+          "Qa76.73.c15 k63 2015",
+          "005.133",
+          "Objective-C (Computer program language)",
+          "Programming languages (electronic computers)",
+          "IPhone (Smartphone)",
+          "Application software",
+          "Development",
+          "Macintosh (computer)--programming",
+          "Qa76.64 .k655 2012",
+          "005.1/17"
+        ],
+        "description": "Includes bibliographical references (p. [501]-504) and index.",
+        "lcClass": "QA76.73.C15 K63 2005",
+        "dewey": "005.13/3",
+        "authorWorks": [
+          {
+            "key": "/works/OL31999885W",
+            "title": "UNIX System Security"
+          },
+          {
+            "key": "/works/OL29369302W",
+            "title": "Objective-C LiveLessons (Video-Book Bundle)"
+          },
+          {
+            "key": "/works/OL21821565W",
+            "title": "Unix Shell Programming"
+          },
+          {
+            "key": "/works/OL21551844W",
+            "title": "Programming in Swift"
+          },
+          {
+            "key": "/works/OL21471538W",
+            "title": "Advanced Programming in Objective-C"
+          },
+          {
+            "key": "/works/OL21454543W",
+            "title": "Programming in Objective-C 2. 0 LiveLessons"
+          },
+          {
+            "key": "/works/OL21454542W",
+            "title": "Programming in Objective-C 2. 0 LiveLessons : Part I"
+          },
+          {
+            "key": "/works/OL17002046W",
+            "title": "UNIX networking"
+          },
+          {
+            "key": "/works/OL20104120W",
+            "title": "Programacion con Objective-C / Programming with Objective-C (Spanish Edition)"
+          },
+          {
+            "key": "/works/OL19961680W",
+            "title": "Programming in objective-C"
+          },
+          {
+            "key": "/works/OL19918493W",
+            "title": "Objective-C cheng xu she ji ="
+          },
+          {
+            "key": "/works/OL15665781W",
+            "title": "Programming in Objective-C 2.0"
+          },
+          {
+            "key": "/works/OL19547896W",
+            "title": "Programming in Objective-C (6th Edition) (Developer's Library)"
+          },
+          {
+            "key": "/works/OL19547490W",
+            "title": "Programming in C (4th Edition) (Developer's Library)"
+          },
+          {
+            "key": "/works/OL19546508W",
+            "title": "Shell Programming in Unix, Linux and OS X: The Fourth Edition of Unix Shell Programming (4th Edition) (Developer's Library)"
+          },
+          {
+            "key": "/works/OL19087690W",
+            "title": "Programming in Objective-C 2.0 LiveLessons Bundle"
+          },
+          {
+            "key": "/works/OL3972390W",
+            "title": "Beginning AppleScript"
+          },
+          {
+            "key": "/works/OL3972391W",
+            "title": "Beginning AppleScript (Programmer to Programmer)"
+          },
+          {
+            "key": "/works/OL3972392W",
+            "title": "Introduction to C Programming"
+          },
+          {
+            "key": "/works/OL3972393W",
+            "title": "Programming C for the Mac (Apple Press/Macintosh Library)"
+          },
+          {
+            "key": "/works/OL3972394W",
+            "title": "Programming in objective-C"
+          },
+          {
+            "key": "/works/OL3972395W",
+            "title": "Programming in Objective-C 2.0"
+          },
+          {
+            "key": "/works/OL3972396W",
+            "title": "Programming in ANSI C"
+          },
+          {
+            "key": "/works/OL3972397W",
+            "title": "Topics in C programming"
+          },
+          {
+            "key": "/works/OL3972398W",
+            "title": "Exploring the UNIX system"
+          },
+          {
+            "key": "/works/OL3972399W",
+            "title": "UNIX Shell programming"
+          },
+          {
+            "key": "/works/OL3972400W",
+            "title": "Programming in C"
+          },
+          {
+            "key": "/works/OL16151841W",
+            "title": "Programming in objective-C"
+          },
+          {
+            "key": "/works/OL16283612W",
+            "title": "Programming in objective-c"
+          }
+        ],
+        "olWorkKey": "/works/OL3972400W",
+        "olEditionKey": "/books/OL24277619M",
+        "manualPinned": false,
+        "archiveId": "topicsincprogram00koch"
+      },
+      "naive_lie_theory_mo6ijbu2": {
+        "tocSource": "edition",
+        "chapters": [
+          {
+            "idx": 0,
+            "title": "Geometry of complex numbers and quaternions",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 1,
+            "title": "Groups",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 2,
+            "title": "Generalized rotation groups",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 3,
+            "title": "The exponential map",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 4,
+            "title": "The tangent space",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 5,
+            "title": "Structure of Lie algebras",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 6,
+            "title": "The matrix logarithm",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 7,
+            "title": "Topology",
+            "topicIds": [],
+            "depth": 2
+          },
+          {
+            "idx": 8,
+            "title": "Simply connected Lie groups.",
+            "topicIds": [],
+            "depth": 2
+          }
+        ],
+        "olSubjects": [
+          "Lie groups",
+          "Lie algebras",
+          "Mathematics",
+          "Topological Groups"
+        ],
+        "description": "Source title: Naive Lie Theory (Undergraduate Texts in Mathematics)",
+        "lcClass": "QA1-939",
+        "dewey": "512.482",
+        "authorWorks": [
+          {
+            "key": "/works/OL25159748W",
+            "title": "Roads to Infinity"
+          },
+          {
+            "key": "/works/OL26555149W",
+            "title": "Intuitive Combinatorial Topology"
+          },
+          {
+            "key": "/works/OL27804188W",
+            "title": "Story of Proof"
+          },
+          {
+            "key": "/works/OL25658618W",
+            "title": "Theory of Algebraic Integers"
+          },
+          {
+            "key": "/works/OL27455262W",
+            "title": "Geometry of Surfaces"
+          },
+          {
+            "key": "/works/OL27402669W",
+            "title": "Mathematics and Its History"
+          },
+          {
+            "key": "/works/OL27364230W",
+            "title": "Real Numbers"
+          },
+          {
+            "key": "/works/OL27322166W",
+            "title": "Naive Lie Theory"
+          },
+          {
+            "key": "/works/OL26773654W",
+            "title": "Algebraic Number Theory for Beginners"
+          },
+          {
+            "key": "/works/OL26737403W",
+            "title": "Classical Topology and Combinatorial Group Theory"
+          },
+          {
+            "key": "/works/OL23745408W",
+            "title": "Mathematical evolutions"
+          },
+          {
+            "key": "/works/OL21685033W",
+            "title": "Elements of Algebra"
+          },
+          {
+            "key": "/works/OL21548379W",
+            "title": "Papers on Group Theory and Topology"
+          },
+          {
+            "key": "/works/OL21331532W",
+            "title": "Yearning for the Impossible"
+          },
+          {
+            "key": "/works/OL21216716W",
+            "title": "Concise History of Mathematics for Philosophers ."
+          },
+          {
+            "key": "/works/OL21212507W",
+            "title": "Reverse Mathematics"
+          },
+          {
+            "key": "/works/OL20805413W",
+            "title": "The Real Numbers"
+          },
+          {
+            "key": "/works/OL20805336W",
+            "title": "Naive Lie Theory"
+          },
+          {
+            "key": "/works/OL20795953W",
+            "title": "Geometry of Surfaces"
+          },
+          {
+            "key": "/works/OL20228250W",
+            "title": "Elements of Mathematics"
+          },
+          {
+            "key": "/works/OL19900133W",
+            "title": "Roads to infinity"
+          },
+          {
+            "key": "/works/OL19891456W",
+            "title": "Numbers and Geometry"
+          },
+          {
+            "key": "/works/OL19886458W",
+            "title": "Mathematics and Its History"
+          },
+          {
+            "key": "/works/OL19851113W",
+            "title": "The four pillars of geometry"
+          },
+          {
+            "key": "/works/OL19846670W",
+            "title": "Elements of number theory"
+          },
+          {
+            "key": "/works/OL19540347W",
+            "title": "Sources of Hyperbolic Geometry (History of Mathematics, V. 10)"
+          },
+          {
+            "key": "/works/OL19129917W",
+            "title": "The Four Pillars of Geometry (Undergraduate Texts in Mathematics)"
+          },
+          {
+            "key": "/works/OL17539883W",
+            "title": "WAHRHEIT BEWEIS UNENDLICHKEIT"
+          },
+          {
+            "key": "/works/OL17515094W",
+            "title": "Plane Algebraic Curves"
+          },
+          {
+            "key": "/works/OL17454221W",
+            "title": "The Real Numbers An Introduction To Set Theory And Analysis"
+          },
+          {
+            "key": "/works/OL890720W",
+            "title": "Elements of Number Theory"
+          },
+          {
+            "key": "/works/OL890721W",
+            "title": "The Four Pillars of Geometry (Undergraduate Texts in Mathematics)"
+          },
+          {
+            "key": "/works/OL890725W",
+            "title": "Naive lie theory"
+          },
+          {
+            "key": "/works/OL890726W",
+            "title": "Numbers and geometry"
+          },
+          {
+            "key": "/works/OL890727W",
+            "title": "Sources of hyperbolic geometry"
+          },
+          {
+            "key": "/works/OL890729W",
+            "title": "Yearning for the impossible"
+          },
+          {
+            "key": "/works/OL890730W",
+            "title": "Elements of algebra"
+          },
+          {
+            "key": "/works/OL890731W",
+            "title": "Geometry of Surfaces"
+          },
+          {
+            "key": "/works/OL890732W",
+            "title": "Classical topology and combinatorial group theory"
+          },
+          {
+            "key": "/works/OL890733W",
+            "title": "Mathematics and its history"
+          },
+          {
+            "key": "/works/OL15941249W",
+            "title": "Mathematics and its history"
+          }
+        ],
+        "olWorkKey": "/works/OL20805336W",
+        "olEditionKey": "/books/OL28284072M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "introduction_to_digital_f_mo6k4k6w": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "Julius O. Smith III",
+          "Computers / Information Technology",
+          "EDUCATION / Computers & Technology",
+          "MATHEMATICS / General",
+          "TECHNOLOGY / Engineering / Electrical",
+          "TECHNOLOGY / Engineering / General",
+          "Engineering (General)",
+          "Engineering - Electrical & Electronic",
+          "Information Technology",
+          "Computers",
+          "Computer Books: General"
+        ],
+        "description": "",
+        "lcClass": "",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL27693960W",
+            "title": "Spectral Audio Signal Processing"
+          },
+          {
+            "key": "/works/OL24460938W",
+            "title": "Physical Audio Signal Processing"
+          },
+          {
+            "key": "/works/OL9270977W",
+            "title": "Introduction to Digital Filters"
+          },
+          {
+            "key": "/works/OL9270978W",
+            "title": "Mathematics of the Discrete Fourier Transform (DFT)"
+          }
+        ],
+        "olWorkKey": "/works/OL9270977W",
+        "olEditionKey": "/books/OL11804257M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "spectral_audio_signal_pro_mo6l02ta": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [],
+        "description": "",
+        "lcClass": "",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL27693960W",
+            "title": "Spectral Audio Signal Processing"
+          },
+          {
+            "key": "/works/OL24460938W",
+            "title": "Physical Audio Signal Processing"
+          },
+          {
+            "key": "/works/OL9270977W",
+            "title": "Introduction to Digital Filters"
+          },
+          {
+            "key": "/works/OL9270978W",
+            "title": "Mathematics of the Discrete Fourier Transform (DFT)"
+          }
+        ],
+        "olWorkKey": "/works/OL27693960W",
+        "olEditionKey": "/books/OL37770716M",
+        "manualPinned": false,
+        "archiveId": null
+      },
+      "linear_algebra_done_right_mo7zl33d": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [
+          "Algebras, Linear",
+          "Linear Algebras",
+          "Algèbre linéaire",
+          "MATHEMATICS",
+          "Algebra",
+          "Linear",
+          "Lineaire algebra",
+          "Lineare Algebra",
+          "Linear algebra",
+          "Matrix theory",
+          "Qa184 .a96 1997",
+          "512/.5",
+          "Algebras, linear",
+          "Study and teaching",
+          "Mathematics",
+          "Matrix Theory Linear and Multilinear Algebras"
+        ],
+        "description": "Source title: Linear Algebra Done Right (Undergraduate Texts in Mathematics)",
+        "lcClass": "QA184-205",
+        "dewey": "512/.5",
+        "authorWorks": [
+          {
+            "key": "/works/OL43237166W",
+            "title": "Precalculus"
+          },
+          {
+            "key": "/works/OL31271130W",
+            "title": "College Algebra and Algebra and Trigonometry Evaluation"
+          },
+          {
+            "key": "/works/OL34941395W",
+            "title": "Aljebra lineala ondo egina"
+          },
+          {
+            "key": "/works/OL34875242W",
+            "title": "Linear Algebra Done Right"
+          }
+        ],
+        "olWorkKey": "/works/OL34875242W",
+        "olEditionKey": "/books/OL49266176M",
+        "manualPinned": false,
+        "archiveId": "linearalgebradon0000axle"
+      },
+      "calculus_an_intuitive_and_mo7zmlcu": {
+        "tocSource": "none",
+        "chapters": [],
+        "olSubjects": [],
+        "description": "",
+        "lcClass": "",
+        "dewey": "",
+        "authorWorks": [
+          {
+            "key": "/works/OL42280317W",
+            "title": "A note on the expansion coefficient of geometrical optics"
+          },
+          {
+            "key": "/works/OL33404786W",
+            "title": "Shu xue"
+          },
+          {
+            "key": "/works/OL19879279W",
+            "title": "Final report [on propagation characteristics of very short waves...]"
+          },
+          {
+            "key": "/works/OL26393623W",
+            "title": "Fracaso de la matematica moderna. Por que Juanito no sabe sumar?"
+          },
+          {
+            "key": "/works/OL29375387W",
+            "title": "Mathematics and the Search for Knowledge"
+          },
+          {
+            "key": "/works/OL27997905W",
+            "title": "Mathematics for the Nonmathematician"
+          },
+          {
+            "key": "/works/OL28551031W",
+            "title": "Deformation of a Rectangular Guide"
+          },
+          {
+            "key": "/works/OL28819768W",
+            "title": "Mathematical Thought from Ancient to Modern Times, Volume 2"
+          },
+          {
+            "key": "/works/OL24378863W",
+            "title": "Electromagnetic Theory and Geometrical Optics"
+          },
+          {
+            "key": "/works/OL21365838W",
+            "title": "Fracaso de la Matematica Moderna"
+          },
+          {
+            "key": "/works/OL28537018W",
+            "title": "Relationship Between Coaxial and Cylindrical Wave Guide and Cavity Modes"
+          },
+          {
+            "key": "/works/OL26376511W",
+            "title": "Matematik Kesinligin Kaybi"
+          },
+          {
+            "key": "/works/OL29344452W",
+            "title": "Mathematics in Western Culture"
+          },
+          {
+            "key": "/works/OL21365552W",
+            "title": "Matematicas, la Perdida de la Certidumbre"
+          },
+          {
+            "key": "/works/OL27998058W",
+            "title": "Calculus"
+          },
+          {
+            "key": "/works/OL27966687W",
+            "title": "Mathematics"
+          },
+          {
+            "key": "/works/OL19886470W",
+            "title": "Mathematics and the physical world"
+          },
+          {
+            "key": "/works/OL29376743W",
+            "title": "Mathematical Thought from Ancient to Modern Times"
+          },
+          {
+            "key": "/works/OL25293179W",
+            "title": "Asymptotic Expansion of Multiple Integrals and the Method of Stationary Phase"
+          },
+          {
+            "key": "/works/OL24285011W",
+            "title": "Mathematics, the loss of certainty"
+          },
+          {
+            "key": "/works/OL16459279W",
+            "title": "Mathematics"
+          },
+          {
+            "key": "/works/OL12813891W",
+            "title": "Mathematics"
+          },
+          {
+            "key": "/works/OL12813892W",
+            "title": "Mathematics in Western culture"
+          },
+          {
+            "key": "/works/OL12813893W",
+            "title": "Mathematics and the physical world"
+          },
+          {
+            "key": "/works/OL20438523W",
+            "title": "Xi fang wen hua zhong de shu xue"
+          },
+          {
+            "key": "/works/OL11371097W",
+            "title": "The relationship between coaxial and cylindrical wave guide and cavity modes"
+          },
+          {
+            "key": "/works/OL12264189W",
+            "title": "Magneto-hydrodynamics; final report"
+          },
+          {
+            "key": "/works/OL11371098W",
+            "title": "Wave propagation in variable media.  Final report under Contract AF 19(604)-3495"
+          },
+          {
+            "key": "/works/OL11371091W",
+            "title": "Electromagnetic theory and geometrical optics"
+          },
+          {
+            "key": "/works/OL11371094W",
+            "title": "Mathematics"
+          },
+          {
+            "key": "/works/OL11371088W",
+            "title": "Basic mathematical research for electromagnetic theory.  Final report"
+          },
+          {
+            "key": "/works/OL11371095W",
+            "title": "Mathematics for the nonmathematician"
+          },
+          {
+            "key": "/works/OL11371092W",
+            "title": "Magneto-hydrodynamics:  final report"
+          },
+          {
+            "key": "/works/OL11371089W",
+            "title": "Basic research in electromagnetic theory. Final report"
+          },
+          {
+            "key": "/works/OL11371099W",
+            "title": "Final report [on propagation characteristics of very short waves...]"
+          },
+          {
+            "key": "/works/OL11371093W",
+            "title": "Mathematical thought from ancient to modern times"
+          },
+          {
+            "key": "/works/OL16999102W",
+            "title": "Gu jin shu xue si xiang"
+          },
+          {
+            "key": "/works/OL11371096W",
+            "title": "A note on the expansion coefficient of geometrical optics"
+          },
+          {
+            "key": "/works/OL11371090W",
+            "title": "Calculus, An Intuitive and Physical Approach"
+          },
+          {
+            "key": "/works/OL11371086W",
+            "title": "Addendum to special report no. 170-1 on the relationship between coaxial and cylindrical wave guide and cavity modes"
+          },
+          {
+            "key": "/works/OL12263580W",
+            "title": "Theory of the traveling wave tube.  Final report"
+          },
+          {
+            "key": "/works/OL11371087W",
+            "title": "An asymptotic solution of linear second-order hyperbolic differential equations"
+          },
+          {
+            "key": "/works/OL18497284W",
+            "title": "Mathematics in the modern world"
+          },
+          {
+            "key": "/works/OL18478392W",
+            "title": "Mathematics and the physical world"
+          },
+          {
+            "key": "/works/OL18474061W",
+            "title": "Electromagnetic theory and geometrical optics"
+          },
+          {
+            "key": "/works/OL18473374W",
+            "title": "Mathematics for liberal arts"
+          },
+          {
+            "key": "/works/OL18399486W",
+            "title": "Mathematics in western culture"
+          },
+          {
+            "key": "/works/OL18389591W",
+            "title": "Mathematics"
+          },
+          {
+            "key": "/works/OL18382870W",
+            "title": "Why Johnny can't add"
+          },
+          {
+            "key": "/works/OL18370515W",
+            "title": "Calculus"
+          }
+        ],
+        "olWorkKey": "/works/OL11371090W",
+        "olEditionKey": "/books/OL15052615M",
+        "manualPinned": false,
+        "archiveId": "calculusintuitiv0000morr"
+      }
+    },
+    "lastComputed": "2026-04-21T08:00:47.829Z"
+  }
+}

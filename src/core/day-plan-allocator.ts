@@ -1,0 +1,216 @@
+import { buildCandidateSets, type DayStartMode } from './day-plan-candidates';
+import { chooseBoostTenths } from './day-plan-chunk-choice';
+import { createCalendarEntry } from './day-plan-entry';
+import { consumeTenths } from './day-plan-work';
+import {
+  calendarActualOverride,
+  hasActualProgressOverride,
+  tenthsForActualOverride,
+} from './day-plan-overrides';
+import { dayPlanningPriorityScore } from './day-plan-priority';
+import type { PlanningState } from './internal-types';
+import type { CalendarEntry, DailyBookMode, PlannerProjectV1, ScheduleAlgorithm } from './types';
+
+interface BoostCandidate {
+  state: PlanningState;
+  step: number;
+  score: number;
+}
+
+export interface DayAllocationInput {
+  project: PlannerProjectV1;
+  dateStr: string;
+  pending: PlanningState[];
+  strictCandidates: PlanningState[];
+  backfillCandidates: PlanningState[];
+  prereqCandidates: PlanningState[];
+  strictGroups: Record<string, Set<string>>;
+  budgetMinutes: number;
+  maxParallel: number;
+  isPracticalMode: boolean;
+  dailyBookMode: DailyBookMode;
+  schedAlgo: ScheduleAlgorithm;
+  slot: number;
+  stateCount: number;
+  recomputeBackfillCandidates(branchAnchors: string[]): PlanningState[];
+  recomputePrereqCandidates(): PlanningState[];
+}
+
+export interface DayAllocationResult {
+  dayEntries: CalendarEntry[];
+  entryMap: Record<string, CalendarEntry>;
+  dayUsedMinutes: number;
+  backfillCandidates: PlanningState[];
+  prereqCandidates: PlanningState[];
+}
+
+export function allocateDayEntries(input: DayAllocationInput): DayAllocationResult {
+  const dayEntries: CalendarEntry[] = [];
+  const entryMap: Record<string, CalendarEntry> = {};
+  const actualLocked = new Set<string>();
+  let dayUsedMinutes = 0;
+  let latestBackfillCandidates = input.backfillCandidates;
+  let latestPrereqCandidates = input.prereqCandidates;
+
+  const priorityScore = (state: PlanningState, hasEntry: boolean): number =>
+    dayPlanningPriorityScore(state, {
+      stateCount: input.stateCount,
+      schedAlgo: input.schedAlgo,
+      dailyBookMode: input.dailyBookMode,
+      slot: input.slot,
+      hasEntry,
+    });
+
+  const ensureEntry = (state: PlanningState, startMode: DayStartMode): CalendarEntry => {
+    const existing = entryMap[state.id];
+    if (existing) return existing;
+    const entry = createCalendarEntry(input.project, state, input.dateStr, startMode);
+    entryMap[state.id] = entry;
+    dayEntries.push(entry);
+    state.usedDays += 1;
+    if (state.actualStart == null) {
+      state.startPolicy = startMode;
+      if (startMode === 'backfill') state.backfilled = true;
+      if (startMode === 'prereq') state.prereqOverlapUsed = true;
+    }
+    return entry;
+  };
+
+  const allocateTo = (
+    state: PlanningState,
+    stepTenths: number,
+    boosted: boolean,
+    startMode: DayStartMode,
+  ): boolean => {
+    if (stepTenths <= 0) return false;
+    const override = calendarActualOverride(input.project, state, input.dateStr);
+    const hasProgressOverride = hasActualProgressOverride(override);
+    if (hasProgressOverride && actualLocked.has(state.id)) return false;
+    let requestedTenths = tenthsForActualOverride(state, override, stepTenths);
+    if (requestedTenths <= 0) return false;
+    if (!input.isPracticalMode && !hasProgressOverride) {
+      const existing = entryMap[state.id];
+      const currentTenths = existing
+        ? Math.round((existing.readPages + existing.skimPages) * 10)
+        : 0;
+      const leftover = state.remainingTenths - requestedTenths;
+      if (leftover > 0 && leftover < state.minTenths) {
+        const adjusted = requestedTenths - (state.minTenths - leftover);
+        if (adjusted > 0 && currentTenths + adjusted >= state.minTenths) {
+          requestedTenths = adjusted;
+        } else {
+          return false;
+        }
+      }
+    }
+    const entry = ensureEntry(state, startMode);
+    if (hasProgressOverride) {
+      actualLocked.add(state.id);
+      entry.actualOverride = true;
+      entry.actualMinutes = override?.minutes;
+      entry.actualPages = override?.pages;
+      entry.done = Boolean(override?.done);
+    }
+    const allocation = consumeTenths(state, requestedTenths);
+    if (allocation.tenths <= 0) return false;
+    entry.mins += override?.minutes != null ? override.minutes : allocation.mins;
+    entry.readPages += allocation.readTenths / 10;
+    entry.skimPages += allocation.skimTenths / 10;
+    if (boosted) entry.boosted = true;
+    dayUsedMinutes += override?.minutes != null ? override.minutes : allocation.mins;
+    return true;
+  };
+
+  const fillStage = (candidates: PlanningState[], stage: DayStartMode): void => {
+    let guard = 0;
+    while (
+      dayUsedMinutes < input.budgetMinutes - 0.01 &&
+      Object.keys(entryMap).length < input.maxParallel &&
+      guard < 5000
+    ) {
+      guard += 1;
+      const sets = buildCandidateSets({
+        project: input.project,
+        candidates,
+        stage,
+        strictGroups: input.strictGroups,
+        entryIds: new Set(Object.keys(entryMap)),
+        dayEntriesLength: dayEntries.length,
+        dayUsedMinutes,
+        budgetMinutes: input.budgetMinutes,
+        maxParallel: input.maxParallel,
+        isPracticalMode: input.isPracticalMode,
+        dailyBookMode: input.dailyBookMode,
+        priorityScore,
+      }).filter((set) => set.members.every((member) => !entryMap[member.state.id]));
+      const nextSet = sets.find(
+        (set) => dayEntries.length + set.members.length <= Math.max(input.maxParallel, set.members.length),
+      );
+      if (!nextSet) break;
+      let allocated = false;
+      nextSet.members.forEach((member) => {
+        allocated = allocateTo(member.state, member.step, false, stage) || allocated;
+      });
+      if (!allocated) break;
+    }
+  };
+
+  fillStage(input.strictCandidates, 'strict');
+  if (Object.keys(entryMap).length < input.maxParallel) {
+    latestBackfillCandidates = input.recomputeBackfillCandidates(Object.keys(entryMap));
+    fillStage(latestBackfillCandidates, 'backfill');
+  }
+  if (Object.keys(entryMap).length < input.maxParallel) {
+    latestPrereqCandidates = input.recomputePrereqCandidates();
+    fillStage(latestPrereqCandidates, 'prereq');
+  }
+
+  if (
+    input.project.constraints.boostUnused !== false &&
+    dayEntries.length &&
+    dayUsedMinutes < input.budgetMinutes - 0.01
+  ) {
+    let boostGuard = 0;
+    while (dayUsedMinutes < input.budgetMinutes - 0.01 && boostGuard < 5000) {
+      boostGuard += 1;
+      const boosters = input.pending
+        .map<BoostCandidate | null>((state) => {
+          const entry = entryMap[state.id];
+          if (!entry) return null;
+          const step = chooseBoostTenths(
+            state,
+            Math.round((entry.readPages + entry.skimPages) * 10),
+            input.budgetMinutes - dayUsedMinutes,
+            input.project,
+            input.isPracticalMode,
+          );
+          if (step <= 0) return null;
+          return {
+            state,
+            step,
+            score: priorityScore(state, true) + (entry.boosted ? 0 : 0.1),
+          };
+        })
+        .filter((candidate): candidate is BoostCandidate => Boolean(candidate))
+        .sort(
+          (left, right) =>
+            right.score - left.score || left.state.short.localeCompare(right.state.short),
+        );
+      if (!boosters.length) break;
+      allocateTo(
+        boosters[0].state,
+        boosters[0].step,
+        true,
+        boosters[0].state.startPolicy || 'strict',
+      );
+    }
+  }
+
+  return {
+    dayEntries,
+    entryMap,
+    dayUsedMinutes,
+    backfillCandidates: latestBackfillCandidates,
+    prereqCandidates: latestPrereqCandidates,
+  };
+}

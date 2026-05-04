@@ -1,0 +1,6 @@
+.DS_Store
+node_modules/
+coverage/
+test-results/
+scripts/__pycache__/
+*.pyc

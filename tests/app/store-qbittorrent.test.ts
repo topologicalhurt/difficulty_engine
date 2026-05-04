@@ -1,0 +1,127 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import { createPlannerStore } from '../../src/app/store';
+import { createPlannerEngine } from '../../src/core/engine';
+import { plannerClock } from '../../src/core/time';
+import type { EnrichmentProvider } from '../../src/core/types';
+import { makeProject, silentLogger } from './store-test-utils';
+
+describe('store qBittorrent settings', () => {
+  it('stores qBittorrent connection settings locally without exporting credentials', () => {
+    const savedConnections: unknown[] = [];
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({ clock: plannerClock, logger: silentLogger }),
+      enrichmentProvider: {
+        fetchBook: vi.fn(),
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      logger: silentLogger,
+      clock: plannerClock,
+      localSettings: {
+        loadQbittorrentConnection: () => undefined,
+        saveQbittorrentConnection: (settings) => {
+          savedConnections.push(settings);
+        },
+      },
+    });
+
+    store.commands.updateQbittorrentLocalSettings({
+      enabled: true,
+      baseUrl: 'http://127.0.0.1:8080',
+      username: 'connor',
+      password: 'local-secret',
+    });
+    store.commands.updateSourceSettings({
+      documentSources: {
+        ...store.selectors.getProject().sourceSettings.documentSources,
+        qbittorrent: true,
+      },
+    });
+
+    const exported = JSON.parse(store.exportProject()) as Record<string, unknown>;
+    expect(savedConnections).toHaveLength(1);
+    expect(JSON.stringify(exported)).not.toContain('local-secret');
+    expect(exported).toHaveProperty('sourceSettings');
+    expect(exported).not.toHaveProperty('qbittorrentConnection');
+  });
+
+  it('prepares qBittorrent quick-start settings without exporting credentials', () => {
+    const savedConnections: unknown[] = [];
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({ clock: plannerClock, logger: silentLogger }),
+      enrichmentProvider: {
+        fetchBook: vi.fn(),
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      logger: silentLogger,
+      clock: plannerClock,
+      localSettings: {
+        loadQbittorrentConnection: () => undefined,
+        saveQbittorrentConnection: (settings) => {
+          savedConnections.push(settings);
+        },
+      },
+    });
+
+    store.commands.updateQbittorrentLocalSettings({ password: 'local-secret' });
+    store.commands.prepareQbittorrentQuickStart();
+    const state = store.selectors.getState();
+    const exported = store.exportProject();
+
+    expect(savedConnections).toHaveLength(2);
+    expect(state.ui.qbittorrentConnection.enabled).toBe(true);
+    expect(state.ui.qbittorrentConnection.baseUrl).toBe('http://127.0.0.1:8787');
+    expect(state.project.sourceSettings.documentSources.qbittorrent).toBe(true);
+    expect(state.project.sourceSettings.qbittorrent.searchPlugins).toBe(true);
+    expect(state.project.sourceSettings.qbittorrent.requireKnownAccessBasis).toBe(true);
+    expect(state.project.sourceSettings.qbittorrent.allowedSites).toEqual(
+      expect.arrayContaining(['archive.org', 'gutenberg.org', 'standardebooks.org']),
+    );
+    expect(exported).not.toContain('local-secret');
+  });
+
+  it('passes source masks and local qBittorrent settings into enrichment requests', async () => {
+    const fetchBook = vi.fn(async ({ book, sourceSettings, qbittorrentConnection }) => ({
+      cacheKey: book.id,
+      bookPatch: {},
+      enrichment: book.enrichment,
+      provenance: [
+        {
+          provider: sourceSettings.documentSources.qbittorrent && qbittorrentConnection?.enabled ? 'qbittorrent' : 'test',
+          fetchedAt: '2026-01-05T00:00:00.000Z',
+          confidence: 1,
+        },
+      ],
+    }));
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({ clock: plannerClock, logger: silentLogger }),
+      enrichmentProvider: {
+        fetchBook,
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    store.commands.updateSourceSettings({
+      documentSources: {
+        ...store.selectors.getProject().sourceSettings.documentSources,
+        qbittorrent: true,
+      },
+    });
+    store.commands.updateQbittorrentLocalSettings({ enabled: true });
+    await store.commands.refreshBookEnrichment('book-1');
+
+    expect(fetchBook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceSettings: expect.objectContaining({
+          documentSources: expect.objectContaining({ qbittorrent: true }),
+        }),
+        qbittorrentConnection: expect.objectContaining({ enabled: true }),
+      }),
+    );
+  });
+});
