@@ -3,7 +3,12 @@ import type { SchedulePlanItem } from './types';
 export interface ExclusionState {
   ignoredSet: Set<string>;
   rdSet: Set<string>;
-  rdChains: Array<{ ids: string[]; avgDelta: number; avgConfidence: number; label: string }>;
+  rdChains: Array<{
+    ids: string[];
+    avgDelta: number;
+    avgConfidence: number;
+    label: string;
+  }>;
   manualRDIds: string[];
 }
 

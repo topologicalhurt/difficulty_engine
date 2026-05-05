@@ -3,6 +3,7 @@ import {
   isLikelyChapterTitle,
   sanitizeChapterTitles,
 } from '../core/chapter-titles';
+import { decodePdfBytes, extractPdfOutlineTitles } from './pdf-outline-titles';
 
 export type DocumentExtractionStrategy =
   | 'pdf_outline'
@@ -17,35 +18,36 @@ export interface DocumentChapterExtraction {
   inferred: boolean;
 }
 
-const PDF_TITLE_PATTERN = /\/Title\s*\(([^)]{4,180})\)/g;
 const TEXT_SCAN_CHARS = 260_000;
 const CONTENTS_REGION_MAX_LINES = 900;
 const EARLY_TEXT_LINES = 260;
 const MIN_EXPLICIT_TOC_CHAPTERS = 2;
+const MIN_PDF_OUTLINE_CHAPTERS = 2;
 const MIN_INFERRED_HEADER_COUNT = 3;
 const MAX_INFERRED_HEADER_COUNT = 80;
 const HEADER_MAX_LENGTH = 110;
-const PDF_OBJECT_NOISE_PATTERN = /(?:\/(?:Type|Length|Filter|Subtype|Resources|Font)\b|endobj|xref|trailer)/i;
+const PDF_OBJECT_NOISE_PATTERN =
+  /(?:\/(?:Type|Length|Filter|Subtype|Resources|Font)\b|endobj|xref|trailer)/i;
 const CONTENTS_LINE_PATTERN = /^(?:table of )?contents$/i;
 const EXPLICIT_CONTENTS_PATTERN = /\b(?:table of contents|contents)\b/i;
-const BODY_CHAPTER_START_PATTERN = /^(?:chapter|ch\.?|part|book|unit|section)\s+(?:\d+|[ivxlcdm]+)\s*$/i;
-const MARKER_ONLY_CHAPTER_PATTERN = /^(chapter|ch\.?|part|book|unit|section)\s+(\d+|[ivxlcdm]+)$/i;
-const NUMBERED_HEADER_PATTERN = /^(?:chapter|ch\.?|part|book|unit|section|lecture|lesson|module)\s+(?:\d+|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i;
-const DECIMAL_HEADER_PATTERN = /^\d{1,2}(?:\.\d{1,2}){0,2}\s+[\p{Lu}\p{N}][^.!?]{2,}$/u;
-const PAGE_HEADER_PATTERN = /^\s*(?:\d{1,4}\s+)?([A-Z][\p{L}\p{N}',:&() -]{3,100})\s*(?:\d{1,4})?\s*$/u;
-const FRONT_BACK_LINE_PATTERN = /^(?:index|references|bibliography|copyright|isbn|all rights reserved)\b/i;
-
-function cleanPdfText(value: string): string {
-  return value
-    .replace(/\\([()\\])/g, '$1')
-    .replace(/\\\d{3}/g, ' ')
-    .replace(/\r/g, '\n')
-    .replace(/[ \t]+/g, ' ')
-    .trim();
-}
+const BODY_CHAPTER_START_PATTERN =
+  /^(?:chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(?:\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*$/i;
+const MARKER_ONLY_CHAPTER_PATTERN =
+  /^(chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)$/i;
+const NUMBERED_HEADER_PATTERN =
+  /^(?:chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(?:\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i;
+const DECIMAL_HEADER_PATTERN =
+  /^\d{1,2}(?:\.\d{1,2}){0,2}\s+[\p{Lu}\p{N}][^.!?]{2,}$/u;
+const BARE_NUMBER_MARKER_PATTERN = /^(?:\d{1,2}|[ivxlcdm]{1,8})[.)]?$/i;
+const TOC_CONTINUATION_START_PATTERN =
+  /^[\p{Lu}\d][\p{L}\p{N}',:&() -]{2,100}$/u;
+const PAGE_HEADER_PATTERN =
+  /^\s*(?:\d{1,4}\s+)?([A-Z][\p{L}\p{N}',:&() -]{3,100})\s*(?:\d{1,4})?\s*$/u;
+const FRONT_BACK_LINE_PATTERN =
+  /^(?:index|references|bibliography|copyright|isbn|all rights reserved)\b/i;
 
 function decodeBytes(bytes: Uint8Array): string {
-  return cleanPdfText(new TextDecoder('iso-8859-1').decode(bytes).slice(0, TEXT_SCAN_CHARS));
+  return decodePdfBytes(bytes).slice(0, TEXT_SCAN_CHARS);
 }
 
 function normalizeLines(text: string): string[] {
@@ -79,12 +81,16 @@ function markerKey(title: string): string | null {
 }
 
 function richerMarkerKey(title: string): string | null {
-  const match = title.match(/^(chapter|ch\.?|part|book|unit|section)\s+(\d+|[ivxlcdm]+)\b.+/i);
+  const match = title.match(
+    /^(chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b.+/i,
+  );
   return match ? `${match[1]?.toLowerCase()}:${match[2]?.toLowerCase()}` : null;
 }
 
 function removeMarkerOnlyDuplicates(chapters: string[]): string[] {
-  const richerKeys = new Set(chapters.map(richerMarkerKey).filter((key): key is string => Boolean(key)));
+  const richerKeys = new Set(
+    chapters.map(richerMarkerKey).filter((key): key is string => Boolean(key)),
+  );
   return chapters.filter((chapter) => {
     const key = markerKey(chapter);
     return !key || !richerKeys.has(key);
@@ -108,39 +114,92 @@ function explicitTocRegion(lines: string[], contentsIndex: number): string[] {
       break;
     }
     region.push(line);
-    if (NUMBERED_HEADER_PATTERN.test(line) || DECIMAL_HEADER_PATTERN.test(line)) {
+    if (
+      NUMBERED_HEADER_PATTERN.test(line) ||
+      DECIMAL_HEADER_PATTERN.test(line)
+    ) {
       structuralEntries += 1;
     }
   }
   return region;
 }
 
-export function extractPdfOutlineChapters(bytes: Uint8Array): DocumentChapterExtraction | null {
-  const decoded = decodeBytes(bytes);
-  const titles = Array.from(decoded.matchAll(PDF_TITLE_PATTERN))
-    .map((match) => cleanPdfText(match[1] ?? ''))
-    .filter(Boolean);
-  const chapters = removeMarkerOnlyDuplicates(sanitizeChapterTitles(titles, { source: 'structured', limit: 80 }));
+function joinSplitTocLines(lines: string[]): string[] {
+  const joined: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
+    const next = lines[index + 1] ?? '';
+    if (
+      next &&
+      (MARKER_ONLY_CHAPTER_PATTERN.test(line) ||
+        BARE_NUMBER_MARKER_PATTERN.test(line)) &&
+      isLikelyChapterTitle(next, 'structured')
+    ) {
+      joined.push(`${line} ${next}`);
+      index += 1;
+      continue;
+    }
+    if (
+      next &&
+      (NUMBERED_HEADER_PATTERN.test(line) ||
+        DECIMAL_HEADER_PATTERN.test(line)) &&
+      !NUMBERED_HEADER_PATTERN.test(next) &&
+      !DECIMAL_HEADER_PATTERN.test(next) &&
+      !CONTENTS_LINE_PATTERN.test(next) &&
+      TOC_CONTINUATION_START_PATTERN.test(next) &&
+      isLikelyChapterTitle(next, 'structured')
+    ) {
+      joined.push(`${line} ${next}`);
+      index += 1;
+      continue;
+    }
+    joined.push(line);
+  }
+  return joined;
+}
+
+export function extractPdfOutlineChapters(
+  bytes: Uint8Array,
+): DocumentChapterExtraction | null {
+  const titles = extractPdfOutlineTitles(bytes);
+  const chapters = removeMarkerOnlyDuplicates(
+    sanitizeChapterTitles(titles, { source: 'structured', limit: 80 }),
+  );
+  if (chapters.length < MIN_PDF_OUTLINE_CHAPTERS) return null;
   return extraction(chapters, 'pdf_outline', 0.72, titles);
 }
 
-export function extractExplicitTocChapters(text: string): DocumentChapterExtraction | null {
+export function extractExplicitTocChapters(
+  text: string,
+): DocumentChapterExtraction | null {
   const lines = normalizeLines(text);
-  const contentsIndex = lines.findIndex((line) => CONTENTS_LINE_PATTERN.test(line));
-  const regionLines = contentsIndex >= 0
-    ? explicitTocRegion(lines, contentsIndex)
-    : lines.slice(0, EARLY_TEXT_LINES);
-  const region = regionLines.join('\n');
+  const contentsIndex = lines.findIndex((line) =>
+    CONTENTS_LINE_PATTERN.test(line),
+  );
+  const regionLines =
+    contentsIndex >= 0
+      ? explicitTocRegion(lines, contentsIndex)
+      : lines.slice(0, EARLY_TEXT_LINES);
+  const joinedRegionLines = joinSplitTocLines(regionLines);
+  const region = joinedRegionLines.join('\n');
   if (contentsIndex < 0 && !EXPLICIT_CONTENTS_PATTERN.test(region)) {
     return null;
   }
   const chapters = removeMarkerOnlyDuplicates(
-    extractChapterCandidatesFromText(region, { source: 'structured', limit: 80 }),
+    extractChapterCandidatesFromText(region, {
+      source: 'structured',
+      limit: 80,
+    }),
   );
   if (chapters.length < MIN_EXPLICIT_TOC_CHAPTERS) {
     return null;
   }
-  return extraction(chapters, 'explicit_toc_region', 0.64, regionLines.slice(0, 16));
+  return extraction(
+    chapters,
+    'explicit_toc_region',
+    0.64,
+    joinedRegionLines.slice(0, 16),
+  );
 }
 
 function isInferredHeader(line: string): boolean {
@@ -153,22 +212,32 @@ function isInferredHeader(line: string): boolean {
   const title = pageHeaderMatch[1] ?? line;
   const words = title.split(/\s+/).filter(Boolean);
   const titleCaseWords = words.filter((word) => /^[A-Z0-9]/.test(word));
-  return words.length >= 2 && words.length <= 9 && titleCaseWords.length / words.length >= 0.75;
+  return (
+    words.length >= 2 &&
+    words.length <= 9 &&
+    titleCaseWords.length / words.length >= 0.75
+  );
 }
 
-export function inferChapterHeadersFromText(text: string): DocumentChapterExtraction | null {
+export function inferChapterHeadersFromText(
+  text: string,
+): DocumentChapterExtraction | null {
   const lines = normalizeLines(text);
   const candidates = lines
     .filter(isInferredHeader)
     .filter((line, index, all) => all.indexOf(line) === index);
   const chapters = removeMarkerOnlyDuplicates(
-    sanitizeChapterTitles(candidates, { source: 'structured', limit: MAX_INFERRED_HEADER_COUNT }),
+    sanitizeChapterTitles(candidates, {
+      source: 'structured',
+      limit: MAX_INFERRED_HEADER_COUNT,
+    }),
   );
   if (chapters.length < MIN_INFERRED_HEADER_COUNT) {
     return null;
   }
-  const markerCount = chapters.filter((title) =>
-    NUMBERED_HEADER_PATTERN.test(title) || DECIMAL_HEADER_PATTERN.test(title),
+  const markerCount = chapters.filter(
+    (title) =>
+      NUMBERED_HEADER_PATTERN.test(title) || DECIMAL_HEADER_PATTERN.test(title),
   ).length;
   if (markerCount < Math.min(MIN_INFERRED_HEADER_COUNT, chapters.length)) {
     return null;
@@ -182,7 +251,11 @@ export function extractDocumentChapters(input: {
   contentType?: string;
   sourceUrl?: string;
 }): DocumentChapterExtraction | null {
-  const isPdf = Boolean(input.bytes && (input.contentType?.includes('pdf') || /\.pdf(?:$|\?)/i.test(input.sourceUrl ?? '')));
+  const isPdf = Boolean(
+    input.bytes &&
+    (input.contentType?.includes('pdf') ||
+      /\.pdf(?:$|\?)/i.test(input.sourceUrl ?? '')),
+  );
   const text = input.text ?? (input.bytes ? decodeBytes(input.bytes) : '');
   if (isPdf && input.bytes) {
     const outline = extractPdfOutlineChapters(input.bytes);

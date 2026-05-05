@@ -1,10 +1,13 @@
-import { selectLibraryViewModel } from '../app/selectors/library';
-import type { AppState, PlannerStore } from '../core/types';
-import { badge, button, card, el, emptyState, selectInput } from './dom';
+import type { LibraryViewModel } from '../app/selectors/library';
+import type { PlannerStore } from '../core/types';
+import { badge, button, card, el, emptyState } from './dom';
+import { selectInput } from './form-controls';
 import { renderProgressBar } from './progress';
 
-export function renderReadingListPanel(state: AppState, store: PlannerStore): HTMLElement {
-  const viewModel = selectLibraryViewModel(state);
+export function renderReadingListPanel(
+  viewModel: LibraryViewModel,
+  store: PlannerStore,
+): HTMLElement {
   const books = viewModel.readingList;
 
   if (!books.length) {
@@ -88,8 +91,11 @@ export function renderReadingListPanel(state: AppState, store: PlannerStore): HT
               onClick: () => store.commands.moveBook(book.id, 'down'),
             }),
             button(book.owned ? 'Owned' : 'Not owned', {
-              className: book.owned ? 'ghost-button compact-button' : 'ghost-button compact-button warn-button',
-              onClick: () => store.commands.updateBook(book.id, { owned: !book.owned }),
+              className: book.owned
+                ? 'ghost-button compact-button'
+                : 'ghost-button compact-button warn-button',
+              onClick: () =>
+                store.commands.updateBook(book.id, { owned: !book.owned }),
             }),
           ),
         ),

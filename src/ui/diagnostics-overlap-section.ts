@@ -2,7 +2,9 @@ import type { OverlapDiffView } from '../app/selectors/diagnostics';
 import { badge, card, el } from './dom';
 import { formatOneDecimal, formatPercent } from './format';
 
-export function renderOverlapDiffDiagnostics(overlapDiffs: OverlapDiffView[]): HTMLElement {
+export function renderOverlapDiffDiagnostics(
+  overlapDiffs: OverlapDiffView[],
+): HTMLElement {
   return card(
     'Skim diffs',
     overlapDiffs.length
@@ -30,7 +32,10 @@ export function renderOverlapDiffDiagnostics(overlapDiffs: OverlapDiffView[]): H
                 el(
                   'div',
                   { className: 'badge-row compact-badge-row' },
-                  badge(`${formatOneDecimal(diff.timeSaved)}h saved`, 'success'),
+                  badge(
+                    `${formatOneDecimal(diff.timeSaved)}h saved`,
+                    'success',
+                  ),
                   badge(`${formatPercent(diff.confidence)} confidence`),
                   badge(`${formatPercent(diff.overlapFrac)} overlap`),
                 ),
@@ -41,7 +46,10 @@ export function renderOverlapDiffDiagnostics(overlapDiffs: OverlapDiffView[]): H
                 el(
                   'div',
                   { className: 'diff-pane' },
-                  el('div', { className: 'diff-pane-label', text: diff.anchorLabel }),
+                  el('div', {
+                    className: 'diff-pane-label',
+                    text: diff.anchorLabel,
+                  }),
                   el(
                     'div',
                     { className: 'diff-topic-list' },
@@ -51,7 +59,10 @@ export function renderOverlapDiffDiagnostics(overlapDiffs: OverlapDiffView[]): H
                 el(
                   'div',
                   { className: 'diff-pane diff-pane-added' },
-                  el('div', { className: 'diff-pane-label', text: `${diff.bookLabel} skim candidates` }),
+                  el('div', {
+                    className: 'diff-pane-label',
+                    text: `${diff.bookLabel} skim candidates`,
+                  }),
                   el(
                     'div',
                     { className: 'diff-topic-list' },
@@ -62,6 +73,9 @@ export function renderOverlapDiffDiagnostics(overlapDiffs: OverlapDiffView[]): H
             ),
           ),
         )
-      : el('div', { className: 'muted-copy', text: 'No overlap-based skim diffs yet.' }),
+      : el('div', {
+          className: 'muted-copy',
+          text: 'No overlap-based skim diffs yet.',
+        }),
   );
 }

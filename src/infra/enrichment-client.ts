@@ -10,7 +10,12 @@ import type {
   DocumentAcquisitionPolicy,
   DocumentAcquisitionProvider,
 } from './document-acquisition';
-import { cacheEntryIsFresh, cacheExpiresAt, systemNowMs, type NowMs } from './cache-time';
+import {
+  cacheEntryIsFresh,
+  cacheExpiresAt,
+  systemNowMs,
+  type NowMs,
+} from './cache-time';
 import { consoleLogger } from './logger';
 import {
   ENRICHMENT_CACHE_TTL_MS,
@@ -69,7 +74,9 @@ export function createEnrichmentClient(
     nowMs,
   });
 
-  async function loadBook(request: EnrichmentRequest): Promise<EnrichmentResponse> {
+  async function loadBook(
+    request: EnrichmentRequest,
+  ): Promise<EnrichmentResponse> {
     const key = stableEnrichmentCacheKey(request);
     const cached = memoryCache.get(key);
     if (cached && cacheEntryIsFresh(cached.expiresAt, nowMs)) {
@@ -96,7 +103,9 @@ export function createEnrichmentClient(
       inFlight.set(key, task);
       return task;
     },
-    async searchBooks(request: SearchBooksRequest): Promise<SearchBooksResponse> {
+    async searchBooks(
+      request: SearchBooksRequest,
+    ): Promise<SearchBooksResponse> {
       const key = searchRequestKey(request);
       const existing = searchInFlight.get(key);
       if (existing) {

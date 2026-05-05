@@ -1,5 +1,9 @@
 import { sanitizeChapterTitles } from '../core/chapter-titles';
-import type { BookEnrichment, BookRecord, EnrichmentFieldProvenance } from '../core/types';
+import type {
+  BookEnrichment,
+  BookRecord,
+  EnrichmentFieldProvenance,
+} from '../core/types';
 
 export interface StrategyCandidate {
   provider: EnrichmentFieldProvenance['provider'];
@@ -29,13 +33,12 @@ export interface StrategyResolution {
   provenance: EnrichmentFieldProvenance[];
 }
 
-function uniqueNonEmptyStrings(values: Array<string | null | undefined>, limit = 40): string[] {
+function uniqueNonEmptyStrings(
+  values: Array<string | null | undefined>,
+  limit = 40,
+): string[] {
   return Array.from(
-    new Set(
-      values
-        .map((value) => String(value ?? '').trim())
-        .filter(Boolean),
-    ),
+    new Set(values.map((value) => String(value ?? '').trim()).filter(Boolean)),
   ).slice(0, limit);
 }
 
@@ -59,23 +62,54 @@ function chapterSourcePriority(candidate: StrategyCandidate): number {
   return 0;
 }
 
-function bestChapterCandidate(candidates: StrategyCandidate[]): StrategyCandidate | undefined {
+function reliableChapterCount(candidate: StrategyCandidate): number {
+  return candidate.chapters?.filter(Boolean).length ?? 0;
+}
+
+function chapterCandidateScore(candidate: StrategyCandidate): number {
+  const count = reliableChapterCount(candidate);
+  const countScore = Math.min(24, Math.log2(count + 1) * 6);
+  const inferredPenalty = candidate.inferred ? 8 : 0;
+  return (
+    chapterSourcePriority(candidate) +
+    candidate.confidence * 12 +
+    countScore -
+    inferredPenalty
+  );
+}
+
+function bestChapterCandidate(
+  candidates: StrategyCandidate[],
+): StrategyCandidate | undefined {
   return [...candidates]
     .filter((candidate) => candidate.chapters?.length)
     .sort((left, right) => {
-      const priorityDelta = chapterSourcePriority(right) - chapterSourcePriority(left);
-      if (priorityDelta !== 0) return priorityDelta;
+      const manualDelta =
+        Number(right.tocSource === 'manual') -
+        Number(left.tocSource === 'manual');
+      if (manualDelta !== 0) return manualDelta;
+      const scoreDelta =
+        chapterCandidateScore(right) - chapterCandidateScore(left);
+      if (Math.abs(scoreDelta) > 0.0001) return scoreDelta;
       const confidenceDelta = right.confidence - left.confidence;
       if (confidenceDelta !== 0) return confidenceDelta;
-      const countDelta = (right.chapters?.length ?? 0) - (left.chapters?.length ?? 0);
+      const countDelta =
+        reliableChapterCount(right) - reliableChapterCount(left);
       if (countDelta !== 0) return countDelta;
-      return left.provider.localeCompare(right.provider) || left.sourceUrl.localeCompare(right.sourceUrl);
+      return (
+        left.provider.localeCompare(right.provider) ||
+        left.sourceUrl.localeCompare(right.sourceUrl)
+      );
     })[0];
 }
 
-function buildProvenance(candidates: StrategyCandidate[]): EnrichmentFieldProvenance[] {
+function buildProvenance(
+  candidates: StrategyCandidate[],
+): EnrichmentFieldProvenance[] {
   return uniqueNonEmptyStrings(
-    candidates.map((candidate) => `${candidate.provider}::${candidate.sourceUrl}`),
+    candidates.map(
+      (candidate) => `${candidate.provider}::${candidate.sourceUrl}`,
+    ),
     12,
   ).map((key) => {
     const [provider, sourceUrl] = key.split('::');
@@ -122,8 +156,8 @@ export function mergeStrategyCandidates(
     ? candidateChapters
     : sanitizeChapterTitles(book.enrichment.chapters, { source: 'imported' });
   const description =
-    candidates.find((candidate) => candidate.description)?.description
-    ?? book.enrichment.description;
+    candidates.find((candidate) => candidate.description)?.description ??
+    book.enrichment.description;
   const subjects = uniqueNonEmptyStrings([
     ...book.subjects,
     ...book.enrichment.olSubjects,
@@ -131,39 +165,38 @@ export function mergeStrategyCandidates(
   ]);
   const preferredPages =
     candidates.find(
-      (candidate) => candidate.provider !== 'manual' && (candidate.pages ?? 0) > 0,
-    )?.pages
-    ?? candidates.find((candidate) => (candidate.pages ?? 0) > 0)?.pages;
+      (candidate) =>
+        candidate.provider !== 'manual' && (candidate.pages ?? 0) > 0,
+    )?.pages ??
+    candidates.find((candidate) => (candidate.pages ?? 0) > 0)?.pages;
   const provenance = buildProvenance(candidates);
 
   return {
     bookPatch: {
       authors:
-        candidates.find((candidate) => candidate.authors?.length)?.authors
-        ?? undefined,
+        candidates.find((candidate) => candidate.authors?.length)?.authors ??
+        undefined,
       pages: preferredPages ?? undefined,
       subjects,
       publisher:
-        candidates.find((candidate) => candidate.publisher)?.publisher
-        ?? undefined,
-      isbn:
-        candidates.find((candidate) => candidate.isbn)?.isbn
-        ?? undefined,
+        candidates.find((candidate) => candidate.publisher)?.publisher ??
+        undefined,
+      isbn: candidates.find((candidate) => candidate.isbn)?.isbn ?? undefined,
       year:
-        candidates.find((candidate) => candidate.year != null)?.year
-        ?? undefined,
+        candidates.find((candidate) => candidate.year != null)?.year ??
+        undefined,
       openLibraryKey:
-        candidates.find((candidate) => candidate.openLibraryKey)?.openLibraryKey
-        ?? undefined,
+        candidates.find((candidate) => candidate.openLibraryKey)
+          ?.openLibraryKey ?? undefined,
       openLibraryEditionKey:
-        candidates.find((candidate) => candidate.openLibraryEditionKey)?.openLibraryEditionKey
-        ?? undefined,
+        candidates.find((candidate) => candidate.openLibraryEditionKey)
+          ?.openLibraryEditionKey ?? undefined,
       openLibraryWorkKey:
-        candidates.find((candidate) => candidate.openLibraryWorkKey)?.openLibraryWorkKey
-        ?? undefined,
+        candidates.find((candidate) => candidate.openLibraryWorkKey)
+          ?.openLibraryWorkKey ?? undefined,
       googleBooksId:
-        candidates.find((candidate) => candidate.googleBooksId)?.googleBooksId
-        ?? undefined,
+        candidates.find((candidate) => candidate.googleBooksId)
+          ?.googleBooksId ?? undefined,
     },
     enrichment: {
       chapters,
@@ -173,24 +206,26 @@ export function mergeStrategyCandidates(
       provenance: {
         chapters:
           chapters.length && provenance[0]
-            ? provenanceFor(provenance, candidates, (candidate) =>
+            ? (provenanceFor(provenance, candidates, (candidate) =>
                 Boolean(
                   selectedChapterCandidate &&
                   candidate.provider === selectedChapterCandidate.provider &&
                   candidate.sourceUrl === selectedChapterCandidate.sourceUrl &&
                   candidate.tocSource === selectedChapterCandidate.tocSource,
-                ))
-              ?? book.enrichment.provenance?.chapters
+                ),
+              ) ?? book.enrichment.provenance?.chapters)
             : book.enrichment.provenance?.chapters,
         description:
           description && provenance[0]
-            ? provenanceFor(provenance, candidates, (candidate) => Boolean(candidate.description))
-              ?? book.enrichment.provenance?.description
+            ? (provenanceFor(provenance, candidates, (candidate) =>
+                Boolean(candidate.description),
+              ) ?? book.enrichment.provenance?.description)
             : book.enrichment.provenance?.description,
         subjects:
           subjects.length && provenance[0]
-            ? provenanceFor(provenance, candidates, (candidate) => Boolean(candidate.subjects?.length))
-              ?? book.enrichment.provenance?.subjects
+            ? (provenanceFor(provenance, candidates, (candidate) =>
+                Boolean(candidate.subjects?.length),
+              ) ?? book.enrichment.provenance?.subjects)
             : book.enrichment.provenance?.subjects,
       },
     },

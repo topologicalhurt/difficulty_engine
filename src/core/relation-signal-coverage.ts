@@ -20,7 +20,12 @@ export interface CoverageSignal {
   coverageBA: number;
   overlap: number;
   symmetry: number;
-  matchedTopics: Array<{ a: string; b: string | null; sim: number; weight: number }>;
+  matchedTopics: Array<{
+    a: string;
+    b: string | null;
+    sim: number;
+    weight: number;
+  }>;
 }
 
 function coverageSymmetry(coverageAB: number, coverageBA: number): number {
@@ -45,25 +50,55 @@ export function buildCoverageSignal(
     const best = rightKeys.reduce(
       (currentBest, key) => {
         const similarity = textSimilarity(topic, key);
-        return similarity > currentBest.sim ? { key, sim: similarity } : currentBest;
+        return similarity > currentBest.sim
+          ? { key, sim: similarity }
+          : currentBest;
       },
       { key: null as string | null, sim: 0 },
     );
     if (best.sim >= TOPIC_MATCH_SIMILARITY && best.key) {
-      const weight = Math.min(leftWeights[topic] || 0, rightWeights[best.key] || 0) * best.sim;
+      const weight =
+        Math.min(leftWeights[topic] || 0, rightWeights[best.key] || 0) *
+        best.sim;
       sharedWeight += weight;
       matchedTopics.push({ a: topic, b: best.key, sim: best.sim, weight });
     }
   });
 
-  const totalLeft = Object.values(leftWeights).reduce((total, value) => total + value, 0);
-  const totalRight = Object.values(rightWeights).reduce((total, value) => total + value, 0);
+  const totalLeft = Object.values(leftWeights).reduce(
+    (total, value) => total + value,
+    0,
+  );
+  const totalRight = Object.values(rightWeights).reduce(
+    (total, value) => total + value,
+    0,
+  );
   const phraseCoverageAB = sharedWeight / Math.max(1, totalLeft);
   const phraseCoverageBA = sharedWeight / Math.max(1, totalRight);
-  const tokenCoverageAB = weightedCoverage(left.wordCounts, right.wordCounts, corpus.docFreq, corpus.docCount);
-  const tokenCoverageBA = weightedCoverage(right.wordCounts, left.wordCounts, corpus.docFreq, corpus.docCount);
-  const focusCoverageAB = weightedCoverage(left.focusTokenCounts, right.focusTokenCounts, corpus.docFreq, corpus.docCount);
-  const focusCoverageBA = weightedCoverage(right.focusTokenCounts, left.focusTokenCounts, corpus.docFreq, corpus.docCount);
+  const tokenCoverageAB = weightedCoverage(
+    left.wordCounts,
+    right.wordCounts,
+    corpus.docFreq,
+    corpus.docCount,
+  );
+  const tokenCoverageBA = weightedCoverage(
+    right.wordCounts,
+    left.wordCounts,
+    corpus.docFreq,
+    corpus.docCount,
+  );
+  const focusCoverageAB = weightedCoverage(
+    left.focusTokenCounts,
+    right.focusTokenCounts,
+    corpus.docFreq,
+    corpus.docCount,
+  );
+  const focusCoverageBA = weightedCoverage(
+    right.focusTokenCounts,
+    left.focusTokenCounts,
+    corpus.docFreq,
+    corpus.docCount,
+  );
   const coverageAB = clamp(
     phraseCoverageAB * PHRASE_WEIGHT_BASE +
       tokenCoverageAB * TOKEN_WEIGHT_BASE +

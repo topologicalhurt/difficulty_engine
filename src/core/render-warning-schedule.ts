@@ -1,10 +1,10 @@
 import {
   minutesPerPage,
-  normalizeFeasibilityMode,
   pageBounds,
   slotBudgetMinutes,
   totalBudgetMinutes,
 } from './constraints';
+import { normalizeFeasibilityMode } from './constraint-normalizers';
 import { createWarning } from './render-warning-utils';
 import type { EngineSnapshot, PlannerProjectV1, WarningItem } from './types';
 import { round1 } from './utils';
@@ -14,7 +14,10 @@ function strictParallelFitWarning(
   snapshot: Omit<EngineSnapshot, 'renderModel' | 'diagnostics'>,
 ): WarningItem | null {
   const requestedBooks = Math.max(1, Math.trunc(project.constraints.par || 1));
-  if (requestedBooks <= 1 || snapshot.scheduleStats.parallelFitBlockedDays === 0) {
+  if (
+    requestedBooks <= 1 ||
+    snapshot.scheduleStats.parallelFitBlockedDays === 0
+  ) {
     return null;
   }
 
@@ -25,9 +28,14 @@ function strictParallelFitWarning(
     .filter((item) => !snapshot.dayPlan.byBookStats[item.id]?.hardInfeasible)
     .map((item) => ({
       id: item.id,
-      minutes: strictMinPg * minutesPerPage(item.scheduleDifficulty, project.constraints),
+      minutes:
+        strictMinPg *
+        minutesPerPage(item.scheduleDifficulty, project.constraints),
     }))
-    .sort((left, right) => left.minutes - right.minutes || left.id.localeCompare(right.id));
+    .sort(
+      (left, right) =>
+        left.minutes - right.minutes || left.id.localeCompare(right.id),
+    );
   if (!floorChunks.length) return null;
 
   let usedMinutes = 0;
@@ -39,15 +47,21 @@ function strictParallelFitWarning(
       fitCount += 1;
     }
   });
-  const overSlotCount = floorChunks.filter((chunk) => chunk.minutes > slotBudget + 1e-6).length;
+  const overSlotCount = floorChunks.filter(
+    (chunk) => chunk.minutes > slotBudget + 1e-6,
+  ).length;
   if (fitCount >= requestedBooks && overSlotCount === 0) return null;
 
-  const largestFloorChunk = Math.max(...floorChunks.map((chunk) => chunk.minutes));
+  const largestFloorChunk = Math.max(
+    ...floorChunks.map((chunk) => chunk.minutes),
+  );
   return createWarning(
     'warn',
     'strict-parallel-floor-conflict',
     `${requestedBooks} parallel slot(s) are requested, but strict ${strictMinPg} pg chunks fit at most ${fitCount} book(s) inside ${round1(dailyBudget)}m/day. Each slot has ${round1(slotBudget)}m, and ${overSlotCount} book(s) need more than that for ${strictMinPg} pages (up to ${round1(largestFloorChunk)}m). Use relaxed page recommendation, lower min pages, or increase hours/day to fill more slots.`,
-    floorChunks.filter((chunk) => chunk.minutes > slotBudget + 1e-6).map((chunk) => chunk.id),
+    floorChunks
+      .filter((chunk) => chunk.minutes > slotBudget + 1e-6)
+      .map((chunk) => chunk.id),
   );
 }
 
@@ -149,7 +163,8 @@ export function buildScheduleWarnings(
 ): WarningItem[] {
   const { dayPlan, scheduleStats } = snapshot;
   const warnings =
-    normalizeFeasibilityMode(project.constraints.feasibilityMode) === 'strict_floor'
+    normalizeFeasibilityMode(project.constraints.feasibilityMode) ===
+    'strict_floor'
       ? buildStrictModeWarnings(project, snapshot)
       : buildRelaxedModeWarnings(project, snapshot);
 
@@ -158,7 +173,10 @@ export function buildScheduleWarnings(
   );
   if (unfinishedRows.length > 0) {
     const unexplainedRows = unfinishedRows.filter(
-      (entry) => !entry.hardInfeasible && !entry.infeasibleReason && !entry.blockedReason,
+      (entry) =>
+        !entry.hardInfeasible &&
+        !entry.infeasibleReason &&
+        !entry.blockedReason,
     );
     warnings.push(
       createWarning(

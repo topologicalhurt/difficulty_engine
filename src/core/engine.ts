@@ -30,7 +30,9 @@ const NOOP_LOGGER: Logger = {
   error(): void {},
 };
 
-function servicesWithDefaults(services?: Partial<PlannerServices>): PlannerServices {
+function servicesWithDefaults(
+  services?: Partial<PlannerServices>,
+): PlannerServices {
   return {
     clock: services?.clock ?? plannerClock,
     logger: services?.logger ?? NOOP_LOGGER,
@@ -51,21 +53,35 @@ export function computePlannerSnapshot(
   const corpus = extractCorpus(project);
   const topicIndex = buildTopicIndex(corpus);
   const relationInfo = inferRelations(corpus, topicIndex, project);
-  const workloadClusterInfo = buildWorkloadClusters(corpus, topicIndex, relationInfo);
-  const difficultyModel = computeDifficultyModel(corpus, topicIndex, relationInfo, project, workloadClusterInfo);
-  const { schedulePlan, overlapClusters, dayPlan, scheduleStats } = computeScheduleArtifacts(
-    project,
+  const workloadClusterInfo = buildWorkloadClusters(
     corpus,
-    relationInfo,
-    difficultyModel,
     topicIndex,
-    clock,
+    relationInfo,
   );
+  const difficultyModel = computeDifficultyModel(
+    corpus,
+    topicIndex,
+    relationInfo,
+    project,
+    workloadClusterInfo,
+  );
+  const { schedulePlan, overlapClusters, dayPlan, scheduleStats } =
+    computeScheduleArtifacts(
+      project,
+      corpus,
+      relationInfo,
+      difficultyModel,
+      topicIndex,
+      clock,
+    );
   const { topics, topicsById } = toPublicTopics(topicIndex);
   const publicDifficulty = toPublicDifficulty(difficultyModel);
   const sortedBooks = buildSortedBooks(project, corpus, difficultyModel);
 
-  const snapshotWithoutRender: Omit<EngineSnapshot, 'renderModel' | 'diagnostics'> = {
+  const snapshotWithoutRender: Omit<
+    EngineSnapshot,
+    'renderModel' | 'diagnostics'
+  > = {
     topics,
     topicsById,
     overlapClusters: toPublicOverlapClusters(overlapClusters),
@@ -84,7 +100,11 @@ export function computePlannerSnapshot(
   };
 
   const diagnostics = runDiagnostics(project, snapshotWithoutRender);
-  const renderModel = buildRenderModel(project, snapshotWithoutRender, clock.totalTimelineSlots(project));
+  const renderModel = buildRenderModel(
+    project,
+    snapshotWithoutRender,
+    clock.totalTimelineSlots(project),
+  );
   const snapshot: EngineSnapshot = {
     ...snapshotWithoutRender,
     diagnostics,

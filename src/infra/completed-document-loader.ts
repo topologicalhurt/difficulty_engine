@@ -1,18 +1,23 @@
-import type {
-  BookDocumentRef,
-  EnrichmentRequest,
-  Logger,
-} from '../core/types';
+import type { BookDocumentRef, EnrichmentRequest, Logger } from '../core/types';
 import { sourceEnabledForDocumentProvider } from '../core/source-settings-policy';
 import type { AcquiredDocument } from './document-acquisition';
 import { bridgeDocumentEndpoint } from './document-bridge-url';
 
 const DOCUMENT_TEXT_ENDPOINT = '/documents/read-text';
 const DOCUMENT_BYTES_ENDPOINT = '/documents/read-bytes';
-const REUSABLE_DOCUMENT_STATUSES = new Set<BookDocumentRef['status']>(['complete', 'unreadable']);
-const TEXT_KINDS = new Set<BookDocumentRef['contentKind']>(['text', 'ocr_text']);
+const REUSABLE_DOCUMENT_STATUSES = new Set<BookDocumentRef['status']>([
+  'complete',
+  'unreadable',
+]);
+const TEXT_KINDS = new Set<BookDocumentRef['contentKind']>([
+  'text',
+  'ocr_text',
+]);
 
-function canReuseDocument(document: BookDocumentRef, settings: EnrichmentRequest['sourceSettings']): boolean {
+function canReuseDocument(
+  document: BookDocumentRef,
+  settings: EnrichmentRequest['sourceSettings'],
+): boolean {
   if (!sourceEnabledForDocumentProvider(document, settings)) return false;
   if (!REUSABLE_DOCUMENT_STATUSES.has(document.status)) return false;
   return TEXT_KINDS.has(document.contentKind) || document.contentKind === 'pdf';
@@ -24,10 +29,13 @@ async function readBridgeText(
   storagePath: string,
   signal?: AbortSignal,
 ): Promise<string | undefined> {
-  const response = await fetchImpl(bridgeDocumentEndpoint(baseUrl, DOCUMENT_TEXT_ENDPOINT, storagePath), {
-    headers: { Accept: 'text/plain' },
-    signal,
-  });
+  const response = await fetchImpl(
+    bridgeDocumentEndpoint(baseUrl, DOCUMENT_TEXT_ENDPOINT, storagePath),
+    {
+      headers: { Accept: 'text/plain' },
+      signal,
+    },
+  );
   if (!response.ok) return undefined;
   const text = await response.text();
   return text.trim() ? text : undefined;
@@ -39,10 +47,13 @@ async function readBridgeBytes(
   storagePath: string,
   signal?: AbortSignal,
 ): Promise<Uint8Array | undefined> {
-  const response = await fetchImpl(bridgeDocumentEndpoint(baseUrl, DOCUMENT_BYTES_ENDPOINT, storagePath), {
-    headers: { Accept: 'application/pdf,application/octet-stream' },
-    signal,
-  });
+  const response = await fetchImpl(
+    bridgeDocumentEndpoint(baseUrl, DOCUMENT_BYTES_ENDPOINT, storagePath),
+    {
+      headers: { Accept: 'application/pdf,application/octet-stream' },
+      signal,
+    },
+  );
   return response.ok ? new Uint8Array(await response.arrayBuffer()) : undefined;
 }
 
@@ -59,12 +70,24 @@ export async function loadCompletedDocumentRefs(
   const acquired: AcquiredDocument[] = [];
   for (const document of documents) {
     try {
-      const text = TEXT_KINDS.has(document.contentKind) || document.contentKind === 'pdf'
-        ? await readBridgeText(fetchImpl, baseUrl, document.storagePath, request.signal).catch(() => undefined)
-        : undefined;
-      const bytes = !text && document.contentKind === 'pdf'
-        ? await readBridgeBytes(fetchImpl, baseUrl, document.storagePath, request.signal).catch(() => undefined)
-        : undefined;
+      const text =
+        TEXT_KINDS.has(document.contentKind) || document.contentKind === 'pdf'
+          ? await readBridgeText(
+              fetchImpl,
+              baseUrl,
+              document.storagePath,
+              request.signal,
+            ).catch(() => undefined)
+          : undefined;
+      const bytes =
+        !text && document.contentKind === 'pdf'
+          ? await readBridgeBytes(
+              fetchImpl,
+              baseUrl,
+              document.storagePath,
+              request.signal,
+            ).catch(() => undefined)
+          : undefined;
       if (!text && !bytes) continue;
       acquired.push({
         candidateId: document.id,
@@ -73,13 +96,15 @@ export async function loadCompletedDocumentRefs(
         storagePath: document.storagePath,
         contentType: document.contentType,
         accessBasis: document.accessBasis,
-        confidence: document.provenance.confidence || document.matchScore || 0.6,
+        confidence:
+          document.provenance.confidence || document.matchScore || 0.6,
         text,
         bytes,
         sha256: document.sha256,
-        documentRef: document.status === 'unreadable' && document.contentKind === 'pdf'
-          ? { ...document, status: 'complete' }
-          : document,
+        documentRef:
+          document.status === 'unreadable' && document.contentKind === 'pdf'
+            ? { ...document, status: 'complete' }
+            : document,
         acquiredAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -93,12 +118,22 @@ export async function loadCompletedDocumentRefs(
   return acquired;
 }
 
-export function dedupeAcquiredDocuments(documents: AcquiredDocument[]): AcquiredDocument[] {
+export function dedupeAcquiredDocuments(
+  documents: AcquiredDocument[],
+): AcquiredDocument[] {
   const byKey = new Map<string, AcquiredDocument>();
   documents.forEach((document) => {
-    const key = document.documentRef?.id ?? document.storagePath ?? document.sourceUrl ?? document.candidateId;
+    const key =
+      document.documentRef?.id ??
+      document.storagePath ??
+      document.sourceUrl ??
+      document.candidateId;
     const previous = byKey.get(key);
-    if (!previous || (!previous.text && document.text) || (!previous.bytes && document.bytes)) {
+    if (
+      !previous ||
+      (!previous.text && document.text) ||
+      (!previous.bytes && document.bytes)
+    ) {
       byKey.set(key, document);
     }
   });

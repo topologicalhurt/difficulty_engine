@@ -40,25 +40,43 @@ function normalizeTocSource(value: unknown): BookEnrichment['tocSource'] {
 }
 
 export function normalizeBookEnrichment(input: unknown): BookEnrichment {
-  const raw = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+  const raw =
+    input && typeof input === 'object'
+      ? (input as Record<string, unknown>)
+      : {};
   return {
-    chapters: sanitizeChapterTitles(normalizeStringArray(raw.chapters), { source: 'imported' }),
+    chapters: sanitizeChapterTitles(normalizeStringArray(raw.chapters), {
+      source: 'imported',
+    }),
     description: normalizeString(raw.description),
     olSubjects: normalizeStringArray(raw.olSubjects),
     tocSource: normalizeTocSource(raw.tocSource),
     provenance:
       raw.provenance && typeof raw.provenance === 'object'
         ? {
-            chapters: normalizeProvenance((raw.provenance as Record<string, unknown>).chapters),
-            description: normalizeProvenance((raw.provenance as Record<string, unknown>).description),
-            subjects: normalizeProvenance((raw.provenance as Record<string, unknown>).subjects),
+            chapters: normalizeProvenance(
+              (raw.provenance as Record<string, unknown>).chapters,
+            ),
+            description: normalizeProvenance(
+              (raw.provenance as Record<string, unknown>).description,
+            ),
+            subjects: normalizeProvenance(
+              (raw.provenance as Record<string, unknown>).subjects,
+            ),
           }
         : undefined,
   };
 }
 
-export function normalizeBook(id: string, input: unknown, index: number): BookRecord {
-  const raw = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+export function normalizeBook(
+  id: string,
+  input: unknown,
+  index: number,
+): BookRecord {
+  const raw =
+    input && typeof input === 'object'
+      ? (input as Record<string, unknown>)
+      : {};
   const documents = normalizeBookDocuments(raw.documents);
   const selectedDocumentId = normalizeString(raw.selectedDocumentId);
   return {
@@ -81,9 +99,18 @@ export function normalizeBook(id: string, input: unknown, index: number): BookRe
     selectedDocumentId: documents.some((doc) => doc.id === selectedDocumentId)
       ? selectedDocumentId
       : null,
-    openLibraryKey: normalizeOpenLibraryKey(normalizeString(raw.openLibraryKey), 'any'),
-    openLibraryEditionKey: normalizeOpenLibraryKey(normalizeString(raw.openLibraryEditionKey), 'edition'),
-    openLibraryWorkKey: normalizeOpenLibraryKey(normalizeString(raw.openLibraryWorkKey), 'work'),
+    openLibraryKey: normalizeOpenLibraryKey(
+      normalizeString(raw.openLibraryKey),
+      'any',
+    ),
+    openLibraryEditionKey: normalizeOpenLibraryKey(
+      normalizeString(raw.openLibraryEditionKey),
+      'edition',
+    ),
+    openLibraryWorkKey: normalizeOpenLibraryKey(
+      normalizeString(raw.openLibraryWorkKey),
+      'work',
+    ),
     googleBooksId: normalizeString(raw.googleBooksId) || null,
     manualPrereqs: normalizeStringArray(raw.manualPrereqs),
     manualCoStudy: normalizeStringArray(raw.manualCoStudy),
@@ -99,8 +126,14 @@ export function normalizeBook(id: string, input: unknown, index: number): BookRe
   };
 }
 
-export function normalizeCacheEntry(bookId: string, input: unknown): EnrichmentCacheEntry {
-  const raw = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+export function normalizeCacheEntry(
+  bookId: string,
+  input: unknown,
+): EnrichmentCacheEntry {
+  const raw =
+    input && typeof input === 'object'
+      ? (input as Record<string, unknown>)
+      : {};
   const hasData = Boolean(raw.data);
   const rawStatus =
     raw.status === 'loading' ||
@@ -119,7 +152,9 @@ export function normalizeCacheEntry(bookId: string, input: unknown): EnrichmentC
     error: normalizeString(raw.error) || undefined,
     data: raw.data ? normalizeBookEnrichment(raw.data) : undefined,
     provenance: Array.isArray(raw.provenance)
-      ? raw.provenance.map((entry) => normalizeProvenance(entry)).filter(Boolean) as EnrichmentFieldProvenance[]
+      ? (raw.provenance
+          .map((entry) => normalizeProvenance(entry))
+          .filter(Boolean) as EnrichmentFieldProvenance[])
       : undefined,
   };
 }

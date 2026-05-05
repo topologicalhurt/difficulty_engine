@@ -31,12 +31,16 @@ export function normalizeDateKey(value: unknown, fallback: string): string {
   const normalized = normalizeString(value);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return fallback;
   const date = new Date(`${normalized}T12:00:00Z`);
-  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== normalized
+  return Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== normalized
     ? fallback
     : normalized;
 }
 
-export function normalizeWeekdays(value: unknown, fallback: number[]): number[] {
+export function normalizeWeekdays(
+  value: unknown,
+  fallback: number[],
+): number[] {
   if (!Array.isArray(value)) {
     return [...fallback];
   }

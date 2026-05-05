@@ -13,8 +13,12 @@ export const CONSTRAINT_UI_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['constraints'],
     recomputePolicy: 'ui_only',
-    testIds: ['tests/app/constraints-view-model.test.ts', 'tests/app/wiring-contracts.test.ts'],
-    notes: 'Advanced field disclosure is UI-only and does not affect planner truth.',
+    testIds: [
+      'tests/app/constraints-view-model.test.ts',
+      'tests/app/wiring-contracts.test.ts',
+    ],
+    notes:
+      'Advanced field disclosure is UI-only and does not affect planner truth.',
   },
   {
     id: 'ui.constraintField',
@@ -28,7 +32,10 @@ export const CONSTRAINT_UI_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['constraint explanation'],
     recomputePolicy: 'ui_only',
-    testIds: ['tests/app/constraints-view-model.test.ts', 'tests/app/wiring-contracts.test.ts'],
+    testIds: [
+      'tests/app/constraints-view-model.test.ts',
+      'tests/app/wiring-contracts.test.ts',
+    ],
     notes: 'Focused setting controls explanatory copy only.',
   },
 ];

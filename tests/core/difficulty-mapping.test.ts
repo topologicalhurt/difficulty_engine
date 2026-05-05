@@ -1,9 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
 import { applyCompressionCurve } from '../../src/core/compression-curves';
-import { DEFAULT_CONSTRAINTS, EXAMPLE_BOOK, createDefaultSourceSettings } from '../../src/core/defaults';
-import { difficultyDistributionStats, mapDisplayDifficulty } from '../../src/core/difficulty-mapping';
-import type { BookRecord, CompressCurve, ConstraintSet, EngineSnapshot, PlannerProjectV1 } from '../../src/core/types';
+import {
+  DEFAULT_CONSTRAINTS,
+  EXAMPLE_BOOK,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
+import {
+  difficultyDistributionStats,
+  mapDisplayDifficulty,
+} from '../../src/core/difficulty-mapping';
+import type {
+  BookRecord,
+  CompressCurve,
+  ConstraintSet,
+  EngineSnapshot,
+  PlannerProjectV1,
+} from '../../src/core/types';
 import { computeSnapshot } from './engine-test-utils';
 
 function book(
@@ -20,7 +34,11 @@ function book(
     manualSeedDifficulty: seed,
     lockDiff: true,
     pages: 120 + seed * 20,
-    subjects: [title, 'shared topic', seed > 6 ? 'advanced methods' : 'foundations'],
+    subjects: [
+      title,
+      'shared topic',
+      seed > 6 ? 'advanced methods' : 'foundations',
+    ],
     manualPrereqs: prereqs,
     enrichment: {
       chapters: [`${title} foundations`, `${title} applications`],
@@ -49,9 +67,14 @@ function project(patch: Partial<ConstraintSet> = {}): PlannerProjectV1 {
       mutualEnabled: false,
       ...patch,
     },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
 }
 
@@ -111,7 +134,10 @@ describe('difficulty mapping controls', () => {
     curvePairs.forEach(([curve, inverse, exponent]) => {
       [0.15, 0.35, 0.65, 0.85].forEach((value) => {
         const uncurved = applyCompressionCurve(value, inverse, exponent);
-        expect(applyCompressionCurve(uncurved, curve, exponent)).toBeCloseTo(value, 4);
+        expect(applyCompressionCurve(uncurved, curve, exponent)).toBeCloseTo(
+          value,
+          4,
+        );
       });
     });
   });
@@ -133,7 +159,11 @@ describe('difficulty mapping controls', () => {
     expect(mapDisplayDifficulty(3.7, constraints, stats)).toBeCloseTo(3, 1);
     expect(mapDisplayDifficulty(6.4, constraints, stats)).toBeCloseTo(9, 1);
     expect(
-      mapDisplayDifficulty(6.4, { ...constraints, diffCurveCeilingPoint: 1 }, stats),
+      mapDisplayDifficulty(
+        6.4,
+        { ...constraints, diffCurveCeilingPoint: 1 },
+        stats,
+      ),
     ).toBeLessThan(9);
   });
 
@@ -146,23 +176,61 @@ describe('difficulty mapping controls', () => {
       diffRamp: 1,
       gam: 1.5,
     });
-    const values = Object.values(result.difficultyModel).map((entry) => entry.displayDifficulty);
+    const values = Object.values(result.difficultyModel).map(
+      (entry) => entry.displayDifficulty,
+    );
 
     expect(Math.min(...values)).toBeCloseTo(4, 1);
     expect(Math.max(...values)).toBeCloseTo(8, 1);
   });
 
   it('wires display mapping controls into displayDifficulty', () => {
-    const base = snapshot({ diffMapMode: 'scaled', compressMode: 'off', diffRamp: 1 });
+    const base = snapshot({
+      diffMapMode: 'scaled',
+      compressMode: 'off',
+      diffRamp: 1,
+    });
     const baseMid = base.difficultyModel.mid.displayDifficulty;
 
-    expect(snapshot({ diffMapMode: 'raw' }).difficultyModel.mid.displayDifficulty).not.toBe(baseMid);
-    expect(snapshot({ diffMapMode: 'scaled', diffMapMin: 5, diffMapMax: 9 }).difficultyModel.mid.displayDifficulty).not.toBe(baseMid);
-    expect(snapshot({ diffMapMode: 'scaled', compressMode: 'off', diffRamp: 2 }).difficultyModel.mid.displayDifficulty).not.toBe(baseMid);
-    expect(snapshot({ diffMapMode: 'scaled', compressMode: 'manual', compressExp: 2 }).difficultyModel.mid.displayDifficulty).not.toBe(baseMid);
-    expect(snapshot({ diffMapMode: 'scaled', compressMode: 'manual', compressCurve: 'tanh' }).difficultyModel.mid.displayDifficulty).not.toBe(baseMid);
-    expect(snapshot({ diffMapMode: 'scaled', compressMode: 'manual', compressCurve: 'inverse_tanh' }).difficultyModel.mid.displayDifficulty).not.toBe(baseMid);
-    expect(snapshot({ diffMapMode: 'scaled', compressMode: 'manual', diffCurveCeilingPoint: 0.65 }).difficultyModel.mid.displayDifficulty).not.toBe(baseMid);
+    expect(
+      snapshot({ diffMapMode: 'raw' }).difficultyModel.mid.displayDifficulty,
+    ).not.toBe(baseMid);
+    expect(
+      snapshot({ diffMapMode: 'scaled', diffMapMin: 5, diffMapMax: 9 })
+        .difficultyModel.mid.displayDifficulty,
+    ).not.toBe(baseMid);
+    expect(
+      snapshot({ diffMapMode: 'scaled', compressMode: 'off', diffRamp: 2 })
+        .difficultyModel.mid.displayDifficulty,
+    ).not.toBe(baseMid);
+    expect(
+      snapshot({
+        diffMapMode: 'scaled',
+        compressMode: 'manual',
+        compressExp: 2,
+      }).difficultyModel.mid.displayDifficulty,
+    ).not.toBe(baseMid);
+    expect(
+      snapshot({
+        diffMapMode: 'scaled',
+        compressMode: 'manual',
+        compressCurve: 'tanh',
+      }).difficultyModel.mid.displayDifficulty,
+    ).not.toBe(baseMid);
+    expect(
+      snapshot({
+        diffMapMode: 'scaled',
+        compressMode: 'manual',
+        compressCurve: 'inverse_tanh',
+      }).difficultyModel.mid.displayDifficulty,
+    ).not.toBe(baseMid);
+    expect(
+      snapshot({
+        diffMapMode: 'scaled',
+        compressMode: 'manual',
+        diffCurveCeilingPoint: 0.65,
+      }).difficultyModel.mid.displayDifficulty,
+    ).not.toBe(baseMid);
   });
 
   it('keeps display compression controls out of schedule hours and day allocation', () => {
@@ -185,7 +253,9 @@ describe('difficulty mapping controls', () => {
       diffCurveCeilingPoint: 0.65,
     });
 
-    expect(compressed.difficultyModel.mid.displayDifficulty).not.toBe(base.difficultyModel.mid.displayDifficulty);
+    expect(compressed.difficultyModel.mid.displayDifficulty).not.toBe(
+      base.difficultyModel.mid.displayDifficulty,
+    );
     expect(scheduleSignature(compressed)).toBe(scheduleSignature(base));
   });
 
@@ -205,7 +275,12 @@ describe('difficulty mapping controls', () => {
 
     expect(higherGamma.difficultyModel.mid.displayDifficulty).toBe(baseDisplay);
     expect(higherGamma.scheduleStats.totalHours).not.toBe(
-      snapshot({ diffMapMode: 'scaled', compressMode: 'off', diffRamp: 1, gam: 1.5 }).scheduleStats.totalHours,
+      snapshot({
+        diffMapMode: 'scaled',
+        compressMode: 'off',
+        diffRamp: 1,
+        gam: 1.5,
+      }).scheduleStats.totalHours,
     );
   });
 
@@ -219,9 +294,19 @@ describe('difficulty mapping controls', () => {
       propLiftCap: 4,
     }).difficultyModel.hard.scheduleDifficulty;
 
-    expect(snapshot({ propMix: 0 }).difficultyModel.hard.scheduleDifficulty).not.toBe(base);
-    expect(snapshot({ damp: 1 }).difficultyModel.hard.scheduleDifficulty).not.toBe(base);
-    expect(snapshot({ alphaCap: 0.05, absFloor: 0.1, propLiftCap: 0.2 }).difficultyModel.hard.scheduleDifficulty).not.toBe(base);
-    expect(snapshot({ blendMode: 'geometric', propMix: 1, damp: 0 }).difficultyModel.hard.scheduleDifficulty).not.toBe(base);
+    expect(
+      snapshot({ propMix: 0 }).difficultyModel.hard.scheduleDifficulty,
+    ).not.toBe(base);
+    expect(
+      snapshot({ damp: 1 }).difficultyModel.hard.scheduleDifficulty,
+    ).not.toBe(base);
+    expect(
+      snapshot({ alphaCap: 0.05, absFloor: 0.1, propLiftCap: 0.2 })
+        .difficultyModel.hard.scheduleDifficulty,
+    ).not.toBe(base);
+    expect(
+      snapshot({ blendMode: 'geometric', propMix: 1, damp: 0 }).difficultyModel
+        .hard.scheduleDifficulty,
+    ).not.toBe(base);
   });
 });

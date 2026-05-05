@@ -14,10 +14,17 @@ function renderExplanation(viewModel: ConstraintsViewModel): HTMLElement {
     viewModel.explanation.detail !== viewModel.explanation.summary;
   return card(
     'Context',
-    el('div', { className: 'settings-context' },
+    el(
+      'div',
+      { className: 'settings-context' },
       el('strong', { text: viewModel.explanation.title }),
       el('p', { text: viewModel.explanation.summary }),
-      showDetail ? el('p', { className: 'muted-copy', text: viewModel.explanation.detail }) : null,
+      showDetail
+        ? el('p', {
+            className: 'muted-copy',
+            text: viewModel.explanation.detail,
+          })
+        : null,
       viewModel.explanation.selectedOptionDetail
         ? el('div', {
             className: 'settings-option-detail',
@@ -46,7 +53,8 @@ function renderConstraintGroup(
           el('button', {
             className: 'ghost-button compact-button',
             text: group.advancedOpen ? 'Hide advanced' : 'Show advanced',
-            onClick: () => store.commands.toggleConstraintAdvancedGroup(group.group),
+            onClick: () =>
+              store.commands.toggleConstraintAdvancedGroup(group.group),
           }),
         )
       : null,
@@ -63,7 +71,10 @@ function renderConstraintGroup(
   );
 }
 
-export function renderConstraintsView(state: AppState, store: PlannerStore): HTMLElement {
+export function renderConstraintsView(
+  state: AppState,
+  store: PlannerStore,
+): HTMLElement {
   const viewModel = selectConstraintsViewModel(state);
   return el(
     'div',
@@ -82,9 +93,15 @@ export function renderConstraintsView(state: AppState, store: PlannerStore): HTM
       el(
         'div',
         { className: 'settings-groups-column' },
-        ...viewModel.groups.map((group) => renderConstraintGroup(group, viewModel, store)),
+        ...viewModel.groups.map((group) =>
+          renderConstraintGroup(group, viewModel, store),
+        ),
       ),
-      el('aside', { className: 'settings-context-sidebar' }, renderExplanation(viewModel)),
+      el(
+        'aside',
+        { className: 'settings-context-sidebar' },
+        renderExplanation(viewModel),
+      ),
     ),
   );
 }

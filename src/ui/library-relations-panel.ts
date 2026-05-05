@@ -1,7 +1,11 @@
 import type { BookRecord } from '../core/types';
-import { badge, card, el, inputField } from './dom';
+import { badge, card, el } from './dom';
+import { checkboxControl, inputField } from './form-controls';
 
-export function renderRelationChips(title: string, values: string[]): HTMLElement {
+export function renderRelationChips(
+  title: string,
+  values: string[],
+): HTMLElement {
   return card(
     title,
     el(
@@ -29,11 +33,16 @@ export function renderBookRelationSelector(
   const manualSelected = new Set(manualIds);
   const candidates = books
     .filter((candidate) => candidate.id !== currentBook.id)
-    .sort((left, right) => (left.short || left.title).localeCompare(right.short || right.title));
+    .sort((left, right) =>
+      (left.short || left.title).localeCompare(right.short || right.title),
+    );
   if (!candidates.length) {
     return inputField(
       title,
-      el('div', { className: 'muted-copy', text: 'Add another book before linking relationships.' }),
+      el('div', {
+        className: 'muted-copy',
+        text: 'Add another book before linking relationships.',
+      }),
       detail,
     );
   }
@@ -45,13 +54,15 @@ export function renderBookRelationSelector(
       ...candidates.map((candidate) =>
         el(
           'label',
-          { className: `relation-option${selected.has(candidate.id) ? ' selected' : ''}` },
-          el('input', {
-            type: 'checkbox',
+          {
+            className: `relation-option${selected.has(candidate.id) ? ' selected' : ''}`,
+          },
+          checkboxControl({
+            className: '',
             checked: selected.has(candidate.id),
-            onChange: (event) => {
+            onChange: (checked) => {
               const next = new Set(selectedIds);
-              if ((event.target as HTMLInputElement).checked) {
+              if (checked) {
                 next.add(candidate.id);
               } else {
                 next.delete(candidate.id);
@@ -63,8 +74,13 @@ export function renderBookRelationSelector(
             'span',
             {},
             el('strong', { text: candidate.short || candidate.title }),
-            el('span', { className: 'muted-copy', text: ` ${candidate.title}` }),
-            manualSelected.has(candidate.id) ? badge('manual', 'success') : null,
+            el('span', {
+              className: 'muted-copy',
+              text: ` ${candidate.title}`,
+            }),
+            manualSelected.has(candidate.id)
+              ? badge('manual', 'success')
+              : null,
             !manualSelected.has(candidate.id) && graphSelected.has(candidate.id)
               ? badge('graph', 'neutral')
               : null,

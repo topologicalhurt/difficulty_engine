@@ -5,7 +5,10 @@ export function createSearchCommands(
   context: StoreCommandContext,
 ): Pick<
   PlannerStoreCommands,
-  'setBookSearchQuery' | 'clearBookSearch' | 'searchCatalog' | 'searchCatalogMore'
+  | 'setBookSearchQuery'
+  | 'clearBookSearch'
+  | 'searchCatalog'
+  | 'searchCatalogMore'
 > {
   return {
     setBookSearchQuery(query: string): void {
@@ -34,7 +37,10 @@ export function createSearchCommands(
     },
     searchCatalogMore(): Promise<void> {
       const state = context.getState();
-      if (!state.ui.bookSearchHasMore || state.ui.bookSearchStatus === 'loading') {
+      if (
+        !state.ui.bookSearchHasMore ||
+        state.ui.bookSearchStatus === 'loading'
+      ) {
         return Promise.resolve();
       }
       return context.runCatalogSearch(state.ui.bookSearchQuery, true);

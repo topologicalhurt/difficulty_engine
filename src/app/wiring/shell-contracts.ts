@@ -59,6 +59,7 @@ export const SHELL_CONTRACTS: WiringContract[] = [
     renderEffects: [],
     recomputePolicy: 'ui_only',
     testIds: ['tests/app/wiring-contracts.test.ts'],
-    notes: 'Local DOM restoration state is non-semantic and never feeds planner truth.',
+    notes:
+      'Local DOM restoration state is non-semantic and never feeds planner truth.',
   },
 ];

@@ -1,7 +1,14 @@
 import { enforceBookOrderPrereqs } from './book-order';
-import { normalizeBackfillMode, normalizeSchedAlgo } from './constraints';
+import {
+  normalizeBackfillMode,
+  normalizeSchedAlgo,
+} from './constraint-normalizers';
 import { computeExclusionState } from './exclusion';
-import type { CorpusSnapshot, DifficultyModelSnapshot, RelationInfo } from './internal-types';
+import type {
+  CorpusSnapshot,
+  DifficultyModelSnapshot,
+  RelationInfo,
+} from './internal-types';
 import { buildScheduleGroups, buildCoStudyMeta } from './schedule-groups';
 import { buildScheduleItems } from './schedule-items';
 import {
@@ -37,7 +44,12 @@ export function solveSchedule(
   relationInfo: RelationInfo,
   difficultyModel: DifficultyModelSnapshot,
 ): SchedulePlan {
-  const exclusionState = computeExclusionState(corpus, relationInfo, difficultyModel, project);
+  const exclusionState = computeExclusionState(
+    corpus,
+    relationInfo,
+    difficultyModel,
+    project,
+  );
   const buildResult = buildScheduleItems(
     project,
     corpus,
@@ -47,15 +59,24 @@ export function solveSchedule(
   );
   const schedulePrereqById = enforceBookOrderPrereqs(
     buildResult.activeIds,
-    Object.fromEntries(buildResult.items.map((item) => [item.id, [...item.prereqs]])),
+    Object.fromEntries(
+      buildResult.items.map((item) => [item.id, [...item.prereqs]]),
+    ),
     project,
   );
   const { items, itemById } = applySchedulePrerequisites(
     buildResult.items,
     schedulePrereqById,
   );
-  const orderedIds = scheduleOrder(buildResult.activeIds, items, schedulePrereqById, project);
-  const scheduleRankById = Object.fromEntries(orderedIds.map((id, index) => [id, index]));
+  const orderedIds = scheduleOrder(
+    buildResult.activeIds,
+    items,
+    schedulePrereqById,
+    project,
+  );
+  const scheduleRankById = Object.fromEntries(
+    orderedIds.map((id, index) => [id, index]),
+  );
   const groups = buildScheduleGroups(
     project,
     buildResult.activeIds,
@@ -73,7 +94,8 @@ export function solveSchedule(
     scheduleRankById,
   };
   const packed =
-    normalizeBackfillMode(project.constraints.backfillMode) === 'lane_preserving'
+    normalizeBackfillMode(project.constraints.backfillMode) ===
+    'lane_preserving'
       ? packLanePreservingSchedule(packingInput)
       : packFlexibleSchedule(packingInput);
   const schedule = sortScheduleItems(packed.schedule);
@@ -83,7 +105,9 @@ export function solveSchedule(
     items: schedule,
     byId: packed.byId,
     selectedAlgorithm: normalizeSchedAlgo(project.constraints.schedAlgo),
-    prereqById: Object.fromEntries(schedule.map((entry) => [entry.id, [...entry.prereqs]])),
+    prereqById: Object.fromEntries(
+      schedule.map((entry) => [entry.id, [...entry.prereqs]]),
+    ),
     graphPrereqsById: Object.fromEntries(
       buildResult.activeIds.map((id) => [
         id,

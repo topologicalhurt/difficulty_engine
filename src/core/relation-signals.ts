@@ -13,7 +13,12 @@ import {
   REFERENCE_WEIGHT_OVERLAP,
   REFERENCE_WEIGHT_PREREQ,
 } from './constants';
-import type { CorpusBook, CorpusSnapshot, PairSignal, TopicIndex } from './internal-types';
+import type {
+  CorpusBook,
+  CorpusSnapshot,
+  PairSignal,
+  TopicIndex,
+} from './internal-types';
 import { clamp } from './utils';
 import { buildCoverageSignal } from './relation-signal-coverage';
 import {
@@ -64,7 +69,11 @@ function prerequisiteScore(input: {
   );
 }
 
-function coStudyScore(overlap: number, symmetry: number, authorMatch: boolean): number {
+function coStudyScore(
+  overlap: number,
+  symmetry: number,
+  authorMatch: boolean,
+): number {
   return clamp(
     overlap * CO_STUDY_WEIGHT_OVERLAP +
       symmetry * CO_STUDY_WEIGHT_SYMMETRY +
@@ -74,7 +83,11 @@ function coStudyScore(overlap: number, symmetry: number, authorMatch: boolean): 
   );
 }
 
-function referenceScore(overlap: number, prereqAB: number, prereqBA: number): number {
+function referenceScore(
+  overlap: number,
+  prereqAB: number,
+  prereqBA: number,
+): number {
   return clamp(
     overlap * REFERENCE_WEIGHT_OVERLAP +
       Math.max(prereqAB, prereqBA) * REFERENCE_WEIGHT_PREREQ,
@@ -121,7 +134,11 @@ export function pairSignal(
     leftId: left.id,
     rightId: right.id,
     ...coverage,
-    coStudyScore: coStudyScore(coverage.overlap, coverage.symmetry, authorMatch),
+    coStudyScore: coStudyScore(
+      coverage.overlap,
+      coverage.symmetry,
+      authorMatch,
+    ),
     prereqAB,
     prereqBA,
     progressionAB: direction.progressionAB,

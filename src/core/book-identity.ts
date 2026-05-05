@@ -1,4 +1,8 @@
-import type { BookRecord, BookSearchSuggestion, PlannerProjectV1 } from './types';
+import type {
+  BookRecord,
+  BookSearchSuggestion,
+  PlannerProjectV1,
+} from './types';
 import { normalizedIsbn } from './isbn';
 
 function normalizedText(value: string | null | undefined): string {
@@ -15,10 +19,15 @@ function normalizedTitle(value: string): string {
 }
 
 function normalizedAuthors(authors: string[]): string {
-  return authors.map((author) => normalizedText(author)).filter(Boolean).join('|');
+  return authors
+    .map((author) => normalizedText(author))
+    .filter(Boolean)
+    .join('|');
 }
 
-export function bookIdentityKey(candidate: Pick<BookRecord, 'title' | 'authors' | 'isbn'>): string {
+export function bookIdentityKey(
+  candidate: Pick<BookRecord, 'title' | 'authors' | 'isbn'>,
+): string {
   const isbn = normalizedIsbn(candidate.isbn);
   if (isbn) {
     return `isbn:${isbn}`;
@@ -50,5 +59,7 @@ export function findMatchingBook(
     }
   }
   const textKey = suggestionIdentityKey(suggestion);
-  return Object.values(project.library.books).find((book) => bookIdentityKey(book) === textKey);
+  return Object.values(project.library.books).find(
+    (book) => bookIdentityKey(book) === textKey,
+  );
 }

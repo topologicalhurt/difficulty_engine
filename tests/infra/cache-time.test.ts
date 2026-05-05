@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  cacheEntryIsFresh,
-  cacheExpiresAt,
-} from '../../src/infra/cache-time';
+import { cacheEntryIsFresh, cacheExpiresAt } from '../../src/infra/cache-time';
 
 describe('cache time helpers', () => {
   it('computes deterministic cache expiry from an injected clock', () => {

@@ -24,7 +24,9 @@ export function round2(value: number): number {
 }
 
 export function mean(values: number[]): number {
-  return values.length ? values.reduce((total, value) => total + value, 0) / values.length : 0;
+  return values.length
+    ? values.reduce((total, value) => total + value, 0) / values.length
+    : 0;
 }
 
 export function sum(values: number[]): number {

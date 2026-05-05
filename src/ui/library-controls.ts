@@ -1,19 +1,22 @@
 import type { AppState } from '../core/types';
-import { badge, el } from './dom';
+import { badge } from './dom';
+import {
+  checkboxControl,
+  numberInputControl,
+  textInputControl,
+} from './form-controls';
 
 export function textInput(
   value: string,
   onInput: (next: string) => void,
   placeholder = '',
-  focusKey?: string,
+  focusKey: string,
 ): HTMLInputElement {
-  return el('input', {
-    className: 'text-input',
-    type: 'text',
+  return textInputControl({
     value,
+    onInput,
     focusKey,
     placeholder,
-    onInput: (event) => onInput((event.target as HTMLInputElement).value),
   });
 }
 
@@ -25,29 +28,30 @@ export function numberInput(
   step = 1,
   focusKey?: string,
 ): HTMLInputElement {
-  const input = el('input', {
-    className: 'text-input',
-    type: 'number',
-    value: String(value),
+  return numberInputControl({
+    value,
+    min,
+    max,
+    step,
     focusKey,
-    onChange: (event) => onInput(Number((event.target as HTMLInputElement).value)),
+    onChange: onInput,
   });
-  input.min = String(min);
-  input.max = String(max);
-  input.step = String(step);
-  return input;
 }
 
-export function checkboxInput(value: boolean, onChange: (next: boolean) => void): HTMLInputElement {
-  return el('input', {
-    className: 'checkbox-input',
-    type: 'checkbox',
+export function checkboxInput(
+  value: boolean,
+  onChange: (next: boolean) => void,
+): HTMLInputElement {
+  return checkboxControl({
     checked: value,
-    onChange: (event) => onChange((event.target as HTMLInputElement).checked),
+    onChange,
   });
 }
 
-export function enrichmentBadge(state: AppState, bookId: string): HTMLElement | null {
+export function enrichmentBadge(
+  state: AppState,
+  bookId: string,
+): HTMLElement | null {
   const entry = state.enrichment.byBookId[bookId];
   if (!entry || entry.status === 'idle') {
     return null;

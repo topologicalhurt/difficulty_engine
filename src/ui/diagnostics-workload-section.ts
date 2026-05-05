@@ -2,7 +2,9 @@ import type { WorkloadClusterView } from '../app/selectors/diagnostics';
 import { badge, card, el } from './dom';
 import { formatOneDecimal, formatPercent } from './format';
 
-export function renderWorkloadClusterDiagnostics(clusters: WorkloadClusterView[]): HTMLElement {
+export function renderWorkloadClusterDiagnostics(
+  clusters: WorkloadClusterView[],
+): HTMLElement {
   return card(
     'Workload clusters',
     clusters.length
@@ -28,7 +30,9 @@ export function renderWorkloadClusterDiagnostics(clusters: WorkloadClusterView[]
                 el(
                   'div',
                   { className: 'badge-row compact-badge-row' },
-                  ...cluster.topPhrases.slice(0, 4).map((phrase) => badge(phrase)),
+                  ...cluster.topPhrases
+                    .slice(0, 4)
+                    .map((phrase) => badge(phrase)),
                 ),
               ),
               el(
@@ -38,7 +42,9 @@ export function renderWorkloadClusterDiagnostics(clusters: WorkloadClusterView[]
                   el(
                     'div',
                     { className: 'stack-row' },
-                    assignment.sparseSpecialized ? badge('sparse lift', 'warn') : badge('clustered'),
+                    assignment.sparseSpecialized
+                      ? badge('sparse lift', 'warn')
+                      : badge('clustered'),
                     el('div', {
                       text: `${assignment.bookLabel}: metadata ${formatPercent(assignment.metadataConfidence)}, prior ${formatOneDecimal(assignment.subjectWorkloadPrior)}, similarity ${formatPercent(assignment.similarityToCluster)}. ${assignment.explanation}`,
                     }),
@@ -48,6 +54,9 @@ export function renderWorkloadClusterDiagnostics(clusters: WorkloadClusterView[]
             ),
           ),
         )
-      : el('div', { className: 'muted-copy', text: 'No workload clusters yet.' }),
+      : el('div', {
+          className: 'muted-copy',
+          text: 'No workload clusters yet.',
+        }),
   );
 }

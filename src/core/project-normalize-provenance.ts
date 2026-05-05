@@ -6,7 +6,9 @@ import {
   normalizeStringArray,
 } from './project-normalize-primitives';
 
-export function normalizeProvenance(value: unknown): EnrichmentFieldProvenance | undefined {
+export function normalizeProvenance(
+  value: unknown,
+): EnrichmentFieldProvenance | undefined {
   if (!value || typeof value !== 'object') {
     return undefined;
   }

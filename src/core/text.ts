@@ -51,7 +51,10 @@ export function canonicalPhrase(phrase: string): string {
   return tokenizeWords(phrase).join(' ').trim();
 }
 
-export function phraseCandidates(text: string, maxN = MAX_PHRASE_NGRAM): string[] {
+export function phraseCandidates(
+  text: string,
+  maxN = MAX_PHRASE_NGRAM,
+): string[] {
   const tokens = tokenizeWords(text);
   const nLimit = Math.max(1, Math.min(MAX_PHRASE_NGRAM, maxN));
   const output: string[] = [];
@@ -75,9 +78,11 @@ export function textSimilarity(left: string, right: string): number {
   leftTokens.forEach((token) => {
     if (rightTokens.has(token)) shared += 1;
   });
-  const jaccard = shared / Math.max(1, leftTokens.size + rightTokens.size - shared);
+  const jaccard =
+    shared / Math.max(1, leftTokens.size + rightTokens.size - shared);
   const containment =
-    String(left || '').includes(String(right || '')) || String(right || '').includes(String(left || ''))
+    String(left || '').includes(String(right || '')) ||
+    String(right || '').includes(String(left || ''))
       ? CONTAINMENT_SIMILARITY_HINT
       : 0;
   return Math.max(containment, jaccard);
@@ -102,7 +107,9 @@ export function weightedCoverage(
   let shared = 0;
   let total = 0;
   keys.forEach((key) => {
-    const idf = Math.log(1 + documentCount / Math.max(1, documentFrequency[key] || 1));
+    const idf = Math.log(
+      1 + documentCount / Math.max(1, documentFrequency[key] || 1),
+    );
     total += (leftCounts[key] || 0) * idf;
     if (rightCounts[key]) {
       shared += Math.min(leftCounts[key] || 0, rightCounts[key] || 0) * idf;
@@ -123,7 +130,13 @@ export function cueProfileForBook(
   chapterTitles: string[],
   description: string,
 ): { intro: number; advanced: number; bridge: number } {
-  const text = [title, short, ...subjects, ...chapterTitles, description || ''].join(' ');
+  const text = [
+    title,
+    short,
+    ...subjects,
+    ...chapterTitles,
+    description || '',
+  ].join(' ');
   return {
     intro: cuePresence(text, INTRO_CUES),
     advanced: cuePresence(text, ADVANCED_CUES),
@@ -131,7 +144,10 @@ export function cueProfileForBook(
   };
 }
 
-export function parseSeriesInfo(title: string): { index: number | null; key: string } {
+export function parseSeriesInfo(title: string): {
+  index: number | null;
+  key: string;
+} {
   const raw = String(title || '');
   const volume = raw.match(SERIES_PATTERN);
   const cleaned = raw
@@ -145,6 +161,9 @@ export function parseSeriesInfo(title: string): { index: number | null; key: str
   };
 }
 
-export function normalizeNumericString(value: string | number | undefined | null, fallback: number): number {
+export function normalizeNumericString(
+  value: string | number | undefined | null,
+  fallback: number,
+): number {
   return safeNumber(value, fallback);
 }

@@ -50,7 +50,13 @@ function renderCalendarChip(
       el(
         'strong',
         { className: 'calendar-chip-title' },
-        entry.boosted ? el('span', { className: 'calendar-boost-icon', title: 'Boost day', text: '!' }) : null,
+        entry.boosted
+          ? el('span', {
+              className: 'calendar-boost-icon',
+              title: 'Boost day',
+              text: '!',
+            })
+          : null,
         el('span', { text: entry.short }),
       ),
       el('span', { className: 'muted-copy', text: `${round0(entry.mins)}m` }),
@@ -59,17 +65,33 @@ function renderCalendarChip(
       className: 'muted-copy',
       text: `${formatOneDecimal(entry.readPages + entry.skimPages)} pages`,
     }),
-    el('div', { className: 'badge-row compact-badge-row' }, ...calendarBadges(entry).map((item) => badge(item.label, item.tone))),
-    el('div', { className: 'calendar-chip-summary', text: active ? 'Logging selected' : 'Click to log' }),
+    el(
+      'div',
+      { className: 'badge-row compact-badge-row' },
+      ...calendarBadges(entry).map((item) => badge(item.label, item.tone)),
+    ),
+    el('div', {
+      className: 'calendar-chip-summary',
+      text: active ? 'Logging selected' : 'Click to log',
+    }),
   );
   chip.style.borderLeft = `3px solid ${viewModel.colors.byBookId[entry.bookId] || 'hsl(160 42% 55%)'}`;
   return chip;
 }
 
-export function renderCalendar(viewModel: PlanViewModel, store: PlannerStore): HTMLElement {
+export function renderCalendar(
+  viewModel: PlanViewModel,
+  store: PlannerStore,
+): HTMLElement {
   const weeks = viewModel.calendarWeeks;
   if (!weeks.length) {
-    return card('Study calendar', emptyState('No study days yet', 'Once the schedule solves, the calendar appears here.'));
+    return card(
+      'Study calendar',
+      emptyState(
+        'No study days yet',
+        'Once the schedule solves, the calendar appears here.',
+      ),
+    );
   }
 
   return card(
@@ -91,13 +113,10 @@ export function renderCalendar(viewModel: PlanViewModel, store: PlannerStore): H
             'div',
             { className: 'calendar-week-grid' },
             ...week.days.map((day) => {
-              const dayMinutes = day.entries.reduce((sum, entry) => sum + entry.mins, 0);
-              const sortedEntries = day.entries
-                .slice()
-                .sort((left, right) => left.lane - right.lane || left.short.localeCompare(right.short));
               const selectDay = (): void => {
-                const firstEntry = sortedEntries[0];
-                if (firstEntry) activateCalendarEntry(day.key, firstEntry, store);
+                const firstEntry = day.sortedEntries[0];
+                if (firstEntry)
+                  activateCalendarEntry(day.key, firstEntry, store);
               };
               return el(
                 'div',
@@ -106,11 +125,15 @@ export function renderCalendar(viewModel: PlanViewModel, store: PlannerStore): H
                   title: day.statusDetail,
                   onClick: selectDay,
                   onKeyDown: (event) => {
-                    if (!sortedEntries.length || (event.key !== 'Enter' && event.key !== ' ')) return;
+                    if (
+                      !day.sortedEntries.length ||
+                      (event.key !== 'Enter' && event.key !== ' ')
+                    )
+                      return;
                     event.preventDefault();
                     selectDay();
                   },
-                  tabIndex: sortedEntries.length ? 0 : undefined,
+                  tabIndex: day.sortedEntries.length ? 0 : undefined,
                 },
                 el(
                   'div',
@@ -118,35 +141,48 @@ export function renderCalendar(viewModel: PlanViewModel, store: PlannerStore): H
                   el(
                     'div',
                     { className: 'calendar-cell-date' },
-                    el('span', { className: 'calendar-cell-weekday', text: day.dayLabel }),
+                    el('span', {
+                      className: 'calendar-cell-weekday',
+                      text: day.dayLabel,
+                    }),
                     el('strong', { text: day.dayNumber }),
                   ),
                   el(
                     'div',
                     { className: 'calendar-day-summary muted-copy' },
-                    day.entries.length
-                      ? `${day.entries.length} book${day.entries.length === 1 ? '' : 's'} · ${round0(dayMinutes)}m`
-                      : day.statusLabel,
+                    day.entrySummary,
                   ),
                 ),
                 day.entries.length
                   ? el(
                       'div',
                       { className: 'calendar-entry-list week-grid-list' },
-                      ...sortedEntries.map((entry) => renderCalendarChip(viewModel, day.key, entry, store)),
+                      ...day.sortedEntries.map((entry) =>
+                        renderCalendarChip(viewModel, day.key, entry, store),
+                      ),
                     )
-                  : el('div', { className: 'muted-copy calendar-empty', text: day.statusLabel, title: day.statusDetail }),
+                  : el('div', {
+                      className: 'muted-copy calendar-empty',
+                      text: day.statusLabel,
+                      title: day.statusDetail,
+                    }),
                 day.missedEntries.length
                   ? el(
                       'div',
                       { className: 'calendar-missed' },
-                      el('div', { className: 'muted-copy', text: `${day.missedEntries.length} deferred` }),
+                      el('div', {
+                        className: 'muted-copy',
+                        text: `${day.missedEntries.length} deferred`,
+                      }),
                       ...day.missedEntries.map((entry) =>
                         button(`Restore ${entry.short}`, {
                           className: 'ghost-button calendar-action-button',
                           onClick: (event) => {
                             event.stopPropagation();
-                            store.commands.clearCalendarEntryActual(day.key, entry.bookId);
+                            store.commands.clearCalendarEntryActual(
+                              day.key,
+                              entry.bookId,
+                            );
                           },
                         }),
                       ),

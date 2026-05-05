@@ -2,15 +2,39 @@ import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createReadStream } from 'node:fs';
-import { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import {
+  basename,
+  extname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 
 const DEFAULT_LISTEN_URL = 'http://127.0.0.1:8787';
 const DEFAULT_TARGET_URL = 'http://127.0.0.1:8080';
-const DEFAULT_DATA_ROOT = resolve(process.cwd(), 'data', 'documents');
+const DEFAULT_DATA_ROOT = resolve(process.cwd(), 'output', 'data', 'documents');
 const DEFAULT_TIMEOUT_MS = 30_000;
-const DEFAULT_ALLOWED_ORIGINS = ['http://127.0.0.1:*', 'http://localhost:*', 'http://[::1]:*'];
+const PROXY_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
+const DOCUMENT_JSON_BODY_LIMIT_BYTES = 16 * 1024;
+const DOCUMENT_TEXT_READ_LIMIT_BYTES = 8 * 1024 * 1024;
+const DOCUMENT_BYTE_READ_LIMIT_BYTES = 32 * 1024 * 1024;
+const DOCUMENT_PDF_TEXT_FILE_LIMIT_BYTES = 80 * 1024 * 1024;
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://127.0.0.1:*',
+  'http://localhost:*',
+  'http://[::1]:*',
+];
 const PDF_TEXT_PAGE_LIMIT = 80;
 const PDF_TEXT_TIMEOUT_MS = 20_000;
 const TEXT_EXTENSIONS = new Set(['.txt', '.text']);
@@ -53,7 +77,7 @@ const pdfKitHelperCache = new Map();
 
 function argValue(name, fallback = '') {
   const index = process.argv.indexOf(name);
-  return index >= 0 ? process.argv[index + 1] ?? fallback : fallback;
+  return index >= 0 ? (process.argv[index + 1] ?? fallback) : fallback;
 }
 
 function trimBaseUrl(value) {
@@ -68,24 +92,16 @@ function parseAllowedOrigins(value) {
     .filter(Boolean);
 }
 
-function isLoopbackOrigin(origin) {
-  try {
-    const parsed = new URL(origin);
-    return ['http:', 'https:'].includes(parsed.protocol) &&
-      ['localhost', '127.0.0.1', '[::1]', '::1'].includes(parsed.hostname);
-  } catch {
-    return false;
-  }
-}
-
 function originMatchesPattern(origin, pattern) {
   if (pattern === origin) return true;
   if (!pattern.endsWith(':*')) return false;
   try {
     const parsedOrigin = new URL(origin);
     const parsedPattern = new URL(pattern.slice(0, -2));
-    return parsedOrigin.protocol === parsedPattern.protocol &&
-      parsedOrigin.hostname === parsedPattern.hostname;
+    return (
+      parsedOrigin.protocol === parsedPattern.protocol &&
+      parsedOrigin.hostname === parsedPattern.hostname
+    );
   } catch {
     return false;
   }
@@ -94,8 +110,9 @@ function originMatchesPattern(origin, pattern) {
 function originAllowed(req, allowedOrigins) {
   const origin = req.headers.origin;
   if (!origin) return true;
-  if (isLoopbackOrigin(origin)) return true;
-  return allowedOrigins.some((allowed) => originMatchesPattern(origin, allowed));
+  return allowedOrigins.some((allowed) =>
+    originMatchesPattern(origin, allowed),
+  );
 }
 
 function setCors(req, res, allowedOrigins = DEFAULT_ALLOWED_ORIGINS) {
@@ -113,16 +130,59 @@ function rejectDisallowedOrigin(req, res, allowedOrigins) {
   if (originAllowed(req, allowedOrigins)) return false;
   res.statusCode = 403;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.end(JSON.stringify({ ok: false, error: 'Origin is not allowed by the qBittorrent bridge.' }));
+  res.end(
+    JSON.stringify({
+      ok: false,
+      error: 'Origin is not allowed by the qBittorrent bridge.',
+    }),
+  );
   return true;
 }
 
-function readBody(req) {
+function supportedDocumentKind(filePath) {
+  return contentKindFromPath(filePath) !== 'unknown';
+}
+
+async function assertSupportedDocumentFile(dataRoot, requestPath) {
+  const filePath = resolveDocumentPath(dataRoot, requestPath);
+  const fileStat = await stat(filePath);
+  if (!fileStat.isFile()) {
+    throw new Error('Document path is not a file.');
+  }
+  if (!supportedDocumentKind(filePath)) {
+    throw new Error('Only text, EPUB, and PDF documents can be accessed.');
+  }
+  return filePath;
+}
+
+async function assertDocumentSize(filePath, limitBytes, label) {
+  const fileStat = await stat(filePath);
+  if (fileStat.size > limitBytes) {
+    throw new Error(`${label} is too large to read through the bridge.`);
+  }
+}
+
+function readBody(req, maxBytes = PROXY_BODY_LIMIT_BYTES) {
   return new Promise((resolveRead, rejectRead) => {
     const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
+    let totalBytes = 0;
+    let tooLarge = false;
+    req.on('data', (chunk) => {
+      totalBytes += chunk.length;
+      if (totalBytes > maxBytes) {
+        tooLarge = true;
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('error', rejectRead);
-    req.on('end', () => resolveRead(Buffer.concat(chunks)));
+    req.on('end', () => {
+      if (tooLarge) {
+        rejectRead(new Error('Request body is too large.'));
+        return;
+      }
+      resolveRead(Buffer.concat(chunks));
+    });
   });
 }
 
@@ -150,7 +210,13 @@ function forwardHeaders(req, cookie) {
   return headers;
 }
 
-function writeBridgeError(req, res, status, message, allowedOrigins = DEFAULT_ALLOWED_ORIGINS) {
+function writeBridgeError(
+  req,
+  res,
+  status,
+  message,
+  allowedOrigins = DEFAULT_ALLOWED_ORIGINS,
+) {
   setCors(req, res, allowedOrigins);
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -160,7 +226,8 @@ function writeBridgeError(req, res, status, message, allowedOrigins = DEFAULT_AL
 function contentTypeFromPath(filePath) {
   const lower = filePath.toLowerCase();
   const extension = extname(lower);
-  if (TEXT_EXTENSIONS.has(extension) || OCR_TEXT_PATTERN.test(lower)) return 'text/plain; charset=utf-8';
+  if (TEXT_EXTENSIONS.has(extension) || OCR_TEXT_PATTERN.test(lower))
+    return 'text/plain; charset=utf-8';
   if (PDF_EXTENSIONS.has(extension)) return 'application/pdf';
   if (EPUB_EXTENSIONS.has(extension)) return 'application/epub+zip';
   return 'application/octet-stream';
@@ -182,7 +249,10 @@ function isWithinRoot(root, candidate) {
 }
 
 function resolveRootSuffixPath(root, requestPath) {
-  const requestParts = requestPath.replace(/\\/g, '/').split('/').filter(Boolean);
+  const requestParts = requestPath
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean);
   const rootParts = root.replace(/\\/g, '/').split('/').filter(Boolean);
   const maxTail = Math.min(requestParts.length, rootParts.length);
   for (let tailSize = maxTail; tailSize > 0; tailSize -= 1) {
@@ -224,7 +294,9 @@ function resolveDocumentPath(dataRoot, requestPath) {
 }
 
 function documentUrlPath(req) {
-  return new URL(req.url || '/', DEFAULT_LISTEN_URL).searchParams.get('path') || '';
+  return (
+    new URL(req.url || '/', DEFAULT_LISTEN_URL).searchParams.get('path') || ''
+  );
 }
 
 async function sha256(filePath) {
@@ -264,7 +336,7 @@ async function listDocuments(dataRoot, startPath = '') {
     const absolutePath = join(start, entry.name);
     if (!isWithinRoot(root, absolutePath)) continue;
     if (entry.isDirectory()) {
-      files.push(...await listDocuments(root, absolutePath));
+      files.push(...(await listDocuments(root, absolutePath)));
     } else if (entry.isFile()) {
       const fileStat = await stat(absolutePath);
       files.push({
@@ -282,17 +354,18 @@ async function listDocuments(dataRoot, startPath = '') {
 }
 
 async function readJsonBody(req) {
-  const raw = await readBody(req);
+  const raw = await readBody(req, DOCUMENT_JSON_BODY_LIMIT_BYTES);
   if (!raw.length) return {};
   return JSON.parse(raw.toString('utf8'));
 }
 
 function openFile(filePath) {
-  const command = process.platform === 'darwin'
-    ? 'open'
-    : process.platform === 'win32'
-      ? 'explorer.exe'
-      : 'xdg-open';
+  const command =
+    process.platform === 'darwin'
+      ? 'open'
+      : process.platform === 'win32'
+        ? 'explorer.exe'
+        : 'xdg-open';
   const args = [filePath];
   const child = spawn(command, args, { detached: true, stdio: 'ignore' });
   child.unref();
@@ -320,7 +393,12 @@ function runProcess(command, args, timeoutMs = DEFAULT_TIMEOUT_MS) {
         resolveRun(output);
         return;
       }
-      rejectRun(new Error(Buffer.concat(stderr).toString('utf8') || `${command} exited with ${code}`));
+      rejectRun(
+        new Error(
+          Buffer.concat(stderr).toString('utf8') ||
+            `${command} exited with ${code}`,
+        ),
+      );
     });
   });
 }
@@ -333,11 +411,17 @@ async function pdfKitHelperPath(dataRoot) {
   const cached = pdfKitHelperCache.get(root);
   if (cached) return cached;
   const promise = (async () => {
-    const bridgeDir = await mkdtemp(join(tmpdir(), 'difficulty-engine-pdfkit-'));
+    const bridgeDir = await mkdtemp(
+      join(tmpdir(), 'difficulty-engine-pdfkit-'),
+    );
     const sourcePath = join(bridgeDir, 'pdfkit-text-extract.swift');
     const binaryPath = join(bridgeDir, 'pdfkit-text-extract');
     await writeFile(sourcePath, PDFKIT_HELPER_SOURCE, 'utf8');
-    await runProcess('/usr/bin/swiftc', ['-framework', 'PDFKit', sourcePath, '-o', binaryPath], PDF_TEXT_TIMEOUT_MS);
+    await runProcess(
+      '/usr/bin/swiftc',
+      ['-framework', 'PDFKit', sourcePath, '-o', binaryPath],
+      PDF_TEXT_TIMEOUT_MS,
+    );
     return binaryPath;
   })();
   pdfKitHelperCache.set(root, promise);
@@ -353,12 +437,19 @@ async function extractPdfText(dataRoot, filePath) {
   );
   const text = output.toString('utf8').trim();
   if (!text) {
-    throw new Error('PDF contains no extractable embedded text in the scanned page range.');
+    throw new Error(
+      'PDF contains no extractable embedded text in the scanned page range.',
+    );
   }
   return text;
 }
 
-async function handleDocumentRequest(req, res, dataRoot, allowedOrigins = DEFAULT_ALLOWED_ORIGINS) {
+async function handleDocumentRequest(
+  req,
+  res,
+  dataRoot,
+  allowedOrigins = DEFAULT_ALLOWED_ORIGINS,
+) {
   const pathname = new URL(req.url || '/', DEFAULT_LISTEN_URL).pathname;
   try {
     if (pathname === '/documents/list' && req.method === 'GET') {
@@ -374,30 +465,56 @@ async function handleDocumentRequest(req, res, dataRoot, allowedOrigins = DEFAUL
       return true;
     }
     if (pathname === '/documents/read-text' && req.method === 'GET') {
-      const filePath = resolveDocumentPath(dataRoot, documentUrlPath(req));
+      const filePath = await assertSupportedDocumentFile(
+        dataRoot,
+        documentUrlPath(req),
+      );
       const lower = filePath.toLowerCase();
       if (PDF_EXTENSIONS.has(extname(lower))) {
+        await assertDocumentSize(
+          filePath,
+          DOCUMENT_PDF_TEXT_FILE_LIMIT_BYTES,
+          'PDF document',
+        );
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.end(await extractPdfText(dataRoot, filePath));
         return true;
       }
-      if (!TEXT_EXTENSIONS.has(extname(lower)) && !OCR_TEXT_PATTERN.test(lower)) {
+      if (
+        !TEXT_EXTENSIONS.has(extname(lower)) &&
+        !OCR_TEXT_PATTERN.test(lower)
+      ) {
         throw new Error('Only text documents can be read as text.');
       }
+      await assertDocumentSize(
+        filePath,
+        DOCUMENT_TEXT_READ_LIMIT_BYTES,
+        'Text document',
+      );
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.end(await readFile(filePath, 'utf8'));
       return true;
     }
     if (pathname === '/documents/read-bytes' && req.method === 'GET') {
-      const filePath = resolveDocumentPath(dataRoot, documentUrlPath(req));
+      const filePath = await assertSupportedDocumentFile(
+        dataRoot,
+        documentUrlPath(req),
+      );
+      await assertDocumentSize(
+        filePath,
+        DOCUMENT_BYTE_READ_LIMIT_BYTES,
+        'Document',
+      );
       res.setHeader('Content-Type', contentTypeFromPath(filePath));
       res.end(await readFile(filePath));
       return true;
     }
     if (pathname === '/documents/open' && req.method === 'POST') {
       const body = await readJsonBody(req);
-      const filePath = resolveDocumentPath(dataRoot, String(body.path || ''));
-      await stat(filePath);
+      const filePath = await assertSupportedDocumentFile(
+        dataRoot,
+        String(body.path || ''),
+      );
       openFile(filePath);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ ok: true, path: filePath }));
@@ -405,7 +522,13 @@ async function handleDocumentRequest(req, res, dataRoot, allowedOrigins = DEFAUL
     }
     return false;
   } catch (error) {
-    writeBridgeError(req, res, 400, error instanceof Error ? error.message : String(error), allowedOrigins);
+    writeBridgeError(
+      req,
+      res,
+      400,
+      error instanceof Error ? error.message : String(error),
+      allowedOrigins,
+    );
     return true;
   }
 }
@@ -421,7 +544,9 @@ export function createQbittorrentBridgeServer({
   let sessionCookie = '';
   const cleanTargetBaseUrl = trimBaseUrl(targetBaseUrl);
   const cleanDataRoot = resolve(dataRoot);
-  const cleanAllowedOrigins = allowedOrigins.length ? allowedOrigins : [...DEFAULT_ALLOWED_ORIGINS];
+  const cleanAllowedOrigins = allowedOrigins.length
+    ? allowedOrigins
+    : [...DEFAULT_ALLOWED_ORIGINS];
   const server = createServer(async (req, res) => {
     if (rejectDisallowedOrigin(req, res, cleanAllowedOrigins)) return;
     setCors(req, res, cleanAllowedOrigins);
@@ -434,16 +559,26 @@ export function createQbittorrentBridgeServer({
     const pathname = new URL(req.url || '/', listenUrl).pathname;
     if (pathname === '/__health') {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify({
-        ok: true,
-        targetBaseUrl: cleanTargetBaseUrl,
-        dataRoot: cleanDataRoot,
-        allowedOrigins: cleanAllowedOrigins,
-      }));
+      res.end(
+        JSON.stringify({
+          ok: true,
+          targetBaseUrl: cleanTargetBaseUrl,
+          dataRoot: cleanDataRoot,
+          allowedOrigins: cleanAllowedOrigins,
+        }),
+      );
       return;
     }
     if (pathname.startsWith('/documents/')) {
-      if (await handleDocumentRequest(req, res, cleanDataRoot, cleanAllowedOrigins)) return;
+      if (
+        await handleDocumentRequest(
+          req,
+          res,
+          cleanDataRoot,
+          cleanAllowedOrigins,
+        )
+      )
+        return;
     }
     if (!pathname.startsWith('/api/v2/')) {
       res.statusCode = 302;
@@ -455,9 +590,10 @@ export function createQbittorrentBridgeServer({
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const body = req.method === 'GET' || req.method === 'HEAD'
-        ? undefined
-        : await readBody(req);
+      const body =
+        req.method === 'GET' || req.method === 'HEAD'
+          ? undefined
+          : await readBody(req);
       const upstream = await fetchImpl(targetUrl(cleanTargetBaseUrl, req.url), {
         method: req.method,
         headers: forwardHeaders(req, sessionCookie),
@@ -478,7 +614,13 @@ export function createQbittorrentBridgeServer({
       res.end(Buffer.from(await upstream.arrayBuffer()));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      writeBridgeError(req, res, 502, message || 'qBittorrent bridge request failed', cleanAllowedOrigins);
+      writeBridgeError(
+        req,
+        res,
+        502,
+        message || 'qBittorrent bridge request failed',
+        cleanAllowedOrigins,
+      );
     } finally {
       clearTimeout(timeout);
     }
@@ -487,25 +629,56 @@ export function createQbittorrentBridgeServer({
 }
 
 async function main() {
-  const listenUrl = trimBaseUrl(argValue('--listen', process.env.QBITTORRENT_BRIDGE_URL || DEFAULT_LISTEN_URL));
-  const targetBaseUrl = trimBaseUrl(argValue('--target', process.env.QBITTORRENT_URL || DEFAULT_TARGET_URL));
-  const dataRoot = resolve(argValue('--data-root', process.env.QBITTORRENT_DATA_ROOT || DEFAULT_DATA_ROOT));
-  const timeoutMs = Number(argValue('--timeout-ms', String(DEFAULT_TIMEOUT_MS))) || DEFAULT_TIMEOUT_MS;
-  const allowedOrigins = parseAllowedOrigins(argValue('--allowed-origin', process.env.QBITTORRENT_BRIDGE_ALLOWED_ORIGINS || ''));
+  const listenUrl = trimBaseUrl(
+    argValue(
+      '--listen',
+      process.env.QBITTORRENT_BRIDGE_URL || DEFAULT_LISTEN_URL,
+    ),
+  );
+  const targetBaseUrl = trimBaseUrl(
+    argValue('--target', process.env.QBITTORRENT_URL || DEFAULT_TARGET_URL),
+  );
+  const dataRoot = resolve(
+    argValue(
+      '--data-root',
+      process.env.QBITTORRENT_DATA_ROOT || DEFAULT_DATA_ROOT,
+    ),
+  );
+  const timeoutMs =
+    Number(argValue('--timeout-ms', String(DEFAULT_TIMEOUT_MS))) ||
+    DEFAULT_TIMEOUT_MS;
+  const allowedOrigins = parseAllowedOrigins(
+    argValue(
+      '--allowed-origin',
+      process.env.QBITTORRENT_BRIDGE_ALLOWED_ORIGINS || '',
+    ),
+  );
   await mkdir(dataRoot, { recursive: true });
   const listen = new URL(listenUrl);
-  const server = createQbittorrentBridgeServer({ listenUrl, targetBaseUrl, dataRoot, timeoutMs, allowedOrigins });
+  const server = createQbittorrentBridgeServer({
+    listenUrl,
+    targetBaseUrl,
+    dataRoot,
+    timeoutMs,
+    allowedOrigins,
+  });
   await new Promise((resolveListen) => {
     server.listen(Number(listen.port || 80), listen.hostname, resolveListen);
   });
-  process.stdout.write(`qBittorrent browser bridge listening at ${listenUrl}, forwarding to ${targetBaseUrl}\n`);
+  process.stdout.write(
+    `qBittorrent browser bridge listening at ${listenUrl}, forwarding to ${targetBaseUrl}\n`,
+  );
   process.stdout.write(`Document data root: ${dataRoot}\n`);
-  process.stdout.write(`Allowed browser origins: ${allowedOrigins.join(', ')}\n`);
+  process.stdout.write(
+    `Allowed browser origins: ${allowedOrigins.join(', ')}\n`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
     process.exitCode = 1;
   });
 }

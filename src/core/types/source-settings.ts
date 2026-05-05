@@ -1,5 +1,12 @@
-export type MetadataSourceKey = 'openlibrary' | 'googleBooks' | 'internetArchive';
-export type DocumentSourceKey = 'directUrl' | 'localFile' | 'internetArchiveText' | 'qbittorrent';
+export type MetadataSourceKey =
+  | 'openlibrary'
+  | 'googleBooks'
+  | 'internetArchive';
+export type DocumentSourceKey =
+  | 'directUrl'
+  | 'localFile'
+  | 'internetArchiveText'
+  | 'qbittorrent';
 export type SourceContentKind = 'text' | 'epub' | 'ocr_text' | 'pdf';
 
 export interface SourceProviderMask {

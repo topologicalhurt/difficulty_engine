@@ -19,7 +19,10 @@ function tokenSet(value: string | undefined): Set<string> {
   );
 }
 
-export function archiveTokenSimilarity(left: string | undefined, right: string | undefined): number {
+export function archiveTokenSimilarity(
+  left: string | undefined,
+  right: string | undefined,
+): number {
   const leftTokens = tokenSet(left);
   const rightTokens = tokenSet(right);
   if (!leftTokens.size || !rightTokens.size) return 0;
@@ -34,7 +37,10 @@ function creatorText(value: ArchiveSearchDoc['creator']): string {
   return Array.isArray(value) ? value.join(' ') : String(value ?? '');
 }
 
-export function creatorConflictsForGenericTitle(book: BookRecord, doc: ArchiveSearchDoc): boolean {
+export function creatorConflictsForGenericTitle(
+  book: BookRecord,
+  doc: ArchiveSearchDoc,
+): boolean {
   const creator = creatorText(doc.creator);
   if (!creator || !book.authors.length) return false;
   const authorScore = Math.max(
@@ -44,27 +50,37 @@ export function creatorConflictsForGenericTitle(book: BookRecord, doc: ArchiveSe
   return tokenSet(book.title).size <= 3 && authorScore < 0.12;
 }
 
-export function archiveRelevance(book: BookRecord, doc: ArchiveSearchDoc): number {
+export function archiveRelevance(
+  book: BookRecord,
+  doc: ArchiveSearchDoc,
+): number {
   const titleScore = archiveTokenSimilarity(book.title, doc.title);
   const authorScore = Math.max(
     0,
-    ...book.authors.map((author) => archiveTokenSimilarity(author, creatorText(doc.creator))),
+    ...book.authors.map((author) =>
+      archiveTokenSimilarity(author, creatorText(doc.creator)),
+    ),
   );
   return titleScore * 0.78 + authorScore * 0.22;
 }
 
 export function archiveSearchUrls(book: BookRecord): string[] {
   const urls: string[] = [];
-  const isbn = isFullIsbnQuery(book.isbn ?? '') ? cleanedIsbn(book.isbn ?? '') : '';
+  const isbn = isFullIsbnQuery(book.isbn ?? '')
+    ? cleanedIsbn(book.isbn ?? '')
+    : '';
   const buildUrl = (query: string): string => {
     const params = new URLSearchParams();
     params.set('q', query);
-    ['identifier', 'title', 'creator'].forEach((field) => params.append('fl[]', field));
+    ['identifier', 'title', 'creator'].forEach((field) =>
+      params.append('fl[]', field),
+    );
     params.set('rows', String(ARCHIVE_SEARCH_ROWS));
     params.set('output', 'json');
     return `https://archive.org/advancedsearch.php?${params.toString()}`;
   };
   if (isbn) urls.push(buildUrl(`isbn:(${isbn})`));
-  if (book.title.trim()) urls.push(buildUrl(`title:("${book.title.replace(/"/g, ' ')}")`));
+  if (book.title.trim())
+    urls.push(buildUrl(`title:("${book.title.replace(/"/g, ' ')}")`));
   return Array.from(new Set(urls));
 }

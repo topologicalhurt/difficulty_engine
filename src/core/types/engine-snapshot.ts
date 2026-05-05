@@ -1,5 +1,8 @@
 import type { AuditReport } from './warnings';
-import type { DifficultyBreakdown, WorkloadClusterSummary } from './difficulty-snapshot';
+import type {
+  DifficultyBreakdown,
+  WorkloadClusterSummary,
+} from './difficulty-snapshot';
 import type { RelationEvidence } from './relation-snapshot';
 import type { RenderModel } from './render-snapshot';
 import type {

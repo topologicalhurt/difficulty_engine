@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_CONSTRAINTS, EXAMPLE_BOOK, createDefaultSourceSettings } from '../../src/core/defaults';
+import {
+  DEFAULT_CONSTRAINTS,
+  EXAMPLE_BOOK,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
 import type { BookRecord, PlannerProjectV1 } from '../../src/core/types';
 import { computeSnapshot } from './engine-test-utils';
 
-function book(id: string, title: string, planOrder: number, owned = true): BookRecord {
+function book(
+  id: string,
+  title: string,
+  planOrder: number,
+  owned = true,
+): BookRecord {
   return {
     ...EXAMPLE_BOOK,
     id,
@@ -47,9 +57,14 @@ function project(): PlannerProjectV1 {
       applyOverlapSkim: false,
       mutualEnabled: false,
     },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
 }
 

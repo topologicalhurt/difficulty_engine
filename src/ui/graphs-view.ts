@@ -25,13 +25,18 @@ function renderGraphOptions(state: AppState, store: PlannerStore): HTMLElement {
       el(
         'div',
         { className: 'form-grid settings-grid graph-options-grid' },
-        ...fields.map((field) => renderConstraintField(field, viewModel.constraints, store)),
+        ...fields.map((field) =>
+          renderConstraintField(field, viewModel.constraints, store),
+        ),
       ),
     ),
   );
 }
 
-export function renderGraphsView(state: AppState, store: PlannerStore): HTMLElement {
+export function renderGraphsView(
+  state: AppState,
+  store: PlannerStore,
+): HTMLElement {
   return el(
     'div',
     { className: 'stack-layout' },

@@ -34,7 +34,10 @@ function addEntry(
   return entry;
 }
 
-function scheduleRank(input: SchedulePackingInput, item: SchedulePlanItem): number {
+function scheduleRank(
+  input: SchedulePackingInput,
+  item: SchedulePlanItem,
+): number {
   return input.scheduleRankById[item.id] ?? input.orderedGroups.length;
 }
 

@@ -1,6 +1,10 @@
 .DS_Store
+.env
+.env.*
+!.env.example
 node_modules/
 coverage/
 test-results/
 scripts/__pycache__/
 *.pyc
+output/data/documents/

@@ -4,6 +4,7 @@ import { createPlannerEngine } from '../../src/core/engine';
 import {
   DEFAULT_CONSTRAINTS,
   EXAMPLE_BOOK,
+  createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
 } from '../../src/core/defaults';
 import type { PlannerProjectV1 } from '../../src/core/types';
@@ -26,7 +27,8 @@ function characterizationProject(): PlannerProjectV1 {
           planOrder: 0,
           enrichment: {
             chapters: ['Planning basics', 'Systems overview', 'Review'],
-            description: 'A first course in planning basics and systems overview.',
+            description:
+              'A first course in planning basics and systems overview.',
             olSubjects: ['planning'],
             tocSource: 'manual',
           },
@@ -43,8 +45,13 @@ function characterizationProject(): PlannerProjectV1 {
           manualCoStudy: ['parallel'],
           planOrder: 1,
           enrichment: {
-            chapters: ['Advanced methods', 'Systems integration', 'Planning review'],
-            description: 'Advanced methods that build on planning basics and systems overview.',
+            chapters: [
+              'Advanced methods',
+              'Systems integration',
+              'Planning review',
+            ],
+            description:
+              'Advanced methods that build on planning basics and systems overview.',
             olSubjects: ['systems'],
             tocSource: 'manual',
           },
@@ -83,9 +90,14 @@ function characterizationProject(): PlannerProjectV1 {
       feasibilityMode: 'strict_floor',
       applyOverlapSkim: false,
     },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: createDefaultSourceSettings(),
     enrichmentCache: {},
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
 }
 
@@ -103,12 +115,18 @@ describe('refactor characterization', () => {
       'advanced',
     ]);
     expect(first.graphPrereqsById.advanced).toContain('foundations');
-    expect(first.relations).toContainEqual(expect.objectContaining({
-      from: 'advanced',
-      to: 'parallel',
-      type: 'co-study',
-    }));
-    expect(Object.values(first.dayPlan.byBookStats).every((stat) => stat.unfinishedPages === 0)).toBe(true);
+    expect(first.relations).toContainEqual(
+      expect.objectContaining({
+        from: 'advanced',
+        to: 'parallel',
+        type: 'co-study',
+      }),
+    );
+    expect(
+      Object.values(first.dayPlan.byBookStats).every(
+        (stat) => stat.unfinishedPages === 0,
+      ),
+    ).toBe(true);
     expect(first.scheduleStats.finishDate).toBeTruthy();
   });
 });

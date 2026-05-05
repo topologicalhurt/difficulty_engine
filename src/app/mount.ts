@@ -1,8 +1,19 @@
 import { createPlannerStore } from './store';
 import { createPlannerEngine } from '../core/engine';
 import { createEmptyProject, normalizeProject } from '../core/project-file';
-import type { MountPlannerAppOptions, PlannerAppHandle } from '../core/types';
+import type {
+  Logger,
+  MountPlannerAppOptions,
+  PersistenceAdapter,
+  PlannerAppHandle,
+  PlannerProjectV1,
+} from '../core/types';
+import { createAiRecommendationClient } from '../infra/ai-recommendation-client';
 import { renderApp } from '../ui/app-shell';
+
+type ScheduledRender =
+  | { kind: 'animation-frame'; id: number }
+  | { kind: 'timeout'; id: ReturnType<typeof globalThis.setTimeout> };
 
 async function resolveInitialProject(
   options: MountPlannerAppOptions,
@@ -26,6 +37,57 @@ async function resolveInitialProject(
   }
 }
 
+export interface ProjectSaveQueue {
+  enqueue(project: PlannerProjectV1): void;
+  flush(): Promise<void>;
+}
+
+export function createProjectSaveQueue(
+  persistence: PersistenceAdapter,
+  logger: Logger,
+): ProjectSaveQueue {
+  let pendingProject: PlannerProjectV1 | null = null;
+  let runPromise: Promise<void> | null = null;
+
+  async function save(project: PlannerProjectV1): Promise<void> {
+    try {
+      await persistence.save(project);
+    } catch (error) {
+      logger.warn('planner.persistence.save-failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  function start(): Promise<void> {
+    runPromise ??= (async () => {
+      try {
+        while (pendingProject) {
+          const project = pendingProject;
+          pendingProject = null;
+          await save(project);
+        }
+      } finally {
+        runPromise = null;
+        if (pendingProject) void start();
+      }
+    })();
+    return runPromise;
+  }
+
+  return {
+    enqueue(project: PlannerProjectV1): void {
+      pendingProject = project;
+      void start();
+    },
+    async flush(): Promise<void> {
+      while (pendingProject || runPromise) {
+        await start();
+      }
+    },
+  };
+}
+
 export async function mountPlannerApp(
   options: MountPlannerAppOptions,
 ): Promise<PlannerAppHandle> {
@@ -38,6 +100,11 @@ export async function mountPlannerApp(
     initialProject,
     engine,
     enrichmentProvider: options.enrichmentProvider,
+    aiRecommendationProvider:
+      options.aiRecommendationProvider ??
+      createAiRecommendationClient({
+        logger: options.logger,
+      }),
     localSettings: options.localSettings,
     qbittorrentService: options.qbittorrentService,
     logger: options.logger,
@@ -48,17 +115,54 @@ export async function mountPlannerApp(
   host.className = 'difficulty-engine-app';
   options.container.replaceChildren(host);
 
-  const unsubscribeState = store.subscriptions.subscribe((state) => {
-    renderApp(host, state, store);
-    if (options.persistence) {
-      void Promise.resolve(options.persistence.save(state.project)).catch((error) => {
-        options.logger.warn('planner.persistence.save-failed', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+  let latestState = store.selectors.getState();
+  let pendingRender: ScheduledRender | null = null;
+  let mounted = true;
+  const saveQueue = options.persistence
+    ? createProjectSaveQueue(options.persistence, options.logger)
+    : null;
+
+  function scheduleRender(callback: () => void): ScheduledRender {
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      return {
+        kind: 'animation-frame',
+        id: globalThis.requestAnimationFrame(callback),
+      };
+    }
+    return {
+      kind: 'timeout',
+      id: globalThis.setTimeout(callback, 0),
+    };
+  }
+
+  function cancelRender(render: ScheduledRender): void {
+    if (render.kind === 'animation-frame') {
+      globalThis.cancelAnimationFrame(render.id);
+      return;
+    }
+    globalThis.clearTimeout(render.id);
+  }
+
+  function flushRender(): void {
+    pendingRender = null;
+    if (!mounted) return;
+    try {
+      renderApp(host, latestState, store);
+    } catch (error) {
+      options.logger.error('planner.render.failed', {
+        error: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  const unsubscribeState = store.subscriptions.subscribe((state) => {
+    latestState = state;
+    pendingRender ??= scheduleRender(flushRender);
   });
   const unsubscribeEvents = store.subscriptions.subscribeEvents((event) => {
+    if (event.type === 'project-changed' && saveQueue) {
+      saveQueue.enqueue(event.project);
+    }
     if (event.type === 'blocking-warning-raised') {
       options.logger.warn('planner.blocking-warning', event.payload);
     }
@@ -66,9 +170,12 @@ export async function mountPlannerApp(
 
   return {
     store,
-    unmount(): void {
+    async unmount(): Promise<void> {
+      mounted = false;
+      if (pendingRender) cancelRender(pendingRender);
       unsubscribeState();
       unsubscribeEvents();
+      if (saveQueue) await saveQueue.flush();
       options.container.replaceChildren();
     },
   };

@@ -17,8 +17,20 @@ describe('diagnostics view model', () => {
       snapshot: {
         diagnostics: { passes: [], warns: [], fails: [] },
         relations: [
-          { from: 'b', to: 'a', type: 'prerequisite', score: 0.7, confidence: 0.7 },
-          { from: 'a', to: 'b', type: 'prerequisite', score: 0.7, confidence: 0.7 },
+          {
+            from: 'b',
+            to: 'a',
+            type: 'prerequisite',
+            score: 0.7,
+            confidence: 0.7,
+          },
+          {
+            from: 'a',
+            to: 'b',
+            type: 'prerequisite',
+            score: 0.7,
+            confidence: 0.7,
+          },
         ],
         difficultyModel: {
           b: { scheduleDifficulty: 5 },
@@ -31,10 +43,12 @@ describe('diagnostics view model', () => {
 
     const viewModel = selectDiagnosticsViewModel(state);
 
-    expect(viewModel.relations.map((relation) => `${relation.from}->${relation.to}`)).toEqual([
-      'a->b',
-      'b->a',
+    expect(
+      viewModel.relations.map((relation) => `${relation.from}->${relation.to}`),
+    ).toEqual(['a->b', 'b->a']);
+    expect(viewModel.difficultyRows.map((row) => row.bookId)).toEqual([
+      'a',
+      'b',
     ]);
-    expect(viewModel.difficultyRows.map((row) => row.bookId)).toEqual(['a', 'b']);
   });
 });

@@ -11,12 +11,16 @@ import { WORKLOAD_FINGERPRINT_DISTANCE } from './workload-cluster-config';
 import { weightedJaccard } from './workload-math';
 import type { WorkloadProfile } from './workload-profiles';
 
-function workloadFingerprintSimilarity(left: WorkloadProfile, right: WorkloadProfile): number {
+function workloadFingerprintSimilarity(
+  left: WorkloadProfile,
+  right: WorkloadProfile,
+): number {
   return (
     1 -
     Math.min(
       1,
-      Math.abs(left.initialWorkload - right.initialWorkload) / WORKLOAD_FINGERPRINT_DISTANCE,
+      Math.abs(left.initialWorkload - right.initialWorkload) /
+        WORKLOAD_FINGERPRINT_DISTANCE,
     )
   );
 }
@@ -32,10 +36,13 @@ function profileSimilarity(
     : 0;
   return round2(
     clamp(
-      weightedJaccard(left.topicWeights, right.topicWeights) * WORKLOAD_TOPIC_SIMILARITY_WEIGHT +
-        weightedJaccard(left.tokenWeights, right.tokenWeights) * WORKLOAD_TOKEN_SIMILARITY_WEIGHT +
+      weightedJaccard(left.topicWeights, right.topicWeights) *
+        WORKLOAD_TOPIC_SIMILARITY_WEIGHT +
+        weightedJaccard(left.tokenWeights, right.tokenWeights) *
+          WORKLOAD_TOKEN_SIMILARITY_WEIGHT +
         relationSimilarity * WORKLOAD_RELATION_SIMILARITY_WEIGHT +
-        workloadFingerprintSimilarity(left, right) * WORKLOAD_FINGERPRINT_SIMILARITY_WEIGHT,
+        workloadFingerprintSimilarity(left, right) *
+          WORKLOAD_FINGERPRINT_SIMILARITY_WEIGHT,
       0,
       1,
     ),
@@ -51,7 +58,11 @@ export function buildWorkloadSimilarityMatrix(
     similarity[left.id] = {};
     profiles.forEach((right) => {
       if (left.id !== right.id) {
-        similarity[left.id][right.id] = profileSimilarity(left, right, relationInfo);
+        similarity[left.id][right.id] = profileSimilarity(
+          left,
+          right,
+          relationInfo,
+        );
       }
     });
   });
@@ -73,7 +84,10 @@ export function connectedWorkloadComponents(
         const id = stack.pop() as string;
         ids.push(id);
         Object.entries(similarity[id] || {}).forEach(([nextId, score]) => {
-          if (score >= WORKLOAD_CLUSTER_SIMILARITY_THRESHOLD && !seen.has(nextId)) {
+          if (
+            score >= WORKLOAD_CLUSTER_SIMILARITY_THRESHOLD &&
+            !seen.has(nextId)
+          ) {
             seen.add(nextId);
             stack.push(nextId);
           }

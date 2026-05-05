@@ -23,7 +23,9 @@ export interface PacingBookTarget {
 }
 
 function pacingStrength(constraints: ConstraintSet): number {
-  return clamp(safeNumber(constraints.relativePacingStrength, 50), 0, 100) / 100;
+  return (
+    clamp(safeNumber(constraints.relativePacingStrength, 50), 0, 100) / 100
+  );
 }
 
 function percentileByRank(index: number, count: number): number {
@@ -58,20 +60,31 @@ export function computeRelativePacingTargets(
       left.id.localeCompare(right.id),
   );
   const percentileById = Object.fromEntries(
-    ranked.map((book, index) => [book.id, percentileByRank(index, ranked.length)]),
+    ranked.map((book, index) => [
+      book.id,
+      percentileByRank(index, ranked.length),
+    ]),
   );
 
   return Object.fromEntries(
     books.map((book) => {
-      const absoluteTarget = dailyPagesTarget(book.pages, book.difficulty, constraints);
+      const absoluteTarget = dailyPagesTarget(
+        book.pages,
+        book.difficulty,
+        constraints,
+      );
       const percentile = percentileById[book.id] ?? 0.5;
       const curved = curvedPercentile(percentile, constraints);
       const floor = effectiveFloorPg(book.difficulty, constraints);
-      const timeBoundMax = slotBudgetMinutes(constraints) / Math.max(0.1, minutesPerPage(book.difficulty, constraints));
+      const timeBoundMax =
+        slotBudgetMinutes(constraints) /
+        Math.max(0.1, minutesPerPage(book.difficulty, constraints));
       const maxTarget = Math.max(floor, Math.min(bounds.maxPg, timeBoundMax));
       const recommendationFloor = Math.min(bounds.minPg, maxTarget);
-      const relativeTarget = maxTarget - curved * (maxTarget - recommendationFloor);
-      const blendedTarget = absoluteTarget * (1 - strength) + relativeTarget * strength;
+      const relativeTarget =
+        maxTarget - curved * (maxTarget - recommendationFloor);
+      const blendedTarget =
+        absoluteTarget * (1 - strength) + relativeTarget * strength;
       return [
         book.id,
         {

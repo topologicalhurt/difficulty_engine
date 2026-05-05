@@ -17,12 +17,15 @@ export interface TorrentFile {
 }
 
 export interface SearchResult {
+  accessBasis?: string;
   descrLink?: string;
   fileName?: string;
   fileSize?: number;
   fileUrl?: string;
+  license?: string;
   nbLeechers?: number;
   nbSeeders?: number;
+  rights?: string;
   siteUrl?: string;
 }
 

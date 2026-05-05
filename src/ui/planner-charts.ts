@@ -5,13 +5,24 @@ import {
   buildParallelSeries,
   buildWeeklyLoadSeries,
 } from '../app/selectors/plan-view-model';
-import { colorForGroup, formatCssPercent, formatOneDecimal, round0 } from './format';
+import {
+  colorForGroup,
+  formatCssPercent,
+  formatOneDecimal,
+  round0,
+} from './format';
 
 export function renderWeeklyLoadChart(state: AppState): HTMLElement {
   const points = buildWeeklyLoadSeries(state);
-  const maxHours = Math.max(1, ...points.map((point) => Math.max(point.hours, point.targetHours)));
+  const maxHours = Math.max(
+    1,
+    ...points.map((point) => Math.max(point.hours, point.targetHours)),
+  );
   if (!points.length) {
-    return card('Weekly load', emptyState('No workload yet', 'Solve the plan to see weekly effort.'));
+    return card(
+      'Weekly load',
+      emptyState('No workload yet', 'Solve the plan to see weekly effort.'),
+    );
   }
 
   return card(
@@ -27,13 +38,18 @@ export function renderWeeklyLoadChart(state: AppState): HTMLElement {
       ...points.map((point) =>
         el(
           'div',
-          { className: 'bar-chart-col', title: `${point.label}: ${formatOneDecimal(point.hours)}h` },
+          {
+            className: 'bar-chart-col',
+            title: `${point.label}: ${formatOneDecimal(point.hours)}h`,
+          },
           el(
             'div',
             { className: 'bar-chart-stack' },
             (() => {
               const target = el('div', { className: 'bar-target' });
-              target.style.height = formatCssPercent(point.targetHours / maxHours);
+              target.style.height = formatCssPercent(
+                point.targetHours / maxHours,
+              );
               return target;
             })(),
             (() => {
@@ -42,7 +58,10 @@ export function renderWeeklyLoadChart(state: AppState): HTMLElement {
               return bar;
             })(),
           ),
-          el('div', { className: 'bar-value', text: formatOneDecimal(point.hours) }),
+          el('div', {
+            className: 'bar-value',
+            text: formatOneDecimal(point.hours),
+          }),
           el('div', { className: 'bar-label', text: point.label }),
         ),
       ),
@@ -53,9 +72,19 @@ export function renderWeeklyLoadChart(state: AppState): HTMLElement {
 export function renderParallelChart(state: AppState): HTMLElement {
   const points = buildParallelSeries(state);
   const targetBooks = points[0]?.targetBooks ?? 1;
-  const maxValue = Math.max(1, targetBooks, ...points.map((point) => point.activeBooks));
+  const maxValue = Math.max(
+    1,
+    targetBooks,
+    ...points.map((point) => point.activeBooks),
+  );
   if (!points.length) {
-    return card('Parallel occupancy', emptyState('No occupancy data yet', 'Daily concurrency appears once study days exist.'));
+    return card(
+      'Parallel occupancy',
+      emptyState(
+        'No occupancy data yet',
+        'Daily concurrency appears once study days exist.',
+      ),
+    );
   }
 
   return card(
@@ -71,7 +100,10 @@ export function renderParallelChart(state: AppState): HTMLElement {
       ...points.map((point) =>
         el(
           'div',
-          { className: 'bar-chart-col', title: `${point.label}: ${point.activeBooks} active books` },
+          {
+            className: 'bar-chart-col',
+            title: `${point.label}: ${point.activeBooks} active books`,
+          },
           el(
             'div',
             { className: 'bar-chart-stack' },
@@ -88,7 +120,10 @@ export function renderParallelChart(state: AppState): HTMLElement {
               return bar;
             })(),
           ),
-          el('div', { className: 'bar-value', text: String(point.activeBooks) }),
+          el('div', {
+            className: 'bar-value',
+            text: String(point.activeBooks),
+          }),
           el('div', { className: 'bar-label', text: point.label }),
         ),
       ),
@@ -96,11 +131,20 @@ export function renderParallelChart(state: AppState): HTMLElement {
   );
 }
 
-export function renderDifficultyChart(state: AppState, store: PlannerStore): HTMLElement {
+export function renderDifficultyChart(
+  state: AppState,
+  store: PlannerStore,
+): HTMLElement {
   const points = buildDifficultySeries(state);
   const maxValue = Math.max(1, ...points.map((point) => point.score));
   if (!points.length) {
-    return card('Difficulty ladder', emptyState('No difficulty data yet', 'Difficulty scores appear after inference.'));
+    return card(
+      'Difficulty ladder',
+      emptyState(
+        'No difficulty data yet',
+        'Difficulty scores appear after inference.',
+      ),
+    );
   }
 
   return card(

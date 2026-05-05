@@ -9,7 +9,12 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     projectReads: [],
     projectWrites: ['PlannerProjectV1'],
     uiReads: ['importExportText'],
-    uiWrites: ['importExportText', 'importExportDirty', 'selectedBookId', 'banner'],
+    uiWrites: [
+      'importExportText',
+      'importExportDirty',
+      'selectedBookId',
+      'banner',
+    ],
     snapshotEffects: ['all'],
     renderEffects: ['all'],
     recomputePolicy: 'project_load',
@@ -24,12 +29,18 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     projectReads: [],
     projectWrites: ['PlannerProjectV1'],
     uiReads: [],
-    uiWrites: ['importExportText', 'importExportDirty', 'selectedBookId', 'banner'],
+    uiWrites: [
+      'importExportText',
+      'importExportDirty',
+      'selectedBookId',
+      'banner',
+    ],
     snapshotEffects: ['all'],
     renderEffects: ['all'],
     recomputePolicy: 'project_load',
     testIds: ['tests/app/store.test.ts', 'tests/app/wiring-contracts.test.ts'],
-    notes: 'Host-provided project load uses the same canonical normalization path.',
+    notes:
+      'Host-provided project load uses the same canonical normalization path.',
   },
   {
     id: 'project.reset',
@@ -39,7 +50,13 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     projectReads: [],
     projectWrites: ['PlannerProjectV1'],
     uiReads: [],
-    uiWrites: ['importExportText', 'importExportDirty', 'selectedBookId', 'activeView', 'banner'],
+    uiWrites: [
+      'importExportText',
+      'importExportDirty',
+      'selectedBookId',
+      'activeView',
+      'banner',
+    ],
     snapshotEffects: ['all'],
     renderEffects: ['all'],
     recomputePolicy: 'project_load',
@@ -74,7 +91,8 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     renderEffects: ['project', 'diagnostics'],
     recomputePolicy: 'snapshot',
     testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/store.test.ts'],
-    notes: 'Source settings are canonical project configuration and affect subsequent enrichment behavior.',
+    notes:
+      'Source settings are canonical project configuration and affect subsequent enrichment behavior.',
   },
   {
     id: 'project.qbittorrentQuickStart',
@@ -84,12 +102,18 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     projectReads: ['sourceSettings'],
     projectWrites: ['sourceSettings'],
     uiReads: ['qbittorrentConnection'],
-    uiWrites: ['qbittorrentConnection', 'qbittorrentStatus', 'banner', 'importExportText'],
+    uiWrites: [
+      'qbittorrentConnection',
+      'qbittorrentStatus',
+      'banner',
+      'importExportText',
+    ],
     snapshotEffects: ['diagnostics'],
     renderEffects: ['project', 'diagnostics'],
     recomputePolicy: 'snapshot',
     testIds: ['tests/app/store.test.ts', 'tests/app/wiring-contracts.test.ts'],
-    notes: 'Quick-start enables qBittorrent acquisition/search policy while keeping credentials local.',
+    notes:
+      'Quick-start enables qBittorrent acquisition/search policy while keeping credentials local.',
   },
   {
     id: 'project.qbittorrentLocal',
@@ -104,7 +128,8 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     renderEffects: ['project'],
     recomputePolicy: 'ui_only',
     testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/store.test.ts'],
-    notes: 'qBittorrent credentials are local-only integration settings and are never exported.',
+    notes:
+      'qBittorrent credentials are local-only integration settings and are never exported.',
   },
   {
     id: 'project.qbittorrentTest',
@@ -134,7 +159,8 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     renderEffects: ['project'],
     recomputePolicy: 'ui_only',
     testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/store.test.ts'],
-    notes: 'Plugin discovery is local integration state; plugin allow-list changes are project mutations.',
+    notes:
+      'Plugin discovery is local integration state; plugin allow-list changes are project mutations.',
   },
   {
     id: 'project.qbittorrentPlugin',
@@ -149,7 +175,8 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     renderEffects: ['project', 'diagnostics'],
     recomputePolicy: 'snapshot',
     testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/store.test.ts'],
-    notes: 'Plugin allow-list is exported project policy, while credentials and runtime plugin cache stay local.',
+    notes:
+      'Plugin allow-list is exported project policy, while credentials and runtime plugin cache stay local.',
   },
   {
     id: 'project.export',

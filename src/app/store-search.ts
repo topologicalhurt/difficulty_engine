@@ -1,5 +1,12 @@
-import type { AppState, CreatePlannerStoreOptions, UiState } from '../core/types';
-import { DEFAULT_SEARCH_PAGE_SIZE, isCatalogQueryReady } from '../infra/book-search';
+import type {
+  AppState,
+  CreatePlannerStoreOptions,
+  UiState,
+} from '../core/types';
+import {
+  DEFAULT_SEARCH_PAGE_SIZE,
+  isCatalogQueryReady,
+} from '../infra/book-search';
 
 interface CreateCatalogSearchRunnerOptions {
   getState: () => AppState;
@@ -7,10 +14,15 @@ interface CreateCatalogSearchRunnerOptions {
   enrichmentProvider: CreatePlannerStoreOptions['enrichmentProvider'];
 }
 
-export function createCatalogSearchRunner(options: CreateCatalogSearchRunnerOptions) {
+export function createCatalogSearchRunner(
+  options: CreateCatalogSearchRunnerOptions,
+) {
   let searchRequestId = 0;
 
-  return async function runCatalogSearch(rawQuery?: string, append = false): Promise<void> {
+  return async function runCatalogSearch(
+    rawQuery?: string,
+    append = false,
+  ): Promise<void> {
     const state = options.getState();
     const query = (rawQuery ?? state.ui.bookSearchQuery).trim();
     if (!query) {
@@ -60,7 +72,12 @@ export function createCatalogSearchRunner(options: CreateCatalogSearchRunnerOpti
       }
       const existing = append ? latestState.ui.bookSearchResults : [];
       const mergedResults = append
-        ? [...existing, ...response.results.filter((next) => !existing.some((current) => current.key === next.key))]
+        ? [
+            ...existing,
+            ...response.results.filter(
+              (next) => !existing.some((current) => current.key === next.key),
+            ),
+          ]
         : response.results;
       options.commitUi({
         bookSearchQuery: query,
@@ -83,7 +100,8 @@ export function createCatalogSearchRunner(options: CreateCatalogSearchRunnerOpti
         bookSearchResults: [],
         bookSearchHasMore: false,
         bookSearchOffset: 0,
-        bookSearchError: error instanceof Error ? error.message : 'Search failed.',
+        bookSearchError:
+          error instanceof Error ? error.message : 'Search failed.',
       });
     }
   };

@@ -1,4 +1,4 @@
-import { normalizeBackfillMode } from './constraints';
+import { normalizeBackfillMode } from './constraint-normalizers';
 import type { AuditReport, EngineSnapshot, PlannerProjectV1 } from './types';
 import { round2 } from './utils';
 
@@ -40,8 +40,12 @@ export function runDiagnostics(
   const laneBreaks = rows.filter((row) => !row.laneFidelity);
   const cycleBreaks = schedulePlan.items
     .map((item) => item.id)
-    .filter((id) => hasPrereqCycle(id, schedulePlan.prereqById, new Set(), new Set()));
-  const manualBlocks = snapshot.relations.filter((relation) => relation.type === 'manual-block');
+    .filter((id) =>
+      hasPrereqCycle(id, schedulePlan.prereqById, new Set(), new Set()),
+    );
+  const manualBlocks = snapshot.relations.filter(
+    (relation) => relation.type === 'manual-block',
+  );
   const coStudyBreaks = schedulePlan.coStudyMeta.groups.filter((group) => {
     const starts = group.ids
       .map((id) => dayPlan.byBookStats[id]?.actualStart)
@@ -52,45 +56,71 @@ export function runDiagnostics(
   if (releaseBreaks.length === 0) {
     report.passes.push('Release fidelity holds across the canonical day plan.');
   } else {
-    report.fails.push(`${releaseBreaks.length} item(s) start before their canonical release slot.`);
+    report.fails.push(
+      `${releaseBreaks.length} item(s) start before their canonical release slot.`,
+    );
   }
 
   if (cycleBreaks.length === 0) {
     report.passes.push('The prerequisite graph is acyclic.');
   } else {
-    report.fails.push(`${cycleBreaks.length} item(s) participate in a prerequisite cycle.`);
+    report.fails.push(
+      `${cycleBreaks.length} item(s) participate in a prerequisite cycle.`,
+    );
   }
 
-  if (normalizeBackfillMode(project.constraints.backfillMode) === 'lane_preserving') {
+  if (
+    normalizeBackfillMode(project.constraints.backfillMode) ===
+    'lane_preserving'
+  ) {
     if (laneBreaks.length === 0) {
       report.passes.push('Lane predecessor ordering is respected.');
     } else {
-      report.fails.push(`${laneBreaks.length} item(s) violate lane predecessor order.`);
+      report.fails.push(
+        `${laneBreaks.length} item(s) violate lane predecessor order.`,
+      );
     }
   } else {
-    report.passes.push('Display lanes are treated as visual-only in the selected backfill mode.');
+    report.passes.push(
+      'Display lanes are treated as visual-only in the selected backfill mode.',
+    );
   }
 
   if (coStudyBreaks.length === 0) {
-    report.passes.push('Co-study groups stay synchronized when they are active.');
+    report.passes.push(
+      'Co-study groups stay synchronized when they are active.',
+    );
   } else {
-    report.warns.push(`${coStudyBreaks.length} co-study group(s) drifted across different actual start days.`);
+    report.warns.push(
+      `${coStudyBreaks.length} co-study group(s) drifted across different actual start days.`,
+    );
   }
 
   if (manualBlocks.length === 0) {
-    report.passes.push('Manual relation overrides did not conflict with graph safety rules.');
+    report.passes.push(
+      'Manual relation overrides did not conflict with graph safety rules.',
+    );
   } else {
-    report.warns.push(`${manualBlocks.length} manual relation override(s) were ignored to preserve graph consistency.`);
+    report.warns.push(
+      `${manualBlocks.length} manual relation override(s) were ignored to preserve graph consistency.`,
+    );
   }
 
   if (scheduleStats.overbookedDays === 0) {
     report.passes.push('Daily time usage stays within the configured budget.');
   } else {
-    report.fails.push(`${scheduleStats.overbookedDays} study day(s) exceed the configured hours/day budget.`);
+    report.fails.push(
+      `${scheduleStats.overbookedDays} study day(s) exceed the configured hours/day budget.`,
+    );
   }
 
-  if (scheduleStats.floorViolations === 0 && scheduleStats.capViolations === 0) {
-    report.passes.push('All day chunks stay within the configured page bounds.');
+  if (
+    scheduleStats.floorViolations === 0 &&
+    scheduleStats.capViolations === 0
+  ) {
+    report.passes.push(
+      'All day chunks stay within the configured page bounds.',
+    );
   } else {
     report.fails.push(
       `${scheduleStats.floorViolations + scheduleStats.capViolations} chunk(s) fall outside the configured page bounds.`,
@@ -98,7 +128,9 @@ export function runDiagnostics(
   }
 
   if (scheduleStats.unfinishedBooks === 0) {
-    report.passes.push('Every scheduled book is fully accounted for in the canonical plan.');
+    report.passes.push(
+      'Every scheduled book is fully accounted for in the canonical plan.',
+    );
   } else {
     const unexplainedUnfinished = rows.filter(
       (row) =>
@@ -112,7 +144,9 @@ export function runDiagnostics(
         `${scheduleStats.unfinishedBooks} scheduled book(s) still have unresolved pages; ${unexplainedUnfinished.length} lack blocker reasons.`,
       );
     } else {
-      report.warns.push(`${scheduleStats.unfinishedBooks} scheduled book(s) still have unresolved pages.`);
+      report.warns.push(
+        `${scheduleStats.unfinishedBooks} scheduled book(s) still have unresolved pages.`,
+      );
     }
   }
 
@@ -123,11 +157,18 @@ export function runDiagnostics(
         book.enrichment.olSubjects.length > 0 ||
         book.enrichment.chapters.length > 0 ||
         Boolean(book.enrichment.description.trim());
-      return !book.ignored && !book.completed && !hasEvidence && project.enrichmentCache[book.id]?.status !== 'success';
+      return (
+        !book.ignored &&
+        !book.completed &&
+        !hasEvidence &&
+        project.enrichmentCache[book.id]?.status !== 'success'
+      );
     })
     .map((book) => book.id);
   if (missingEnrichmentIds.length === 0) {
-    report.passes.push('Every active book has either local evidence or enrichment coverage.');
+    report.passes.push(
+      'Every active book has either local evidence or enrichment coverage.',
+    );
   } else {
     report.warns.push(
       `${missingEnrichmentIds.length} active book(s) still lack strong metadata evidence and need enrichment attention.`,
@@ -137,11 +178,18 @@ export function runDiagnostics(
   const lowDifficultyConfidenceIds = Object.entries(snapshot.difficultyModel)
     .filter(([id, difficulty]) => {
       const book = project.library.books[id];
-      return Boolean(book && !book.ignored && !book.completed && difficulty.metadataConfidence < 0.35);
+      return Boolean(
+        book &&
+        !book.ignored &&
+        !book.completed &&
+        difficulty.metadataConfidence < 0.35,
+      );
     })
     .map(([id]) => id);
   if (lowDifficultyConfidenceIds.length === 0) {
-    report.passes.push('Adaptive workload clusters have enough evidence for active difficulty estimates.');
+    report.passes.push(
+      'Adaptive workload clusters have enough evidence for active difficulty estimates.',
+    );
   } else {
     report.warns.push(
       `${lowDifficultyConfidenceIds.length} active book(s) have low difficulty confidence from sparse subject, description, or chapter evidence.`,
@@ -154,7 +202,9 @@ export function runDiagnostics(
     totalRelations: snapshot.relations.length,
     totalScheduled: schedulePlan.items.length,
     spanWeeks: round2(scheduleStats.spanWeeks),
-    finishDate: scheduleStats.finishDate ? scheduleStats.finishDate.toISOString() : null,
+    finishDate: scheduleStats.finishDate
+      ? scheduleStats.finishDate.toISOString()
+      : null,
     hardInfeasibleBooks: scheduleStats.hardInfeasibleBooks,
     floorRelaxedBooks: scheduleStats.floorRelaxedBooks,
     underfilledParallelDays: scheduleStats.underfilledParallelDays,

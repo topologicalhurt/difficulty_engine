@@ -6,7 +6,7 @@ import {
   normalizeBackfillMode,
   normalizeEmptyDayPolicy,
   normalizePrereqMode,
-} from './constraints';
+} from './constraint-normalizers';
 import { recordDeferredCalendarEntry } from './day-plan-overrides';
 import type { DayPlanSnapshot, PlanningState } from './internal-types';
 import type { PlannerProjectV1, SchedulePlan } from './types';
@@ -20,8 +20,16 @@ interface DayReadinessInput {
 }
 
 export interface DayReadiness {
-  strictCandidatesForDay(pending: PlanningState[], dateStr: string, slot: number): PlanningState[];
-  blockedLaneSeedsForDay(pending: PlanningState[], dateStr: string, slot: number): PlanningState[];
+  strictCandidatesForDay(
+    pending: PlanningState[],
+    dateStr: string,
+    slot: number,
+  ): PlanningState[];
+  blockedLaneSeedsForDay(
+    pending: PlanningState[],
+    dateStr: string,
+    slot: number,
+  ): PlanningState[];
   backfillCandidatesForDay(
     pending: PlanningState[],
     dateStr: string,
@@ -29,13 +37,19 @@ export interface DayReadiness {
     branchAnchors: string[],
     strictNow: PlanningState[],
   ): PlanningState[];
-  prereqCandidatesForDay(pending: PlanningState[], dateStr: string, slot: number): PlanningState[];
+  prereqCandidatesForDay(
+    pending: PlanningState[],
+    dateStr: string,
+    slot: number,
+  ): PlanningState[];
 }
 
 export function createDayReadiness(input: DayReadinessInput): DayReadiness {
   const { project, schedulePlan, descendants, stateById, missedByDate } = input;
   const backfillMode = normalizeBackfillMode(project.constraints.backfillMode);
-  const emptyDayPolicy = normalizeEmptyDayPolicy(project.constraints.emptyDayPolicy);
+  const emptyDayPolicy = normalizeEmptyDayPolicy(
+    project.constraints.emptyDayPolicy,
+  );
   const prereqMode = normalizePrereqMode(project.constraints.prereqMode);
 
   const sharesBranch = (left: string, right: string): boolean =>
@@ -44,16 +58,22 @@ export function createDayReadiness(input: DayReadinessInput): DayReadiness {
     Boolean(descendants[right]?.has(left)) ||
     Boolean(
       schedulePlan.coStudyMeta.lookup[left] &&
-        schedulePlan.coStudyMeta.lookup[left] === schedulePlan.coStudyMeta.lookup[right],
+      schedulePlan.coStudyMeta.lookup[left] ===
+        schedulePlan.coStudyMeta.lookup[right],
     );
 
   const isDeferred = (state: PlanningState, dateStr: string): boolean => {
-    if (!(project.manualOverrides.deferred[dateStr] || []).includes(state.id)) return false;
+    if (!(project.manualOverrides.deferred[dateStr] || []).includes(state.id))
+      return false;
     recordDeferredCalendarEntry(missedByDate, state, dateStr);
     return true;
   };
 
-  const baseReady = (state: PlanningState, dateStr: string, slot: number): boolean => {
+  const baseReady = (
+    state: PlanningState,
+    dateStr: string,
+    slot: number,
+  ): boolean => {
     if (state.remainingTenths <= 0 || state.infeasibleReason) return false;
     if (
       emptyDayPolicy === 'preserve_schedule_gaps' ||
@@ -71,7 +91,9 @@ export function createDayReadiness(input: DayReadinessInput): DayReadiness {
     (stateById[state.lanePrevId]?.remainingTenths || 0) <= 0;
 
   const unmetPrereqs = (state: PlanningState): string[] =>
-    state.prereqs.filter((parent) => (stateById[parent]?.remainingTenths || 0) > 0);
+    state.prereqs.filter(
+      (parent) => (stateById[parent]?.remainingTenths || 0) > 0,
+    );
 
   const prereqsReadyStrict = (state: PlanningState): boolean =>
     state.allowPrereqOverlap || !unmetPrereqs(state).length;
@@ -85,7 +107,10 @@ export function createDayReadiness(input: DayReadinessInput): DayReadiness {
       if (!parent || parent.actualStart == null) return false;
       const remainingFraction =
         (parent.remainingTenths || 0) / Math.max(1, parent.totalTenths || 1);
-      const remainingDays = Math.max(0, (parent.planDays || 1) - (parent.usedDays || 0));
+      const remainingDays = Math.max(
+        0,
+        (parent.planDays || 1) - (parent.usedDays || 0),
+      );
       return (
         remainingFraction <= SMART_OVERLAP_REMAINING_FRACTION ||
         remainingDays <= SMART_OVERLAP_REMAINING_DAYS
@@ -97,20 +122,33 @@ export function createDayReadiness(input: DayReadinessInput): DayReadiness {
     strictCandidatesForDay: (pending, dateStr, slot) =>
       pending.filter(
         (state) =>
-          baseReady(state, dateStr, slot) && laneReady(state) && prereqsReadyStrict(state),
+          baseReady(state, dateStr, slot) &&
+          laneReady(state) &&
+          prereqsReadyStrict(state),
       ),
     blockedLaneSeedsForDay: (pending, dateStr, slot) =>
       pending.filter(
         (state) =>
-          baseReady(state, dateStr, slot) && !laneReady(state) && prereqsReadyStrict(state),
+          baseReady(state, dateStr, slot) &&
+          !laneReady(state) &&
+          prereqsReadyStrict(state),
       ),
-    backfillCandidatesForDay: (pending, dateStr, slot, branchAnchors, strictNow) => {
+    backfillCandidatesForDay: (
+      pending,
+      dateStr,
+      slot,
+      branchAnchors,
+      strictNow,
+    ) => {
       if (backfillMode === 'lane_preserving') return [];
       return pending.filter((state) => {
-        if (!baseReady(state, dateStr, slot) || !prereqsReadyStrict(state)) return false;
+        if (!baseReady(state, dateStr, slot) || !prereqsReadyStrict(state))
+          return false;
         if (strictNow.includes(state)) return false;
         if (backfillMode === 'global') return true;
-        return branchAnchors.some((anchorId) => sharesBranch(anchorId, state.id));
+        return branchAnchors.some((anchorId) =>
+          sharesBranch(anchorId, state.id),
+        );
       });
     },
     prereqCandidatesForDay: (pending, dateStr, slot) => {

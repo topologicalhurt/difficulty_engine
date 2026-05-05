@@ -1,4 +1,4 @@
-import { normalizeBookOrderPolicy } from './constraints';
+import { normalizeBookOrderPolicy } from './constraint-normalizers';
 import type { BookOrderPolicy, PlannerProjectV1 } from './types';
 
 export function compareBookPlanOrder(
@@ -12,8 +12,11 @@ export function compareBookPlanOrder(
   const rightOwned = right?.owned === false ? 1 : 0;
   return (
     leftOwned - rightOwned ||
-    (left?.planOrder ?? Number.MAX_SAFE_INTEGER) - (right?.planOrder ?? Number.MAX_SAFE_INTEGER) ||
-    (left?.short || left?.title || leftId).localeCompare(right?.short || right?.title || rightId) ||
+    (left?.planOrder ?? Number.MAX_SAFE_INTEGER) -
+      (right?.planOrder ?? Number.MAX_SAFE_INTEGER) ||
+    (left?.short || left?.title || leftId).localeCompare(
+      right?.short || right?.title || rightId,
+    ) ||
     leftId.localeCompare(rightId)
   );
 }
@@ -43,14 +46,17 @@ export function enforceBookOrderPrereqs(
   project: PlannerProjectV1,
 ): Record<string, string[]> {
   if (bookOrderPolicy(project) !== 'enforce') return prereqById;
-  const ordered = [...ids].sort((left, right) => compareBookPlanOrder(project, left, right));
+  const ordered = [...ids].sort((left, right) =>
+    compareBookPlanOrder(project, left, right),
+  );
   const laneWidth = Math.max(1, Math.trunc(project.constraints.par || 1));
   const next = Object.fromEntries(
     ids.map((id) => [id, [...(prereqById[id] || [])]]),
   );
   ordered.forEach((id, index) => {
     const parent = ordered[index - laneWidth];
-    if (!parent || next[id].includes(parent) || reaches(id, parent, next)) return;
+    if (!parent || next[id].includes(parent) || reaches(id, parent, next))
+      return;
     next[id] = [...next[id], parent];
   });
   return next;

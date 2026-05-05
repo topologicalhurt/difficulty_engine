@@ -7,19 +7,58 @@ import type {
 import { PLAN_ZOOM_MAX, PLAN_ZOOM_MIN } from '../core/constants';
 import { bridgeDocumentEndpoint } from '../infra/document-bridge-url';
 import type { StoreCommandContext } from './store-command-context';
+import type { WiringContractId } from './wiring/contracts';
+
+type UiPreferencePatch = Partial<PlannerProjectV1['uiPreferences']>;
 
 export function createUiCommands(
   context: StoreCommandContext,
 ): Pick<
   PlannerStoreCommands,
-  'setActiveView' | 'selectBook' | 'selectCalendarEntry' | 'setBanner' | 'setGanttView' | 'setGanttZoom' | 'setPlanColorMode' | 'toggleConstraintAdvancedGroup' | 'selectConstraintField' | 'openBookDocument' | 'readBookDocument' | 'closeBookDocumentReader'
+  | 'setActiveView'
+  | 'selectBook'
+  | 'selectCalendarEntry'
+  | 'setBanner'
+  | 'setGanttView'
+  | 'setGanttZoom'
+  | 'setPlanColorMode'
+  | 'toggleConstraintAdvancedGroup'
+  | 'selectConstraintField'
+  | 'openBookDocument'
+  | 'readBookDocument'
+  | 'closeBookDocumentReader'
 > {
+  let documentReadSequence = 0;
+
+  function commitUiPreference(
+    contractId: WiringContractId,
+    preferencePatch: UiPreferencePatch,
+    uiPatch: Partial<UiState>,
+  ): void {
+    const state = context.getState();
+    context.commitProject(
+      contractId,
+      {
+        ...state.project,
+        uiPreferences: {
+          ...state.project.uiPreferences,
+          ...preferencePatch,
+        },
+      },
+      uiPatch,
+      false,
+    );
+  }
+
   return {
     setActiveView(activeView: AppView): void {
       context.commitUi('ui.activeView', { activeView });
     },
     selectBook(bookId: string | null): void {
-      context.commitUi('ui.selectBook', { selectedBookId: bookId, selectedCalendarEntry: null });
+      context.commitUi('ui.selectBook', {
+        selectedBookId: bookId,
+        selectedCalendarEntry: null,
+      });
     },
     selectCalendarEntry(dateKey: string, bookId: string): void {
       context.commitUi('ui.selectCalendarEntry', {
@@ -31,38 +70,25 @@ export function createUiCommands(
       context.commitUi('ui.banner', { banner });
     },
     setGanttView(ganttView: UiState['ganttView']): void {
-      const state = context.getState();
-      const nextProject: PlannerProjectV1 = {
-        ...state.project,
-        uiPreferences: {
-          ...state.project.uiPreferences,
-          ganttView,
-        },
-      };
-      context.commitProject('ui.ganttView', nextProject, { ganttView }, false);
+      commitUiPreference('ui.ganttView', { ganttView }, { ganttView });
     },
     setGanttZoom(ganttZoom: number): void {
-      const state = context.getState();
-      const nextZoom = Math.max(PLAN_ZOOM_MIN, Math.min(PLAN_ZOOM_MAX, Math.round(ganttZoom * 100) / 100));
-      const nextProject: PlannerProjectV1 = {
-        ...state.project,
-        uiPreferences: {
-          ...state.project.uiPreferences,
-          ganttZoom: nextZoom,
-        },
-      };
-      context.commitProject('ui.ganttZoom', nextProject, { ganttZoom: nextZoom }, false);
+      const nextZoom = Math.max(
+        PLAN_ZOOM_MIN,
+        Math.min(PLAN_ZOOM_MAX, Math.round(ganttZoom * 100) / 100),
+      );
+      commitUiPreference(
+        'ui.ganttZoom',
+        { ganttZoom: nextZoom },
+        { ganttZoom: nextZoom },
+      );
     },
     setPlanColorMode(planColorMode: UiState['planColorMode']): void {
-      const state = context.getState();
-      const nextProject: PlannerProjectV1 = {
-        ...state.project,
-        uiPreferences: {
-          ...state.project.uiPreferences,
-          planColorMode,
-        },
-      };
-      context.commitProject('ui.planColorMode', nextProject, { planColorMode }, false);
+      commitUiPreference(
+        'ui.planColorMode',
+        { planColorMode },
+        { planColorMode },
+      );
     },
     toggleConstraintAdvancedGroup(group: string): void {
       const state = context.getState();
@@ -82,11 +108,14 @@ export function createUiCommands(
       const document = book?.documents?.find((item) => item.id === documentId);
       if (!book || !document) return;
       try {
-        const response = await fetch(`${state.ui.qbittorrentConnection.baseUrl.replace(/\/+$/, '')}/documents/open`, {
-          method: 'POST',
-          body: JSON.stringify({ path: document.storagePath }),
-          headers: { 'Content-Type': 'application/json' },
-        });
+        const response = await fetch(
+          `${state.ui.qbittorrentConnection.baseUrl.replace(/\/+$/, '')}/documents/open`,
+          {
+            method: 'POST',
+            body: JSON.stringify({ path: document.storagePath }),
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
         if (!response.ok) throw new Error(await response.text());
         context.commitUi('ui.documentOpen', {
           banner: { tone: 'success', message: `Opened ${document.fileName}.` },
@@ -95,7 +124,10 @@ export function createUiCommands(
         context.commitUi('ui.documentOpen', {
           banner: {
             tone: 'error',
-            message: error instanceof Error ? error.message : `Could not open ${document.fileName}.`,
+            message:
+              error instanceof Error
+                ? error.message
+                : `Could not open ${document.fileName}.`,
           },
         });
       }
@@ -105,6 +137,7 @@ export function createUiCommands(
       const book = state.project.library.books[bookId];
       const document = book?.documents?.find((item) => item.id === documentId);
       if (!book || !document) return;
+      const requestSequence = (documentReadSequence += 1);
       context.commitUi('ui.documentReader', {
         documentReader: {
           bookId,
@@ -124,17 +157,20 @@ export function createUiCommands(
           ),
         );
         if (!response.ok) throw new Error(await response.text());
+        const text = await response.text();
+        if (requestSequence !== documentReadSequence) return;
         context.commitUi('ui.documentReader', {
           documentReader: {
             bookId,
             documentId,
             status: 'ready',
             title: document.fileName,
-            text: await response.text(),
+            text,
             error: null,
           },
         });
       } catch (error) {
+        if (requestSequence !== documentReadSequence) return;
         context.commitUi('ui.documentReader', {
           documentReader: {
             bookId,
@@ -142,12 +178,16 @@ export function createUiCommands(
             status: 'failed',
             title: document.fileName,
             text: '',
-            error: error instanceof Error ? error.message : 'Could not read document text.',
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Could not read document text.',
           },
         });
       }
     },
     closeBookDocumentReader(): void {
+      documentReadSequence += 1;
       context.commitUi('ui.documentReader', {
         documentReader: {
           bookId: null,

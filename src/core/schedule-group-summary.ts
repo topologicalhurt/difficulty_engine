@@ -1,6 +1,8 @@
 import type { SchedulePlanItem } from './types';
 
-export function groupBooks(items: SchedulePlanItem[]): Record<string, SchedulePlanItem[]> {
+export function groupBooks(
+  items: SchedulePlanItem[],
+): Record<string, SchedulePlanItem[]> {
   const grouped: Record<string, SchedulePlanItem[]> = {};
   items.forEach((item) => {
     const key = String(item.displayGroup || 'Ungrouped');

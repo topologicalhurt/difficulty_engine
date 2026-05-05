@@ -1,4 +1,7 @@
-import type { DocumentAcquisitionRequest, DocumentCandidate } from './document-acquisition';
+import type {
+  DocumentAcquisitionRequest,
+  DocumentCandidate,
+} from './document-acquisition';
 import { qbittorrentSearchPluginsEnabled } from '../core/source-settings-policy';
 import type { QBittorrentClient } from './qbittorrent-client';
 import {
@@ -7,16 +10,15 @@ import {
   shouldStopAfterSearchPattern,
   sortSearchCandidates,
 } from './qbittorrent-search';
-import {
-  pluginIsAllowed,
-} from './qbittorrent-selection';
+import { pluginIsAllowed } from './qbittorrent-source-policy';
 import type { SearchResultsResponse } from './qbittorrent-types';
 
 export async function pluginSearchCandidates(
   client: QBittorrentClient,
   request: DocumentAcquisitionRequest,
 ): Promise<DocumentCandidate[]> {
-  if (!qbittorrentSearchPluginsEnabled(request.policy.sourceSettings)) return [];
+  if (!qbittorrentSearchPluginsEnabled(request.policy.sourceSettings))
+    return [];
   const settings = request.policy.sourceSettings?.qbittorrent;
   if (!settings) return [];
   if (
@@ -40,7 +42,12 @@ export async function pluginSearchCandidates(
       allowedPlugins.map(async (plugin) => ({
         plugin,
         payload: await client
-          .runSinglePluginSearch(pattern, plugin.name, category, settings.maxResults)
+          .runSinglePluginSearch(
+            pattern,
+            plugin.name,
+            category,
+            settings.maxResults,
+          )
           .catch((): SearchResultsResponse => ({})),
       })),
     );
@@ -57,7 +64,11 @@ export async function pluginSearchCandidates(
       seenUrls.add(candidate.sourceUrl);
       candidates.push(candidate);
     }
-    if (shouldStopAfterSearchPattern(pattern, request, patternCandidates)) break;
+    if (shouldStopAfterSearchPattern(pattern, request, patternCandidates))
+      break;
   }
-  return sortSearchCandidates(candidates, request).slice(0, settings.maxResults);
+  return sortSearchCandidates(candidates, request).slice(
+    0,
+    settings.maxResults,
+  );
 }

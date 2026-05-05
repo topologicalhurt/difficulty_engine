@@ -12,7 +12,9 @@ interface EmptyDayContext {
   budgetMinutes: number;
 }
 
-export type EmptyDayResolution = { kind: 'jump'; slot: number } | { kind: 'break' };
+export type EmptyDayResolution =
+  | { kind: 'jump'; slot: number }
+  | { kind: 'break' };
 
 function recordWaitingReleaseGap(
   context: EmptyDayContext,

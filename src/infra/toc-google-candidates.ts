@@ -2,8 +2,14 @@ import { fetchGoogleBooksCandidates } from './google-books';
 import type { StrategyContext } from './toc-strategy-context';
 import type { StrategyCandidate } from './toc-merge';
 
-export async function googleBooksCandidates(context: StrategyContext): Promise<StrategyCandidate[]> {
-  const candidates = await fetchGoogleBooksCandidates(context.fetchJson, context.book, context.signal);
+export async function googleBooksCandidates(
+  context: StrategyContext,
+): Promise<StrategyCandidate[]> {
+  const candidates = await fetchGoogleBooksCandidates(
+    context.fetchJson,
+    context.book,
+    context.signal,
+  );
   return candidates.map((candidate) => ({
     provider: 'google_books',
     sourceUrl: candidate.googleBooksId

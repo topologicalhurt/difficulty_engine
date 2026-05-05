@@ -1,11 +1,20 @@
 import { selectSearchViewModel } from '../app/selectors/search';
 import type { AppState, PlannerStore } from '../core/types';
-import { isCatalogQueryReady, isLikelyIsbnQuery, MIN_PARTIAL_ISBN_CHARS, MIN_TEXT_SEARCH_CHARS } from '../infra/book-search';
+import {
+  isCatalogQueryReady,
+  isLikelyIsbnQuery,
+  MIN_PARTIAL_ISBN_CHARS,
+  MIN_TEXT_SEARCH_CHARS,
+} from '../infra/book-search';
 import { badge, button, card, el, emptyState } from './dom';
+import { textInputControl } from './form-controls';
 
 const SEARCH_DEBOUNCE_MS = 260;
 
-const searchDebounceTimers = new WeakMap<PlannerStore, ReturnType<typeof globalThis.setTimeout>>();
+const searchDebounceTimers = new WeakMap<
+  PlannerStore,
+  ReturnType<typeof globalThis.setTimeout>
+>();
 const draftQueries = new WeakMap<PlannerStore, string>();
 
 function scheduleSearch(store: PlannerStore, query: string): void {
@@ -50,14 +59,12 @@ export function renderLibrarySearchPanel(
   const compact = options.compact === true;
   const viewModel = selectSearchViewModel(state);
   const draft = currentDraft(store, state);
-  const input = el('input', {
+  const input = textInputControl({
     className: `text-input library-search-input${compact ? ' compact-search-input' : ''}`,
-    type: 'text',
     value: draft,
     focusKey: 'library:search',
     placeholder: 'Search by title, author, or ISBN...',
-    onInput: (event) => {
-      const next = (event.target as HTMLInputElement).value;
+    onInput: (next) => {
       draftQueries.set(store, next);
       if (!next.trim()) {
         store.commands.clearBookSearch();
@@ -72,18 +79,25 @@ export function renderLibrarySearchPanel(
 
   const content =
     viewModel.status === 'loading'
-      ? el('div', { className: 'muted-copy', text: 'Searching Open Library...' })
+      ? el('div', {
+          className: 'muted-copy',
+          text: 'Searching Open Library...',
+        })
       : viewModel.error
         ? el('div', { className: 'muted-copy', text: viewModel.error })
         : viewModel.results.length
           ? el(
               'div',
-              { className: `search-results${compact ? ' compact-search-results' : ''}` },
+              {
+                className: `search-results${compact ? ' compact-search-results' : ''}`,
+              },
               ...viewModel.results.map(({ suggestion, existingBookId }) =>
                 (() => {
                   return el(
                     'div',
-                    { className: `search-result-card${compact ? ' compact-search-card' : ''}` },
+                    {
+                      className: `search-result-card${compact ? ' compact-search-card' : ''}`,
+                    },
                     el(
                       'div',
                       { className: 'search-result-top' },
@@ -91,29 +105,42 @@ export function renderLibrarySearchPanel(
                         'div',
                         { className: 'stack-layout compact-stack' },
                         el('strong', { text: suggestion.title }),
-                        suggestion.subtitle ? el('div', { className: 'muted-copy', text: suggestion.subtitle }) : null,
+                        suggestion.subtitle
+                          ? el('div', {
+                              className: 'muted-copy',
+                              text: suggestion.subtitle,
+                            })
+                          : null,
                       ),
                       button(existingBookId ? 'Select' : 'Add', {
-                        className: existingBookId ? 'ghost-button' : 'primary-button',
-                        onClick: () => store.commands.addBookFromSuggestion(suggestion),
+                        className: existingBookId
+                          ? 'ghost-button'
+                          : 'primary-button',
+                        onClick: () =>
+                          store.commands.addBookFromSuggestion(suggestion),
                       }),
                     ),
                     suggestion.description
-                      ? el(
-                          'div',
-                          {
-                            className: 'muted-copy',
-                            text: compact ? suggestion.description.slice(0, 120) : suggestion.description,
-                          },
-                        )
+                      ? el('div', {
+                          className: 'muted-copy',
+                          text: compact
+                            ? suggestion.description.slice(0, 120)
+                            : suggestion.description,
+                        })
                       : null,
                     el(
                       'div',
                       { className: 'badge-row compact-badge-row' },
-                      existingBookId ? badge('Already in library', 'warn') : null,
+                      existingBookId
+                        ? badge('Already in library', 'warn')
+                        : null,
                       suggestion.isbn ? badge(`ISBN ${suggestion.isbn}`) : null,
-                      suggestion.pages ? badge(`${suggestion.pages} pages`) : null,
-                      ...suggestion.subjects.slice(0, 3).map((subject) => badge(subject)),
+                      suggestion.pages
+                        ? badge(`${suggestion.pages} pages`)
+                        : null,
+                      ...suggestion.subjects
+                        .slice(0, 3)
+                        .map((subject) => badge(subject)),
                     ),
                   );
                 })(),
@@ -130,12 +157,11 @@ export function renderLibrarySearchPanel(
                 : null,
             )
           : viewModel.query.trim() && viewModel.status === 'success'
-            ? emptyState('No matches', 'Try a broader title, author, or ISBN query.')
-            : el(
-                'div',
-                { className: 'muted-copy' },
-                searchHint(draft),
-              );
+            ? emptyState(
+                'No matches',
+                'Try a broader title, author, or ISBN query.',
+              )
+            : el('div', { className: 'muted-copy' }, searchHint(draft));
 
   return card(
     options.title ?? (compact ? 'Quick add' : 'Book search'),
@@ -145,7 +171,8 @@ export function renderLibrarySearchPanel(
       input,
       button('Search', {
         className: 'ghost-button',
-        onClick: () => void store.commands.searchCatalog(currentDraft(store, state)),
+        onClick: () =>
+          void store.commands.searchCatalog(currentDraft(store, state)),
       }),
       button('Clear', {
         className: 'ghost-button',

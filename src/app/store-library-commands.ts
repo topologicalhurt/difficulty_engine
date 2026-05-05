@@ -6,20 +6,28 @@ import type {
   PlannerProjectV1,
   PlannerStoreCommands,
 } from '../core/types';
-import { removeBookFromActuals, removeBookFromDeferred } from './calendar-overrides';
-import type { StoreCommandContext } from './store-command-context';
+import {
+  removeBookFromActuals,
+  removeBookFromDeferred,
+} from './calendar-overrides';
 import {
   bookFromSuggestion,
   mergeSuggestionIntoBook,
-  nextBookId,
-} from './store-helpers';
+} from './store-book-metadata';
+import type { StoreCommandContext } from './store-command-context';
+import { nextBookId } from './store-helpers';
 import { withBookRelationPatch } from './store-relations';
 
 export function createLibraryCommands(
   context: StoreCommandContext,
 ): Pick<
   PlannerStoreCommands,
-  'addBook' | 'addBookFromSuggestion' | 'updateBook' | 'updateBookRelations' | 'moveBook' | 'removeBook'
+  | 'addBook'
+  | 'addBookFromSuggestion'
+  | 'updateBook'
+  | 'updateBookRelations'
+  | 'moveBook'
+  | 'removeBook'
 > {
   const orderedBooks = (project: PlannerProjectV1): BookRecord[] =>
     Object.values(project.library.books).sort(
@@ -101,7 +109,10 @@ export function createLibraryCommands(
         activeView: 'library',
         bookSearchQuery: suggestion.title,
         bookSearchStatus: 'success',
-        banner: { tone: 'success', message: `Added ${suggestion.title} from search.` },
+        banner: {
+          tone: 'success',
+          message: `Added ${suggestion.title} from search.`,
+        },
       });
       void context.refreshBookEnrichment(id);
     },
@@ -132,7 +143,9 @@ export function createLibraryCommands(
               manualCoStudy: patch.manualCoStudy,
             })
           : nextProject;
-      context.commitProject('library.updateBook', relationProject, { banner: null });
+      context.commitProject('library.updateBook', relationProject, {
+        banner: null,
+      });
     },
     updateBookRelations(id: string, patch): void {
       context.commitProject(
@@ -149,7 +162,10 @@ export function createLibraryCommands(
       if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) return;
       if (ordered[index]?.owned !== ordered[targetIndex]?.owned) return;
       const nextOrdered = [...ordered];
-      [nextOrdered[index], nextOrdered[targetIndex]] = [nextOrdered[targetIndex], nextOrdered[index]];
+      [nextOrdered[index], nextOrdered[targetIndex]] = [
+        nextOrdered[targetIndex],
+        nextOrdered[index],
+      ];
       const books = { ...state.project.library.books };
       nextOrdered.forEach((book, planOrder) => {
         books[book.id] = { ...books[book.id], planOrder };
@@ -176,12 +192,19 @@ export function createLibraryCommands(
         manualOverrides: {
           ...state.project.manualOverrides,
           schedule,
-          deferred: removeBookFromDeferred(state.project.manualOverrides.deferred, id),
-          actuals: removeBookFromActuals(state.project.manualOverrides.actuals, id),
+          deferred: removeBookFromDeferred(
+            state.project.manualOverrides.deferred,
+            id,
+          ),
+          actuals: removeBookFromActuals(
+            state.project.manualOverrides.actuals,
+            id,
+          ),
         },
       };
       context.commitProject('library.removeBook', nextProject, {
-        selectedBookId: state.ui.selectedBookId === id ? null : state.ui.selectedBookId,
+        selectedBookId:
+          state.ui.selectedBookId === id ? null : state.ui.selectedBookId,
         banner: { tone: 'warn', message: 'Book removed from the project.' },
       });
     },

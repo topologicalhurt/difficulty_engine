@@ -41,7 +41,10 @@ export function buildRenderModel(
     warnings,
     gantt: {
       timelineSlots,
-      totalSlots: Math.max(timelineSlots, actualEnd + Math.ceil(project.constraints.dpw * 6)),
+      totalSlots: Math.max(
+        timelineSlots,
+        actualEnd + Math.ceil(project.constraints.dpw * 6),
+      ),
       rows,
     },
     calendar: {

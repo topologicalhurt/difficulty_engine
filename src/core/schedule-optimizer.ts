@@ -16,7 +16,7 @@ import type {
   SchedulePlan,
   ScheduleStats,
 } from './types';
-import { normalizeSchedAlgo } from './constraints';
+import { normalizeSchedAlgo } from './constraint-normalizers';
 
 interface ScheduleCandidate {
   algorithm: ScheduleAlgorithm;
@@ -69,7 +69,12 @@ function buildCandidate(
     schedulePlan,
     candidateProject,
   );
-  const dayPlan = buildDayPlan(candidateProject, schedulePlan, overlapClusters, clock);
+  const dayPlan = buildDayPlan(
+    candidateProject,
+    schedulePlan,
+    overlapClusters,
+    clock,
+  );
   const scheduleStats = computeScheduleStats(
     schedulePlan,
     dayPlan,
@@ -88,10 +93,14 @@ function unresolvedScore(candidate: ScheduleCandidate): number {
   );
 }
 
-function compareCandidates(left: ScheduleCandidate, right: ScheduleCandidate): number {
+function compareCandidates(
+  left: ScheduleCandidate,
+  right: ScheduleCandidate,
+): number {
   const leftUnresolved = unresolvedScore(left);
   const rightUnresolved = unresolvedScore(right);
-  if (leftUnresolved !== rightUnresolved) return leftUnresolved - rightUnresolved;
+  if (leftUnresolved !== rightUnresolved)
+    return leftUnresolved - rightUnresolved;
   const leftSpan = left.scheduleStats.finishDate
     ? left.scheduleStats.spanSlots
     : Number.POSITIVE_INFINITY;
@@ -102,7 +111,10 @@ function compareCandidates(left: ScheduleCandidate, right: ScheduleCandidate): n
   if (left.scheduleStats.peakMinutes !== right.scheduleStats.peakMinutes) {
     return left.scheduleStats.peakMinutes - right.scheduleStats.peakMinutes;
   }
-  return FASTEST_CANDIDATES.indexOf(left.algorithm) - FASTEST_CANDIDATES.indexOf(right.algorithm);
+  return (
+    FASTEST_CANDIDATES.indexOf(left.algorithm) -
+    FASTEST_CANDIDATES.indexOf(right.algorithm)
+  );
 }
 
 export function computeScheduleArtifacts(

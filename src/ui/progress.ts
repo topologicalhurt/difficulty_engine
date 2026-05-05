@@ -1,4 +1,7 @@
-import type { BookProgressView, OverallProgressView } from '../app/selectors/progress';
+import type {
+  BookProgressView,
+  OverallProgressView,
+} from '../app/selectors/progress';
 import { el } from './dom';
 import { formatCssPercent, formatOneDecimal, round0 } from './format';
 
@@ -7,7 +10,9 @@ interface ProgressRenderOptions {
   showDetail?: boolean;
 }
 
-function progressPercent(progress: BookProgressView | OverallProgressView): number {
+function progressPercent(
+  progress: BookProgressView | OverallProgressView,
+): number {
   return Math.max(0, Math.min(100, progress.percent));
 }
 
@@ -15,9 +20,10 @@ function progressDetail(
   progress: BookProgressView | OverallProgressView,
 ): string {
   if ('completeBooks' in progress) return progress.detail;
-  const minutes = progress.loggedMinutes > 0
-    ? ` · ${formatOneDecimal(progress.loggedMinutes / 60)}h logged`
-    : '';
+  const minutes =
+    progress.loggedMinutes > 0
+      ? ` · ${formatOneDecimal(progress.loggedMinutes / 60)}h logged`
+      : '';
   return `${progress.detail}${minutes}`;
 }
 
@@ -30,7 +36,9 @@ export function renderProgressBar(
 
   return el(
     'div',
-    { className: `progress-block${options.compact ? ' compact-progress' : ''}` },
+    {
+      className: `progress-block${options.compact ? ' compact-progress' : ''}`,
+    },
     el(
       'div',
       { className: 'progress-head' },
@@ -40,6 +48,9 @@ export function renderProgressBar(
     el('div', { className: 'progress-track', role: 'progressbar' }, fill),
     options.showDetail === false
       ? null
-      : el('div', { className: 'progress-detail muted-copy', text: progressDetail(progress) }),
+      : el('div', {
+          className: 'progress-detail muted-copy',
+          text: progressDetail(progress),
+        }),
   );
 }

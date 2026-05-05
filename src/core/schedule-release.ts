@@ -42,7 +42,9 @@ interface BuildScheduleEntryInput {
   scheduleRank: number;
 }
 
-export function buildScheduleEntry(input: BuildScheduleEntryInput): SchedulePlanItem {
+export function buildScheduleEntry(
+  input: BuildScheduleEntryInput,
+): SchedulePlanItem {
   const {
     item,
     start,
@@ -56,7 +58,8 @@ export function buildScheduleEntry(input: BuildScheduleEntryInput): SchedulePlan
     scheduleRank,
   } = input;
   const splitOversizeGroup =
-    group.ids.length > laneCount && project.constraints.mutualOversize !== 'strict';
+    group.ids.length > laneCount &&
+    project.constraints.mutualOversize !== 'strict';
   const coStudyGroup =
     group.ids.length > 1
       ? splitOversizeGroup

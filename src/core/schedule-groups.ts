@@ -47,13 +47,16 @@ export function buildScheduleGroups(
   orderedIds: string[],
 ): ScheduleGroupBuildResult {
   const coStudyPairs = buildCoStudyPairs(project, relationInfo, itemById);
-  const groups = coStudyComponents(activeIds, coStudyPairs).map((ids, index) => ({
-    id: `g${index}`,
-    ids: [...ids].sort(
-      (left, right) =>
-        itemById[left].depth - itemById[right].depth || left.localeCompare(right),
-    ),
-  }));
+  const groups = coStudyComponents(activeIds, coStudyPairs).map(
+    (ids, index) => ({
+      id: `g${index}`,
+      ids: [...ids].sort(
+        (left, right) =>
+          itemById[left].depth - itemById[right].depth ||
+          left.localeCompare(right),
+      ),
+    }),
+  );
   const groupLookup = buildLookup(groups);
   const orderIndexById = new Map(orderedIds.map((id, index) => [id, index]));
   const orderedGroups = groups
@@ -66,7 +69,10 @@ export function buildScheduleGroups(
         MISSING_GROUP_ORDER,
       ),
     }))
-    .sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
+    .sort(
+      (left, right) =>
+        left.order - right.order || left.id.localeCompare(right.id),
+    );
 
   return {
     coStudyPairs,
@@ -76,7 +82,9 @@ export function buildScheduleGroups(
   };
 }
 
-export function buildCoStudyMeta(schedule: SchedulePlanItem[]): SchedulePlan['coStudyMeta'] {
+export function buildCoStudyMeta(
+  schedule: SchedulePlanItem[],
+): SchedulePlan['coStudyMeta'] {
   const byGroup: Record<string, string[]> = {};
   schedule.forEach((entry) => {
     if (!entry.coStudyGroup) return;

@@ -1,9 +1,17 @@
 import type { GanttViewModel, PlanViewModel } from '../app/selectors/plan';
-import type { EmptyDayPolicy, PlanColorMode, PlannerStore } from '../core/types';
-import { button, el, selectInput } from './dom';
+import type {
+  EmptyDayPolicy,
+  PlanColorMode,
+  PlannerStore,
+} from '../core/types';
+import { button, el } from './dom';
+import { selectInput } from './form-controls';
 import { formatPercent } from './format';
 
-function renderPlanColorSelect(mode: PlanColorMode, store: PlannerStore): HTMLSelectElement {
+function renderPlanColorSelect(
+  mode: PlanColorMode,
+  store: PlannerStore,
+): HTMLSelectElement {
   return selectInput(
     mode,
     [
@@ -16,13 +24,18 @@ function renderPlanColorSelect(mode: PlanColorMode, store: PlannerStore): HTMLSe
       className: 'select-input plan-color-select',
       ariaLabel: 'Plan color mode',
       onChange: (event) => {
-        store.commands.setPlanColorMode((event.target as HTMLSelectElement).value as PlanColorMode);
+        store.commands.setPlanColorMode(
+          (event.target as HTMLSelectElement).value as PlanColorMode,
+        );
       },
     },
   );
 }
 
-function renderEmptyDayPolicySelect(mode: EmptyDayPolicy, store: PlannerStore): HTMLSelectElement {
+function renderEmptyDayPolicySelect(
+  mode: EmptyDayPolicy,
+  store: PlannerStore,
+): HTMLSelectElement {
   return selectInput(
     mode,
     [
@@ -33,7 +46,10 @@ function renderEmptyDayPolicySelect(mode: EmptyDayPolicy, store: PlannerStore): 
       className: 'select-input plan-fill-select',
       ariaLabel: 'Empty day behavior',
       onChange: (event) => {
-        store.commands.updateConstraint('emptyDayPolicy', (event.target as HTMLSelectElement).value as EmptyDayPolicy);
+        store.commands.updateConstraint(
+          'emptyDayPolicy',
+          (event.target as HTMLSelectElement).value as EmptyDayPolicy,
+        );
       },
     },
   );
@@ -67,7 +83,8 @@ export function renderGanttToolbar(
       onClick: () => store.commands.setGanttView('plan'),
     }),
     button('Diagnostics', {
-      className: gantt.view === 'diagnostics' ? 'primary-button' : 'ghost-button',
+      className:
+        gantt.view === 'diagnostics' ? 'primary-button' : 'ghost-button',
       onClick: () => store.commands.setGanttView('diagnostics'),
     }),
     el(

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createDefaultSourceSettings, EXAMPLE_BOOK } from '../../src/core/defaults';
+import {
+  createDefaultSourceSettings,
+  EXAMPLE_BOOK,
+} from '../../src/core/defaults';
 import type { Logger } from '../../src/core/types';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
 import { stableEnrichmentCacheKey } from '../../src/infra/enrichment-cache-key';
@@ -16,12 +19,19 @@ const silentLogger: Logger = {
 
 describe('enrichment client degradation', () => {
   it('varies enrichment cache keys for source policy and local document connection changes', () => {
-    const book = { ...EXAMPLE_BOOK, id: 'book-1', title: 'Cache Sensitive Book' };
+    const book = {
+      ...EXAMPLE_BOOK,
+      id: 'book-1',
+      title: 'Cache Sensitive Book',
+    };
     const sourceSettings = createDefaultSourceSettings();
     const baseKey = stableEnrichmentCacheKey({ book, sourceSettings });
     const contentPreferenceKey = stableEnrichmentCacheKey({
       book,
-      sourceSettings: { ...sourceSettings, contentPreference: ['pdf', 'text', 'epub', 'ocr_text'] },
+      sourceSettings: {
+        ...sourceSettings,
+        contentPreference: ['pdf', 'text', 'epub', 'ocr_text'],
+      },
     });
     const pluginKey = stableEnrichmentCacheKey({
       book,
@@ -41,13 +51,15 @@ describe('enrichment client degradation', () => {
         baseUrl: 'http://127.0.0.1:8787',
         username: '',
         password: 'not-part-of-cache-key',
-        savePath: 'data/documents',
+        savePath: 'output/data/documents',
         category: 'difficulty-engine',
         timeoutMs: 10000,
       },
     });
 
-    expect(new Set([baseKey, contentPreferenceKey, pluginKey, connectionKey]).size).toBe(4);
+    expect(
+      new Set([baseKey, contentPreferenceKey, pluginKey, connectionKey]).size,
+    ).toBe(4);
     expect(connectionKey).not.toContain('not-part-of-cache-key');
   });
 
@@ -56,7 +68,9 @@ describe('enrichment client degradation', () => {
     const disabled = createDefaultSourceSettings();
     disabled.metadataSources.openlibrary = false;
 
-    expect(searchRequestKey({ query: 'algebra', sourceSettings: enabled })).not.toBe(
+    expect(
+      searchRequestKey({ query: 'algebra', sourceSettings: enabled }),
+    ).not.toBe(
       searchRequestKey({ query: 'algebra', sourceSettings: disabled }),
     );
   });
@@ -153,7 +167,12 @@ describe('enrichment client degradation', () => {
             accessBasis: 'user_provided' as const,
             status: 'complete' as const,
             matchScore: 0.95,
-            availability: { seeders: 4, peers: 1, progress: 1, state: 'uploading' },
+            availability: {
+              seeders: 4,
+              peers: 1,
+              progress: 1,
+              state: 'uploading',
+            },
             provenance: {
               provider: 'qbittorrent',
               sourceUrl: 'magnet:?xt=urn:btih:fixture',
@@ -168,18 +187,27 @@ describe('enrichment client degradation', () => {
     });
 
     const response = await client.fetchBook({
-      book: { ...EXAMPLE_BOOK, id: 'book-1', title: 'Readable Book', selectedDocumentId: 'missing-doc' },
+      book: {
+        ...EXAMPLE_BOOK,
+        id: 'book-1',
+        title: 'Readable Book',
+        selectedDocumentId: 'missing-doc',
+      },
       sourceSettings,
     });
 
     expect(response.bookPatch.documents).toHaveLength(1);
     expect(response.bookPatch.selectedDocumentId).toBe('qbittorrent:fixture:1');
-    expect(response.enrichment.chapters).toEqual(expect.arrayContaining([
-      'Chapter 1 Foundations',
-      'Chapter 2 Methods',
-      'Chapter 3 Applications',
-    ]));
-    expect(response.enrichment.provenance?.chapters?.provider).toBe('qbittorrent');
+    expect(response.enrichment.chapters).toEqual(
+      expect.arrayContaining([
+        'Chapter 1 Foundations',
+        'Chapter 2 Methods',
+        'Chapter 3 Applications',
+      ]),
+    );
+    expect(response.enrichment.provenance?.chapters?.provider).toBe(
+      'qbittorrent',
+    );
   });
 
   it('reuses completed project document refs for TOC extraction on later refreshes', async () => {
@@ -228,7 +256,7 @@ describe('enrichment client degradation', () => {
         baseUrl: 'http://127.0.0.1:8787',
         username: '',
         password: '',
-        savePath: 'data/documents',
+        savePath: 'output/data/documents',
         category: 'difficulty-engine',
         timeoutMs: 10000,
       },
@@ -246,13 +274,19 @@ describe('enrichment client degradation', () => {
             torrentHash: 'complete',
             fileIndex: 0,
             fileName: 'Practical Electronics for Inventors.pdf',
-            storagePath: 'data/documents/Practical Electronics for Inventors.pdf',
+            storagePath:
+              'output/data/documents/Practical Electronics for Inventors.pdf',
             contentKind: 'pdf',
             contentType: 'application/pdf',
             accessBasis: 'user_provided',
             status: 'complete',
             matchScore: 0.95,
-            availability: { seeders: 7, peers: 1, progress: 1, state: 'uploading' },
+            availability: {
+              seeders: 7,
+              peers: 1,
+              progress: 1,
+              state: 'uploading',
+            },
             provenance: {
               provider: 'qbittorrent',
               sourceUrl: 'magnet:?xt=urn:btih:complete',
@@ -270,18 +304,22 @@ describe('enrichment client degradation', () => {
         baseUrl: 'http://127.0.0.1:8787',
         username: '',
         password: '',
-        savePath: 'data/documents',
+        savePath: 'output/data/documents',
         category: 'difficulty-engine',
         timeoutMs: 10000,
       },
     });
 
-    expect(response.enrichment.chapters).toEqual(expect.arrayContaining([
-      'CHAPTER 1 Introduction to Electronics',
-      'CHAPTER 2 Theory',
-      'CHAPTER 3 Basic Electronic Circuit Components',
-    ]));
-    expect(response.enrichment.provenance?.chapters?.provider).toBe('qbittorrent');
+    expect(response.enrichment.chapters).toEqual(
+      expect.arrayContaining([
+        'CHAPTER 1 Introduction to Electronics',
+        'CHAPTER 2 Theory',
+        'CHAPTER 3 Basic Electronic Circuit Components',
+      ]),
+    );
+    expect(response.enrichment.provenance?.chapters?.provider).toBe(
+      'qbittorrent',
+    );
     expect(fetchImpl).toHaveBeenCalledWith(
       expect.stringContaining('/documents/read-text?'),
       expect.any(Object),

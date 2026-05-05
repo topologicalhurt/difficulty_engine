@@ -1,4 +1,8 @@
-import type { ConstraintField, ConstraintSet, PlannerStore } from '../core/types';
+import type {
+  ConstraintField,
+  ConstraintSet,
+  PlannerStore,
+} from '../core/types';
 
 type ConstraintFrameHandle = number | ReturnType<typeof globalThis.setTimeout>;
 
@@ -18,7 +22,10 @@ function cancelFrame(frameId: ConstraintFrameHandle): void {
   globalThis.clearTimeout(frameId);
 }
 
-export function selectConstraintField(store: PlannerStore, field: ConstraintField): void {
+export function selectConstraintField(
+  store: PlannerStore,
+  field: ConstraintField,
+): void {
   store.commands.selectConstraintField(field.key);
 }
 

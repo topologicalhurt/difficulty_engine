@@ -30,7 +30,9 @@ describe('wiring contracts', () => {
     WIRING_CONTRACTS.forEach((contract) => {
       expect(contract.surface).toBeTruthy();
       expect(contract.control).toBeTruthy();
-      expect(contract.recomputePolicy).toMatch(/^(ui_only|snapshot|async_then_snapshot|project_load|persistence_only)$/);
+      expect(contract.recomputePolicy).toMatch(
+        /^(ui_only|snapshot|async_then_snapshot|project_load|persistence_only)$/,
+      );
       expect(contract.testIds.length).toBeGreaterThan(0);
       if (contract.projectWrites.length) {
         expect(contract.recomputePolicy).not.toBe('ui_only');
@@ -47,20 +49,42 @@ describe('wiring contracts', () => {
 
     CONSTRAINT_FIELDS.forEach((field) => {
       const key = String(field.key);
-      expect(WIRING_CONTRACTS.some((contract) => contract.id === `constraint.${key}`)).toBe(true);
+      expect(
+        WIRING_CONTRACTS.some(
+          (contract) => contract.id === `constraint.${key}`,
+        ),
+      ).toBe(true);
     });
   });
 
   it('classifies UI-only commands separately from snapshot-mutating commands', () => {
-    const uiOnly = WIRING_CONTRACTS.filter((contract) => contract.recomputePolicy === 'ui_only');
-    const projectMutations = WIRING_CONTRACTS.filter((contract) => contract.projectWrites.length);
-    expect(uiOnly.some((contract) => contract.command === 'setActiveView')).toBe(true);
-    expect(projectMutations.some((contract) => contract.command === 'updateBookRelations')).toBe(true);
-    expect(projectMutations.every((contract) => contract.snapshotEffects.length || contract.recomputePolicy === 'persistence_only')).toBe(true);
+    const uiOnly = WIRING_CONTRACTS.filter(
+      (contract) => contract.recomputePolicy === 'ui_only',
+    );
+    const projectMutations = WIRING_CONTRACTS.filter(
+      (contract) => contract.projectWrites.length,
+    );
+    expect(
+      uiOnly.some((contract) => contract.command === 'setActiveView'),
+    ).toBe(true);
+    expect(
+      projectMutations.some(
+        (contract) => contract.command === 'updateBookRelations',
+      ),
+    ).toBe(true);
+    expect(
+      projectMutations.every(
+        (contract) =>
+          contract.snapshotEffects.length ||
+          contract.recomputePolicy === 'persistence_only',
+      ),
+    ).toBe(true);
   });
 
   it('uses only registered wiring contract ids in store commits', () => {
-    const contractIds = new Set(WIRING_CONTRACTS.map((contract) => contract.id));
+    const contractIds = new Set(
+      WIRING_CONTRACTS.map((contract) => contract.id),
+    );
     const commitPattern = /\bcommit(?:Ui|Project)\(\s*'([^']+)'/g;
     const violations: string[] = [];
 

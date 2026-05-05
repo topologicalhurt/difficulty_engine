@@ -1,5 +1,9 @@
 import { weekdaysForCount } from '../core/weekdays';
-import type { ConstraintSet, PlannerProjectV1, PlannerStoreCommands } from '../core/types';
+import type {
+  ConstraintSet,
+  PlannerProjectV1,
+  PlannerStoreCommands,
+} from '../core/types';
 import type { StoreCommandContext } from './store-command-context';
 import { constraintContractId } from './wiring/constraint-contracts';
 
@@ -22,7 +26,10 @@ export function createConstraintCommands(
   }
 
   return {
-    updateConstraint<K extends keyof ConstraintSet>(key: K, value: ConstraintSet[K]): void {
+    updateConstraint<K extends keyof ConstraintSet>(
+      key: K,
+      value: ConstraintSet[K],
+    ): void {
       if (key === 'dpw') {
         const dpw = Number(value);
         updateConstraints(
@@ -35,7 +42,10 @@ export function createConstraintCommands(
         );
         return;
       }
-      updateConstraints({ [key]: value } as Partial<ConstraintSet>, constraintContractId(key));
+      updateConstraints(
+        { [key]: value } as Partial<ConstraintSet>,
+        constraintContractId(key),
+      );
     },
     updateConstraints,
   };

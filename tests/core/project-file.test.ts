@@ -18,17 +18,30 @@ describe('project-file boundary', () => {
       manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
       constraints: { sd: '2026-01-05' },
       enrichmentCache: {},
-      uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+      uiPreferences: {
+        ganttView: 'plan',
+        ganttZoom: 1,
+        planColorMode: 'category_mono',
+      },
     });
     const parsed = parseProject(serializeProject(project));
     expect(parsed.version).toBe(1);
     expect(parsed.constraints.sd).toBe('2026-01-05');
-    expect(parsed.sourceSettings.contentPreference).toEqual(['text', 'epub', 'ocr_text', 'pdf']);
+    expect(parsed.sourceSettings.contentPreference).toEqual([
+      'text',
+      'epub',
+      'ocr_text',
+      'pdf',
+    ]);
     expect(parsed.sourceSettings.documentSources.qbittorrent).toBe(true);
     expect(parsed.sourceSettings.qbittorrent.searchPlugins).toBe(true);
     expect(parsed.sourceSettings.qbittorrent.maxResults).toBe(30);
     expect(parsed.sourceSettings.qbittorrent.allowedSites).toEqual(
-      expect.arrayContaining(['archive.org', 'gutenberg.org', 'standardebooks.org']),
+      expect.arrayContaining([
+        'archive.org',
+        'gutenberg.org',
+        'standardebooks.org',
+      ]),
     );
   });
 
@@ -61,8 +74,12 @@ describe('project-file boundary', () => {
     expect(project.sourceSettings.metadataSources.googleBooks).toBe(true);
     expect(project.sourceSettings.documentSources.qbittorrent).toBe(true);
     expect(project.sourceSettings.qbittorrent.searchPlugins).toBe(true);
-    expect(project.sourceSettings.qbittorrent.allowedPlugins).toEqual(['open-plugin']);
-    expect(project.sourceSettings.qbittorrent.allowedSites).toEqual(['archive.org']);
+    expect(project.sourceSettings.qbittorrent.allowedPlugins).toEqual([
+      'open-plugin',
+    ]);
+    expect(project.sourceSettings.qbittorrent.allowedSites).toEqual([
+      'archive.org',
+    ]);
     expect(project.sourceSettings.qbittorrent.maxResults).toBe(50);
     expect(exported).not.toContain('must-not-export');
     expect(exported).not.toContain('qbittorrentConnection');
@@ -95,7 +112,9 @@ describe('project-file boundary', () => {
     });
 
     expect(project.enrichmentCache.alpha?.status).toBe('stale');
-    expect(project.enrichmentCache.alpha?.data?.chapters).toEqual(['Chapter 1']);
+    expect(project.enrichmentCache.alpha?.data?.chapters).toEqual([
+      'Chapter 1',
+    ]);
     expect(project.enrichmentCache.alpha?.error).toContain('NetworkError');
   });
 
@@ -112,13 +131,19 @@ describe('project-file boundary', () => {
                 id: 'pdf-1',
                 provider: 'qbittorrent',
                 fileName: 'Practical Electronics for Inventors.pdf',
-                storagePath: 'data/documents/Practical Electronics for Inventors.pdf',
+                storagePath:
+                  'output/data/documents/Practical Electronics for Inventors.pdf',
                 contentKind: 'pdf',
                 contentType: 'application/pdf',
                 accessBasis: 'user_provided',
                 status: 'unreadable',
                 matchScore: 0.45,
-                availability: { seeders: 7, peers: 0, progress: 1, state: 'stalledUP' },
+                availability: {
+                  seeders: 7,
+                  peers: 0,
+                  progress: 1,
+                  state: 'stalledUP',
+                },
                 provenance: {
                   provider: 'qbittorrent',
                   fetchedAt: '2026-04-30T00:00:00.000Z',
@@ -137,7 +162,9 @@ describe('project-file boundary', () => {
       uiPreferences: {},
     });
 
-    expect(project.library.books.electronics?.documents?.[0]?.status).toBe('complete');
+    expect(project.library.books.electronics?.documents?.[0]?.status).toBe(
+      'complete',
+    );
   });
 
   it('removes stale manual relation ids during project normalization', () => {
@@ -174,7 +201,7 @@ describe('project-file boundary', () => {
               {
                 id: 'doc-1',
                 fileName: 'Alpha.txt',
-                storagePath: 'data/documents/Alpha.txt',
+                storagePath: 'output/data/documents/Alpha.txt',
                 contentKind: 'text',
               },
             ],
@@ -228,10 +255,10 @@ describe('project-file boundary', () => {
           invalid: ['alpha'],
         },
         actuals: {
-	          '2026-02-01': {
-	            alpha: { minutes: '45.5', pages: '12.25', done: true },
-	            ghost: { minutes: 60 },
-	          },
+          '2026-02-01': {
+            alpha: { minutes: '45.5', pages: '12.25', done: true },
+            ghost: { minutes: 60 },
+          },
           invalid: {
             alpha: { minutes: 20 },
           },
@@ -257,7 +284,11 @@ describe('project-file boundary', () => {
         displayGroups: { Core: '2.5', '': 7 },
       },
       enrichmentCache: {},
-      uiPreferences: { ganttView: 'oops', ganttZoom: 999, planColorMode: 'oops' },
+      uiPreferences: {
+        ganttView: 'oops',
+        ganttZoom: 999,
+        planColorMode: 'oops',
+      },
     });
 
     expect(project.manualOverrides.schedule).toEqual({
@@ -266,11 +297,11 @@ describe('project-file boundary', () => {
     expect(project.manualOverrides.deferred).toEqual({
       '2026-02-01': ['alpha'],
     });
-	    expect(project.manualOverrides.actuals).toEqual({
-	      '2026-02-01': {
-	        alpha: { minutes: 45.5, pages: 12.25, done: true },
-	      },
-	    });
+    expect(project.manualOverrides.actuals).toEqual({
+      '2026-02-01': {
+        alpha: { minutes: 45.5, pages: 12.25, done: true },
+      },
+    });
     expect(project.constraints.sd).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(project.library.books.alpha.isbn).toBeNull();
     expect(project.library.books.alpha.openLibraryKey).toBeNull();

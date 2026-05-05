@@ -51,7 +51,9 @@ export function commitQbittorrentConnectionPatch(
     qbittorrentStatus: {
       ...state.ui.qbittorrentStatus,
       state: 'idle',
-      message: nextSettings.enabled ? 'qBittorrent settings saved locally.' : 'qBittorrent is disabled.',
+      message: nextSettings.enabled
+        ? 'qBittorrent settings saved locally.'
+        : 'qBittorrent is disabled.',
     },
   });
 }

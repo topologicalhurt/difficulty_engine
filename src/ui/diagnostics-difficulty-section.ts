@@ -2,7 +2,9 @@ import type { DifficultyRowView } from '../app/selectors/diagnostics';
 import { card, el } from './dom';
 import { formatOneDecimal, formatPercent } from './format';
 
-export function renderDifficultyDiagnostics(rows: DifficultyRowView[]): HTMLElement {
+export function renderDifficultyDiagnostics(
+  rows: DifficultyRowView[],
+): HTMLElement {
   return card(
     'Difficulty model',
     el(
@@ -40,14 +42,20 @@ export function renderDifficultyDiagnostics(rows: DifficultyRowView[]): HTMLElem
               el('td', { text: bookLabel }),
               el('td', { text: formatOneDecimal(difficulty.seed) }),
               el('td', { text: formatOneDecimal(difficulty.corpusComplexity) }),
-              el('td', { text: formatOneDecimal(difficulty.subjectWorkloadPrior) }),
-              el('td', { text: formatOneDecimal(difficulty.subjectWorkloadLift) }),
+              el('td', {
+                text: formatOneDecimal(difficulty.subjectWorkloadPrior),
+              }),
+              el('td', {
+                text: formatOneDecimal(difficulty.subjectWorkloadLift),
+              }),
               el('td', { text: formatPercent(difficulty.metadataConfidence) }),
               el('td', { text: formatOneDecimal(difficulty.graphBurden) }),
               el('td', { text: formatOneDecimal(difficulty.novelty) }),
               el('td', { text: formatOneDecimal(difficulty.breadth) }),
               el('td', { text: formatOneDecimal(difficulty.retention) }),
-              el('td', { text: formatOneDecimal(difficulty.scheduleDifficulty) }),
+              el('td', {
+                text: formatOneDecimal(difficulty.scheduleDifficulty),
+              }),
             ),
           ),
         ),

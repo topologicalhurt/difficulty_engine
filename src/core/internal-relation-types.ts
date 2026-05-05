@@ -22,7 +22,12 @@ export interface PairSignal {
   reasonsBA: string[];
   reference: number;
   symmetry: number;
-  matchedTopics?: Array<{ a: string; b: string | null; sim: number; weight: number }>;
+  matchedTopics?: Array<{
+    a: string;
+    b: string | null;
+    sim: number;
+    weight: number;
+  }>;
   sameAuthor?: boolean;
 }
 

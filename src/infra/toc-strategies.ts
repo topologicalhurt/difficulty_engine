@@ -3,10 +3,17 @@ import {
   metadataSourceEnabled,
 } from '../core/source-settings-policy';
 import { fetchInternetArchiveCandidates } from './internet-archive';
-import { acquiredDocumentCandidates, sourceDocumentCandidate } from './source-document-candidates';
+import {
+  acquiredDocumentCandidates,
+  sourceDocumentCandidate,
+} from './source-document-candidates';
 import { googleBooksCandidates } from './toc-google-candidates';
 import { existingLocalCandidate } from './toc-local-candidates';
-import { mergeStrategyCandidates, type StrategyCandidate, type StrategyResolution } from './toc-merge';
+import {
+  mergeStrategyCandidates,
+  type StrategyCandidate,
+  type StrategyResolution,
+} from './toc-merge';
 import {
   openLibraryEditionCandidate,
   openLibrarySearchCandidates,
@@ -28,8 +35,14 @@ export async function resolveBookEnrichment(
   }
   candidates.push(...acquiredDocumentCandidates(context));
 
-  const openLibraryEnabled = metadataSourceEnabled(context.sourceSettings, 'openlibrary');
-  const googleBooksEnabled = metadataSourceEnabled(context.sourceSettings, 'googleBooks');
+  const openLibraryEnabled = metadataSourceEnabled(
+    context.sourceSettings,
+    'openlibrary',
+  );
+  const googleBooksEnabled = metadataSourceEnabled(
+    context.sourceSettings,
+    'googleBooks',
+  );
   const internetArchiveEnabled =
     metadataSourceEnabled(context.sourceSettings, 'internetArchive') &&
     documentSourceEnabled(context.sourceSettings, 'internetArchiveText');

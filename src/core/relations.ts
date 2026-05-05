@@ -1,4 +1,9 @@
-import type { CorpusSnapshot, PairSignal, RelationInfo, TopicIndex } from './internal-types';
+import type {
+  CorpusSnapshot,
+  PairSignal,
+  RelationInfo,
+  TopicIndex,
+} from './internal-types';
 import type { PlannerProjectV1, RelationEvidence } from './types';
 import { learnedRelationCandidates } from './relation-candidates';
 import { hasDirectedPath, relationPairKey } from './relation-graph-utils';
@@ -26,9 +31,11 @@ export function inferRelations(
   const addRelation = (relation: RelationEvidence): void => {
     if (relation.type === 'prerequisite') {
       if (!prereqById[relation.to]) prereqById[relation.to] = [];
-      if (!prereqById[relation.to].includes(relation.from)) prereqById[relation.to].push(relation.from);
+      if (!prereqById[relation.to].includes(relation.from))
+        prereqById[relation.to].push(relation.from);
       if (!graph[relation.from]) graph[relation.from] = [];
-      if (!graph[relation.from].includes(relation.to)) graph[relation.from].push(relation.to);
+      if (!graph[relation.from].includes(relation.to))
+        graph[relation.from].push(relation.to);
     }
     if (relation.type === 'co-study') {
       coStudyPairs.push([relation.from, relation.to]);
@@ -45,7 +52,10 @@ export function inferRelations(
     relations.push(manualBlockRelation(from, to, explanation, reason));
   }
 
-  function tryAddPrerequisite(relation: RelationEvidence, blockReason?: string): boolean {
+  function tryAddPrerequisite(
+    relation: RelationEvidence,
+    blockReason?: string,
+  ): boolean {
     if (
       relations.some(
         (entry) =>
@@ -83,7 +93,10 @@ export function inferRelations(
   books.forEach((book) => {
     book.manualPrereqs.forEach((parent) => {
       if (!corpus.byId[parent] || parent === book.id) return;
-      tryAddPrerequisite(manualPrerequisiteRelation(parent, book.id), 'manual prerequisite cycle');
+      tryAddPrerequisite(
+        manualPrerequisiteRelation(parent, book.id),
+        'manual prerequisite cycle',
+      );
     });
   });
 
@@ -105,24 +118,33 @@ export function inferRelations(
 
   candidates
     .filter((candidate) => candidate.type === 'prerequisite')
-    .sort((left, right) => right.score - left.score || left.from.localeCompare(right.from) || left.to.localeCompare(right.to))
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.from.localeCompare(right.from) ||
+        left.to.localeCompare(right.to),
+    )
     .forEach((candidate) => {
       tryAddPrerequisite(candidate);
     });
 
   const pairTaken = new Set(
     relations
-      .filter((relation) => relation.type === 'prerequisite' || relation.type === 'co-study')
+      .filter(
+        (relation) =>
+          relation.type === 'prerequisite' || relation.type === 'co-study',
+      )
       .map((relation) => relationPairKey(relation.from, relation.to)),
   );
 
   candidates
     .filter((candidate) => candidate.type !== 'prerequisite')
-    .sort((left, right) =>
-      right.score - left.score ||
-      left.from.localeCompare(right.from) ||
-      left.to.localeCompare(right.to) ||
-      left.type.localeCompare(right.type),
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.from.localeCompare(right.from) ||
+        left.to.localeCompare(right.to) ||
+        left.type.localeCompare(right.type),
     )
     .forEach((candidate) => {
       if (
@@ -142,7 +164,10 @@ export function inferRelations(
       }
       const key = relationPairKey(candidate.from, candidate.to);
       if (pairTaken.has(key)) {
-        if (candidate.sources.includes('manual') && candidate.type === 'co-study') {
+        if (
+          candidate.sources.includes('manual') &&
+          candidate.type === 'co-study'
+        ) {
           addManualBlock(
             candidate.from,
             candidate.to,
@@ -161,7 +186,13 @@ export function inferRelations(
     prereqById,
     coStudyPairs,
     byPair,
-    confidence: round2(mean(relations.filter((relation) => relation.type === 'prerequisite').map((relation) => relation.confidence || relation.score || 0))),
+    confidence: round2(
+      mean(
+        relations
+          .filter((relation) => relation.type === 'prerequisite')
+          .map((relation) => relation.confidence || relation.score || 0),
+      ),
+    ),
     manualAllowOverlap,
   };
 }

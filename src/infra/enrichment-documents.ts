@@ -35,11 +35,17 @@ interface BookEnrichmentLoaderOptions {
 }
 
 interface BookEnrichmentLoader {
-  loadBook(request: EnrichmentRequest, cacheKey: string): Promise<EnrichmentResponse>;
+  loadBook(
+    request: EnrichmentRequest,
+    cacheKey: string,
+  ): Promise<EnrichmentResponse>;
 }
 
 function shouldUseQbittorrentProvider(request: EnrichmentRequest): boolean {
-  return qbittorrentRuntimeEnabled(request.sourceSettings, request.qbittorrentConnection);
+  return qbittorrentRuntimeEnabled(
+    request.sourceSettings,
+    request.qbittorrentConnection,
+  );
 }
 
 function effectiveDocumentPolicy(
@@ -62,7 +68,10 @@ function documentProvider(
   if (options.documentAcquisitionProvider) {
     return options.documentAcquisitionProvider;
   }
-  if (!shouldUseQbittorrentProvider(request) || !request.qbittorrentConnection) {
+  if (
+    !shouldUseQbittorrentProvider(request) ||
+    !request.qbittorrentConnection
+  ) {
     return undefined;
   }
   return createQBittorrentProvider({
@@ -122,21 +131,31 @@ function mergeResolvedDocumentRefs(
     : undefined;
   const existingSelection =
     request.book.selectedDocumentId &&
-    mergedDocuments?.some((document) => document.id === request.book.selectedDocumentId)
+    mergedDocuments?.some(
+      (document) => document.id === request.book.selectedDocumentId,
+    )
       ? request.book.selectedDocumentId
       : null;
   const selectedDocumentId =
     existingSelection ??
     mergedDocuments?.find((document) => document.status === 'complete')?.id ??
     mergedDocuments?.[0]?.id;
-  return mergedDocuments ? { documents: mergedDocuments, selectedDocumentId } : {};
+  return mergedDocuments
+    ? { documents: mergedDocuments, selectedDocumentId }
+    : {};
 }
 
-export function createBookEnrichmentLoader(options: BookEnrichmentLoaderOptions): BookEnrichmentLoader {
-  const documentPolicy = options.documentAcquisitionPolicy ?? defaultDocumentAcquisitionPolicy();
+export function createBookEnrichmentLoader(
+  options: BookEnrichmentLoaderOptions,
+): BookEnrichmentLoader {
+  const documentPolicy =
+    options.documentAcquisitionPolicy ?? defaultDocumentAcquisitionPolicy();
 
   return {
-    async loadBook(request: EnrichmentRequest, cacheKey: string): Promise<EnrichmentResponse> {
+    async loadBook(
+      request: EnrichmentRequest,
+      cacheKey: string,
+    ): Promise<EnrichmentResponse> {
       const completedDocuments = await loadCompletedDocumentRefs(
         request,
         options.fetchImpl,

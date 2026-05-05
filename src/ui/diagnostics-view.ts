@@ -12,7 +12,11 @@ export function renderDiagnosticsView(state: AppState): HTMLElement {
   return el(
     'div',
     { className: 'stack-layout' },
-    renderAuditSummary(viewModel.passes, viewModel.warnings, viewModel.failures),
+    renderAuditSummary(
+      viewModel.passes,
+      viewModel.warnings,
+      viewModel.failures,
+    ),
     renderRelationsDiagnostics(viewModel.relations),
     renderWorkloadClusterDiagnostics(viewModel.workloadClusters),
     renderOverlapDiffDiagnostics(viewModel.overlapDiffs),

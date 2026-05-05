@@ -1,3 +1,4 @@
+export type * from './ai';
 export type * from './book-documents';
 export type * from './books';
 export type * from './enrichment';

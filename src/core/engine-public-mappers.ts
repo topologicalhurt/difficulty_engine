@@ -98,7 +98,10 @@ export function buildSortedBooks(
         ...book,
         abs: difficulty?.corpusComplexity ?? book.manualSeedDifficulty,
         rel: difficulty?.scheduleDifficulty ?? book.manualSeedDifficulty,
-        eff: difficulty?.displayDifficulty ?? difficulty?.scheduleDifficulty ?? book.manualSeedDifficulty,
+        eff:
+          difficulty?.displayDifficulty ??
+          difficulty?.scheduleDifficulty ??
+          book.manualSeedDifficulty,
         timeEff: difficulty?.scheduleDifficulty ?? book.manualSeedDifficulty,
         dep: difficulty?.topologicalDepth ?? 0,
       };
@@ -124,7 +127,9 @@ export function buildSchedById(
           ...item,
           actualStart: actual?.actualStart ?? null,
           actualEnd: actual?.actualEnd ?? null,
-          hrs: round2(((actual?.minutes ?? 0) + (actual?.remainingMinutes ?? 0)) / 60),
+          hrs: round2(
+            ((actual?.minutes ?? 0) + (actual?.remainingMinutes ?? 0)) / 60,
+          ),
           actualHours: round2((actual?.minutes ?? 0) / 60),
           residualHours: round2((actual?.remainingMinutes ?? 0) / 60),
           unfinishedPages: actual?.unfinishedPages ?? 0,

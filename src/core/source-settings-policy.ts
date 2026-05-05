@@ -20,23 +20,37 @@ export function documentSourceEnabled(
   return settings?.documentSources[source] !== false;
 }
 
-export function qbittorrentDocumentSourceEnabled(settings: SourceSettings | undefined): boolean {
+export function qbittorrentDocumentSourceEnabled(
+  settings: SourceSettings | undefined,
+): boolean {
   return settings?.documentSources.qbittorrent === true;
 }
 
-export function qbittorrentUserTorrentsEnabled(settings: SourceSettings | undefined): boolean {
-  return qbittorrentDocumentSourceEnabled(settings) && settings?.qbittorrent.userProvidedTorrents === true;
+export function qbittorrentUserTorrentsEnabled(
+  settings: SourceSettings | undefined,
+): boolean {
+  return (
+    qbittorrentDocumentSourceEnabled(settings) &&
+    settings?.qbittorrent.userProvidedTorrents === true
+  );
 }
 
-export function qbittorrentSearchPluginsEnabled(settings: SourceSettings | undefined): boolean {
-  return qbittorrentDocumentSourceEnabled(settings) && settings?.qbittorrent.searchPlugins === true;
+export function qbittorrentSearchPluginsEnabled(
+  settings: SourceSettings | undefined,
+): boolean {
+  return (
+    qbittorrentDocumentSourceEnabled(settings) &&
+    settings?.qbittorrent.searchPlugins === true
+  );
 }
 
 export function qbittorrentRuntimeEnabled(
   settings: SourceSettings,
   connection: QbittorrentConnectionSettings | undefined,
 ): boolean {
-  return qbittorrentDocumentSourceEnabled(settings) && connection?.enabled === true;
+  return (
+    qbittorrentDocumentSourceEnabled(settings) && connection?.enabled === true
+  );
 }
 
 export function sourceEnabledForDocumentProvider(
@@ -44,9 +58,13 @@ export function sourceEnabledForDocumentProvider(
   settings: SourceSettings,
 ): boolean {
   const provider = docRef.provider.toLowerCase();
-  if (provider === 'qbittorrent') return documentSourceEnabled(settings, 'qbittorrent');
-  if (provider === 'internet_archive') return documentSourceEnabled(settings, 'internetArchiveText');
-  if (provider === 'direct_url') return documentSourceEnabled(settings, 'directUrl');
-  if (provider === 'local_file') return documentSourceEnabled(settings, 'localFile');
+  if (provider === 'qbittorrent')
+    return documentSourceEnabled(settings, 'qbittorrent');
+  if (provider === 'internet_archive')
+    return documentSourceEnabled(settings, 'internetArchiveText');
+  if (provider === 'direct_url')
+    return documentSourceEnabled(settings, 'directUrl');
+  if (provider === 'local_file')
+    return documentSourceEnabled(settings, 'localFile');
   return true;
 }

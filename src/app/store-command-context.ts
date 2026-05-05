@@ -1,8 +1,4 @@
-import type {
-  AppState,
-  PlannerProjectV1,
-  UiState,
-} from '../core/types';
+import type { AppState, PlannerProjectV1, UiState } from '../core/types';
 import type { WiringContractId } from './wiring/contracts';
 
 export interface StoreCommandContext {

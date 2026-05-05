@@ -25,14 +25,21 @@ export function renderDagSvg(model: GraphRenderModel): SVGSVGElement | null {
       column.forEach((item, index) => {
         positions.set(item.id, {
           x: 40 + depth * GRAPH_DAG_LAYOUT.columnWidth,
-          y: 36 + index * (GRAPH_DAG_LAYOUT.nodeHeight + GRAPH_DAG_LAYOUT.nodeVerticalGap),
+          y:
+            36 +
+            index *
+              (GRAPH_DAG_LAYOUT.nodeHeight + GRAPH_DAG_LAYOUT.nodeVerticalGap),
         });
       });
     });
-  const width = Math.max(GRAPH_DAG_LAYOUT.minWidth, columns.size * GRAPH_DAG_LAYOUT.columnWidth + 120);
+  const width = Math.max(
+    GRAPH_DAG_LAYOUT.minWidth,
+    columns.size * GRAPH_DAG_LAYOUT.columnWidth + 120,
+  );
   const height = Math.max(
     GRAPH_DAG_LAYOUT.minHeight,
-    maxRows * (GRAPH_DAG_LAYOUT.nodeHeight + GRAPH_DAG_LAYOUT.nodeVerticalGap) + 80,
+    maxRows * (GRAPH_DAG_LAYOUT.nodeHeight + GRAPH_DAG_LAYOUT.nodeVerticalGap) +
+      80,
   );
   const svg = svgEl('svg', {
     viewBox: `0 0 ${width} ${height}`,
@@ -58,12 +65,26 @@ function renderPartitionBoxes(
   model.displayGroupPartitions.forEach((partition) => {
     const partitionPositions = partition.ids
       .map((id) => positions.get(id))
-      .filter((position): position is { x: number; y: number } => Boolean(position));
+      .filter((position): position is { x: number; y: number } =>
+        Boolean(position),
+      );
     if (!partitionPositions.length) return;
-    const minX = Math.min(...partitionPositions.map((position) => position.x)) - 8;
-    const maxX = Math.max(...partitionPositions.map((position) => position.x + GRAPH_DAG_LAYOUT.nodeWidth)) + 8;
-    const minY = Math.min(...partitionPositions.map((position) => position.y)) - 8;
-    const maxY = Math.max(...partitionPositions.map((position) => position.y + GRAPH_DAG_LAYOUT.nodeHeight)) + 8;
+    const minX =
+      Math.min(...partitionPositions.map((position) => position.x)) - 8;
+    const maxX =
+      Math.max(
+        ...partitionPositions.map(
+          (position) => position.x + GRAPH_DAG_LAYOUT.nodeWidth,
+        ),
+      ) + 8;
+    const minY =
+      Math.min(...partitionPositions.map((position) => position.y)) - 8;
+    const maxY =
+      Math.max(
+        ...partitionPositions.map(
+          (position) => position.y + GRAPH_DAG_LAYOUT.nodeHeight,
+        ),
+      ) + 8;
     svg.append(
       svgEl('rect', {
         x: String(minX),
@@ -89,12 +110,24 @@ function renderResearchChainBoxes(
   model.researchChains.forEach((chain, index) => {
     const chainPositions = chain.ids
       .map((id) => positions.get(id))
-      .filter((position): position is { x: number; y: number } => Boolean(position));
+      .filter((position): position is { x: number; y: number } =>
+        Boolean(position),
+      );
     if (chainPositions.length < 2) return;
     const minX = Math.min(...chainPositions.map((position) => position.x)) - 14;
-    const maxX = Math.max(...chainPositions.map((position) => position.x + GRAPH_DAG_LAYOUT.nodeWidth)) + 14;
+    const maxX =
+      Math.max(
+        ...chainPositions.map(
+          (position) => position.x + GRAPH_DAG_LAYOUT.nodeWidth,
+        ),
+      ) + 14;
     const minY = Math.min(...chainPositions.map((position) => position.y)) - 14;
-    const maxY = Math.max(...chainPositions.map((position) => position.y + GRAPH_DAG_LAYOUT.nodeHeight)) + 14;
+    const maxY =
+      Math.max(
+        ...chainPositions.map(
+          (position) => position.y + GRAPH_DAG_LAYOUT.nodeHeight,
+        ),
+      ) + 14;
     svg.append(
       svgEl('rect', {
         x: String(minX),
@@ -129,14 +162,16 @@ function renderPrerequisiteEdges(
     const from = positions.get(edge.from);
     const to = positions.get(edge.to);
     if (!from || !to) return;
-    svg.append(svgEl('path', {
-      d: `M ${from.x + GRAPH_DAG_LAYOUT.nodeWidth} ${from.y + GRAPH_DAG_LAYOUT.nodeHeight / 2} C ${from.x + GRAPH_DAG_LAYOUT.nodeWidth + 38} ${from.y + GRAPH_DAG_LAYOUT.nodeHeight / 2}, ${to.x - 38} ${to.y + GRAPH_DAG_LAYOUT.nodeHeight / 2}, ${to.x} ${to.y + GRAPH_DAG_LAYOUT.nodeHeight / 2}`,
-      fill: 'none',
-      stroke: 'rgba(148, 163, 184, 0.65)',
-      'stroke-width': '2',
-      'marker-start': markerUrl('dag', 'required-by'),
-      'marker-end': markerUrl('dag', 'prereq'),
-    }));
+    svg.append(
+      svgEl('path', {
+        d: `M ${from.x + GRAPH_DAG_LAYOUT.nodeWidth} ${from.y + GRAPH_DAG_LAYOUT.nodeHeight / 2} C ${from.x + GRAPH_DAG_LAYOUT.nodeWidth + 38} ${from.y + GRAPH_DAG_LAYOUT.nodeHeight / 2}, ${to.x - 38} ${to.y + GRAPH_DAG_LAYOUT.nodeHeight / 2}, ${to.x} ${to.y + GRAPH_DAG_LAYOUT.nodeHeight / 2}`,
+        fill: 'none',
+        stroke: 'rgba(148, 163, 184, 0.65)',
+        'stroke-width': '2',
+        'marker-start': markerUrl('dag', 'required-by'),
+        'marker-end': markerUrl('dag', 'prereq'),
+      }),
+    );
   });
 }
 
@@ -149,19 +184,24 @@ function renderCoStudyEdges(
     const from = positions.get(edge.from);
     const to = positions.get(edge.to);
     if (!from || !to) return;
-    svg.append(svgEl('path', {
-      d: `M ${from.x + GRAPH_DAG_LAYOUT.nodeWidth / 2} ${from.y + GRAPH_DAG_LAYOUT.nodeHeight} C ${from.x + GRAPH_DAG_LAYOUT.nodeWidth / 2} ${from.y + GRAPH_DAG_LAYOUT.nodeHeight + 28}, ${to.x + GRAPH_DAG_LAYOUT.nodeWidth / 2} ${to.y - 28}, ${to.x + GRAPH_DAG_LAYOUT.nodeWidth / 2} ${to.y}`,
-      fill: 'none',
-      stroke: 'rgba(96, 165, 250, 0.55)',
-      'stroke-width': '1.7',
-      'stroke-dasharray': '5 4',
-      'marker-start': markerUrl('dag', 'costudy'),
-      'marker-end': markerUrl('dag', 'costudy'),
-    }));
+    svg.append(
+      svgEl('path', {
+        d: `M ${from.x + GRAPH_DAG_LAYOUT.nodeWidth / 2} ${from.y + GRAPH_DAG_LAYOUT.nodeHeight} C ${from.x + GRAPH_DAG_LAYOUT.nodeWidth / 2} ${from.y + GRAPH_DAG_LAYOUT.nodeHeight + 28}, ${to.x + GRAPH_DAG_LAYOUT.nodeWidth / 2} ${to.y - 28}, ${to.x + GRAPH_DAG_LAYOUT.nodeWidth / 2} ${to.y}`,
+        fill: 'none',
+        stroke: 'rgba(96, 165, 250, 0.55)',
+        'stroke-width': '1.7',
+        'stroke-dasharray': '5 4',
+        'marker-start': markerUrl('dag', 'costudy'),
+        'marker-end': markerUrl('dag', 'costudy'),
+      }),
+    );
   });
 }
 
-function renderDepthLabels(svg: SVGSVGElement, columns: Map<number, GraphRenderModel['nodes']>): void {
+function renderDepthLabels(
+  svg: SVGSVGElement,
+  columns: Map<number, GraphRenderModel['nodes']>,
+): void {
   Array.from(columns.entries())
     .sort((left, right) => left[0] - right[0])
     .forEach(([depth]) => {

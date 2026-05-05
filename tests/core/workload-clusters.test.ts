@@ -3,8 +3,18 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_CONSTRAINTS, EXAMPLE_BOOK, createDefaultSourceSettings } from '../../src/core/defaults';
-import type { BookRecord, ConstraintSet, EngineSnapshot, PlannerProjectV1 } from '../../src/core/types';
+import {
+  DEFAULT_CONSTRAINTS,
+  EXAMPLE_BOOK,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
+import type {
+  BookRecord,
+  ConstraintSet,
+  EngineSnapshot,
+  PlannerProjectV1,
+} from '../../src/core/types';
 import { computeSnapshot } from './engine-test-utils';
 
 function book(
@@ -33,8 +43,16 @@ function book(
       tocSource: chapters.length ? 'manual' : 'none',
       provenance: subjects.length
         ? {
-            subjects: { provider: 'fixture', fetchedAt: '2026-01-05T00:00:00.000Z', confidence: 0.9 },
-            description: { provider: 'fixture', fetchedAt: '2026-01-05T00:00:00.000Z', confidence: 0.8 },
+            subjects: {
+              provider: 'fixture',
+              fetchedAt: '2026-01-05T00:00:00.000Z',
+              confidence: 0.9,
+            },
+            description: {
+              provider: 'fixture',
+              fetchedAt: '2026-01-05T00:00:00.000Z',
+              confidence: 0.8,
+            },
           }
         : undefined,
     },
@@ -77,9 +95,14 @@ function project(patch: Partial<ConstraintSet> = {}): PlannerProjectV1 {
       mutualEnabled: false,
       ...patch,
     },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
 }
 
@@ -99,7 +122,10 @@ describe('adaptive workload clusters', () => {
     expect(sparse.metadataConfidence).toBeLessThan(0.42);
     expect(
       result.workloadClusters.some((cluster) =>
-        cluster.assignments.some((assignment) => assignment.bookId === 'sparse' && assignment.sparseSpecialized),
+        cluster.assignments.some(
+          (assignment) =>
+            assignment.bookId === 'sparse' && assignment.sparseSpecialized,
+        ),
       ),
     ).toBe(true);
   });
@@ -109,16 +135,24 @@ describe('adaptive workload clusters', () => {
     const light = result.difficultyModel.light;
 
     expect(light.subjectWorkloadLift).toBeLessThanOrEqual(0.2);
-    expect(light.subjectWorkloadPrior).toBeLessThan(result.difficultyModel.sparse.subjectWorkloadPrior);
+    expect(light.subjectWorkloadPrior).toBeLessThan(
+      result.difficultyModel.sparse.subjectWorkloadPrior,
+    );
   });
 
   it('scales the workload lift with the single strength control', () => {
-    const disabled = snapshot({ subjectWorkloadStrength: 0 }).difficultyModel.sparse;
-    const enabled = snapshot({ subjectWorkloadStrength: 100 }).difficultyModel.sparse;
+    const disabled = snapshot({ subjectWorkloadStrength: 0 }).difficultyModel
+      .sparse;
+    const enabled = snapshot({ subjectWorkloadStrength: 100 }).difficultyModel
+      .sparse;
 
     expect(disabled.subjectWorkloadLift).toBe(0);
-    expect(enabled.subjectWorkloadLift).toBeGreaterThan(disabled.subjectWorkloadLift);
-    expect(enabled.scheduleDifficulty).toBeGreaterThan(disabled.scheduleDifficulty);
+    expect(enabled.subjectWorkloadLift).toBeGreaterThan(
+      disabled.subjectWorkloadLift,
+    );
+    expect(enabled.scheduleDifficulty).toBeGreaterThan(
+      disabled.scheduleDifficulty,
+    );
   });
 
   it('is deterministic for identical project input', () => {
@@ -135,6 +169,8 @@ describe('adaptive workload clusters', () => {
       'utf8',
     );
 
-    expect(source).not.toMatch(/mathematics|linear algebra|algebra|analysis|physics|programming/i);
+    expect(source).not.toMatch(
+      /mathematics|linear algebra|algebra|analysis|physics|programming/i,
+    );
   });
 });

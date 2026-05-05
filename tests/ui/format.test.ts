@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  formatCssPercent,
-  formatPercent,
-} from '../../src/ui/format';
+import { formatCssPercent, formatPercent } from '../../src/ui/format';
 
 describe('UI formatting helpers', () => {
   it('separates rounded display percentages from exact CSS percentages', () => {

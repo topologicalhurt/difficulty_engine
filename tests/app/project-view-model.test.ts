@@ -22,7 +22,9 @@ describe('project view model', () => {
 
     const viewModel = selectProjectViewModel(store.selectors.getState());
 
-    expect(viewModel.sourceProviders.map((row) => `${row.kind}:${row.key}`)).toEqual([
+    expect(
+      viewModel.sourceProviders.map((row) => `${row.kind}:${row.key}`),
+    ).toEqual([
       'metadata:openlibrary',
       'metadata:googleBooks',
       'metadata:internetArchive',
@@ -31,8 +33,16 @@ describe('project view model', () => {
       'document:internetArchiveText',
       'document:qbittorrent',
     ]);
-    expect(viewModel.sourceProviders.find((row) => row.key === 'openlibrary')?.checked).toBe(false);
-    expect(viewModel.sourceProviders.find((row) => row.key === 'qbittorrent')?.checked).toBe(false);
-    expect(viewModel.contentPreferenceLabel).toBe('text -> epub -> ocr_text -> pdf');
+    expect(
+      viewModel.sourceProviders.find((row) => row.key === 'openlibrary')
+        ?.checked,
+    ).toBe(false);
+    expect(
+      viewModel.sourceProviders.find((row) => row.key === 'qbittorrent')
+        ?.checked,
+    ).toBe(false);
+    expect(viewModel.contentPreferenceLabel).toBe(
+      'text -> epub -> ocr_text -> pdf',
+    );
   });
 });

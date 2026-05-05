@@ -1,22 +1,30 @@
 import type { ProjectViewModel } from '../app/selectors/project';
 import type { PlannerStore } from '../core/types';
-import { button, card, el, inputField } from './dom';
+import { button, card, el } from './dom';
+import { fileInputControl, inputField, textAreaControl } from './form-controls';
 
-export function renderImportExportCard(viewModel: ProjectViewModel, store: PlannerStore): HTMLElement {
-  const fileInput = el('input', { type: 'file', className: 'hidden-file-input' });
-  fileInput.accept = '.json,application/json';
-  fileInput.addEventListener('change', async () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    try {
-      store.commands.importProjectText(text);
-    } catch (error) {
-      store.commands.setBanner({
-        tone: 'error',
-        message: error instanceof Error ? error.message : 'Could not import the selected file.',
-      });
-    }
+export function renderImportExportCard(
+  viewModel: ProjectViewModel,
+  store: PlannerStore,
+): HTMLElement {
+  const fileInput = fileInputControl({
+    className: 'hidden-file-input',
+    accept: '.json,application/json',
+    onChange: async (file) => {
+      if (!file) return;
+      const text = await file.text();
+      try {
+        store.commands.importProjectText(text);
+      } catch (error) {
+        store.commands.setBanner({
+          tone: 'error',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Could not import the selected file.',
+        });
+      }
+    },
   });
 
   return card(
@@ -24,18 +32,26 @@ export function renderImportExportCard(viewModel: ProjectViewModel, store: Plann
     el(
       'div',
       { className: 'toolbar-row' },
-      button('Import JSON file', { className: 'primary-button', onClick: () => fileInput.click() }),
+      button('Import JSON file', {
+        className: 'primary-button',
+        onClick: () => fileInput.click(),
+      }),
       button('Copy current project JSON', {
         className: 'ghost-button',
         onClick: async () => {
           await navigator.clipboard.writeText(store.exportProject());
-          store.commands.setBanner({ tone: 'success', message: 'Current project JSON copied.' });
+          store.commands.setBanner({
+            tone: 'success',
+            message: 'Current project JSON copied.',
+          });
         },
       }),
       button('Download JSON', {
         className: 'ghost-button',
         onClick: () => {
-          const blob = new Blob([store.exportProject()], { type: 'application/json' });
+          const blob = new Blob([store.exportProject()], {
+            type: 'application/json',
+          });
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
@@ -52,16 +68,13 @@ export function renderImportExportCard(viewModel: ProjectViewModel, store: Plann
     fileInput,
     inputField(
       'Project JSON',
-      (() => {
-        const area = el('textarea', {
-          className: 'text-area json-area',
-          value: viewModel.importExportText,
-          focusKey: 'project:json',
-          onInput: (event) => store.commands.setImportExportText((event.target as HTMLTextAreaElement).value),
-        });
-        area.rows = 16;
-        return area;
-      })(),
+      textAreaControl({
+        className: 'text-area json-area',
+        value: viewModel.importExportText,
+        focusKey: 'project:json',
+        rows: 16,
+        onInput: (value) => store.commands.setImportExportText(value),
+      }),
       'Project exports include source masks, but never local qBittorrent credentials.',
     ),
     el('div', {
@@ -71,7 +84,9 @@ export function renderImportExportCard(viewModel: ProjectViewModel, store: Plann
         : 'Editor is synchronized with the live project state.',
     }),
     el('div', {
-      className: viewModel.exportedCredentialFree ? 'muted-copy' : 'warning-item warning-fail',
+      className: viewModel.exportedCredentialFree
+        ? 'muted-copy'
+        : 'warning-item warning-fail',
       text: viewModel.exportedCredentialFree
         ? 'qBittorrent connection details are local-only; the password is not saved in the project JSON or persisted local settings.'
         : 'Credential text appears in the JSON editor. Do not export until this is fixed.',
@@ -84,7 +99,10 @@ export function renderImportExportCard(viewModel: ProjectViewModel, store: Plann
         } catch (error) {
           store.commands.setBanner({
             tone: 'error',
-            message: error instanceof Error ? error.message : 'Could not parse JSON from the editor.',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Could not parse JSON from the editor.',
           });
         }
       },

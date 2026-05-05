@@ -1,5 +1,9 @@
 import { findMatchingBook } from '../../core/book-identity';
-import type { AppState, BookSearchStatus, BookSearchSuggestion } from '../../core/types';
+import type {
+  AppState,
+  BookSearchStatus,
+  BookSearchSuggestion,
+} from '../../core/types';
 
 export interface SearchResultView {
   suggestion: BookSearchSuggestion;

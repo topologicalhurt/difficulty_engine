@@ -9,7 +9,10 @@ export function normalizedTokenSet(value: string | undefined): Set<string> {
   );
 }
 
-export function jaccardTokenSimilarity(left: string | undefined, right: string | undefined): number {
+export function jaccardTokenSimilarity(
+  left: string | undefined,
+  right: string | undefined,
+): number {
   const leftTokens = normalizedTokenSet(left);
   const rightTokens = normalizedTokenSet(right);
   if (!leftTokens.size || !rightTokens.size) return 0;

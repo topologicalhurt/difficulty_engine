@@ -89,7 +89,11 @@ export const plannerClock: Clock = {
     return dateKeyFromDate(date);
   },
   totalTimelineSlots(project: PlannerProjectV1): number {
-    return Math.round(project.constraints.tl * WEEKS_PER_MONTH_APPROX * studyWeekdays(project).length);
+    return Math.round(
+      project.constraints.tl *
+        WEEKS_PER_MONTH_APPROX *
+        studyWeekdays(project).length,
+    );
   },
   realWeeks(project: PlannerProjectV1): number {
     return project.constraints.tl * WEEKS_PER_MONTH_APPROX;

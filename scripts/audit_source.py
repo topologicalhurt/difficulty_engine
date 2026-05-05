@@ -18,26 +18,41 @@ UI_RAW_STATE_RE = re.compile(r"\bstate\.(project|snapshot)\b")
 AD_HOC_SELECT_RE = re.compile(
     r"(?:document\.createElement\(['\"](?:select|option)['\"]\)|\bel\(['\"](?:select|option)['\"])",
 )
+AD_HOC_TEXT_CONTROL_RE = re.compile(
+    r"(?:document\.createElement\(['\"](?:input|textarea)['\"]\)|\bel\(['\"](?:input|textarea)['\"])",
+)
 LOCAL_UI_PERCENT_RE = re.compile(r"\$\{\s*Math\.round\([^}]*\*\s*100\)\s*\}%")
 STORE_COMMAND_RE = re.compile(r"^\s{2}([a-zA-Z][a-zA-Z0-9_]*)\([^;]*\):", re.MULTILINE)
 CONSTRAINT_FIELD_RE = re.compile(r"\{\s*key:\s*'([^']+)'(?P<body>.*?)\}", re.DOTALL)
 FORBIDDEN_INTERNAL_TERM_RE = re.compile(
     "|".join(
         [
+            r"\bdeprecated\b",
+            r"\bdropped\b",
             r"\blegacy\b",
+            r"\bobsolete\b",
             r"\bbackwards?\s+compatibility\b",
             r"\bconversation-specific\b",
             r"\bprototype[-\s]+(?:era|state|implementation|wip)\b",
+            r"\btransitional\b",
         ]
     ),
     re.IGNORECASE,
+)
+JUNK_ARTIFACT_RE = re.compile(
+    r"(^|/)(?:\.DS_Store|\.eslintcache|\.tsbuildinfo)$"
+    r"|(?:\.bak|\.backup|\.old|\.orig|\.rej|\.tmp|~)$"
 )
 
 MAX_TS_LINES = 500
 WARN_TS_LINES = 250
 APPROVED_UI_RAW_STATE_FILES = set()
 APPROVED_SELECT_FACTORY_FILES = {
-    "src/ui/dom.ts",
+    "src/ui/form-controls.ts",
+}
+APPROVED_TEXT_CONTROL_FILES = {
+    "src/ui/form-controls.ts",
+    "src/ui/constraint-field.ts",
 }
 APPROVED_PERCENT_FORMAT_FILES = {
     "src/ui/format.ts",
@@ -89,6 +104,26 @@ def main() -> int:
     failures: list[str] = []
     warnings: list[str] = []
     source_files = ts_files()
+
+    ignored_artifact_roots = {
+        ".git",
+        "node_modules",
+        "coverage",
+        "test-results",
+        "data",
+    }
+    junk_artifacts = [
+        path
+        for path in ROOT.rglob("*")
+        if path.is_file()
+        and not set(path.relative_to(ROOT).parts).intersection(ignored_artifact_roots)
+        and JUNK_ARTIFACT_RE.search(str(path.relative_to(ROOT)).replace("\\", "/"))
+    ]
+    if junk_artifacts:
+        failures.extend(
+            f"Junk/local artifact should be removed: {path.relative_to(ROOT)}"
+            for path in sorted(junk_artifacts)
+        )
 
     removed_runtime_artifacts = sorted((SRC / "core").glob("*.js")) + sorted((SRC / "core").glob("*.d.ts"))
     for path in removed_runtime_artifacts:
@@ -151,6 +186,14 @@ def main() -> int:
         ):
             failures.append(
                 f"Ad hoc select/option construction outside selectInput factory: {path.relative_to(ROOT)}"
+            )
+        if (
+            relative_path.startswith("src/ui/")
+            and relative_path not in APPROVED_TEXT_CONTROL_FILES
+            and AD_HOC_TEXT_CONTROL_RE.search(text)
+        ):
+            failures.append(
+                f"Ad hoc input/textarea construction outside shared control factories: {path.relative_to(ROOT)}"
             )
         if (
             relative_path.startswith("src/ui/")

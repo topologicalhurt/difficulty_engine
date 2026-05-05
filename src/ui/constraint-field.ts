@@ -1,6 +1,19 @@
-import { horizonMonthsFromEndDate, targetEndDateKey } from '../core/planning-window';
-import type { ConstraintField, ConstraintSet, PlannerStore } from '../core/types';
-import { el, inputField, selectInput } from './dom';
+import {
+  horizonMonthsFromEndDate,
+  targetEndDateKey,
+} from '../core/planning-window';
+import type {
+  ConstraintField,
+  ConstraintSet,
+  PlannerStore,
+} from '../core/types';
+import { el } from './dom';
+import {
+  checkboxControl,
+  inputField,
+  numberInputControl,
+  selectInput,
+} from './form-controls';
 import {
   deferConstraintUpdate,
   deferConstraintsUpdate,
@@ -25,17 +38,15 @@ function renderBooleanField(
 ): HTMLElement {
   return inputField(
     field.label,
-    el('input', {
-      className: 'checkbox-input',
-      type: 'checkbox',
+    checkboxControl({
       checked: Boolean(value),
       onFocus: () => selectConstraintField(store, field),
       onClick: () => selectConstraintField(store, field),
-      onChange: (event) =>
+      onChange: (checked) =>
         deferConstraintUpdate(
           store,
           field.key,
-          (event.target as HTMLInputElement).checked as ConstraintSet[typeof field.key],
+          checked as ConstraintSet[typeof field.key],
         ),
     }),
     field.description,
@@ -50,7 +61,11 @@ function renderDateField(
   const commitDate = (event: Event): void => {
     const next = (event.target as HTMLInputElement).value;
     if (!isCompleteDateInput(next)) return;
-    deferConstraintUpdate(store, field.key, next as ConstraintSet[typeof field.key]);
+    deferConstraintUpdate(
+      store,
+      field.key,
+      next as ConstraintSet[typeof field.key],
+    );
   };
   return inputField(
     field.label,
@@ -79,7 +94,10 @@ function renderTargetDateField(
     deferConstraintUpdate(
       store,
       field.key,
-      horizonMonthsFromEndDate(constraints.sd, next) as ConstraintSet[typeof field.key],
+      horizonMonthsFromEndDate(
+        constraints.sd,
+        next,
+      ) as ConstraintSet[typeof field.key],
     );
   };
   return inputField(
@@ -102,23 +120,20 @@ function renderSelectField(
   value: ConstraintSet[keyof ConstraintSet],
   store: PlannerStore,
 ): HTMLElement {
-  const select = selectInput(
-    String(value),
-    field.options ?? [],
-    {
-      className: 'select-input',
-      focusKey: `constraint:${String(field.key)}`,
-      onFocus: () => selectConstraintField(store, field),
-      onChange: (event) => {
-        selectConstraintField(store, field);
-        deferConstraintUpdate(
-          store,
-          field.key,
-          (event.target as HTMLSelectElement).value as ConstraintSet[typeof field.key],
-        );
-      },
+  const select = selectInput(String(value), field.options ?? [], {
+    className: 'select-input',
+    focusKey: `constraint:${String(field.key)}`,
+    onFocus: () => selectConstraintField(store, field),
+    onChange: (event) => {
+      selectConstraintField(store, field);
+      deferConstraintUpdate(
+        store,
+        field.key,
+        (event.target as HTMLSelectElement)
+          .value as ConstraintSet[typeof field.key],
+      );
     },
-  );
+  });
   return inputField(field.label, select, field.description);
 }
 
@@ -136,17 +151,21 @@ function renderWeekdaySetField(
       ...WEEKDAY_OPTIONS.map((day) =>
         el(
           'label',
-          { className: `weekday-chip${active.has(day.value) ? ' active' : ''}` },
-          el('input', {
-            type: 'checkbox',
+          {
+            className: `weekday-chip${active.has(day.value) ? ' active' : ''}`,
+          },
+          checkboxControl({
+            className: '',
             checked: active.has(day.value),
             onFocus: () => selectConstraintField(store, field),
-            onChange: (event) => {
+            onChange: (checked) => {
               selectConstraintField(store, field);
               const next = new Set(constraints.studyWeekdays);
-              if ((event.target as HTMLInputElement).checked) next.add(day.value);
+              if (checked) next.add(day.value);
               else next.delete(day.value);
-              const studyWeekdays = [...next].sort((left, right) => left - right);
+              const studyWeekdays = [...next].sort(
+                (left, right) => left - right,
+              );
               deferConstraintsUpdate(
                 store,
                 {
@@ -171,22 +190,20 @@ function renderNumberField(
   value: ConstraintSet[keyof ConstraintSet],
   store: PlannerStore,
 ): HTMLElement {
-  const input = el('input', {
-    className: 'text-input',
-    type: 'number',
+  const input = numberInputControl({
     value: String(value),
     focusKey: `constraint:${String(field.key)}`,
     onFocus: () => selectConstraintField(store, field),
-    onChange: (event) =>
+    onChange: (nextValue) =>
       deferConstraintUpdate(
         store,
         field.key,
-        Number((event.target as HTMLInputElement).value) as ConstraintSet[typeof field.key],
+        nextValue as ConstraintSet[typeof field.key],
       ),
+    min: field.min,
+    max: field.max,
+    step: field.step,
   });
-  if (field.min != null) input.min = String(field.min);
-  if (field.max != null) input.max = String(field.max);
-  if (field.step != null) input.step = String(field.step);
   return inputField(field.label, input, field.description);
 }
 
@@ -198,8 +215,11 @@ export function renderConstraintField(
   const value = constraints[field.key];
   if (field.kind === 'boolean') return renderBooleanField(field, value, store);
   if (field.kind === 'date') return renderDateField(field, value, store);
-  if (field.kind === 'target-date') return renderTargetDateField(field, constraints, store);
-  if (field.kind === 'select' && field.options) return renderSelectField(field, value, store);
-  if (field.kind === 'weekday-set') return renderWeekdaySetField(field, constraints, store);
+  if (field.kind === 'target-date')
+    return renderTargetDateField(field, constraints, store);
+  if (field.kind === 'select' && field.options)
+    return renderSelectField(field, value, store);
+  if (field.kind === 'weekday-set')
+    return renderWeekdaySetField(field, constraints, store);
   return renderNumberField(field, value, store);
 }

@@ -31,7 +31,8 @@ export function createProjectCommands(
     setImportExportText(value: string): void {
       context.commitUi('project.editText', {
         importExportText: value,
-        importExportDirty: value !== serializeProject(context.getState().project),
+        importExportDirty:
+          value !== serializeProject(context.getState().project),
       });
     },
     importProjectText(text: string): void {

@@ -1,13 +1,17 @@
-import {
-  RELATIVE_PACING_DEFAULT,
-  SUBJECT_WORKLOAD_DEFAULT,
-} from './constants';
+import { RELATIVE_PACING_DEFAULT, SUBJECT_WORKLOAD_DEFAULT } from './constants';
 import {
   createDefaultQbittorrentConnectionSettings,
   createDefaultQbittorrentStatus,
   createDefaultSourceSettings,
 } from './default-source-settings';
-import type { BookRecord, ConstraintSet, PlannerProjectV1, UiState } from './types';
+import type {
+  AiConnectionSettings,
+  AiRecommendationSettings,
+  BookRecord,
+  ConstraintSet,
+  PlannerProjectV1,
+  UiState,
+} from './types';
 import { localDateKey } from './time';
 
 export const DEFAULT_DISPLAY_GROUPS: Record<string, number> = {
@@ -78,6 +82,25 @@ export function createDefaultConstraints(): ConstraintSet {
 
 export const DEFAULT_CONSTRAINTS: ConstraintSet = createDefaultConstraints();
 
+export function createDefaultAiRecommendationSettings(): AiRecommendationSettings {
+  return {
+    maxSuggestions: 4,
+    includeExistingContext: true,
+  };
+}
+
+export function createDefaultAiConnectionSettings(): AiConnectionSettings {
+  return {
+    enabled: false,
+    provider: 'openai',
+    model: 'gpt-5-mini',
+    endpointUrl: '',
+    apiKey: '',
+    timeoutMs: 60000,
+    maxOutputTokens: 1800,
+  };
+}
+
 export const DEFAULT_UI_STATE: UiState = {
   activeView: 'plan',
   selectedBookId: null,
@@ -105,6 +128,13 @@ export const DEFAULT_UI_STATE: UiState = {
     text: '',
     error: null,
   },
+  aiPrompt: '',
+  aiConnection: createDefaultAiConnectionSettings(),
+  aiStatus: {
+    state: 'idle',
+    message: 'Enter a goal, then ask the recommender for a proposed addition.',
+  },
+  aiProposal: null,
   banner: null,
 };
 
@@ -114,8 +144,13 @@ export const EMPTY_PROJECT: PlannerProjectV1 = {
   enrichmentCache: {},
   manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
   constraints: DEFAULT_CONSTRAINTS,
+  aiRecommendationSettings: createDefaultAiRecommendationSettings(),
   sourceSettings: createDefaultSourceSettings(),
-  uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+  uiPreferences: {
+    ganttView: 'plan',
+    ganttZoom: 1,
+    planColorMode: 'category_mono',
+  },
 };
 
 export const EXAMPLE_BOOK: BookRecord = {

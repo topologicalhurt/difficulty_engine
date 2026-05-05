@@ -2,7 +2,9 @@ import type { RelationEvidence } from '../core/types';
 import { card, el } from './dom';
 import { formatOneDecimal, formatPercent } from './format';
 
-export function renderRelationsDiagnostics(relations: RelationEvidence[]): HTMLElement {
+export function renderRelationsDiagnostics(
+  relations: RelationEvidence[],
+): HTMLElement {
   return card(
     'Relations',
     el(
@@ -28,18 +30,20 @@ export function renderRelationsDiagnostics(relations: RelationEvidence[]): HTMLE
         el(
           'tbody',
           {},
-          ...relations.slice(0, 80).map((relation) =>
-            el(
-              'tr',
-              {},
-              el('td', { text: relation.from }),
-              el('td', { text: relation.to }),
-              el('td', { text: relation.type }),
-              el('td', { text: formatOneDecimal(relation.score) }),
-              el('td', { text: formatPercent(relation.confidence) }),
-              el('td', { text: relation.reasons.join(', ') }),
+          ...relations
+            .slice(0, 80)
+            .map((relation) =>
+              el(
+                'tr',
+                {},
+                el('td', { text: relation.from }),
+                el('td', { text: relation.to }),
+                el('td', { text: relation.type }),
+                el('td', { text: formatOneDecimal(relation.score) }),
+                el('td', { text: formatPercent(relation.confidence) }),
+                el('td', { text: relation.reasons.join(', ') }),
+              ),
             ),
-          ),
         ),
       ),
     ),

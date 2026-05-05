@@ -1,4 +1,8 @@
-import type { AppState, DifficultyBreakdown, RelationEvidence } from '../../core/types';
+import type {
+  AppState,
+  DifficultyBreakdown,
+  RelationEvidence,
+} from '../../core/types';
 
 export interface OverlapDiffView {
   anchorLabel: string;
@@ -46,42 +50,59 @@ export interface DiagnosticsViewModel {
   overlapDiffs: OverlapDiffView[];
 }
 
-export function selectDiagnosticsViewModel(state: AppState): DiagnosticsViewModel {
+export function selectDiagnosticsViewModel(
+  state: AppState,
+): DiagnosticsViewModel {
   return {
     passes: state.snapshot.diagnostics.passes,
     warnings: state.snapshot.diagnostics.warns,
     failures: state.snapshot.diagnostics.fails,
-    relations: state.snapshot.relations.slice().sort((left, right) =>
-      right.score - left.score ||
-      left.from.localeCompare(right.from) ||
-      left.to.localeCompare(right.to) ||
-      left.type.localeCompare(right.type),
-    ),
+    relations: state.snapshot.relations
+      .slice()
+      .sort(
+        (left, right) =>
+          right.score - left.score ||
+          left.from.localeCompare(right.from) ||
+          left.to.localeCompare(right.to) ||
+          left.type.localeCompare(right.type),
+      ),
     workloadClusters: state.snapshot.workloadClusters
       .map((cluster) => ({
         ...cluster,
-        bookLabels: cluster.bookIds.map((id) => state.project.library.books[id]?.short || id),
+        bookLabels: cluster.bookIds.map(
+          (id) => state.project.library.books[id]?.short || id,
+        ),
         assignments: cluster.assignments.map((assignment) => ({
-          bookLabel: state.project.library.books[assignment.bookId]?.short || assignment.bookId,
+          bookLabel:
+            state.project.library.books[assignment.bookId]?.short ||
+            assignment.bookId,
           metadataConfidence: assignment.metadataConfidence,
           subjectWorkloadPrior: assignment.subjectWorkloadPrior,
           similarityToCluster: assignment.similarityToCluster,
-          nearestBookLabels: assignment.nearestBookIds.map((id) => state.project.library.books[id]?.short || id),
+          nearestBookLabels: assignment.nearestBookIds.map(
+            (id) => state.project.library.books[id]?.short || id,
+          ),
           sparseSpecialized: assignment.sparseSpecialized,
           explanation: assignment.explanation,
         })),
       }))
-      .sort((left, right) => right.confidence - left.confidence || left.label.localeCompare(right.label)),
+      .sort(
+        (left, right) =>
+          right.confidence - left.confidence ||
+          left.label.localeCompare(right.label),
+      ),
     difficultyRows: Object.entries(state.snapshot.difficultyModel)
       .map(([bookId, difficulty]) => ({
         bookId,
         bookLabel: state.project.library.books[bookId]?.short || bookId,
         difficulty,
       }))
-      .sort((left, right) =>
-        right.difficulty.scheduleDifficulty - left.difficulty.scheduleDifficulty ||
-        left.bookLabel.localeCompare(right.bookLabel) ||
-        left.bookId.localeCompare(right.bookId),
+      .sort(
+        (left, right) =>
+          right.difficulty.scheduleDifficulty -
+            left.difficulty.scheduleDifficulty ||
+          left.bookLabel.localeCompare(right.bookLabel) ||
+          left.bookId.localeCompare(right.bookId),
       ),
     overlapDiffs: state.snapshot.overlapClusters.flatMap((cluster) =>
       cluster.pruning.map((pruning) => {

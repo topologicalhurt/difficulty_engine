@@ -5,7 +5,10 @@ import { card, el, emptyState } from './dom';
 import { renderGanttRow } from './plan-gantt-row';
 import { renderGanttToolbar } from './plan-gantt-toolbar';
 
-function renderTimelineAxis(timelineLabel: (slot: number) => string, maxSlot: number): HTMLElement {
+function renderTimelineAxis(
+  timelineLabel: (slot: number) => string,
+  maxSlot: number,
+): HTMLElement {
   const weekCount = Math.max(1, Math.ceil(maxSlot / DAYS_PER_WEEK));
   return el(
     'div',
@@ -36,7 +39,13 @@ export function renderGantt(
 ): HTMLElement {
   const rows = gantt.rows;
   if (!rows.length) {
-    return card('Gantt timeline', emptyState('No schedule yet', 'Add books and constraints to generate a schedule.'));
+    return card(
+      'Gantt timeline',
+      emptyState(
+        'No schedule yet',
+        'Add books and constraints to generate a schedule.',
+      ),
+    );
   }
 
   const diagnostics = gantt.diagnostics;
@@ -55,7 +64,10 @@ export function renderGantt(
           el(
             'div',
             { className: 'gantt-board-head' },
-            el('div', { className: 'gantt-head-meta muted-copy', text: 'Books' }),
+            el('div', {
+              className: 'gantt-head-meta muted-copy',
+              text: 'Books',
+            }),
             renderTimelineAxis(timelineLabel, maxSlot),
           ),
           ...rows.map((row) =>

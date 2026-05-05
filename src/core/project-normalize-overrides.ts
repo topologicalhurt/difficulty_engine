@@ -20,10 +20,22 @@ export function normalizeManualSchedule(
   const entries = Object.entries(value as Record<string, unknown>)
     .filter(([id]) => validIds.has(id))
     .map(([id, override]) => {
-      const raw = override && typeof override === 'object' ? (override as Record<string, unknown>) : {};
-      const ds = raw.ds == null ? undefined : normalizeNumber(raw.ds, 0, 0, undefined, true);
-      const days = raw.days == null ? undefined : normalizeNumber(raw.days, 1, 1, undefined, true);
-      return [id, { ...(ds != null ? { ds } : {}), ...(days != null ? { days } : {}) }] as const;
+      const raw =
+        override && typeof override === 'object'
+          ? (override as Record<string, unknown>)
+          : {};
+      const ds =
+        raw.ds == null
+          ? undefined
+          : normalizeNumber(raw.ds, 0, 0, undefined, true);
+      const days =
+        raw.days == null
+          ? undefined
+          : normalizeNumber(raw.days, 1, 1, undefined, true);
+      return [
+        id,
+        { ...(ds != null ? { ds } : {}), ...(days != null ? { days } : {}) },
+      ] as const;
     })
     .filter(([, override]) => override.ds != null || override.days != null);
   return Object.fromEntries(entries);
@@ -38,12 +50,13 @@ export function normalizeBookIdMap(
   }
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
-      .map(([dateKey, ids]) => [
-        normalizeDateKey(dateKey, ''),
-        unique(
-          normalizeStringArray(ids).filter((id) => validIds.has(id)),
-        ),
-      ] as const)
+      .map(
+        ([dateKey, ids]) =>
+          [
+            normalizeDateKey(dateKey, ''),
+            unique(normalizeStringArray(ids).filter((id) => validIds.has(id))),
+          ] as const,
+      )
       .filter(([dateKey, ids]) => Boolean(dateKey) && ids.length > 0),
   );
 }
@@ -72,26 +85,53 @@ export function normalizeActualOverrides(
                     const minutes =
                       raw.minutes == null
                         ? undefined
-                        : normalizeNumber(raw.minutes, 0, 0, MAX_ACTUAL_MINUTES_PER_ENTRY);
+                        : normalizeNumber(
+                            raw.minutes,
+                            0,
+                            0,
+                            MAX_ACTUAL_MINUTES_PER_ENTRY,
+                          );
                     const pages =
                       raw.pages == null
                         ? undefined
-                        : normalizeNumber(raw.pages, 0, 0, MAX_ACTUAL_PAGES_PER_ENTRY);
-                    const done = raw.done == null ? undefined : normalizeBoolean(raw.done);
+                        : normalizeNumber(
+                            raw.pages,
+                            0,
+                            0,
+                            MAX_ACTUAL_PAGES_PER_ENTRY,
+                          );
+                    const done =
+                      raw.done == null ? undefined : normalizeBoolean(raw.done);
+                    const autoFilledFromPlan =
+                      raw.autoFilledFromPlan == null
+                        ? undefined
+                        : normalizeBoolean(raw.autoFilledFromPlan);
                     return [
                       id,
                       {
                         ...(minutes != null ? { minutes } : {}),
                         ...(pages != null ? { pages } : {}),
                         ...(done != null ? { done } : {}),
+                        ...(autoFilledFromPlan === true &&
+                        (minutes != null || pages != null)
+                          ? { autoFilledFromPlan: true }
+                          : {}),
                       },
                     ] as const;
                   })
-                  .filter(([, override]) => override.minutes != null || override.pages != null || override.done != null),
+                  .filter(
+                    ([, override]) =>
+                      override.minutes != null ||
+                      override.pages != null ||
+                      override.done != null,
+                  ),
               )
             : {};
         return [date, byBook] as const;
       })
-      .filter(([dateKey, byBook]) => Boolean(dateKey) && Object.keys(byBook).length > 0),
+      .filter(
+        ([dateKey, byBook]) =>
+          Boolean(dateKey) && Object.keys(byBook).length > 0,
+      ),
   );
 }

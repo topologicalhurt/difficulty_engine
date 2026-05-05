@@ -11,11 +11,7 @@ export function svgEl<K extends keyof SVGElementTagNameMap>(
   return node;
 }
 
-function marker(
-  id: string,
-  color: string,
-  orient = 'auto',
-): SVGMarkerElement {
+function marker(id: string, color: string, orient = 'auto'): SVGMarkerElement {
   const node = svgEl('marker', {
     id,
     viewBox: '0 0 10 10',
@@ -39,12 +35,23 @@ export function markerUrl(prefix: string, name: string): string {
   return `url(#${prefix}-${name})`;
 }
 
-export function appendGraphArrowMarkers(svg: SVGSVGElement, prefix: string): void {
+export function appendGraphArrowMarkers(
+  svg: SVGSVGElement,
+  prefix: string,
+): void {
   const defs = svgEl('defs', {});
   defs.append(
     marker(`${prefix}-prereq`, 'rgba(111, 211, 163, 0.82)'),
-    marker(`${prefix}-required-by`, 'rgba(249, 204, 99, 0.82)', 'auto-start-reverse'),
-    marker(`${prefix}-costudy`, 'rgba(96, 165, 250, 0.85)', 'auto-start-reverse'),
+    marker(
+      `${prefix}-required-by`,
+      'rgba(249, 204, 99, 0.82)',
+      'auto-start-reverse',
+    ),
+    marker(
+      `${prefix}-costudy`,
+      'rgba(96, 165, 250, 0.85)',
+      'auto-start-reverse',
+    ),
   );
   svg.append(defs);
 }

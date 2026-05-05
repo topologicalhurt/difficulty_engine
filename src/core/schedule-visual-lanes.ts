@@ -13,7 +13,9 @@ export function packVisualLanes(entries: SchedulePlanItem[]): void {
         left.short.localeCompare(right.short),
     )
     .forEach((entry) => {
-      let lane = laneEnds.findIndex((end) => end <= entry.ds + VISUAL_LANE_REUSE_EPSILON);
+      let lane = laneEnds.findIndex(
+        (end) => end <= entry.ds + VISUAL_LANE_REUSE_EPSILON,
+      );
       if (lane < 0) lane = laneEnds.length;
       laneEnds[lane] = entry.de;
       entry.lane = lane;

@@ -68,11 +68,23 @@ export interface DayPlanSnapshot {
   byBook: Record<string, Array<CalendarEntry & { dateStr: string }>>;
   missedByDate: Record<string, CalendarEntry[]>;
   byBookStats: Record<string, DayBookStat>;
-  overlapMap: Record<string, { skimFrac: number; timeSaved: number; reasons: string[] }>;
+  overlapMap: Record<
+    string,
+    { skimFrac: number; timeSaved: number; reasons: string[] }
+  >;
   startability: {
-    underfilledDays: Array<{ dateStr: string; startableBooks: number; plannedBooks: number; feasibleBooks: number }>;
+    underfilledDays: Array<{
+      dateStr: string;
+      startableBooks: number;
+      plannedBooks: number;
+      feasibleBooks: number;
+    }>;
     maxStartableBooksOnUnderfilledDays: number;
-    emptyStudyDays: Array<{ dateStr: string; reason: 'waiting_for_release' | 'blocked' | 'no_feasible_chunk'; detail: string }>;
+    emptyStudyDays: Array<{
+      dateStr: string;
+      reason: 'waiting_for_release' | 'blocked' | 'no_feasible_chunk';
+      detail: string;
+    }>;
     unfilledParallelSlots: number;
     parallelFitBlockedDays: number;
     maxFeasibleBooksPerDay: number;

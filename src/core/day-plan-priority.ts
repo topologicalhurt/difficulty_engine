@@ -18,7 +18,8 @@ export function dayPlanningPriorityScore(
   context: PriorityContext,
 ): number {
   const rankPressure =
-    (context.stateCount - Math.min(context.stateCount, Math.max(0, state.scheduleRank || 0))) /
+    (context.stateCount -
+      Math.min(context.stateCount, Math.max(0, state.scheduleRank || 0))) /
     Math.max(1, context.stateCount);
   const strategyPressure =
     context.schedAlgo === 'greedy'
@@ -28,15 +29,26 @@ export function dayPlanningPriorityScore(
         : context.schedAlgo === 'critical'
           ? rankPressure * 3.4 + (state.eff || 0) * 0.12
           : rankPressure * 4.2 + (state.eff || 0) * 0.08;
-  const usedBeforeToday = Math.max(0, state.usedDays - (context.hasEntry ? 1 : 0));
+  const usedBeforeToday = Math.max(
+    0,
+    state.usedDays - (context.hasEntry ? 1 : 0),
+  );
   const daysLeft = Math.max(1, (state.planDays || 1) - usedBeforeToday);
   const due = state.releaseSlot + (state.planDays || 1);
   const slack = due - context.slot - daysLeft;
   const lateness = Math.max(0, context.slot - due);
   const slackWeight =
-    context.schedAlgo === 'fastest' ? 0.2 : context.schedAlgo === 'critical' ? 0.6 : 1.8;
+    context.schedAlgo === 'fastest'
+      ? 0.2
+      : context.schedAlgo === 'critical'
+        ? 0.6
+        : 1.8;
   const latenessWeight =
-    context.schedAlgo === 'fastest' ? 0.2 : context.schedAlgo === 'critical' ? 0.4 : 1.8;
+    context.schedAlgo === 'fastest'
+      ? 0.2
+      : context.schedAlgo === 'critical'
+        ? 0.4
+        : 1.8;
   const cohortContinuity =
     context.dailyBookMode === 'daily_cohort'
       ? state.actualStart == null

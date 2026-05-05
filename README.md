@@ -42,3 +42,17 @@ python3 scripts/audit_source.py
 ```
 
 The production artifact is written to `dist/difficulty_engine.html`.
+
+## Local AI keys
+
+For local development, place AI credentials in `.env`:
+
+```bash
+DIFFICULTY_ENGINE_AI_PROVIDER=openai
+DIFFICULTY_ENGINE_AI_MODEL=gpt-5-mini
+DIFFICULTY_ENGINE_AI_API_KEY=your-key-here
+```
+
+`npm run dev` reads `.env` when serving the local app. `npm run build` does not bundle `.env`
+values unless `DIFFICULTY_ENGINE_BUNDLE_ENV=1` is explicitly set, because the output HTML is a
+client-side file and any bundled key is visible to anyone with that file.

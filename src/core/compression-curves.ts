@@ -24,7 +24,8 @@ function inverseTanhCurve(value: number): number {
   if (value >= 1) return 1;
   const lo = Math.tanh(-TANH_STEEPNESS / 2);
   const hi = Math.tanh(TANH_STEEPNESS / 2);
-  const target = clamp(value, CURVE_EPSILON, 1 - CURVE_EPSILON) * (hi - lo) + lo;
+  const target =
+    clamp(value, CURVE_EPSILON, 1 - CURVE_EPSILON) * (hi - lo) + lo;
   return clamp(0.5 + Math.atanh(target) / TANH_STEEPNESS, 0, 1);
 }
 
@@ -51,11 +52,20 @@ function inverseLogisticCurve(value: number): number {
   if (value >= 1) return 1;
   const lo = logisticRaw(0);
   const hi = logisticRaw(1);
-  const target = clamp(value, CURVE_EPSILON, 1 - CURVE_EPSILON) * (hi - lo) + lo;
-  return clamp(0.5 + Math.log(target / (1 - target)) / LOGISTIC_STEEPNESS, 0, 1);
+  const target =
+    clamp(value, CURVE_EPSILON, 1 - CURVE_EPSILON) * (hi - lo) + lo;
+  return clamp(
+    0.5 + Math.log(target / (1 - target)) / LOGISTIC_STEEPNESS,
+    0,
+    1,
+  );
 }
 
-function baseCurve(value: number, curve: CompressCurve, intensity: number): number {
+function baseCurve(
+  value: number,
+  curve: CompressCurve,
+  intensity: number,
+): number {
   switch (curve) {
     case 'linear':
       return value;

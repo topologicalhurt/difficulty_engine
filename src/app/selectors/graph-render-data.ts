@@ -53,7 +53,9 @@ function hasAlternatePath(
 ): boolean {
   if (seen.has(from)) return false;
   seen.add(from);
-  return (adjacency[from] || []).some((next) => next === to || hasAlternatePath(next, to, adjacency, seen));
+  return (adjacency[from] || []).some(
+    (next) => next === to || hasAlternatePath(next, to, adjacency, seen),
+  );
 }
 
 function transitiveReduction(edges: RelationEvidence[]): RelationEvidence[] {
@@ -71,12 +73,20 @@ function transitiveReduction(edges: RelationEvidence[]): RelationEvidence[] {
   });
 }
 
-export function visiblePrerequisiteEdges(state: GraphState): RelationEvidence[] {
+export function visiblePrerequisiteEdges(
+  state: GraphState,
+): RelationEvidence[] {
   const visibleIds = new Set(visibleGraphBookIds(state));
   const edges = state.snapshot.relations
     .filter((relation) => relation.type === 'prerequisite')
-    .filter((relation) => visibleIds.has(relation.from) && visibleIds.has(relation.to))
-    .sort((left, right) => left.from.localeCompare(right.from) || left.to.localeCompare(right.to));
+    .filter(
+      (relation) =>
+        visibleIds.has(relation.from) && visibleIds.has(relation.to),
+    )
+    .sort(
+      (left, right) =>
+        left.from.localeCompare(right.from) || left.to.localeCompare(right.to),
+    );
   return state.project.constraints.tr ? transitiveReduction(edges) : edges;
 }
 
@@ -84,7 +94,10 @@ export function visibleReferenceEdges(state: GraphState): RelationEvidence[] {
   const visibleIds = new Set(visibleGraphBookIds(state));
   return state.snapshot.relations
     .filter((relation) => relation.type === 'reference')
-    .filter((relation) => visibleIds.has(relation.from) && visibleIds.has(relation.to));
+    .filter(
+      (relation) =>
+        visibleIds.has(relation.from) && visibleIds.has(relation.to),
+    );
 }
 
 export function visibleCoStudyEdges(state: GraphState): RelationEvidence[] {
@@ -92,18 +105,28 @@ export function visibleCoStudyEdges(state: GraphState): RelationEvidence[] {
   const visibleIds = new Set(visibleGraphBookIds(state));
   return state.snapshot.relations
     .filter((relation) => relation.type === 'co-study')
-    .filter((relation) => visibleIds.has(relation.from) && visibleIds.has(relation.to));
+    .filter(
+      (relation) =>
+        visibleIds.has(relation.from) && visibleIds.has(relation.to),
+    );
 }
 
-export function visibleCoStudyGroups(state: GraphState): Array<{ id: string; ids: string[] }> {
+export function visibleCoStudyGroups(
+  state: GraphState,
+): Array<{ id: string; ids: string[] }> {
   if (!state.project.constraints.mutualEnabled) return [];
   const visibleIds = new Set(visibleGraphBookIds(state));
   return state.snapshot.coStudyMeta.groups
-    .map((group) => ({ id: group.id, ids: group.ids.filter((id) => visibleIds.has(id)) }))
+    .map((group) => ({
+      id: group.id,
+      ids: group.ids.filter((id) => visibleIds.has(id)),
+    }))
     .filter((group) => group.ids.length > 1);
 }
 
-export function visibleOverlapClusters(state: GraphState): OverlapClusterSummary[] {
+export function visibleOverlapClusters(
+  state: GraphState,
+): OverlapClusterSummary[] {
   const visibleIds = new Set(visibleGraphBookIds(state));
   return state.snapshot.overlapClusters
     .map((cluster) => ({
@@ -114,7 +137,9 @@ export function visibleOverlapClusters(state: GraphState): OverlapClusterSummary
     .filter((cluster) => cluster.bookIds.length > 1);
 }
 
-export function visibleDisplayGroupPartitions(state: GraphState): DisplayGroupPartition[] {
+export function visibleDisplayGroupPartitions(
+  state: GraphState,
+): DisplayGroupPartition[] {
   if (!state.project.constraints.part) return [];
   const groups: Record<string, string[]> = {};
   visibleGraphBookIds(state).forEach((id) => {
@@ -134,7 +159,10 @@ export function selectGraphRenderModel(state: AppState): GraphRenderModel {
   const nodes = state.snapshot.sortedBooks
     .slice()
     .filter((book) => visibleSet.has(book.id))
-    .sort((left, right) => left.dep - right.dep || left.short.localeCompare(right.short))
+    .sort(
+      (left, right) =>
+        left.dep - right.dep || left.short.localeCompare(right.short),
+    )
     .map((book) => ({
       id: book.id,
       short: book.short,
@@ -145,16 +173,20 @@ export function selectGraphRenderModel(state: AppState): GraphRenderModel {
   return {
     visibleIds,
     nodes,
-    books: visibleIds.map((id) => state.project.library.books[id]).filter(Boolean),
+    books: visibleIds
+      .map((id) => state.project.library.books[id])
+      .filter(Boolean),
     prerequisiteEdges: visiblePrerequisiteEdges(state),
     coStudyEdges: visibleCoStudyEdges(state),
     referenceEdges: visibleReferenceEdges(state),
     coStudyGroups: visibleCoStudyGroups(state),
     displayGroupPartitions: visibleDisplayGroupPartitions(state),
     overlapClusters: visibleOverlapClusters(state),
-    researchChains: state.snapshot.schedulePlan.exclusionState.rdChains.map((chain) => ({
-      ids: chain.ids,
-      label: chain.label,
-    })),
+    researchChains: state.snapshot.schedulePlan.exclusionState.rdChains.map(
+      (chain) => ({
+        ids: chain.ids,
+        label: chain.label,
+      }),
+    ),
   };
 }

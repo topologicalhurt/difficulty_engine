@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildTopicIndex, extractCorpus } from '../../src/core/corpus';
-import { DEFAULT_CONSTRAINTS, createDefaultSourceSettings } from '../../src/core/defaults';
+import {
+  DEFAULT_CONSTRAINTS,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
 import type { PairSignal } from '../../src/core/internal-types';
 import { pairSignal } from '../../src/core/relation-signals';
 import type { BookRecord, PlannerProjectV1 } from '../../src/core/types';
@@ -51,17 +55,31 @@ function project(left: BookRecord, right: BookRecord): PlannerProjectV1 {
     version: 1,
     library: { books: { [left.id]: left, [right.id]: right } },
     manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
-    constraints: { ...DEFAULT_CONSTRAINTS, applyOverlapSkim: false, mutualEnabled: true },
+    constraints: {
+      ...DEFAULT_CONSTRAINTS,
+      applyOverlapSkim: false,
+      mutualEnabled: true,
+    },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
 }
 
 function signal(left: BookRecord, right: BookRecord): PairSignal {
   const corpus = extractCorpus(project(left, right));
   const topicIndex = buildTopicIndex(corpus);
-  return pairSignal(corpus.byId[left.id], corpus.byId[right.id], topicIndex, corpus);
+  return pairSignal(
+    corpus.byId[left.id],
+    corpus.byId[right.id],
+    topicIndex,
+    corpus,
+  );
 }
 
 describe('pairSignal', () => {
@@ -88,7 +106,9 @@ describe('pairSignal', () => {
     expect(result.coverageAB).toBeGreaterThan(0);
     expect(result.prereqAB).toBeGreaterThan(result.prereqBA);
     expect(result.reasonsAB.length).toBeGreaterThan(0);
-    expect(result.progressionAB ?? 0).toBeGreaterThanOrEqual(result.progressionBA ?? 0);
+    expect(result.progressionAB ?? 0).toBeGreaterThanOrEqual(
+      result.progressionBA ?? 0,
+    );
   });
 
   it('uses same-author evidence as a bounded co-study lift without changing topic symmetry', () => {
@@ -110,7 +130,10 @@ describe('pairSignal', () => {
       'Shared systems models and practice.',
       ['Shared Author'],
     );
-    const rightDifferentAuthor = { ...rightSameAuthor, authors: ['Different Author'] };
+    const rightDifferentAuthor = {
+      ...rightSameAuthor,
+      authors: ['Different Author'],
+    };
 
     const same = signal(left, rightSameAuthor);
     const different = signal(left, rightDifferentAuthor);

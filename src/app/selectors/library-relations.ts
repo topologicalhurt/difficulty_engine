@@ -19,7 +19,13 @@ export interface BookRelationSelectorSummary {
 }
 
 export function emptyRelationSelectors(): BookRelationSelectorSummary['relationSelectors'] {
-  const empty = { title: '', detail: '', selectedIds: [], graphIds: [], manualIds: [] };
+  const empty = {
+    title: '',
+    detail: '',
+    selectedIds: [],
+    graphIds: [],
+    manualIds: [],
+  };
   return { prereqs: empty, dependents: empty, coStudy: empty };
 }
 
@@ -30,7 +36,9 @@ export function selectBookRelationSelectorSummary(
 ): BookRelationSelectorSummary {
   const relations = state.snapshot.relations;
   const graphPrereqs = relations
-    .filter((relation) => relation.type === 'prerequisite' && relation.to === book.id)
+    .filter(
+      (relation) => relation.type === 'prerequisite' && relation.to === book.id,
+    )
     .map((relation) => relation.from);
   const graphDependents = allBooks
     .filter((candidate) =>
@@ -43,8 +51,14 @@ export function selectBookRelationSelectorSummary(
     )
     .map((candidate) => candidate.id);
   const graphCoStudy = relations
-    .filter((relation) => relation.type === 'co-study' && (relation.from === book.id || relation.to === book.id))
-    .map((relation) => (relation.from === book.id ? relation.to : relation.from));
+    .filter(
+      (relation) =>
+        relation.type === 'co-study' &&
+        (relation.from === book.id || relation.to === book.id),
+    )
+    .map((relation) =>
+      relation.from === book.id ? relation.to : relation.from,
+    );
   const manualDependents = allBooks
     .filter((candidate) => candidate.manualPrereqs.includes(book.id))
     .map((candidate) => candidate.id);
@@ -66,7 +80,8 @@ export function selectBookRelationSelectorSummary(
       },
       dependents: {
         title: 'Required by',
-        detail: 'Select books that should come after this book. This is the outgoing graph view of prerequisites.',
+        detail:
+          'Select books that should come after this book. This is the outgoing graph view of prerequisites.',
         selectedIds: [...new Set([...manualDependents, ...graphDependents])],
         graphIds: graphDependents,
         manualIds: manualDependents,

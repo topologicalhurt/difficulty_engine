@@ -1,13 +1,18 @@
 import { vi } from 'vitest';
 
 import { createPlannerStore } from '../../src/app/store';
-import { DEFAULT_CONSTRAINTS, createDefaultSourceSettings } from '../../src/core/defaults';
+import {
+  DEFAULT_CONSTRAINTS,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
 import { createPlannerEngine } from '../../src/core/engine';
 import { plannerClock } from '../../src/core/time';
 import type {
   BookRecord,
   ConstraintSet,
   EnrichmentProvider,
+  AiRecommendationProvider,
   Logger,
   PlannerProjectV1,
   SearchBooksResponse,
@@ -31,6 +36,7 @@ interface TestProjectOptions {
 interface TestStoreOptions {
   initialProject?: PlannerProjectV1;
   enrichmentProvider?: EnrichmentProvider;
+  aiRecommendationProvider?: AiRecommendationProvider;
 }
 
 export function makeBook(patch: Partial<BookRecord> = {}): BookRecord {
@@ -80,10 +86,14 @@ export function makeTestEnrichmentProvider(): EnrichmentProvider {
       },
       enrichment: {
         ...book.enrichment,
-        chapters: book.enrichment.chapters.length ? book.enrichment.chapters : ['Chapter 1', 'Chapter 2'],
+        chapters: book.enrichment.chapters.length
+          ? book.enrichment.chapters
+          : ['Chapter 1', 'Chapter 2'],
         description: book.enrichment.description || 'Enriched description',
         olSubjects: [...book.enrichment.olSubjects, 'enriched-subject'],
-        tocSource: book.enrichment.chapters.length ? book.enrichment.tocSource : 'openlibrary',
+        tocSource: book.enrichment.chapters.length
+          ? book.enrichment.tocSource
+          : 'openlibrary',
       },
       provenance: [
         {
@@ -93,48 +103,65 @@ export function makeTestEnrichmentProvider(): EnrichmentProvider {
         },
       ],
     })),
-    searchBooks: vi.fn(async ({ query, offset = 0 }): Promise<SearchBooksResponse> => ({
-      results: [
-        {
-          key: `${query}-${offset + 1}`,
-          title: 'Suggested Search Result',
-          authors: ['Search Author'],
-          subtitle: 'Search Author · 2025',
-          isbn: '9781234567897',
-          year: 2025,
-          publisher: 'Search Press',
-          subjects: ['searching', 'testing'],
-          description: 'Pulled from the mocked catalog search.',
-          pages: 320,
-        },
-      ],
-      hasMore: offset === 0,
-      nextOffset: offset + 1,
-      mode: 'search',
-    })),
+    searchBooks: vi.fn(
+      async ({ query, offset = 0 }): Promise<SearchBooksResponse> => ({
+        results: [
+          {
+            key: `${query}-${offset + 1}`,
+            title: 'Suggested Search Result',
+            authors: ['Search Author'],
+            subtitle: 'Search Author · 2025',
+            isbn: '9781234567897',
+            year: 2025,
+            publisher: 'Search Press',
+            subjects: ['searching', 'testing'],
+            description: 'Pulled from the mocked catalog search.',
+            pages: 320,
+          },
+        ],
+        hasMore: offset === 0,
+        nextOffset: offset + 1,
+        mode: 'search',
+      }),
+    ),
   };
 }
 
-export function makeProject(options: TestProjectOptions = {}): PlannerProjectV1 {
+export function makeProject(
+  options: TestProjectOptions = {},
+): PlannerProjectV1 {
   const base: PlannerProjectV1 = {
     version: 1,
     library: {
       books: options.books ?? { 'book-1': makeBook() },
     },
     manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
-    constraints: { ...DEFAULT_CONSTRAINTS, sd: '2026-01-05', ...options.constraints },
+    constraints: {
+      ...DEFAULT_CONSTRAINTS,
+      sd: '2026-01-05',
+      ...options.constraints,
+    },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: options.sourceSettings ?? createDefaultSourceSettings(),
     enrichmentCache: {},
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
   return { ...base, ...options.projectPatch };
 }
 
-export function makeStore(options: TestStoreOptions = {}): ReturnType<typeof createPlannerStore> {
+export function makeStore(
+  options: TestStoreOptions = {},
+): ReturnType<typeof createPlannerStore> {
   return createPlannerStore({
     initialProject: options.initialProject ?? makeProject(),
     engine: createPlannerEngine({ clock: plannerClock, logger: silentLogger }),
-    enrichmentProvider: options.enrichmentProvider ?? makeTestEnrichmentProvider(),
+    enrichmentProvider:
+      options.enrichmentProvider ?? makeTestEnrichmentProvider(),
+    aiRecommendationProvider: options.aiRecommendationProvider,
     logger: silentLogger,
     clock: plannerClock,
   });

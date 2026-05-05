@@ -5,7 +5,10 @@ import { renderBookEditorPanel } from './library-editor-panel';
 import { renderReadingListPanel } from './library-list-panel';
 import { renderLibrarySearchPanel } from './library-search-panel';
 
-export function renderLibraryView(state: AppState, store: PlannerStore): HTMLElement {
+export function renderLibraryView(
+  state: AppState,
+  store: PlannerStore,
+): HTMLElement {
   const viewModel = selectLibraryViewModel(state);
 
   return el(
@@ -15,10 +18,10 @@ export function renderLibraryView(state: AppState, store: PlannerStore): HTMLEle
       'div',
       { className: 'stack-layout' },
       renderLibrarySearchPanel(state, store, { title: 'Search and import' }),
-      renderReadingListPanel(state, store),
+      renderReadingListPanel(viewModel, store),
     ),
     viewModel.selectedBook
-      ? renderBookEditorPanel(state, viewModel.selectedBook.id, store)
+      ? renderBookEditorPanel(state, viewModel.editor, store)
       : null,
   );
 }

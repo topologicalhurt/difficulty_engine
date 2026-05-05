@@ -142,6 +142,18 @@ export const DAILY_COHORT_ACTIVE_BONUS = 4.5;
 export const DAILY_COHORT_NEW_START_PENALTY = 1.25;
 export const SMART_OVERLAP_REMAINING_FRACTION = 0.2;
 export const SMART_OVERLAP_REMAINING_DAYS = 5;
+// Tiny tolerance for decimal minute math so exact-fit chunks are not rejected by floating error.
+export const DAY_PLAN_BUDGET_EPSILON_MINUTES = 1e-6;
+// Stop allocation loops once less than a hundredth of a minute remains useful.
+export const DAY_PLAN_ACTIVE_BUDGET_EPSILON_MINUTES = 0.01;
+// Hard guard against accidental non-converging allocation loops.
+export const DAY_PLAN_ALLOCATION_GUARD_LIMIT = 5000;
+// Later-stage starts rank behind strict-ready starts unless needed to fill occupancy.
+export const DAY_PLAN_BACKFILL_STAGE_PENALTY = 0.22;
+export const DAY_PLAN_SMART_PREREQ_STAGE_PENALTY = 0.42;
+export const DAY_PLAN_SOFT_PREREQ_STAGE_PENALTY = 0.68;
+// Full co-study groups get a small lift so synchronized starts stay together.
+export const DAY_PLAN_COSTUDY_GROUP_BONUS_PER_MEMBER = 0.18;
 export const DEFAULT_TIMELINE_BUFFER_DAYS = 365;
 export const MIN_TOTAL_TIMELINE_DAYS = 720;
 export const DAYS_PER_MONTH_APPROX = 30.44;

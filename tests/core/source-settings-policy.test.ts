@@ -59,10 +59,20 @@ describe('source settings policy', () => {
     settings.documentSources.directUrl = false;
     settings.documentSources.localFile = false;
 
-    expect(sourceEnabledForDocumentProvider(document('qbittorrent'), settings)).toBe(false);
-    expect(sourceEnabledForDocumentProvider(document('internet_archive'), settings)).toBe(false);
-    expect(sourceEnabledForDocumentProvider(document('direct_url'), settings)).toBe(false);
-    expect(sourceEnabledForDocumentProvider(document('local_file'), settings)).toBe(false);
-    expect(sourceEnabledForDocumentProvider(document('manual'), settings)).toBe(true);
+    expect(
+      sourceEnabledForDocumentProvider(document('qbittorrent'), settings),
+    ).toBe(false);
+    expect(
+      sourceEnabledForDocumentProvider(document('internet_archive'), settings),
+    ).toBe(false);
+    expect(
+      sourceEnabledForDocumentProvider(document('direct_url'), settings),
+    ).toBe(false);
+    expect(
+      sourceEnabledForDocumentProvider(document('local_file'), settings),
+    ).toBe(false);
+    expect(sourceEnabledForDocumentProvider(document('manual'), settings)).toBe(
+      true,
+    );
   });
 });

@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { selectReadingListViewModel } from '../../src/app/selectors/library';
+import {
+  selectLibraryViewModel,
+  selectReadingListViewModel,
+} from '../../src/app/selectors/library';
 import { selectPlanViewModel } from '../../src/app/selectors/plan';
-import { selectBookProgress, selectOverallProgress } from '../../src/app/selectors/progress';
+import {
+  selectBookProgress,
+  selectOverallProgress,
+  selectProgressSummary,
+} from '../../src/app/selectors/progress';
 import { makeBook, makeProject, makeStore } from './store-test-utils';
 
 function progressStore() {
@@ -51,9 +58,12 @@ describe('progress selectors', () => {
     const store = progressStore();
     const entry = store.selectors.getSnapshot().dayPlan.byBook.a[0];
     expect(entry).toBeTruthy();
-    const plannedPages = Math.round((entry.readPages + entry.skimPages) * 10) / 10;
+    const plannedPages =
+      Math.round((entry.readPages + entry.skimPages) * 10) / 10;
 
-    expect(selectBookProgress(store.selectors.getState(), 'a').readPages).toBe(0);
+    expect(selectBookProgress(store.selectors.getState(), 'a').readPages).toBe(
+      0,
+    );
 
     store.commands.markCalendarEntryDone(entry.dateStr, 'a', true);
     const progress = selectBookProgress(store.selectors.getState(), 'a');
@@ -61,6 +71,29 @@ describe('progress selectors', () => {
     expect(progress.readPages).toBe(plannedPages);
     expect(progress.percent).toBeGreaterThan(0);
     expect(progress.status).toBe('in_progress');
+  });
+
+  it('keeps logged progress attached when the plan start date moves', () => {
+    const store = progressStore();
+    const entry = store.selectors.getSnapshot().dayPlan.byBook.a[0];
+    expect(entry).toBeTruthy();
+    const plannedPages =
+      Math.round((entry.readPages + entry.skimPages) * 10) / 10;
+
+    store.commands.markCalendarEntryDone(entry.dateStr, 'a', true);
+    store.commands.updateConstraint('sd', '2026-01-12');
+
+    const state = store.selectors.getState();
+    const shiftedEntry = state.snapshot.dayPlan.byDate['2026-01-12']?.find(
+      (candidate) => candidate.bookId === 'a',
+    );
+
+    expect(
+      state.project.manualOverrides.actuals[entry.dateStr]?.a?.pages,
+    ).toBe(plannedPages);
+    expect(state.project.manualOverrides.actuals['2026-01-12']).toBeUndefined();
+    expect(selectBookProgress(state, 'a').readPages).toBe(plannedPages);
+    expect(shiftedEntry?.actualOverride).not.toBe(true);
   });
 
   it('uses logged actual pages and completed books for overall progress', () => {
@@ -82,6 +115,20 @@ describe('progress selectors', () => {
     expect(overall.inProgressBooks).toBe(1);
   });
 
+  it('projects individual and overall progress from one shared summary', () => {
+    const store = progressStore();
+    const entry = store.selectors.getSnapshot().dayPlan.byBook.a[0];
+    store.commands.setCalendarEntryPages(entry.dateStr, 'a', 12.5);
+
+    const state = store.selectors.getState();
+    const summary = selectProgressSummary(state);
+
+    expect(summary.byBook.a.readPages).toBe(
+      selectBookProgress(state, 'a').readPages,
+    );
+    expect(summary.overall.readPages).toBe(selectOverallProgress(state).readPages);
+  });
+
   it('projects progress into library and plan view models', () => {
     const store = progressStore();
     const entry = store.selectors.getSnapshot().dayPlan.byBook.a[0];
@@ -89,11 +136,19 @@ describe('progress selectors', () => {
     store.commands.setCalendarEntryPages(entry.dateStr, 'a', 10);
     store.commands.selectBook('a');
 
-    const listItem = selectReadingListViewModel(store.selectors.getState()).find((item) => item.id === 'a');
+    const listItem = selectReadingListViewModel(
+      store.selectors.getState(),
+    ).find((item) => item.id === 'a');
+    const library = selectLibraryViewModel(store.selectors.getState());
     const plan = selectPlanViewModel(store.selectors.getState());
 
     expect(listItem?.progress.readPages).toBe(10);
+    expect(library.editor.progress?.readPages).toBe(10);
     expect(plan.inspector.progress?.readPages).toBe(10);
-    expect(plan.stats.some((item) => item.label === 'Overall progress' && item.value !== '0%')).toBe(true);
+    expect(
+      plan.stats.some(
+        (item) => item.label === 'Overall progress' && item.value !== '0%',
+      ),
+    ).toBe(true);
   });
 });
