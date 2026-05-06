@@ -1,30 +1,19 @@
-export function formatOneDecimal(value: number | undefined | null): string {
-  const safe = Number.isFinite(value) ? Number(value) : 0;
-  return (Math.round((safe + Number.EPSILON) * 10) / 10).toFixed(1);
-}
+import {
+  formatCssPercent,
+  formatOneDecimal,
+  formatRatioPercent,
+  formatWholeNumber,
+} from '../core/number-format';
+import { groupColor } from '../core/display-colors';
+import { compactStrings } from '../core/utils';
 
-export function round0(value: number | undefined | null): string {
-  const safe = Number.isFinite(value) ? Number(value) : 0;
-  return String(Math.round(safe));
-}
+export { formatCssPercent, formatOneDecimal };
 
-export function formatPercent(value: number | undefined | null): string {
-  const safe = Number.isFinite(value) ? Number(value) : 0;
-  return `${Math.round(safe * 100)}%`;
-}
-
-export function formatCssPercent(ratio: number | undefined | null): string {
-  const safe = Number.isFinite(ratio) ? Number(ratio) : 0;
-  return `${safe * 100}%`;
-}
+export const round0 = formatWholeNumber;
+export const formatPercent = formatRatioPercent;
 
 export function colorForGroup(group: string): string {
-  let hash = 0;
-  for (const char of group) {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  }
-  const hue = hash % 360;
-  return `hsl(${hue} 72% 58%)`;
+  return groupColor(group);
 }
 
 export function formatDate(value?: Date): string {
@@ -39,10 +28,7 @@ export function formatDate(value?: Date): string {
 }
 
 export function parseCsv(value: string): string[] {
-  return value
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
+  return compactStrings(value.split(','));
 }
 
 export function joinCsv(values: string[]): string {

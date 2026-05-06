@@ -1,7 +1,11 @@
 import { card, el } from './dom';
 
 function bulletList(items: string[]): HTMLElement {
-  return el('ul', { className: 'info-list' }, ...items.map((item) => el('li', { text: item })));
+  return el(
+    'ul',
+    { className: 'info-list' },
+    ...items.map((item) => el('li', { text: item })),
+  );
 }
 
 export function renderInfoView(): HTMLElement {

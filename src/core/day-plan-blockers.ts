@@ -6,7 +6,8 @@ export function nextPendingRelease(
   slot: number,
 ): number {
   return pending.reduce(
-    (best, state) => (state.releaseSlot > slot ? Math.min(best, state.releaseSlot) : best),
+    (best, state) =>
+      state.releaseSlot > slot ? Math.min(best, state.releaseSlot) : best,
     Number.POSITIVE_INFINITY,
   );
 }
@@ -51,7 +52,8 @@ export function assignPendingBlockers(
     } else if (candidateIds.has(state.id)) {
       state.blockedReason = noFitReason(state, dailyBudgetMinutes);
     } else {
-      state.blockedReason = 'No feasible day chunk under the current constraints';
+      state.blockedReason =
+        'No feasible day chunk under the current constraints';
     }
   });
 }

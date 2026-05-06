@@ -8,6 +8,7 @@ This project should be edited as a set of small, reviewable changes. Before chan
 2. Edit the owner layer first. Do not start from the UI unless the change is display-only.
 3. Add or update the closest unit/integration test for that owner.
 4. Run the narrow test first, then run `npm run stabilize`.
+5. If the change creates a new helper, document why the existing canonical helper could not be reused.
 
 For tests, use shared builders before writing another local fixture: `tests/app/store-test-utils.ts` for store/app tests and `tests/core/engine-test-utils.ts` for core snapshot tests.
 
@@ -31,11 +32,11 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 ### Add Or Change UI Display
 
-- Owner: selectors first, then `src/ui/` renderers.
+- Owner: selectors first, then Svelte shell/components under `src/ui/svelte/` or focused tab/panel helpers under `src/ui/`.
 - Data flow: UI receives view models and callbacks; UI must not read raw project/snapshot state.
 - Shared primitives: use `button`, `selectInput`, `inputField`, `badge`, `renderProgressBar`, and formatter helpers from `src/ui/format.ts`, including `formatCssPercent` for style percentages.
 - Tests: update selector tests for data shape and browser smoke only when interaction or mount behavior changes.
-- Avoid: local formatting, local control factories, or domain calculations in render functions.
+- Avoid: local formatting, local control factories, hidden full-tab rerenders, or domain calculations in render functions.
 
 ### Add Or Change Scheduler Or DAG Logic
 
@@ -45,11 +46,20 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Tests: add a core fixture or invariant test before changing UI.
 - Avoid: changing render models to hide a solver issue, or adding scheduling logic in selectors/UI.
 
+### Add Or Change Worker Compute Or Persistence
+
+- Owner: `src/app/store-runtime.ts`, `src/app/compute-adapter.ts`, and `src/app/mount.ts`.
+- Contract: project mutations are committed and emitted synchronously; worker results may only replace snapshots.
+- Persistence: `project-changed` events are the save trigger, so do not delay them behind async compute.
+- Tests: update worker-compute and persistence-save-queue tests.
+- Avoid: capturing stale UI state for async snapshot application or letting worker code import DOM, storage, network, or infra providers.
+
 ### Add Or Change Enrichment Or Document Acquisition
 
 - Owner: `src/infra/` provider modules and source/document helpers.
 - Source masks: source settings decide whether a provider is called.
-- Document priority: content-kind ranking must come from the shared document/qBittorrent helpers.
+- Document priority: content-kind ranking must come from the shared document content-priority helpers.
+- Matching: title/author/ISBN relevance and source queries must reuse `src/core/matchers.ts`; do not add provider-local fuzzy scoring.
 - Provenance: every enrichment/document result must include provider, strategy, confidence, and source details when available.
 - Tests: provider unit tests plus an enrichment integration test for fallback/failure behavior.
 - Avoid: provider-specific logic in core, implicit downloads, or storing local credentials in project JSON.
@@ -64,12 +74,20 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 ## Canonical Patterns
 
+- UI shell: `src/ui/svelte/AppShell.svelte`
 - UI controls: `src/ui/dom.ts`
 - UI formatting: `src/ui/format.ts`
+- Number formatting: `src/core/number-format.ts`
+- Display colors: `src/core/display-colors.ts`
+- Stable sorting: `src/core/sort.ts`
+- String compaction/joining/deduplication: `src/core/utils.ts`
+- External-source matching: `src/core/matchers.ts`
+- Provider metadata cleanup: `src/infra/source-metadata.ts`
 - Progress display/math: `src/app/selectors/progress.ts` and `src/ui/progress.ts`
 - Date constants and weekday math: `src/core/date-constants.ts`, `src/core/time.ts`, `src/core/weekdays.ts`
 - Planner constraints and pacing math: `src/core/constraints.ts`
 - Infra cache time: `src/infra/cache-time.ts`
+- Document content priority: `src/infra/document-content-priority.ts`
 - Document content kind and path helpers: `src/infra/qbittorrent-file-kinds.ts`
 - Source/provider enablement policy: `src/core/source-settings-policy.ts`
 - Source settings patching: `src/app/store-source-settings-helpers.ts`

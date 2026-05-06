@@ -1,4 +1,7 @@
 import type {
+  AiConnectionSettings,
+  AiRecommendationProposal,
+  AiRecommendationStatus,
   BookSearchStatus,
   BookSearchSuggestion,
   ConstraintSet,
@@ -15,6 +18,7 @@ export type AppView =
   | 'library'
   | 'constraints'
   | 'plan'
+  | 'ai'
   | 'graphs'
   | 'diagnostics'
   | 'info'
@@ -59,7 +63,14 @@ export interface UiState {
   qbittorrentConnection: QbittorrentConnectionSettings;
   qbittorrentStatus: QbittorrentRuntimeStatus;
   documentReader: DocumentReaderState;
-  banner: { tone: 'info' | 'success' | 'warn' | 'error'; message: string } | null;
+  aiPrompt: string;
+  aiConnection: AiConnectionSettings;
+  aiStatus: AiRecommendationStatus;
+  aiProposal: AiRecommendationProposal | null;
+  banner: {
+    tone: 'info' | 'success' | 'warn' | 'error';
+    message: string;
+  } | null;
 }
 
 export interface AppState {
@@ -68,6 +79,14 @@ export interface AppState {
   snapshot: EngineSnapshot;
   enrichment: {
     byBookId: Record<string, EnrichmentCacheEntry>;
+  };
+  performance: {
+    projectRevision: number;
+    uiRevision: number;
+    snapshotRevision: number;
+    lastSnapshotMs: number;
+    lastRenderMs: number;
+    lastWorkerMs: number;
   };
 }
 
@@ -95,7 +114,13 @@ export interface ConstraintField {
   summary?: string;
   detail?: string;
   optionDetails?: Record<string, string>;
-  kind: 'number' | 'select' | 'boolean' | 'date' | 'target-date' | 'weekday-set';
+  kind:
+    | 'number'
+    | 'select'
+    | 'boolean'
+    | 'date'
+    | 'target-date'
+    | 'weekday-set';
   min?: number;
   max?: number;
   step?: number;

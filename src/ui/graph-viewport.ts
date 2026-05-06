@@ -48,7 +48,9 @@ function attachPanZoom(
 
   frame.addEventListener('wheel', (event) => {
     event.preventDefault();
-    const nextZoom = clampZoom(state.zoom + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+    const nextZoom = clampZoom(
+      state.zoom + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP),
+    );
     if (nextZoom === state.zoom) {
       return;
     }

@@ -3,8 +3,12 @@ import { normalizeOpenLibraryKey } from '../core/openlibrary-keys';
 import type { BookRecord } from '../core/types';
 import type { StrategyCandidate } from './toc-merge';
 
-export function existingLocalCandidate(book: BookRecord): StrategyCandidate | null {
-  const chapters = sanitizeChapterTitles(book.enrichment.chapters, { source: 'imported' });
+export function existingLocalCandidate(
+  book: BookRecord,
+): StrategyCandidate | null {
+  const chapters = sanitizeChapterTitles(book.enrichment.chapters, {
+    source: 'imported',
+  });
   const hasLocalData =
     chapters.length > 0 ||
     Boolean(book.enrichment.description) ||
@@ -26,8 +30,14 @@ export function existingLocalCandidate(book: BookRecord): StrategyCandidate | nu
     authors: book.authors,
     isbn: book.isbn,
     openLibraryKey: normalizeOpenLibraryKey(book.openLibraryKey, 'any'),
-    openLibraryEditionKey: normalizeOpenLibraryKey(book.openLibraryEditionKey, 'edition'),
-    openLibraryWorkKey: normalizeOpenLibraryKey(book.openLibraryWorkKey, 'work'),
+    openLibraryEditionKey: normalizeOpenLibraryKey(
+      book.openLibraryEditionKey,
+      'edition',
+    ),
+    openLibraryWorkKey: normalizeOpenLibraryKey(
+      book.openLibraryWorkKey,
+      'work',
+    ),
     googleBooksId: book.googleBooksId ?? null,
     tocSource: book.enrichment.tocSource,
   };

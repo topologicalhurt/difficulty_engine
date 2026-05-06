@@ -6,8 +6,12 @@ import {
   MAX_PHRASE_NGRAM,
   SERIES_PATTERN,
   STOP_WORDS,
+  TEXT_SIMILARITY_CACHE_LIMIT,
 } from './constants';
 import { safeNumber } from './utils';
+
+const similarityTokenSetCache = new Map<string, Set<string>>();
+const textSimilarityCache = new Map<string, number>();
 
 export function titleShort(title: string, id: string): string {
   const raw = String(title || id || 'Untitled').trim();
@@ -51,7 +55,10 @@ export function canonicalPhrase(phrase: string): string {
   return tokenizeWords(phrase).join(' ').trim();
 }
 
-export function phraseCandidates(text: string, maxN = MAX_PHRASE_NGRAM): string[] {
+export function phraseCandidates(
+  text: string,
+  maxN = MAX_PHRASE_NGRAM,
+): string[] {
   const tokens = tokenizeWords(text);
   const nLimit = Math.max(1, Math.min(MAX_PHRASE_NGRAM, maxN));
   const output: string[] = [];
@@ -68,19 +75,44 @@ export function phraseCandidates(text: string, maxN = MAX_PHRASE_NGRAM): string[
 
 export function textSimilarity(left: string, right: string): number {
   if (left === right) return 1;
-  const leftTokens = new Set(tokenizeWords(left));
-  const rightTokens = new Set(tokenizeWords(right));
+  const cacheKey = left < right ? `${left}\u0000${right}` : `${right}\u0000${left}`;
+  const cached = textSimilarityCache.get(cacheKey);
+  if (cached != null) return cached;
+  const leftTokens = tokenSetForSimilarity(left);
+  const rightTokens = tokenSetForSimilarity(right);
   if (!leftTokens.size || !rightTokens.size) return 0;
   let shared = 0;
   leftTokens.forEach((token) => {
     if (rightTokens.has(token)) shared += 1;
   });
-  const jaccard = shared / Math.max(1, leftTokens.size + rightTokens.size - shared);
+  const jaccard =
+    shared / Math.max(1, leftTokens.size + rightTokens.size - shared);
   const containment =
-    String(left || '').includes(String(right || '')) || String(right || '').includes(String(left || ''))
+    String(left || '').includes(String(right || '')) ||
+    String(right || '').includes(String(left || ''))
       ? CONTAINMENT_SIMILARITY_HINT
       : 0;
-  return Math.max(containment, jaccard);
+  const similarity = Math.max(containment, jaccard);
+  rememberTextSimilarity(cacheKey, similarity);
+  return similarity;
+}
+
+function tokenSetForSimilarity(text: string): Set<string> {
+  const cached = similarityTokenSetCache.get(text);
+  if (cached) return cached;
+  const tokenSet = new Set(tokenizeWords(text));
+  if (similarityTokenSetCache.size >= TEXT_SIMILARITY_CACHE_LIMIT) {
+    similarityTokenSetCache.clear();
+  }
+  similarityTokenSetCache.set(text, tokenSet);
+  return tokenSet;
+}
+
+function rememberTextSimilarity(key: string, similarity: number): void {
+  if (textSimilarityCache.size >= TEXT_SIMILARITY_CACHE_LIMIT) {
+    textSimilarityCache.clear();
+  }
+  textSimilarityCache.set(key, similarity);
 }
 
 export function countTokens(tokens: string[]): Record<string, number> {
@@ -102,7 +134,9 @@ export function weightedCoverage(
   let shared = 0;
   let total = 0;
   keys.forEach((key) => {
-    const idf = Math.log(1 + documentCount / Math.max(1, documentFrequency[key] || 1));
+    const idf = Math.log(
+      1 + documentCount / Math.max(1, documentFrequency[key] || 1),
+    );
     total += (leftCounts[key] || 0) * idf;
     if (rightCounts[key]) {
       shared += Math.min(leftCounts[key] || 0, rightCounts[key] || 0) * idf;
@@ -123,7 +157,13 @@ export function cueProfileForBook(
   chapterTitles: string[],
   description: string,
 ): { intro: number; advanced: number; bridge: number } {
-  const text = [title, short, ...subjects, ...chapterTitles, description || ''].join(' ');
+  const text = [
+    title,
+    short,
+    ...subjects,
+    ...chapterTitles,
+    description || '',
+  ].join(' ');
   return {
     intro: cuePresence(text, INTRO_CUES),
     advanced: cuePresence(text, ADVANCED_CUES),
@@ -131,7 +171,10 @@ export function cueProfileForBook(
   };
 }
 
-export function parseSeriesInfo(title: string): { index: number | null; key: string } {
+export function parseSeriesInfo(title: string): {
+  index: number | null;
+  key: string;
+} {
   const raw = String(title || '');
   const volume = raw.match(SERIES_PATTERN);
   const cleaned = raw
@@ -145,6 +188,9 @@ export function parseSeriesInfo(title: string): { index: number | null; key: str
   };
 }
 
-export function normalizeNumericString(value: string | number | undefined | null, fallback: number): number {
+export function normalizeNumericString(
+  value: string | number | undefined | null,
+  fallback: number,
+): number {
   return safeNumber(value, fallback);
 }

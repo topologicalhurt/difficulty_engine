@@ -1,7 +1,4 @@
-import {
-  ADVANCED_CUES,
-  INTRO_CUES,
-} from './constants';
+import { ADVANCED_CUES, INTRO_CUES } from './constants';
 import { genericEstimateDifficulty } from './constraints';
 import type { CorpusBook } from './internal-types';
 import type { BookRecord } from './types';
@@ -17,10 +14,22 @@ import {
 import { asArray, deepClone, sum, unique } from './utils';
 
 export function corpusBookFromRecord(id: string, book: BookRecord): CorpusBook {
-  const chapterTitles = asArray(book.enrichment.chapters).map((chapter) => String(chapter || '')).filter(Boolean);
-  const subjectTexts = unique([...(book.subjects || []), ...(book.enrichment.olSubjects || [])]);
-  const sources = [book.title, book.short, ...subjectTexts, String(book.enrichment.description || '').slice(0, 800)];
-  const focusTokens = tokenizeWords([book.title, book.short, ...subjectTexts].join(' '));
+  const chapterTitles = asArray(book.enrichment.chapters)
+    .map((chapter) => String(chapter || ''))
+    .filter(Boolean);
+  const subjectTexts = unique([
+    ...(book.subjects || []),
+    ...(book.enrichment.olSubjects || []),
+  ]);
+  const sources = [
+    book.title,
+    book.short,
+    ...subjectTexts,
+    String(book.enrichment.description || '').slice(0, 800),
+  ];
+  const focusTokens = tokenizeWords(
+    [book.title, book.short, ...subjectTexts].join(' '),
+  );
   const wordCounts: Record<string, number> = {};
   const phraseCounts: Record<string, number> = {};
   const focusTokenCounts = countTokens(focusTokens);
@@ -31,15 +40,18 @@ export function corpusBookFromRecord(id: string, book: BookRecord): CorpusBook {
     phrases: phraseCandidates(title),
   }));
 
-  sources.concat(chapterTitles).filter(Boolean).forEach((source) => {
-    const words = tokenizeWords(source);
-    words.forEach((word) => {
-      wordCounts[word] = (wordCounts[word] || 0) + 1;
+  sources
+    .concat(chapterTitles)
+    .filter(Boolean)
+    .forEach((source) => {
+      const words = tokenizeWords(source);
+      words.forEach((word) => {
+        wordCounts[word] = (wordCounts[word] || 0) + 1;
+      });
+      phraseCandidates(source).forEach((phrase) => {
+        phraseCounts[phrase] = (phraseCounts[phrase] || 0) + 1;
+      });
     });
-    phraseCandidates(source).forEach((phrase) => {
-      phraseCounts[phrase] = (phraseCounts[phrase] || 0) + 1;
-    });
-  });
 
   const totalWords = sum(Object.values(wordCounts));
   return {
@@ -55,7 +67,9 @@ export function corpusBookFromRecord(id: string, book: BookRecord): CorpusBook {
     phraseCounts,
     totalWords,
     uniqueWords: Object.keys(wordCounts).length,
-    lexicalDensity: totalWords ? Object.keys(wordCounts).length / totalWords : 0,
+    lexicalDensity: totalWords
+      ? Object.keys(wordCounts).length / totalWords
+      : 0,
     sequence: parseSeriesInfo(book.title),
     seedEstimate: genericEstimateDifficulty(
       book.title,
@@ -67,6 +81,12 @@ export function corpusBookFromRecord(id: string, book: BookRecord): CorpusBook {
       ADVANCED_CUES,
     ),
     focusTokenCounts,
-    cueProfile: cueProfileForBook(book.title, book.short, subjectTexts, chapterTitles, book.enrichment.description),
+    cueProfile: cueProfileForBook(
+      book.title,
+      book.short,
+      subjectTexts,
+      chapterTitles,
+      book.enrichment.description,
+    ),
   };
 }

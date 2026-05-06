@@ -1,11 +1,13 @@
 import {
   allowedDayWindow,
   effectiveFloorPg,
-  normalizeBackfillMode,
-  normalizeFeasibilityMode,
   pageBounds,
   totalHours,
 } from './constraints';
+import {
+  normalizeBackfillMode,
+  normalizeFeasibilityMode,
+} from './constraint-normalizers';
 import { computeRelativePacingTargets } from './relative-pacing';
 import type {
   CorpusSnapshot,
@@ -33,7 +35,8 @@ function activeBookIds(
     .map((book) => book.id)
     .filter((id) => {
       const book = corpus.byId[id];
-      if (exclusionState.ignoredSet.has(id) || exclusionState.rdSet.has(id)) return false;
+      if (exclusionState.ignoredSet.has(id) || exclusionState.rdSet.has(id))
+        return false;
       if (project.constraints.excComp && book.completed) return false;
       return true;
     });
@@ -63,8 +66,11 @@ export function buildScheduleItems(
   const activeIds = activeBookIds(project, corpus, exclusionState);
   const activeIdSet = new Set(activeIds);
   const lanePreserving =
-    normalizeBackfillMode(project.constraints.backfillMode) === 'lane_preserving';
-  const feasibilityMode = normalizeFeasibilityMode(project.constraints.feasibilityMode);
+    normalizeBackfillMode(project.constraints.backfillMode) ===
+    'lane_preserving';
+  const feasibilityMode = normalizeFeasibilityMode(
+    project.constraints.feasibilityMode,
+  );
   const strictMinPg = pageBounds(project.constraints).minPg;
   const pacingTargets = computeRelativePacingTargets(
     activeIds.map((id) => ({
@@ -91,11 +97,18 @@ export function buildScheduleItems(
     const floorRelaxed =
       feasibilityMode === 'practical' &&
       effectiveMin < strictMinPg - FLOOR_RELAXED_EPSILON;
-    const bounds = allowedDayWindow(book.pages, project.constraints, effectiveMin);
+    const bounds = allowedDayWindow(
+      book.pages,
+      project.constraints,
+      effectiveMin,
+    );
     const requestedDays =
       manual.days != null
         ? Math.max(1, Math.round(manual.days))
-        : Math.max(1, Math.ceil(book.pages / Math.max(0.1, pacing.pacingPageTarget)));
+        : Math.max(
+            1,
+            Math.ceil(book.pages / Math.max(0.1, pacing.pacingPageTarget)),
+          );
     const manualWindowImpossibleReason =
       manual.days != null &&
       (requestedDays < bounds.minDays || requestedDays > bounds.maxDays)
@@ -120,7 +133,8 @@ export function buildScheduleItems(
       requestedDays,
       dayPages: round1(book.pages / Math.max(1, plannedDays)),
       dayMins: round1(
-        (totalHours(book.pages, diff, project.constraints) * 60) / plannedDays || 0,
+        (totalHours(book.pages, diff, project.constraints) * 60) /
+          plannedDays || 0,
       ),
       hours: round2(totalHours(book.pages, diff, project.constraints)),
       strictMinPg,
@@ -138,9 +152,10 @@ export function buildScheduleItems(
       manualDaysLocked: manual.days != null,
       manualWindowImpossibleReason,
       depth: difficultyModel.byId[id]?.topologicalDepth || 0,
-      prereqs: (allowPrereqOverlap ? [] : relationInfo.prereqById[id] || []).filter(
-        (parent) => activeIdSet.has(parent),
-      ),
+      prereqs: (allowPrereqOverlap
+        ? []
+        : relationInfo.prereqById[id] || []
+      ).filter((parent) => activeIdSet.has(parent)),
       allowPrereqOverlap,
       completed: Boolean(book.completed),
       scheduleRank: 0,

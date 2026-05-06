@@ -99,6 +99,10 @@ describe('schedule helper modules', () => {
     ]);
 
     expect(grouped.Applied.map((item) => item.id)).toEqual(['solo']);
-    expect(grouped.Core.map((item) => item.id)).toEqual(['easy', 'hard', 'late']);
+    expect(grouped.Core.map((item) => item.id)).toEqual([
+      'easy',
+      'hard',
+      'late',
+    ]);
   });
 });

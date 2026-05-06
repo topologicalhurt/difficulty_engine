@@ -5,10 +5,8 @@ import type {
   PlannerStoreEvent,
 } from '../core/types';
 import type { StoreCommandContext } from './store-command-context';
-import {
-  mergeEnrichmentIntoBook,
-  updateEnrichmentCache,
-} from './store-helpers';
+import { mergeEnrichmentIntoBook } from './store-book-metadata';
+import { updateEnrichmentCache } from './store-helpers';
 import { stableEnrichmentCacheKey } from '../infra/enrichment-cache-key';
 
 const ENRICHMENT_STALE_WINDOW_MS = 6 * 60 * 60 * 1_000;
@@ -17,13 +15,62 @@ const ENRICHMENT_REFRESH_CONCURRENCY = 4;
 interface CreateEnrichmentCommandsOptions {
   context: StoreCommandContext;
   services: CreatePlannerStoreOptions;
-  emitEvent(type: PlannerStoreEvent['type'], payload?: PlannerStoreEvent['payload']): void;
+  emitEvent(
+    type: PlannerStoreEvent['type'],
+    payload?: PlannerStoreEvent['payload'],
+  ): void;
 }
+
+type EnrichmentCacheEntry = PlannerProjectV1['enrichmentCache'][string];
+type StoreState = ReturnType<StoreCommandContext['getState']>;
 
 export function createEnrichmentCommands(
   options: CreateEnrichmentCommandsOptions,
-): Pick<PlannerStoreCommands, 'refreshBookEnrichment' | 'refreshAllEnrichment'> {
+): Pick<
+  PlannerStoreCommands,
+  'refreshBookEnrichment' | 'refreshAllEnrichment'
+> {
   const { context, services, emitEvent } = options;
+  const activeRefreshSequenceByBook = new Map<string, number>();
+
+  function nextRefreshSequence(bookId: string): number {
+    const next = (activeRefreshSequenceByBook.get(bookId) ?? 0) + 1;
+    activeRefreshSequenceByBook.set(bookId, next);
+    return next;
+  }
+
+  function requestIsCurrent(bookId: string, sequence: number): boolean {
+    return activeRefreshSequenceByBook.get(bookId) === sequence;
+  }
+
+  function fallbackStatusForPrevious(
+    previousCacheEntry: EnrichmentCacheEntry | undefined,
+  ): 'stale' | 'idle' {
+    return previousCacheEntry?.status === 'success' || previousCacheEntry?.data
+      ? 'stale'
+      : 'idle';
+  }
+
+  function commitIgnoredStaleRefresh(
+    bookId: string,
+    latestState: StoreState,
+    previousCacheEntry: EnrichmentCacheEntry | undefined,
+    latestCacheKey: string,
+    error: string,
+  ): void {
+    const fallbackStatus = fallbackStatusForPrevious(previousCacheEntry);
+    const staleProject = updateEnrichmentCache(latestState.project, bookId, {
+      ...(previousCacheEntry ?? {}),
+      status: fallbackStatus,
+      cacheKey: latestCacheKey,
+      error,
+    });
+    context.commitProject('enrichment.refreshBook', staleProject);
+    emitEvent('enrichment-status-changed', {
+      bookId,
+      status: fallbackStatus,
+    });
+  }
 
   async function refreshBookEnrichment(bookId: string): Promise<void> {
     const state = context.getState();
@@ -31,6 +78,7 @@ export function createEnrichmentCommands(
     if (!book) return;
 
     const previousCacheEntry = state.project.enrichmentCache[bookId];
+    const requestSequence = nextRefreshSequence(bookId);
     const requestCacheKey = stableEnrichmentCacheKey({
       book,
       sourceSettings: state.project.sourceSettings,
@@ -60,6 +108,7 @@ export function createEnrichmentCommands(
       });
       const fetchedAt = services.clock.now().toISOString();
       const latestState = context.getState();
+      if (!requestIsCurrent(bookId, requestSequence)) return;
       const currentBook = latestState.project.library.books[bookId] ?? book;
       const latestCacheKey = stableEnrichmentCacheKey({
         book: currentBook,
@@ -67,16 +116,13 @@ export function createEnrichmentCommands(
         qbittorrentConnection: latestState.ui.qbittorrentConnection,
       });
       if (latestCacheKey !== requestCacheKey) {
-        const fallbackStatus =
-          previousCacheEntry?.status === 'success' || previousCacheEntry?.data ? 'stale' : 'idle';
-        const staleProject = updateEnrichmentCache(latestState.project, bookId, {
-          ...(previousCacheEntry ?? {}),
-          status: fallbackStatus,
-          cacheKey: latestCacheKey,
-          error: 'Ignored stale enrichment result because the book or source settings changed during refresh.',
-        });
-        context.commitProject('enrichment.refreshBook', staleProject);
-        emitEvent('enrichment-status-changed', { bookId, status: fallbackStatus });
+        commitIgnoredStaleRefresh(
+          bookId,
+          latestState,
+          previousCacheEntry,
+          latestCacheKey,
+          'Ignored stale enrichment result because the book or source settings changed during refresh.',
+        );
         return;
       }
       const mergedBook = mergeEnrichmentIntoBook(currentBook, {
@@ -86,13 +132,16 @@ export function createEnrichmentCommands(
           provenance: {
             ...currentBook.enrichment.provenance,
             chapters: response.enrichment.chapters.length
-              ? response.enrichment.provenance?.chapters ?? response.provenance[0]
+              ? (response.enrichment.provenance?.chapters ??
+                response.provenance[0])
               : currentBook.enrichment.provenance?.chapters,
             description: response.enrichment.description
-              ? response.enrichment.provenance?.description ?? response.provenance[0]
+              ? (response.enrichment.provenance?.description ??
+                response.provenance[0])
               : currentBook.enrichment.provenance?.description,
             subjects: response.enrichment.olSubjects.length
-              ? response.enrichment.provenance?.subjects ?? response.provenance[0]
+              ? (response.enrichment.provenance?.subjects ??
+                response.provenance[0])
               : currentBook.enrichment.provenance?.subjects,
           },
         },
@@ -110,7 +159,9 @@ export function createEnrichmentCommands(
         status: 'success',
         cacheKey: response.cacheKey,
         fetchedAt,
-        staleAt: new Date(services.clock.now().getTime() + ENRICHMENT_STALE_WINDOW_MS).toISOString(),
+        staleAt: new Date(
+          services.clock.now().getTime() + ENRICHMENT_STALE_WINDOW_MS,
+        ).toISOString(),
         error: undefined,
         data: response.enrichment,
         provenance: response.provenance,
@@ -128,6 +179,7 @@ export function createEnrichmentCommands(
         error: error instanceof Error ? error.message : String(error),
       });
       const latestState = context.getState();
+      if (!requestIsCurrent(bookId, requestSequence)) return;
       const currentBook = latestState.project.library.books[bookId] ?? book;
       const latestCacheKey = stableEnrichmentCacheKey({
         book: currentBook,
@@ -135,23 +187,26 @@ export function createEnrichmentCommands(
         qbittorrentConnection: latestState.ui.qbittorrentConnection,
       });
       if (latestCacheKey !== requestCacheKey) {
-        const fallbackStatus =
-          previousCacheEntry?.status === 'success' || previousCacheEntry?.data ? 'stale' : 'idle';
-        const staleProject = updateEnrichmentCache(latestState.project, bookId, {
-          ...(previousCacheEntry ?? {}),
-          status: fallbackStatus,
-          cacheKey: latestCacheKey,
-          error: 'Ignored stale enrichment failure because the book or source settings changed during refresh.',
-        });
-        context.commitProject('enrichment.refreshBook', staleProject);
-        emitEvent('enrichment-status-changed', { bookId, status: fallbackStatus });
+        commitIgnoredStaleRefresh(
+          bookId,
+          latestState,
+          previousCacheEntry,
+          latestCacheKey,
+          'Ignored stale enrichment failure because the book or source settings changed during refresh.',
+        );
         return;
       }
       const currentEntry = latestState.project.enrichmentCache[bookId];
-      const hasUsablePreviousData = previousCacheEntry?.status === 'success' || Boolean(previousCacheEntry?.data);
+      const hasUsablePreviousData =
+        previousCacheEntry?.status === 'success' ||
+        Boolean(previousCacheEntry?.data);
       const failedProject = updateEnrichmentCache(latestState.project, bookId, {
-        status: hasUsablePreviousData || currentEntry?.status === 'success' ? 'stale' : 'failed',
-        error: error instanceof Error ? error.message : 'Unknown enrichment failure',
+        status:
+          hasUsablePreviousData || currentEntry?.status === 'success'
+            ? 'stale'
+            : 'failed',
+        error:
+          error instanceof Error ? error.message : 'Unknown enrichment failure',
       });
       context.commitProject('enrichment.refreshBook', failedProject, {
         banner: {

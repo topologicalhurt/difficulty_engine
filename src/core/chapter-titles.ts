@@ -1,36 +1,36 @@
-export type ChapterTitleSource = 'structured' | 'unstructured' | 'imported';
+import {
+  DESCRIPTION_WORD_PATTERN,
+  DOT_LEADER_PAGE_PATTERN,
+  FRONT_BACK_MATTER_PATTERN,
+  LEADING_MARKER_PATTERN,
+  LETTER_PATTERN,
+  MARKETING_TOC_FRAGMENT_PATTERN,
+  MARKETING_VERB_PATTERN,
+  NARRATIVE_START_PATTERN,
+  NARRATIVE_VERB_PATTERN,
+  NUMBERED_TITLE_PATTERN,
+  PLAIN_PAGE_SUFFIX_PATTERN,
+  SENTENCE_BOUNDARY_PATTERN,
+  STRUCTURAL_PREFIX_ONLY_PATTERN,
+  STRUCTURAL_PREFIX_PATTERN,
+  STRUCTURAL_SENTENCE_PATTERN,
+  UNSTRUCTURED_SPLIT_PATTERN,
+  URL_OR_ISBN_PATTERN,
+  WORD_NUMBER_TITLE_PATTERN,
+} from './chapter-title-patterns';
+import type { MatcherDecision, MatcherSourceMode } from './matchers';
+import { matcherDecision } from './matchers';
+
+export type ChapterTitleSource =
+  | 'structured'
+  | 'unstructured'
+  | 'imported'
+  | 'provider_snippet'
+  | 'manual';
 
 const MAX_CHAPTER_TITLE_LENGTH = 140;
 const MAX_CHAPTER_WORDS = 18;
 const MIN_CHAPTER_TITLE_LENGTH = 2;
-const UNSTRUCTURED_SPLIT_PATTERN = /(?:\r?\n|;\s+|\|\s+|(?<=\.)\s+(?=(?:chapter|ch\.?|part|appendix|lecture|lesson|module|unit|\d+[.)])))/i;
-const STRUCTURAL_SENTENCE_PATTERN =
-  /\b(?:(?:chapter|ch\.?|appendix|lecture|lesson|module|unit|section)\s+[^.;|\n]{2,120}|(?:part|book|volume|vol\.?|week|session)\s+(?:[ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b[^.;|\n]{0,120}|\d+(?:\.\d+)*[.)]\s+[^.;|\n]{2,120})/giu;
-const DOT_LEADER_PAGE_PATTERN = /\s*\.{2,}\s*(?:[ivxlcdm]+|\d{1,4})\s*$/i;
-const LEADING_MARKER_PATTERN = /^\s*(?:[-*]|\u2022)\s*/;
-const STRUCTURAL_PREFIX_PATTERN =
-  /^(?:contents?|chapter|ch\.?|part|book|volume|vol\.?|unit|section|appendix|lecture|lesson|module|week|session)\b/i;
-const STRUCTURAL_PREFIX_ONLY_PATTERN =
-  /^(?:chapter|ch\.?|part|book|volume|vol\.?|unit|section|appendix|lecture|lesson|module|week|session)$/i;
-const FRONT_BACK_MATTER_PATTERN =
-  /^(?:preface|foreword|acknowledgements?|contents?|introduction|conclusion|epilogue|prologue|bibliography|references|notes|index|glossary|exercises|problems|solutions|further reading)\b/i;
-const NUMBERED_TITLE_PATTERN =
-  /^(?:(?:\d+|[ivxlcdm]+)(?:\.\d+)*[.)]?\s+|\d+\s*[:.-]\s+)[\p{L}\p{N}]/iu;
-const WORD_NUMBER_TITLE_PATTERN =
-  /^(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*[:.-]\s+[\p{L}\p{N}]/iu;
-const SENTENCE_BOUNDARY_PATTERN = /[.!?]\s+[\p{Lu}\d]/u;
-const URL_OR_ISBN_PATTERN = /\b(?:https?:\/\/|www\.|isbn|copyright|all rights reserved)\b/i;
-const LETTER_PATTERN = /\p{L}/u;
-const NARRATIVE_START_PATTERN =
-  /^(?:this|these|those|it|they|we|you|your|readers?|students?|instructors?|teachers?)\b/i;
-const NARRATIVE_VERB_PATTERN =
-  /\b(?:book|edition|volume|guide|text|textbook|manual|resource)\b.{0,48}\b(?:provides?|offers?|features?|covers?|describes?|explains?|includes?|contains?|outlines?|presents?|teaches?|helps?|shows?|introduces?)\b/i;
-const MARKETING_VERB_PATTERN =
-  /\b(?:spark|gain|learn|discover|master|transform your|find out how|step-by-step|hands-on)\b/i;
-const DESCRIPTION_WORD_PATTERN = /\b(?:description|overview|summary|synopsis|blurb)\b/i;
-const MARKETING_TOC_FRAGMENT_PATTERN =
-  /^(?:chapter\s+(?:on|new)\b|new\s+(?:sections?\s+covering|and\s+revised)\b)/i;
-const PLAIN_PAGE_SUFFIX_PATTERN = /^(.+?)\s+((?:[ivxlcdm]+)|(?:\d{1,4}))$/i;
 
 function wordsIn(value: string): string[] {
   return value.split(/\s+/).filter(Boolean);
@@ -41,7 +41,8 @@ function stripPlainPageSuffix(value: string): string {
   if (!match) return value;
   const body = (match[1] ?? '').trim();
   if (STRUCTURAL_PREFIX_ONLY_PATTERN.test(body)) return value;
-  if (wordsIn(body).length >= 2 || FRONT_BACK_MATTER_PATTERN.test(body)) return body;
+  if (wordsIn(body).length >= 2 || FRONT_BACK_MATTER_PATTERN.test(body))
+    return body;
   return value;
 }
 
@@ -64,6 +65,14 @@ function hasStructuralMarker(title: string): boolean {
   );
 }
 
+function matcherSourceMode(source: ChapterTitleSource): MatcherSourceMode {
+  if (source === 'unstructured') return 'provider_snippet';
+  if (source === 'provider_snippet') return 'provider_snippet';
+  if (source === 'manual') return 'manual';
+  if (source === 'imported') return 'metadata';
+  return 'structured';
+}
+
 function isNarrativeText(title: string): boolean {
   if (URL_OR_ISBN_PATTERN.test(title)) return true;
   if (DESCRIPTION_WORD_PATTERN.test(title)) return true;
@@ -71,7 +80,8 @@ function isNarrativeText(title: string): boolean {
   if (NARRATIVE_START_PATTERN.test(title)) return true;
   if (NARRATIVE_VERB_PATTERN.test(title)) return true;
   if (MARKETING_VERB_PATTERN.test(title)) return true;
-  if (SENTENCE_BOUNDARY_PATTERN.test(title) && wordsIn(title).length > 8) return true;
+  if (SENTENCE_BOUNDARY_PATTERN.test(title) && wordsIn(title).length > 8)
+    return true;
   return false;
 }
 
@@ -87,24 +97,77 @@ export function isLikelyChapterTitle(
   value: string,
   source: ChapterTitleSource = 'structured',
 ): boolean {
+  return chapterTitleDecision(value, source).accepted;
+}
+
+export function chapterTitleDecision(
+  value: string,
+  source: ChapterTitleSource = 'structured',
+): MatcherDecision {
   const title = normalizeChapterTitle(value);
-  if (title.length < MIN_CHAPTER_TITLE_LENGTH || title.length > MAX_CHAPTER_TITLE_LENGTH) {
-    return false;
+  if (
+    title.length < MIN_CHAPTER_TITLE_LENGTH ||
+    title.length > MAX_CHAPTER_TITLE_LENGTH
+  ) {
+    return matcherDecision({
+      accepted: false,
+      score: 0,
+      sourceMode: matcherSourceMode(source),
+      rejectedReasons: ['invalid_length'],
+      evidenceAnchors: [title].filter(Boolean),
+    });
   }
   if (!LETTER_PATTERN.test(title)) {
-    return false;
+    return matcherDecision({
+      accepted: false,
+      score: 0,
+      sourceMode: matcherSourceMode(source),
+      rejectedReasons: ['missing_letters'],
+      evidenceAnchors: [title],
+    });
   }
   const words = wordsIn(title);
-  if (words.length > MAX_CHAPTER_WORDS && !STRUCTURAL_PREFIX_PATTERN.test(title)) {
-    return false;
+  if (
+    words.length > MAX_CHAPTER_WORDS &&
+    !STRUCTURAL_PREFIX_PATTERN.test(title)
+  ) {
+    return matcherDecision({
+      accepted: false,
+      score: 0.1,
+      sourceMode: matcherSourceMode(source),
+      rejectedReasons: ['too_many_words'],
+      evidenceAnchors: [title],
+    });
   }
   if (isNarrativeText(title)) {
-    return false;
+    return matcherDecision({
+      accepted: false,
+      score: 0.1,
+      sourceMode: matcherSourceMode(source),
+      rejectedReasons: ['narrative_or_marketing_text'],
+      evidenceAnchors: [title],
+    });
   }
   if (hasStructuralMarker(title)) {
-    return true;
+    return matcherDecision({
+      accepted: true,
+      score: 0.9,
+      sourceMode: matcherSourceMode(source),
+      reasons: ['structural_marker'],
+      evidenceAnchors: [title],
+    });
   }
-  return source !== 'unstructured' && isConcisePlainTitle(title);
+  const plainAllowed =
+    !['unstructured', 'provider_snippet'].includes(source) &&
+    isConcisePlainTitle(title);
+  return matcherDecision({
+    accepted: plainAllowed,
+    score: plainAllowed ? 0.62 : 0.2,
+    sourceMode: matcherSourceMode(source),
+    reasons: plainAllowed ? ['concise_plain_title'] : [],
+    rejectedReasons: plainAllowed ? [] : ['missing_structural_evidence'],
+    evidenceAnchors: [title],
+  });
 }
 
 export function sanitizeChapterTitles(
@@ -135,7 +198,9 @@ export function extractChapterCandidatesFromText(
     .split(UNSTRUCTURED_SPLIT_PATTERN)
     .map((line) => line.trim())
     .filter(Boolean);
-  const structuralMatches = Array.from(input.matchAll(STRUCTURAL_SENTENCE_PATTERN))
+  const structuralMatches = Array.from(
+    input.matchAll(STRUCTURAL_SENTENCE_PATTERN),
+  )
     .map((match) => match[0])
     .filter(Boolean);
   return sanitizeChapterTitles([...parts, ...structuralMatches], {

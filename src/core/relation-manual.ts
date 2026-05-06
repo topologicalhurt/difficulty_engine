@@ -29,11 +29,15 @@ export function manualAllowOverlapRelation(book: BookRecord): RelationEvidence {
     symmetry: 1,
     reasons: ['manual overlap override'],
     sources: ['manual'],
-    explanation: 'Manual overlap override allows this book to ignore strict prerequisite blocking.',
+    explanation:
+      'Manual overlap override allows this book to ignore strict prerequisite blocking.',
   };
 }
 
-export function manualPrerequisiteRelation(from: string, to: string): RelationEvidence {
+export function manualPrerequisiteRelation(
+  from: string,
+  to: string,
+): RelationEvidence {
   return {
     from,
     to,
@@ -47,7 +51,10 @@ export function manualPrerequisiteRelation(from: string, to: string): RelationEv
   };
 }
 
-export function manualCoStudyRelation(from: string, to: string): RelationEvidence {
+export function manualCoStudyRelation(
+  from: string,
+  to: string,
+): RelationEvidence {
   return {
     from,
     to,

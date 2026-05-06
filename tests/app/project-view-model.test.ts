@@ -22,7 +22,9 @@ describe('project view model', () => {
 
     const viewModel = selectProjectViewModel(store.selectors.getState());
 
-    expect(viewModel.sourceProviders.map((row) => `${row.kind}:${row.key}`)).toEqual([
+    expect(
+      viewModel.sourceProviders.map((row) => `${row.kind}:${row.key}`),
+    ).toEqual([
       'metadata:openlibrary',
       'metadata:googleBooks',
       'metadata:internetArchive',
@@ -31,8 +33,36 @@ describe('project view model', () => {
       'document:internetArchiveText',
       'document:qbittorrent',
     ]);
-    expect(viewModel.sourceProviders.find((row) => row.key === 'openlibrary')?.checked).toBe(false);
-    expect(viewModel.sourceProviders.find((row) => row.key === 'qbittorrent')?.checked).toBe(false);
-    expect(viewModel.contentPreferenceLabel).toBe('text -> epub -> ocr_text -> pdf');
+    expect(
+      viewModel.sourceProviders.find((row) => row.key === 'openlibrary')
+        ?.checked,
+    ).toBe(false);
+    expect(
+      viewModel.sourceProviders.find((row) => row.key === 'qbittorrent')
+        ?.checked,
+    ).toBe(false);
+    expect(viewModel.contentPreferenceLabel).toBe(
+      'text -> epub -> ocr_text -> pdf',
+    );
+  });
+
+  it('shell-quotes generated qBittorrent commands for unsafe paths', () => {
+    const store = projectStore();
+    store.commands.updateQbittorrentLocalSettings({
+      baseUrl: 'http://127.0.0.1:8123/bridge; echo bad',
+      savePath: "output/data/books; echo 'bad'",
+    });
+
+    const viewModel = selectProjectViewModel(store.selectors.getState());
+
+    expect(viewModel.qbittorrentLaunchCommand).toContain(
+      "--bridge-url 'http://127.0.0.1:8123/bridge; echo bad'",
+    );
+    expect(viewModel.qbittorrentLaunchCommand).toContain(
+      "--data-root 'output/data/books; echo '\\''bad'\\'''",
+    );
+    expect(viewModel.qbittorrentLaunchCommand).toContain(
+      "--allowed-origin 'http://127.0.0.1:*,http://localhost:*'",
+    );
   });
 });

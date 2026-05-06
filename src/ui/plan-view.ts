@@ -1,7 +1,4 @@
-import {
-  selectPlanViewModel,
-  type StatCardView,
-} from '../app/selectors/plan';
+import { selectPlanViewModel, type StatCardView } from '../app/selectors/plan';
 import type { AppState, PlannerStore } from '../core/types';
 import { el } from './dom';
 import { renderSelectedCalendarLogPanel } from './calendar-log-panel';
@@ -26,14 +23,20 @@ function renderStats(cards: StatCardView[]): HTMLElement {
   );
 }
 
-function renderQuickAddPanel(state: AppState, store: PlannerStore): HTMLElement {
+function renderQuickAddPanel(
+  state: AppState,
+  store: PlannerStore,
+): HTMLElement {
   return renderLibrarySearchPanel(state, store, {
     compact: true,
     title: 'Quick add',
   });
 }
 
-export function renderPlanView(state: AppState, store: PlannerStore): HTMLElement {
+export function renderPlanView(
+  state: AppState,
+  store: PlannerStore,
+): HTMLElement {
   const viewModel = selectPlanViewModel(state);
   return el(
     'div',

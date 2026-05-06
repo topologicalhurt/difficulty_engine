@@ -1,4 +1,5 @@
 import type { PlannerStoreCommands } from '../core/types';
+import { round1 } from '../core/utils';
 import {
   withCalendarEntryDone,
   withCalendarEntryMinutes,
@@ -31,13 +32,31 @@ export function createCalendarCommands(
     markCalendarEntryDone(dateKey: string, bookId: string, done = true): void {
       const state = context.getState();
       if (state.project.library.books[bookId]) {
+        const entry = state.snapshot.dayPlan.byDate[dateKey]?.find(
+          (candidate) => candidate.bookId === bookId,
+        );
         context.commitProject(
           'calendar.done',
-          withCalendarEntryDone(state.project, dateKey, bookId, done),
+          withCalendarEntryDone(
+            state.project,
+            dateKey,
+            bookId,
+            done,
+            entry
+              ? {
+                  minutes: entry.mins,
+                  pages: round1(entry.readPages + entry.skimPages),
+                }
+              : undefined,
+          ),
         );
       }
     },
-    setCalendarEntryMinutes(dateKey: string, bookId: string, minutes: number): void {
+    setCalendarEntryMinutes(
+      dateKey: string,
+      bookId: string,
+      minutes: number,
+    ): void {
       const state = context.getState();
       if (state.project.library.books[bookId]) {
         context.commitProject(
@@ -46,7 +65,11 @@ export function createCalendarCommands(
         );
       }
     },
-    setCalendarEntryPages(dateKey: string, bookId: string, pages: number): void {
+    setCalendarEntryPages(
+      dateKey: string,
+      bookId: string,
+      pages: number,
+    ): void {
       const state = context.getState();
       if (state.project.library.books[bookId]) {
         context.commitProject(
@@ -58,7 +81,11 @@ export function createCalendarCommands(
     clearCalendarEntryActual(dateKey: string, bookId: string): void {
       context.commitProject(
         'calendar.clearActual',
-        withoutCalendarEntryOverride(context.getState().project, dateKey, bookId),
+        withoutCalendarEntryOverride(
+          context.getState().project,
+          dateKey,
+          bookId,
+        ),
       );
     },
   };

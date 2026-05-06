@@ -1,5 +1,10 @@
 import type { DayPlanSnapshot } from './internal-types';
-import type { Clock, PlannerProjectV1, SchedulePlan, ScheduleStats } from './types';
+import type {
+  Clock,
+  PlannerProjectV1,
+  SchedulePlan,
+  ScheduleStats,
+} from './types';
 import { maxOr, sum } from './utils';
 
 export function computeScheduleStats(
@@ -10,14 +15,20 @@ export function computeScheduleStats(
 ): ScheduleStats {
   const entries = Object.values(dayPlan.byBookStats);
   const allocatedMinutes = sum(entries.map((entry) => entry.minutes || 0));
-  const residualMinutes = sum(entries.map((entry) => entry.remainingMinutes || 0));
-  const spanSlots = maxOr(entries.map((entry) => entry.actualEnd || 0), 0);
+  const residualMinutes = sum(
+    entries.map((entry) => entry.remainingMinutes || 0),
+  );
+  const spanSlots = maxOr(
+    entries.map((entry) => entry.actualEnd || 0),
+    0,
+  );
   const targetSpanSlots = maxOr(
     schedulePlan.items.map((item) => Math.round(item.de || 0)),
     0,
   );
   const spanWeeks = spanSlots / Math.max(1, project.constraints.dpw);
-  const targetSpanWeeks = targetSpanSlots / Math.max(1, project.constraints.dpw);
+  const targetSpanWeeks =
+    targetSpanSlots / Math.max(1, project.constraints.dpw);
   const hardInfeasibleBooks = entries.filter(
     (entry) => entry.hardInfeasible || entry.infeasibleReason,
   ).length;
@@ -30,9 +41,13 @@ export function computeScheduleStats(
   const unfinishedBooks = entries.filter(
     (entry) => (entry.unfinishedPages || 0) > 0.01,
   ).length;
-  const floorRelaxedBooks = entries.filter((entry) => entry.floorRelaxed).length;
+  const floorRelaxedBooks = entries.filter(
+    (entry) => entry.floorRelaxed,
+  ).length;
   const backfilledStarts = entries.filter((entry) => entry.backfilled).length;
-  const prereqOverlapStarts = entries.filter((entry) => entry.prereqOverlapUsed).length;
+  const prereqOverlapStarts = entries.filter(
+    (entry) => entry.prereqOverlapUsed,
+  ).length;
   let peakMinutes = 0;
   let peakBooks = 0;
   let overbookedDays = 0;

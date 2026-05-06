@@ -1,9 +1,6 @@
-import type {
-  BookSearchSuggestion,
-  SearchBooksRequest,
-  SearchBooksResponse,
-} from '../core/types';
+import type { SearchBooksRequest, SearchBooksResponse } from '../core/types';
 import { metadataSourceEnabled } from '../core/source-settings-policy';
+import { compactItems } from '../core/utils';
 import {
   DEFAULT_SEARCH_PAGE_SIZE,
   isCatalogQueryReady,
@@ -18,7 +15,12 @@ import {
   searchSuggestionFromDoc,
   stableSearchKey,
 } from './openlibrary-search';
-import { cacheEntryIsFresh, cacheExpiresAt, systemNowMs, type NowMs } from './cache-time';
+import {
+  cacheEntryIsFresh,
+  cacheExpiresAt,
+  systemNowMs,
+  type NowMs,
+} from './cache-time';
 import { withRetry } from './enrichment-http';
 
 type JsonFetcher = <T>(url: string, signal?: AbortSignal) => Promise<T>;
@@ -46,11 +48,19 @@ export function normalizedSearchOffset(request: SearchBooksRequest): number {
 }
 
 export function normalizedSearchLimit(request: SearchBooksRequest): number {
-  return Math.max(1, Math.round(request.limit ?? ENRICHMENT_SEARCH_RESPONSE_LIMIT));
+  return Math.max(
+    1,
+    Math.round(request.limit ?? ENRICHMENT_SEARCH_RESPONSE_LIMIT),
+  );
 }
 
 export function searchRequestKey(request: SearchBooksRequest): string {
-  const openLibraryEnabled = metadataSourceEnabled(request.sourceSettings, 'openlibrary') ? '1' : '0';
+  const openLibraryEnabled = metadataSourceEnabled(
+    request.sourceSettings,
+    'openlibrary',
+  )
+    ? '1'
+    : '0';
   return `${stableSearchKey(
     request.query,
     normalizedSearchOffset(request),
@@ -67,10 +77,11 @@ async function fetchOpenLibrarySearch(
   const params = openLibrarySearchParams(request.query, { offset, limit });
   try {
     return await withRetry(
-      () => options.jsonFetcher<SearchResponse>(
-        `https://openlibrary.org/search.json?${params.toString()}`,
-        request.signal,
-      ),
+      () =>
+        options.jsonFetcher<SearchResponse>(
+          `https://openlibrary.org/search.json?${params.toString()}`,
+          request.signal,
+        ),
       options.retryCount,
     );
   } catch (error) {
@@ -78,12 +89,16 @@ async function fetchOpenLibrarySearch(
     if (!message.includes('HTTP 422')) {
       throw error;
     }
-    const fallback = openLibraryFallbackSearchParams(request.query, { offset, limit });
+    const fallback = openLibraryFallbackSearchParams(request.query, {
+      offset,
+      limit,
+    });
     return withRetry(
-      () => options.jsonFetcher<SearchResponse>(
-        `https://openlibrary.org/search.json?${fallback.toString()}`,
-        request.signal,
-      ),
+      () =>
+        options.jsonFetcher<SearchResponse>(
+          `https://openlibrary.org/search.json?${fallback.toString()}`,
+          request.signal,
+        ),
       options.retryCount,
     );
   }
@@ -95,9 +110,7 @@ function searchResponseFromDocs(
   limit: number,
 ): SearchBooksResponse {
   const results = dedupeSuggestions(
-    (docs ?? [])
-      .map(searchSuggestionFromDoc)
-      .filter(Boolean) as BookSearchSuggestion[],
+    compactItems((docs ?? []).map(searchSuggestionFromDoc)),
   ).slice(0, limit);
   return {
     results,
@@ -107,12 +120,16 @@ function searchResponseFromDocs(
   };
 }
 
-export function createOpenLibrarySearchRunner(options: OpenLibrarySearchRunnerOptions): OpenLibrarySearchRunner {
+export function createOpenLibrarySearchRunner(
+  options: OpenLibrarySearchRunnerOptions,
+): OpenLibrarySearchRunner {
   const cache = new Map<string, SearchCacheValue>();
   const nowMs = options.nowMs ?? systemNowMs;
 
   return {
-    async searchBooks(request: SearchBooksRequest): Promise<SearchBooksResponse> {
+    async searchBooks(
+      request: SearchBooksRequest,
+    ): Promise<SearchBooksResponse> {
       const offset = normalizedSearchOffset(request);
       const limit = normalizedSearchLimit(request);
       const key = searchRequestKey(request);
@@ -128,7 +145,11 @@ export function createOpenLibrarySearchRunner(options: OpenLibrarySearchRunnerOp
       }
 
       if (offset === 0 && isFullIsbnQuery(request.query)) {
-        const exact = await isbnSuggestion(options.jsonFetcher, request.query, request.signal);
+        const exact = await isbnSuggestion(
+          options.jsonFetcher,
+          request.query,
+          request.signal,
+        );
         if (exact) {
           const response: SearchBooksResponse = {
             results: [exact],
@@ -136,14 +157,20 @@ export function createOpenLibrarySearchRunner(options: OpenLibrarySearchRunnerOp
             nextOffset: 1,
             mode: 'isbn',
           };
-          cache.set(key, { expiresAt: cacheExpiresAt(options.cacheTtlMs, nowMs), results: response });
+          cache.set(key, {
+            expiresAt: cacheExpiresAt(options.cacheTtlMs, nowMs),
+            results: response,
+          });
           return response;
         }
       }
 
       const response = await fetchOpenLibrarySearch(request, options);
       const results = searchResponseFromDocs(response.docs, offset, limit);
-      cache.set(key, { expiresAt: cacheExpiresAt(options.cacheTtlMs, nowMs), results });
+      cache.set(key, {
+        expiresAt: cacheExpiresAt(options.cacheTtlMs, nowMs),
+        results,
+      });
       return results;
     },
   };

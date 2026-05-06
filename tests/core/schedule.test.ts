@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildTopicIndex, extractCorpus } from '../../src/core/corpus';
-import { DEFAULT_CONSTRAINTS, EXAMPLE_BOOK, createDefaultSourceSettings } from '../../src/core/defaults';
+import {
+  DEFAULT_CONSTRAINTS,
+  EXAMPLE_BOOK,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
 import { computeDifficultyModel } from '../../src/core/difficulty';
 import { inferRelations } from '../../src/core/relations';
 import { solveSchedule } from '../../src/core/schedule';
@@ -72,9 +77,14 @@ function makeProject(
       autoRD: false,
       ...constraints,
     },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
 }
 
@@ -82,7 +92,11 @@ function solveProject(project: PlannerProjectV1): SchedulePlan {
   const corpus = extractCorpus(project);
   const topicIndex = buildTopicIndex(corpus);
   const relationInfo = inferRelations(corpus, topicIndex, project);
-  const workloadClusterInfo = buildWorkloadClusters(corpus, topicIndex, relationInfo);
+  const workloadClusterInfo = buildWorkloadClusters(
+    corpus,
+    topicIndex,
+    relationInfo,
+  );
   const difficultyModel = computeDifficultyModel(
     corpus,
     topicIndex,
@@ -156,10 +170,10 @@ describe('solveSchedule', () => {
 
   it('annotates lane predecessors only from earlier items in the same preserved lane', () => {
     const plan = solveProject(
-      makeProject(
-        [makeBook('a', 0), makeBook('b', 1), makeBook('c', 2)],
-        { backfillMode: 'lane_preserving', par: 1 },
-      ),
+      makeProject([makeBook('a', 0), makeBook('b', 1), makeBook('c', 2)], {
+        backfillMode: 'lane_preserving',
+        par: 1,
+      }),
     );
 
     expect(plan.items.some((item) => item.lanePrevId)).toBe(true);
@@ -169,10 +183,10 @@ describe('solveSchedule', () => {
 
   it('keeps flexible visual lanes separate from enforced lane gates', () => {
     const plan = solveProject(
-      makeProject(
-        [makeBook('a', 0), makeBook('b', 1), makeBook('c', 2)],
-        { backfillMode: 'global', par: 2 },
-      ),
+      makeProject([makeBook('a', 0), makeBook('b', 1), makeBook('c', 2)], {
+        backfillMode: 'global',
+        par: 2,
+      }),
     );
 
     expect(plan.items.every((item) => item.laneEnforced === false)).toBe(true);
@@ -225,20 +239,33 @@ describe('solveSchedule', () => {
       makeBook('d', 3),
     ];
     const plan = solveProject(
-      makeProject(books, { mutualEnabled: true, mutualOversize: 'batch', par: 2 }),
+      makeProject(books, {
+        mutualEnabled: true,
+        mutualOversize: 'batch',
+        par: 2,
+      }),
     );
     const groups = plan.items.map((item) => item.coStudyGroup);
 
     expect(new Set(groups).size).toBe(2);
     expect(groups).toContain('g0:batch0');
     expect(groups).toContain('g0:batch1');
-    expect(plan.items.filter((item) => item.coStudyGroup === 'g0:batch0')).toHaveLength(2);
-    expect(plan.items.filter((item) => item.coStudyGroup === 'g0:batch1')).toHaveLength(2);
+    expect(
+      plan.items.filter((item) => item.coStudyGroup === 'g0:batch0'),
+    ).toHaveLength(2);
+    expect(
+      plan.items.filter((item) => item.coStudyGroup === 'g0:batch1'),
+    ).toHaveLength(2);
     expectScheduleInvariants(plan);
   });
 
   it('is deterministic for each scheduler algorithm', () => {
-    const algorithms: ScheduleAlgorithm[] = ['balanced', 'critical', 'fastest', 'greedy'];
+    const algorithms: ScheduleAlgorithm[] = [
+      'balanced',
+      'critical',
+      'fastest',
+      'greedy',
+    ];
     algorithms.forEach((algorithm) => {
       const project = makeProject(
         [
@@ -251,8 +278,20 @@ describe('solveSchedule', () => {
 
       const first = solveProject(project);
       const second = solveProject(project);
-      expect(first.items.map((item) => [item.id, item.scheduleRank, item.ds, item.de])).toEqual(
-        second.items.map((item) => [item.id, item.scheduleRank, item.ds, item.de]),
+      expect(
+        first.items.map((item) => [
+          item.id,
+          item.scheduleRank,
+          item.ds,
+          item.de,
+        ]),
+      ).toEqual(
+        second.items.map((item) => [
+          item.id,
+          item.scheduleRank,
+          item.ds,
+          item.de,
+        ]),
       );
       expectScheduleInvariants(first);
     });

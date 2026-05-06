@@ -45,11 +45,15 @@ export async function requestQbittorrentApi(
           ...(init.headers ?? {}),
         },
       });
-      if (!response.ok) throw new Error(`qBittorrent HTTP ${response.status} for ${path}`);
+      if (!response.ok)
+        throw new Error(`qBittorrent HTTP ${response.status} for ${path}`);
       return response;
     }, timeoutMs);
   } catch (error) {
-    if (error instanceof TypeError && DIRECT_WEB_UI_PORT_PATTERN.test(baseUrl)) {
+    if (
+      error instanceof TypeError &&
+      DIRECT_WEB_UI_PORT_PATTERN.test(baseUrl)
+    ) {
       throw new Error(
         'Browser access to qBittorrent was blocked. Run the qBittorrent helper with the browser bridge and use http://127.0.0.1:8787 as the Bridge API URL.',
       );

@@ -2,150 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { NOVELTY_LOAD_MULTIPLIER } from '../../src/core/constants';
 import { buildTopicIndex, extractCorpus } from '../../src/core/corpus';
-import { DEFAULT_CONSTRAINTS, createDefaultSourceSettings } from '../../src/core/defaults';
 import { computeDifficultyModel } from '../../src/core/difficulty';
 import { inferRelations } from '../../src/core/relations';
-import type {
-  BookRecord,
-  PlannerProjectV1,
-  RelationEvidence,
-  ScheduleAlgorithm,
-} from '../../src/core/types';
+import type { BookRecord, RelationEvidence } from '../../src/core/types';
 import { clamp, round2 } from '../../src/core/utils';
+import { makeProject, makeSchedulerModeProject } from './engine-fixtures';
 import { computeSnapshot } from './engine-test-utils';
-
-function makeProject(): PlannerProjectV1 {
-  return {
-    version: 1,
-    library: {
-      books: {
-        intro: {
-          id: 'intro',
-          title: 'Introduction to Linear Algebra',
-          short: 'Intro LA',
-          authors: ['A. Author'],
-          displayGroup: 'Core',
-          manualSeedDifficulty: 3,
-          pages: 220,
-          subjects: ['linear algebra', 'vectors', 'matrices'],
-          publisher: '',
-          isbn: null,
-          year: null,
-          manualPrereqs: [],
-          manualCoStudy: [],
-          owned: true,
-          planOrder: 0,
-          allowPrereqOverlap: false,
-          lockDiff: false,
-          noPropOut: false,
-          ignored: false,
-          constantRD: false,
-          completed: false,
-          enrichment: {
-            chapters: ['Vectors and matrices', 'Linear systems', 'Eigenvalues'],
-            description:
-              'A first course in vectors, matrices, linear systems, and eigenvalues.',
-            olSubjects: ['linear algebra'],
-            tocSource: 'manual',
-          },
-        },
-        advanced: {
-          id: 'advanced',
-          title: 'Applied Linear Algebra and Optimization',
-          short: 'Applied LA',
-          authors: ['A. Author'],
-          displayGroup: 'Applied',
-          manualSeedDifficulty: 6,
-          pages: 420,
-          subjects: ['linear algebra', 'optimization', 'matrix methods'],
-          publisher: '',
-          isbn: null,
-          year: null,
-          manualPrereqs: [],
-          manualCoStudy: [],
-          owned: true,
-          planOrder: 1,
-          allowPrereqOverlap: false,
-          lockDiff: false,
-          noPropOut: false,
-          ignored: false,
-          constantRD: false,
-          completed: false,
-          enrichment: {
-            chapters: [
-              'Review of vector spaces',
-              'Advanced matrix decompositions',
-              'Convex optimization',
-            ],
-            description:
-              'Builds on vector spaces and matrix methods before moving into optimization.',
-            olSubjects: ['optimization'],
-            tocSource: 'manual',
-          },
-        },
-      },
-    },
-    manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
-    constraints: { ...DEFAULT_CONSTRAINTS, par: 2, hpd: 2.5, sd: '2026-01-05' },
-    sourceSettings: createDefaultSourceSettings(),
-    enrichmentCache: {},
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
-  };
-}
-
-function makeSchedulerModeProject(algorithm: ScheduleAlgorithm): PlannerProjectV1 {
-  const project = makeProject();
-  const base = project.library.books.intro;
-  const makeBook = (
-    id: string,
-    title: string,
-    difficulty: number,
-    prereqs: string[] = [],
-  ): BookRecord => ({
-    ...base,
-    id,
-    title,
-    short: title,
-    authors: [`${title} Author`],
-    manualSeedDifficulty: difficulty,
-    pages: 40,
-    subjects: [`${id} subject`],
-    manualPrereqs: prereqs,
-    manualCoStudy: [],
-    owned: true,
-    planOrder: title.charCodeAt(0),
-    enrichment: {
-      ...base.enrichment,
-      chapters: [`${title} chapter`],
-      description: `${title} material.`,
-      olSubjects: [`${id} subject`],
-    },
-  });
-  project.library.books = {
-    a_filler: makeBook('a_filler', 'A Filler', 9),
-    b_filler: makeBook('b_filler', 'B Filler', 9),
-    z_parent: makeBook('z_parent', 'Z Parent', 2),
-    z_child: makeBook('z_child', 'Z Child', 2, ['z_parent']),
-  };
-  project.constraints = {
-    ...project.constraints,
-    schedAlgo: algorithm,
-    feasibilityMode: 'strict_floor',
-    backfillMode: 'global',
-    prereqMode: 'strict',
-    par: 2,
-    hpd: 8,
-    dpw: 7,
-    minPg: 10,
-    maxPg: 10,
-    bmp: 1,
-    gam: 1,
-    applyOverlapSkim: false,
-    boostUnused: false,
-    mutualEnabled: false,
-  };
-  return project;
-}
 
 describe('createPlannerEngine', () => {
   it('infers generic prerequisite structure from corpus overlap', () => {
@@ -207,7 +69,8 @@ describe('createPlannerEngine', () => {
     expect(
       snapshot.renderModel.warnings.some(
         (warning) =>
-          warning.severity === 'fail' && warning.relatedIds?.includes('advanced'),
+          warning.severity === 'fail' &&
+          warning.relatedIds?.includes('advanced'),
       ),
     ).toBe(true);
   });
@@ -288,7 +151,9 @@ describe('createPlannerEngine', () => {
     const advancedPrereqs = snapshot.schedulePlan.prereqById.advanced ?? [];
 
     expect(introPrereqs.length + advancedPrereqs.length).toBe(1);
-    expect(snapshot.relations.some((relation) => relation.type === 'manual-block')).toBe(true);
+    expect(
+      snapshot.relations.some((relation) => relation.type === 'manual-block'),
+    ).toBe(true);
     expect(snapshot.diagnostics.metrics.prereqCycleBooks).toBe(0);
   });
 
@@ -303,8 +168,12 @@ describe('createPlannerEngine', () => {
 
     expect(snapshot.schedulePlan.coStudyMeta.groups).toHaveLength(0);
     expect(snapshot.schedulePlan.prereqById.advanced).toContain('intro');
-    expect(snapshot.relations.some((relation) => relation.type === 'manual-block')).toBe(true);
-    expect(snapshot.diagnostics.metrics.blockedManualRelations).toBeGreaterThan(0);
+    expect(
+      snapshot.relations.some((relation) => relation.type === 'manual-block'),
+    ).toBe(true);
+    expect(snapshot.diagnostics.metrics.blockedManualRelations).toBeGreaterThan(
+      0,
+    );
   });
 
   it('uses prerequisite direction rather than corpus insertion order for novelty transfer', () => {
@@ -364,7 +233,12 @@ describe('createPlannerEngine', () => {
     expect(pair.rightId).toBe('intro');
     expect(pair.coverageBA).toBeGreaterThan(pair.coverageAB + 0.2);
 
-    const model = computeDifficultyModel(corpus, topicIndex, relationInfo, project);
+    const model = computeDifficultyModel(
+      corpus,
+      topicIndex,
+      relationInfo,
+      project,
+    );
     const correctLoad = round2(
       clamp(1 - pair.coverageBA, 0, 1.2) *
         project.constraints.propNovelty *
@@ -383,7 +257,11 @@ describe('createPlannerEngine', () => {
   it('batches oversized co-study groups before day allocation enforces synchronization', () => {
     const project = makeProject();
     const base = project.library.books.intro;
-    const makeBook = (id: string, index: number, mutualIds: string[]): BookRecord => ({
+    const makeBook = (
+      id: string,
+      index: number,
+      mutualIds: string[],
+    ): BookRecord => ({
       ...base,
       id,
       title: `Co Study ${index}`,
@@ -424,9 +302,10 @@ describe('createPlannerEngine', () => {
     const groupSizes = snapshot.schedulePlan.coStudyMeta.groups
       .map((group) => group.ids.length)
       .sort((left, right) => left - right);
-    const firstDay = Object.entries(snapshot.dayPlan.byDate).sort(
-      ([left], [right]) => left.localeCompare(right),
-    )[0]?.[1] ?? [];
+    const firstDay =
+      Object.entries(snapshot.dayPlan.byDate).sort(([left], [right]) =>
+        left.localeCompare(right),
+      )[0]?.[1] ?? [];
 
     expect(groupSizes).toEqual([2, 2]);
     expect(firstDay).toHaveLength(2);
@@ -460,12 +339,17 @@ describe('createPlannerEngine', () => {
     project.library.books.intro.manualSeedDifficulty = 5;
     project.library.books.advanced.manualSeedDifficulty = 5;
     project.library.books.advanced.pages = 900;
-    project.library.books.advanced.title = 'Advanced Research Monograph in Optimization';
+    project.library.books.advanced.title =
+      'Advanced Research Monograph in Optimization';
 
     const snapshot = computeSnapshot(project);
 
-    expect(snapshot.difficultyModel.intro.seed).not.toBe(snapshot.difficultyModel.advanced.seed);
-    expect(snapshot.difficultyModel.advanced.seed).toBeGreaterThan(snapshot.difficultyModel.intro.seed);
+    expect(snapshot.difficultyModel.intro.seed).not.toBe(
+      snapshot.difficultyModel.advanced.seed,
+    );
+    expect(snapshot.difficultyModel.advanced.seed).toBeGreaterThan(
+      snapshot.difficultyModel.intro.seed,
+    );
   });
 
   it('maps study slots onto selected weekdays instead of raw calendar days', () => {
@@ -488,7 +372,9 @@ describe('createPlannerEngine', () => {
     const project = makeProject();
     const baseline = computeSnapshot(project);
     const firstDate = Object.keys(baseline.dayPlan.byDate).sort()[0];
-    const firstEntry = baseline.dayPlan.byDate[firstDate]?.find((entry) => entry.bookId === 'intro');
+    const firstEntry = baseline.dayPlan.byDate[firstDate]?.find(
+      (entry) => entry.bookId === 'intro',
+    );
     expect(firstEntry).toBeDefined();
 
     project.manualOverrides.actuals[firstDate] = {
@@ -500,12 +386,21 @@ describe('createPlannerEngine', () => {
     };
 
     const adjusted = computeSnapshot(project);
-    const adjustedEntry = adjusted.dayPlan.byDate[firstDate]?.find((entry) => entry.bookId === 'intro');
+    const adjustedEntry = adjusted.dayPlan.byDate[firstDate]?.find(
+      (entry) => entry.bookId === 'intro',
+    );
 
     expect(adjustedEntry?.actualOverride).toBe(true);
     expect(adjustedEntry?.done).toBe(true);
-    expect(adjustedEntry?.mins).toBe(project.manualOverrides.actuals[firstDate].intro.minutes);
+    expect(adjustedEntry?.mins).toBe(
+      project.manualOverrides.actuals[firstDate].intro.minutes,
+    );
     expect(adjustedEntry?.actualPages).toBe(1.5);
-    expect(Math.round(((adjustedEntry?.readPages ?? 0) + (adjustedEntry?.skimPages ?? 0)) * 10) / 10).toBe(1.5);
+    expect(
+      Math.round(
+        ((adjustedEntry?.readPages ?? 0) + (adjustedEntry?.skimPages ?? 0)) *
+          10,
+      ) / 10,
+    ).toBe(1.5);
   });
 });

@@ -1,4 +1,5 @@
 import { el } from './dom';
+import { checkboxControl, textInputControl } from './form-controls';
 
 export function sourceCheckbox(
   checked: boolean,
@@ -9,10 +10,10 @@ export function sourceCheckbox(
   return el(
     'label',
     { className: 'source-toggle-row' },
-    el('input', {
-      type: 'checkbox',
+    checkboxControl({
+      className: '',
       checked,
-      onChange: (event) => onChange((event.target as HTMLInputElement).checked),
+      onChange,
     }),
     el(
       'span',
@@ -26,15 +27,16 @@ export function sourceCheckbox(
 export function projectTextInput(
   value: string,
   onInput: (value: string) => void,
+  focusKey: string,
   placeholder = '',
   type = 'text',
 ): HTMLInputElement {
-  return el('input', {
-    className: 'text-input',
+  return textInputControl({
+    focusKey,
     type,
     value,
+    onInput,
     placeholder,
-    onInput: (event) => onInput((event.target as HTMLInputElement).value),
   });
 }
 
@@ -43,8 +45,15 @@ export function projectNumberInput(
   onInput: (value: number) => void,
   min: string,
   max: string,
+  focusKey: string,
 ): HTMLInputElement {
-  const input = projectTextInput(String(value), (next) => onInput(Number(next)), '', 'number');
+  const input = projectTextInput(
+    String(value),
+    (next) => onInput(Number(next)),
+    focusKey,
+    '',
+    'number',
+  );
   input.min = min;
   input.max = max;
   input.step = '1';

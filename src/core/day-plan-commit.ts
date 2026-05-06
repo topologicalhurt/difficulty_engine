@@ -11,7 +11,9 @@ export function commitDayEntries(
 ): void {
   entries.sort(
     (left, right) =>
-      left.lane - right.lane || right.mins - left.mins || left.short.localeCompare(right.short),
+      left.lane - right.lane ||
+      right.mins - left.mins ||
+      left.short.localeCompare(right.short),
   );
   byDate[dateStr] = entries;
   entries.forEach((entry) => {

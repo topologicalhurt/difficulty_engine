@@ -3,14 +3,16 @@ import {
   slotBudgetMinutes,
   totalBudgetMinutes,
 } from './constraints';
+import { DAY_PLAN_BUDGET_EPSILON_MINUTES } from './constants';
 import { marginalMinutesForTenths } from './day-plan-work';
 import type { PlanningState } from './internal-types';
 import type { Clock, PlannerProjectV1 } from './types';
 import { round1, unique } from './utils';
 
-const EPSILON_MINUTES = 1e-6;
-
-export type EmptyStudyReason = 'waiting_for_release' | 'blocked' | 'no_feasible_chunk';
+export type EmptyStudyReason =
+  | 'waiting_for_release'
+  | 'blocked'
+  | 'no_feasible_chunk';
 
 export interface EmptyStudyDay {
   dateStr: string;
@@ -23,7 +25,9 @@ function starterChunkTenths(state: PlanningState): number {
     1,
     Math.min(
       state.remainingTenths,
-      state.minTenths || state.strictMinTenths || Math.round(state.strictMinPg * 10),
+      state.minTenths ||
+        state.strictMinTenths ||
+        Math.round(state.strictMinPg * 10),
     ),
   );
 }
@@ -43,7 +47,10 @@ export function feasibleCandidateCount(
     .map((state) => starterChunkMinutes(state))
     .sort((left, right) => left - right)
     .forEach((minutes) => {
-      if (usedMinutes + minutes <= budgetMinutes + EPSILON_MINUTES) {
+      if (
+        usedMinutes + minutes <=
+        budgetMinutes + DAY_PLAN_BUDGET_EPSILON_MINUTES
+      ) {
         usedMinutes += minutes;
         count += 1;
       }

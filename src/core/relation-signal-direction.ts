@@ -22,11 +22,16 @@ export interface DirectionalSignal {
 
 export function sameAuthor(left: CorpusBook, right: CorpusBook): boolean {
   return left.authors.some((author) =>
-    right.authors.some((other) => String(author).toLowerCase() === String(other).toLowerCase()),
+    right.authors.some(
+      (other) => String(author).toLowerCase() === String(other).toLowerCase(),
+    ),
   );
 }
 
-function seriesDirection(left: CorpusBook, right: CorpusBook): [number, number] {
+function seriesDirection(
+  left: CorpusBook,
+  right: CorpusBook,
+): [number, number] {
   const leftSequence = parseSeriesInfo(left.title);
   const rightSequence = parseSeriesInfo(right.title);
   if (
@@ -43,12 +48,18 @@ function seriesDirection(left: CorpusBook, right: CorpusBook): [number, number] 
   ];
 }
 
-function progressionScore(introBook: CorpusBook, advancedBook: CorpusBook): number {
+function progressionScore(
+  introBook: CorpusBook,
+  advancedBook: CorpusBook,
+): number {
   return clamp(
     introBook.cueProfile.intro * PROGRESSION_MODEL.introWeight +
       advancedBook.cueProfile.advanced * PROGRESSION_MODEL.advancedWeight +
       advancedBook.cueProfile.bridge * PROGRESSION_MODEL.bridgeWeight +
-      Math.max(0, advancedBook.cueProfile.advanced - introBook.cueProfile.advanced) *
+      Math.max(
+        0,
+        advancedBook.cueProfile.advanced - introBook.cueProfile.advanced,
+      ) *
         PROGRESSION_MODEL.advancedDeltaWeight +
       Math.max(0, introBook.cueProfile.intro - advancedBook.cueProfile.intro) *
         PROGRESSION_MODEL.introDeltaWeight,
@@ -63,22 +74,38 @@ export function buildDirectionalSignal(
   topicIndex: TopicIndex,
 ): DirectionalSignal {
   const [seriesAB, seriesBA] = seriesDirection(left, right);
-  const complexityLeft = topicIndex.bookStats[left.id]?.baseComplexity || left.manualSeedDifficulty || 5;
-  const complexityRight = topicIndex.bookStats[right.id]?.baseComplexity || right.manualSeedDifficulty || 5;
-  const seedLeft = safeNumber(left.manualSeedDifficulty, left.seedEstimate || 5);
-  const seedRight = safeNumber(right.manualSeedDifficulty, right.seedEstimate || 5);
+  const complexityLeft =
+    topicIndex.bookStats[left.id]?.baseComplexity ||
+    left.manualSeedDifficulty ||
+    5;
+  const complexityRight =
+    topicIndex.bookStats[right.id]?.baseComplexity ||
+    right.manualSeedDifficulty ||
+    5;
+  const seedLeft = safeNumber(
+    left.manualSeedDifficulty,
+    left.seedEstimate || 5,
+  );
+  const seedRight = safeNumber(
+    right.manualSeedDifficulty,
+    right.seedEstimate || 5,
+  );
 
   return {
     seriesAB,
     seriesBA,
     complexityAB: clamp(
-      (complexityRight - complexityLeft + RELATION_DIRECTION_MODEL.complexityOffset) /
+      (complexityRight -
+        complexityLeft +
+        RELATION_DIRECTION_MODEL.complexityOffset) /
         RELATION_DIRECTION_MODEL.complexityDivisor,
       0,
       1,
     ),
     complexityBA: clamp(
-      (complexityLeft - complexityRight + RELATION_DIRECTION_MODEL.complexityOffset) /
+      (complexityLeft -
+        complexityRight +
+        RELATION_DIRECTION_MODEL.complexityOffset) /
         RELATION_DIRECTION_MODEL.complexityDivisor,
       0,
       1,
@@ -96,12 +123,16 @@ export function buildDirectionalSignal(
       1,
     ),
     pageAB: clamp(
-      Math.log1p(right.pages) - Math.log1p(left.pages) + RELATION_DIRECTION_MODEL.pageOffset,
+      Math.log1p(right.pages) -
+        Math.log1p(left.pages) +
+        RELATION_DIRECTION_MODEL.pageOffset,
       0,
       1,
     ),
     pageBA: clamp(
-      Math.log1p(left.pages) - Math.log1p(right.pages) + RELATION_DIRECTION_MODEL.pageOffset,
+      Math.log1p(left.pages) -
+        Math.log1p(right.pages) +
+        RELATION_DIRECTION_MODEL.pageOffset,
       0,
       1,
     ),
@@ -118,10 +149,14 @@ export function directionalReasons(
   progression: number,
 ): string[] {
   const reasons: string[] = [];
-  if (coverage >= RELATION_REASON_THRESHOLDS.coverage) reasons.push('topic coverage containment');
-  if (novelty >= RELATION_REASON_THRESHOLDS.novelty) reasons.push('novel material expansion');
+  if (coverage >= RELATION_REASON_THRESHOLDS.coverage)
+    reasons.push('topic coverage containment');
+  if (novelty >= RELATION_REASON_THRESHOLDS.novelty)
+    reasons.push('novel material expansion');
   if (series) reasons.push('series ordering');
-  if (complexity >= RELATION_REASON_THRESHOLDS.complexity) reasons.push('structural progression');
-  if (progression >= RELATION_REASON_THRESHOLDS.progression) reasons.push('generic progression cues');
+  if (complexity >= RELATION_REASON_THRESHOLDS.complexity)
+    reasons.push('structural progression');
+  if (progression >= RELATION_REASON_THRESHOLDS.progression)
+    reasons.push('generic progression cues');
   return reasons;
 }

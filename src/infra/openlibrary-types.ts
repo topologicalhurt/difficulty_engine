@@ -43,4 +43,7 @@ export interface WorkResponse {
   covers?: number[];
 }
 
-export type OpenLibraryJsonFetcher = <T>(url: string, signal?: AbortSignal) => Promise<T>;
+export type OpenLibraryJsonFetcher = <T>(
+  url: string,
+  signal?: AbortSignal,
+) => Promise<T>;

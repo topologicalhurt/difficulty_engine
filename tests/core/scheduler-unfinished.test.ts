@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_CONSTRAINTS, createDefaultSourceSettings } from '../../src/core/defaults';
+import {
+  DEFAULT_CONSTRAINTS,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
 import type { BookRecord, PlannerProjectV1 } from '../../src/core/types';
 import { computeSnapshot } from './engine-test-utils';
 
@@ -70,9 +74,14 @@ function projectWithSynchronizedGroup(): PlannerProjectV1 {
       applyOverlapSkim: false,
       boostUnused: false,
     },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
 }
 
@@ -88,7 +97,9 @@ describe('unfinished scheduler invariants', () => {
     expect(snapshot.scheduleStats.blockedBooks).toBe(unfinished.length);
     expect(unfinished).not.toHaveLength(0);
     unfinished.forEach((entry) => {
-      expect(entry.blockedReason || entry.infeasibleReason || entry.hardInfeasible).toBeTruthy();
+      expect(
+        entry.blockedReason || entry.infeasibleReason || entry.hardInfeasible,
+      ).toBeTruthy();
     });
     expect(
       snapshot.renderModel.warnings.some(
@@ -99,7 +110,9 @@ describe('unfinished scheduler invariants', () => {
     ).toBe(true);
     expect(
       snapshot.diagnostics.warns.some((message) =>
-        message.includes(`${snapshot.scheduleStats.unfinishedBooks} scheduled book(s)`),
+        message.includes(
+          `${snapshot.scheduleStats.unfinishedBooks} scheduled book(s)`,
+        ),
       ),
     ).toBe(true);
   });
@@ -117,7 +130,8 @@ describe('unfinished scheduler invariants', () => {
     expect(unexplained).toHaveLength(0);
     expect(
       snapshot.renderModel.warnings.some(
-        (warning) => warning.code === 'unfinished-books' && warning.severity === 'fail',
+        (warning) =>
+          warning.code === 'unfinished-books' && warning.severity === 'fail',
       ),
     ).toBe(false);
   });

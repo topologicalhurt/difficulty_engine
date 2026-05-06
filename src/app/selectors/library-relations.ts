@@ -1,4 +1,5 @@
 import type { AppState, BookRecord } from '../../core/types';
+import { unique } from '../../core/utils';
 
 export interface RelationSelectorView {
   title: string;
@@ -19,7 +20,13 @@ export interface BookRelationSelectorSummary {
 }
 
 export function emptyRelationSelectors(): BookRelationSelectorSummary['relationSelectors'] {
-  const empty = { title: '', detail: '', selectedIds: [], graphIds: [], manualIds: [] };
+  const empty = {
+    title: '',
+    detail: '',
+    selectedIds: [],
+    graphIds: [],
+    manualIds: [],
+  };
   return { prereqs: empty, dependents: empty, coStudy: empty };
 }
 
@@ -30,7 +37,9 @@ export function selectBookRelationSelectorSummary(
 ): BookRelationSelectorSummary {
   const relations = state.snapshot.relations;
   const graphPrereqs = relations
-    .filter((relation) => relation.type === 'prerequisite' && relation.to === book.id)
+    .filter(
+      (relation) => relation.type === 'prerequisite' && relation.to === book.id,
+    )
     .map((relation) => relation.from);
   const graphDependents = allBooks
     .filter((candidate) =>
@@ -43,8 +52,14 @@ export function selectBookRelationSelectorSummary(
     )
     .map((candidate) => candidate.id);
   const graphCoStudy = relations
-    .filter((relation) => relation.type === 'co-study' && (relation.from === book.id || relation.to === book.id))
-    .map((relation) => (relation.from === book.id ? relation.to : relation.from));
+    .filter(
+      (relation) =>
+        relation.type === 'co-study' &&
+        (relation.from === book.id || relation.to === book.id),
+    )
+    .map((relation) =>
+      relation.from === book.id ? relation.to : relation.from,
+    );
   const manualDependents = allBooks
     .filter((candidate) => candidate.manualPrereqs.includes(book.id))
     .map((candidate) => candidate.id);
@@ -60,21 +75,22 @@ export function selectBookRelationSelectorSummary(
       prereqs: {
         title: 'Prerequisites',
         detail: 'Select books that must come before this book.',
-        selectedIds: [...new Set([...book.manualPrereqs, ...graphPrereqs])],
+        selectedIds: unique([...book.manualPrereqs, ...graphPrereqs]),
         graphIds: graphPrereqs,
         manualIds: book.manualPrereqs,
       },
       dependents: {
         title: 'Required by',
-        detail: 'Select books that should come after this book. This is the outgoing graph view of prerequisites.',
-        selectedIds: [...new Set([...manualDependents, ...graphDependents])],
+        detail:
+          'Select books that should come after this book. This is the outgoing graph view of prerequisites.',
+        selectedIds: unique([...manualDependents, ...graphDependents]),
         graphIds: graphDependents,
         manualIds: manualDependents,
       },
       coStudy: {
         title: 'Co-study links',
         detail: 'Select books that should be planned together when feasible.',
-        selectedIds: [...new Set([...book.manualCoStudy, ...graphCoStudy])],
+        selectedIds: unique([...book.manualCoStudy, ...graphCoStudy]),
         graphIds: graphCoStudy,
         manualIds: book.manualCoStudy,
       },

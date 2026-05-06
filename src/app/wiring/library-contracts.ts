@@ -24,12 +24,19 @@ export const LIBRARY_CONTRACTS: WiringContract[] = [
     projectReads: ['library.books'],
     projectWrites: ['library.books'],
     uiReads: ['bookSearchResults'],
-    uiWrites: ['selectedBookId', 'activeView', 'bookSearchQuery', 'bookSearchStatus', 'banner'],
+    uiWrites: [
+      'selectedBookId',
+      'activeView',
+      'bookSearchQuery',
+      'bookSearchStatus',
+      'banner',
+    ],
     snapshotEffects: ['topics', 'relations', 'schedulePlan', 'dayPlan'],
     renderEffects: ['library', 'gantt', 'calendar', 'graphs', 'warnings'],
     recomputePolicy: 'async_then_snapshot',
     testIds: ['tests/app/store.test.ts', 'tests/app/wiring-contracts.test.ts'],
-    notes: 'Catalog additions update the project immediately and may trigger enrichment afterward.',
+    notes:
+      'Catalog additions update the project immediately and may trigger enrichment afterward.',
   },
   {
     id: 'library.updateBook',
@@ -40,10 +47,19 @@ export const LIBRARY_CONTRACTS: WiringContract[] = [
     projectWrites: ['library.books'],
     uiReads: ['selectedBookId'],
     uiWrites: ['banner'],
-    snapshotEffects: ['topics', 'relations', 'difficultyModel', 'schedulePlan', 'dayPlan'],
+    snapshotEffects: [
+      'topics',
+      'relations',
+      'difficultyModel',
+      'schedulePlan',
+      'dayPlan',
+    ],
     renderEffects: ['library', 'plan', 'graphs', 'diagnostics'],
     recomputePolicy: 'snapshot',
-    testIds: ['tests/app/parameter-matrix.test.ts', 'tests/app/wiring-contracts.test.ts'],
+    testIds: [
+      'tests/app/parameter-matrix.test.ts',
+      'tests/app/wiring-contracts.test.ts',
+    ],
     notes: 'Book metadata is corpus and planning input.',
   },
   {
@@ -51,15 +67,27 @@ export const LIBRARY_CONTRACTS: WiringContract[] = [
     surface: 'library',
     control: 'Prerequisite and co-study selectors',
     command: 'updateBookRelations',
-    projectReads: ['library.books.manualPrereqs', 'library.books.manualCoStudy'],
-    projectWrites: ['library.books.manualPrereqs', 'library.books.manualCoStudy'],
+    projectReads: [
+      'library.books.manualPrereqs',
+      'library.books.manualCoStudy',
+    ],
+    projectWrites: [
+      'library.books.manualPrereqs',
+      'library.books.manualCoStudy',
+    ],
     uiReads: ['selectedBookId'],
     uiWrites: ['banner'],
-    snapshotEffects: ['relations', 'difficultyModel', 'schedulePlan', 'dayPlan'],
+    snapshotEffects: [
+      'relations',
+      'difficultyModel',
+      'schedulePlan',
+      'dayPlan',
+    ],
     renderEffects: ['library', 'plan', 'graphs', 'diagnostics'],
     recomputePolicy: 'snapshot',
     testIds: ['tests/app/store.test.ts', 'tests/app/parameter-matrix.test.ts'],
-    notes: 'Manual relation edits must propagate symmetrically and rebuild graph-dependent projections.',
+    notes:
+      'Manual relation edits must propagate symmetrically and rebuild graph-dependent projections.',
   },
   {
     id: 'library.moveBook',
@@ -74,7 +102,8 @@ export const LIBRARY_CONTRACTS: WiringContract[] = [
     renderEffects: ['library', 'plan', 'calendar', 'gantt'],
     recomputePolicy: 'snapshot',
     testIds: ['tests/app/store.test.ts', 'tests/app/parameter-matrix.test.ts'],
-    notes: 'Manual library ordering is planner input when book order policy is prefer or enforce.',
+    notes:
+      'Manual library ordering is planner input when book order policy is prefer or enforce.',
   },
   {
     id: 'library.removeBook',
@@ -89,6 +118,7 @@ export const LIBRARY_CONTRACTS: WiringContract[] = [
     renderEffects: ['library', 'plan', 'graphs', 'diagnostics'],
     recomputePolicy: 'snapshot',
     testIds: ['tests/app/store.test.ts', 'tests/app/wiring-contracts.test.ts'],
-    notes: 'Removal must also remove stale manual override and cache references.',
+    notes:
+      'Removal must also remove stale manual override and cache references.',
   },
 ];

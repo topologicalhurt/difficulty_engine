@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_CONSTRAINTS, DEFAULT_UI_STATE, createDefaultSourceSettings } from '../../src/core/defaults';
+import {
+  DEFAULT_CONSTRAINTS,
+  DEFAULT_UI_STATE,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
 import { createPlannerEngine } from '../../src/core/engine';
 import { plannerClock } from '../../src/core/time';
-import type { AppState, BookRecord, Logger, PlannerProjectV1 } from '../../src/core/types';
+import type {
+  AppState,
+  BookRecord,
+  Logger,
+  PlannerProjectV1,
+} from '../../src/core/types';
 import {
   visibleCoStudyGroups,
   visibleDisplayGroupPartitions,
@@ -18,7 +28,11 @@ const silentLogger: Logger = {
   error: () => undefined,
 };
 
-function book(id: string, prereqs: string[] = [], coStudy: string[] = []): BookRecord {
+function book(
+  id: string,
+  prereqs: string[] = [],
+  coStudy: string[] = [],
+): BookRecord {
   return {
     id,
     title: id,
@@ -50,7 +64,9 @@ function book(id: string, prereqs: string[] = [], coStudy: string[] = []): BookR
   };
 }
 
-function graphState(projectPatch: Partial<PlannerProjectV1['constraints']> = {}): AppState {
+function graphState(
+  projectPatch: Partial<PlannerProjectV1['constraints']> = {},
+): AppState {
   const project: PlannerProjectV1 = {
     version: 1,
     library: {
@@ -71,15 +87,31 @@ function graphState(projectPatch: Partial<PlannerProjectV1['constraints']> = {})
       ...projectPatch,
     } as PlannerProjectV1['constraints'],
     enrichmentCache: {},
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
-  const snapshot = createPlannerEngine({ clock: plannerClock, logger: silentLogger }).computeSnapshot(project);
+  const snapshot = createPlannerEngine({
+    clock: plannerClock,
+    logger: silentLogger,
+  }).computeSnapshot(project);
   return {
     project,
     snapshot,
     ui: { ...DEFAULT_UI_STATE },
     enrichment: { byBookId: {} },
+    performance: {
+      projectRevision: 0,
+      uiRevision: 0,
+      snapshotRevision: 0,
+      lastSnapshotMs: 0,
+      lastRenderMs: 0,
+      lastWorkerMs: 0,
+    },
   };
 }
 
@@ -95,6 +127,8 @@ describe('graph render data', () => {
     expect(visiblePrerequisiteEdges(full)).toHaveLength(3);
     expect(visibleGraphBookIds(excludedCompleted)).not.toContain('c');
     expect(visibleCoStudyGroups(noCoStudy)).toHaveLength(0);
-    expect(visibleDisplayGroupPartitions(partitioned).length).toBeGreaterThan(0);
+    expect(visibleDisplayGroupPartitions(partitioned).length).toBeGreaterThan(
+      0,
+    );
   });
 });

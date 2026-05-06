@@ -7,6 +7,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 DIST_FILE = ROOT / "dist" / "difficulty_engine.html"
+DOC_FILES = [
+    ROOT / "ARCHITECTURE.md",
+    ROOT / "CHANGE_GUIDE.md",
+    ROOT / "README.md",
+]
 
 INLINE_HANDLER_RE = re.compile(r"<[^>]+\son[a-z]+\s*=", re.IGNORECASE)
 INNER_HTML_RE = re.compile(r"\.innerHTML\s*=")
@@ -18,26 +23,54 @@ UI_RAW_STATE_RE = re.compile(r"\bstate\.(project|snapshot)\b")
 AD_HOC_SELECT_RE = re.compile(
     r"(?:document\.createElement\(['\"](?:select|option)['\"]\)|\bel\(['\"](?:select|option)['\"])",
 )
+AD_HOC_TEXT_CONTROL_RE = re.compile(
+    r"(?:document\.createElement\(['\"](?:input|textarea)['\"]\)|\bel\(['\"](?:input|textarea)['\"])",
+)
 LOCAL_UI_PERCENT_RE = re.compile(r"\$\{\s*Math\.round\([^}]*\*\s*100\)\s*\}%")
+LOCAL_FINITE_NUMBER_RE = re.compile(r"\bfunction\s+finiteNumber\b")
+LOCAL_COLOR_HASH_RE = re.compile(r"hash\s*=\s*\(\s*hash\s*\*\s*31\s*\+")
 STORE_COMMAND_RE = re.compile(r"^\s{2}([a-zA-Z][a-zA-Z0-9_]*)\([^;]*\):", re.MULTILINE)
 CONSTRAINT_FIELD_RE = re.compile(r"\{\s*key:\s*'([^']+)'(?P<body>.*?)\}", re.DOTALL)
 FORBIDDEN_INTERNAL_TERM_RE = re.compile(
     "|".join(
         [
+            r"\bdeprecated\b",
+            r"\bdropped\b",
             r"\blegacy\b",
+            r"\bobsolete\b",
             r"\bbackwards?\s+compatibility\b",
             r"\bconversation-specific\b",
             r"\bprototype[-\s]+(?:era|state|implementation|wip)\b",
+            r"\btransitional\b",
         ]
     ),
     re.IGNORECASE,
 )
+STALE_ARCHITECTURE_DOC_RE = re.compile(
+    r"\b(?:DOM-driven|typed DOM views|framework-light and DOM)\b",
+    re.IGNORECASE,
+)
+JUNK_ARTIFACT_RE = re.compile(
+    r"(^|/)(?:\.DS_Store|\.eslintcache|\.tsbuildinfo)$"
+    r"|(?:\.bak|\.backup|\.old|\.orig|\.rej|\.tmp|~)$"
+)
+INFRA_DUPLICATE_MATCHER_RE = re.compile(
+    r"\bfunction\s+(?:tokenSet|jaccardTokenSimilarity)\b"
+)
+LOCAL_STRING_DEDUPE_RE = re.compile(
+    r"\bfunction\s+(?:uniqueNonEmpty|uniqueNonEmptyStrings|uniqueStrings)\b"
+)
+INFRA_PROVIDER_YEAR_RE = re.compile(r"\\b\(1\[5-9\]\\d\{2\}\|20\\d\{2\}\|21\\d\{2\}\)")
 
 MAX_TS_LINES = 500
 WARN_TS_LINES = 250
 APPROVED_UI_RAW_STATE_FILES = set()
 APPROVED_SELECT_FACTORY_FILES = {
-    "src/ui/dom.ts",
+    "src/ui/form-controls.ts",
+}
+APPROVED_TEXT_CONTROL_FILES = {
+    "src/ui/form-controls.ts",
+    "src/ui/constraint-field.ts",
 }
 APPROVED_PERCENT_FORMAT_FILES = {
     "src/ui/format.ts",
@@ -52,7 +85,10 @@ APPROVED_REEXPORT_FILES = {
     "src/core/types/snapshot.ts",
 }
 APP_UI_IMPORT_ALLOWLIST = {
-    "src/app/mount.ts": {"src/ui/app-shell.ts"},
+    "src/app/mount.ts": {"src/ui/svelte/AppShell.svelte"},
+}
+DEFAULT_EXPORT_ALLOWLIST = {
+    "src/svelte.d.ts",
 }
 
 TOP_LEVEL_HELPER_RE = re.compile(
@@ -72,13 +108,23 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def ts_files() -> list[Path]:
-    return sorted(path for path in SRC.rglob("*.ts") if path.is_file())
+def project_source_files() -> list[Path]:
+    return sorted(
+        path
+        for pattern in ("*.ts", "*.svelte")
+        for path in SRC.rglob(pattern)
+        if path.is_file()
+    )
 
 
 def resolve_relative_import(source: Path, specifier: str) -> str | None:
     base = (source.parent / specifier).resolve()
-    candidates = [base.with_suffix(".ts"), base / "index.ts"]
+    candidates = [
+        base,
+        base.with_suffix(".ts"),
+        base.with_suffix(".svelte"),
+        base / "index.ts",
+    ]
     for candidate in candidates:
         if candidate.exists():
             return str(candidate.relative_to(ROOT))
@@ -88,12 +134,59 @@ def resolve_relative_import(source: Path, specifier: str) -> str | None:
 def main() -> int:
     failures: list[str] = []
     warnings: list[str] = []
-    source_files = ts_files()
+    source_files = project_source_files()
+
+    ignored_artifact_roots = {
+        ".git",
+        "node_modules",
+        "coverage",
+        "test-results",
+        "data",
+    }
+    junk_artifacts = [
+        path
+        for path in ROOT.rglob("*")
+        if path.is_file()
+        and not set(path.relative_to(ROOT).parts).intersection(ignored_artifact_roots)
+        and JUNK_ARTIFACT_RE.search(str(path.relative_to(ROOT)).replace("\\", "/"))
+    ]
+    if junk_artifacts:
+        failures.extend(
+            f"Junk/local artifact should be removed: {path.relative_to(ROOT)}"
+            for path in sorted(junk_artifacts)
+        )
 
     removed_runtime_artifacts = sorted((SRC / "core").glob("*.js")) + sorted((SRC / "core").glob("*.d.ts"))
     for path in removed_runtime_artifacts:
         if path.exists():
             failures.append(f"Removed runtime artifact still present: {path.relative_to(ROOT)}")
+
+    if (SRC / "infra" / "token-similarity.ts").exists():
+        failures.append("Duplicate infra matcher helper still present: src/infra/token-similarity.ts")
+
+    for path in DOC_FILES:
+        if not path.exists():
+            failures.append(f"Required architecture/change document missing: {path.relative_to(ROOT)}")
+            continue
+        text = read_text(path)
+        if STALE_ARCHITECTURE_DOC_RE.search(text):
+            failures.append(f"Stale pre-Svelte architecture wording in {path.relative_to(ROOT)}")
+    architecture_doc = ROOT / "ARCHITECTURE.md"
+    if architecture_doc.exists():
+        architecture_text = read_text(architecture_doc)
+        if "PlannerComputeAdapter" not in architecture_text or "Svelte" not in architecture_text:
+            failures.append("ARCHITECTURE.md must document the Svelte shell and PlannerComputeAdapter.")
+    change_guide = ROOT / "CHANGE_GUIDE.md"
+    if change_guide.exists():
+        change_text = read_text(change_guide)
+        required_patterns = [
+            "Document content priority: `src/infra/document-content-priority.ts`",
+            "Add Or Change Worker Compute Or Persistence",
+            "If the change creates a new helper",
+        ]
+        for pattern in required_patterns:
+            if pattern not in change_text:
+                failures.append(f"CHANGE_GUIDE.md missing canonical guidance: {pattern}")
 
     oversized = [path for path in source_files if len(read_text(path).splitlines()) > MAX_TS_LINES]
     if oversized:
@@ -130,12 +223,36 @@ def main() -> int:
         relative_path = str(path.relative_to(ROOT))
         if REMOVED_FRAGMENT_IMPORT_RE.search(text):
             failures.append(f"Unexpected removed-fragment import path: {path.relative_to(ROOT)}")
-        if FORBIDDEN_INTERNAL_TERM_RE.search(text):
+        if FORBIDDEN_INTERNAL_TERM_RE.search(text) or FORBIDDEN_INTERNAL_TERM_RE.search(relative_path):
             failures.append(f"Forbidden internal/WIP wording in shipped source: {path.relative_to(ROOT)}")
-        if DEFAULT_EXPORT_RE.search(text):
+        if DEFAULT_EXPORT_RE.search(text) and relative_path not in DEFAULT_EXPORT_ALLOWLIST:
             failures.append(f"Default export in library source: {path.relative_to(ROOT)}")
         if "src/core/" in str(path.relative_to(ROOT)) and BROWSER_GLOBAL_RE.search(text):
             failures.append(f"Browser global used inside core module: {path.relative_to(ROOT)}")
+        if relative_path.startswith("src/infra/") and INFRA_DUPLICATE_MATCHER_RE.search(text):
+            failures.append(
+                f"Ad hoc infra fuzzy matcher should use src/core/matchers.ts: {path.relative_to(ROOT)}"
+            )
+        if LOCAL_STRING_DEDUPE_RE.search(text):
+            failures.append(
+                f"Local string dedupe helper should use src/core/utils.ts: {path.relative_to(ROOT)}"
+            )
+        if relative_path != "src/core/number-format.ts" and LOCAL_FINITE_NUMBER_RE.search(text):
+            failures.append(
+                f"Local finite-number formatter should use src/core/number-format.ts: {path.relative_to(ROOT)}"
+            )
+        if relative_path != "src/core/display-colors.ts" and LOCAL_COLOR_HASH_RE.search(text):
+            failures.append(
+                f"Local display color hashing should use src/core/display-colors.ts: {path.relative_to(ROOT)}"
+            )
+        if (
+            relative_path.startswith("src/infra/")
+            and relative_path != "src/infra/source-metadata.ts"
+            and INFRA_PROVIDER_YEAR_RE.search(text)
+        ):
+            failures.append(
+                f"Provider year parsing should use src/infra/source-metadata.ts: {path.relative_to(ROOT)}"
+            )
         if (
             "src/ui/" in str(path.relative_to(ROOT))
             and path.name not in APPROVED_UI_RAW_STATE_FILES
@@ -151,6 +268,14 @@ def main() -> int:
         ):
             failures.append(
                 f"Ad hoc select/option construction outside selectInput factory: {path.relative_to(ROOT)}"
+            )
+        if (
+            relative_path.startswith("src/ui/")
+            and relative_path not in APPROVED_TEXT_CONTROL_FILES
+            and AD_HOC_TEXT_CONTROL_RE.search(text)
+        ):
+            failures.append(
+                f"Ad hoc input/textarea construction outside shared control factories: {path.relative_to(ROOT)}"
             )
         if (
             relative_path.startswith("src/ui/")
@@ -283,7 +408,7 @@ def main() -> int:
     if not (ROOT / "scripts" / "change_safety_report.py").exists():
         failures.append("Missing change safety report script: scripts/change_safety_report.py")
 
-    print("TypeScript source files:", len(source_files))
+    print("Source files:", len(source_files))
     print("Built HTML:", DIST_FILE.relative_to(ROOT) if DIST_FILE.exists() else "missing")
 
     if warnings:

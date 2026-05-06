@@ -2,6 +2,7 @@ import { calendarDetailText, type PlanViewModel } from '../app/selectors/plan';
 import type { CalendarEntry, PlannerStore } from '../core/types';
 import { button, el } from './dom';
 import { formatOneDecimal, round0 } from './format';
+import { numberInputControl } from './form-controls';
 
 const MAX_ACTUAL_PAGES_INPUT = '10000';
 
@@ -16,37 +17,35 @@ export function renderCalendarEntryActions(
 ): HTMLElement {
   const actualValue = entry.actualMinutes ?? entry.mins;
   const actualPages = entry.actualPages ?? entry.readPages + entry.skimPages;
-  const actualInput = el('input', {
+  const actualInput = numberInputControl({
     className: 'calendar-time-input',
-    type: 'number',
     value: String(round0(actualValue)),
+    focusKey: `calendar:${dayKey}:${entry.bookId}:minutes`,
     title: 'Actual minutes spent',
     ariaLabel: `Actual minutes for ${entry.short}`,
     onClick: stopCalendarAction,
-    onChange: (event) => {
-      stopCalendarAction(event);
-      store.commands.setCalendarEntryMinutes(dayKey, entry.bookId, Number((event.target as HTMLInputElement).value));
+    onChange: (minutes) => {
+      store.commands.setCalendarEntryMinutes(dayKey, entry.bookId, minutes);
     },
+    min: 0,
+    max: 1440,
+    step: 5,
   });
-  actualInput.min = '0';
-  actualInput.max = '1440';
-  actualInput.step = '5';
 
-  const pagesInput = el('input', {
+  const pagesInput = numberInputControl({
     className: 'calendar-time-input',
-    type: 'number',
     value: String(formatOneDecimal(actualPages)),
+    focusKey: `calendar:${dayKey}:${entry.bookId}:pages`,
     title: 'Actual pages read',
     ariaLabel: `Actual pages for ${entry.short}`,
     onClick: stopCalendarAction,
-    onChange: (event) => {
-      stopCalendarAction(event);
-      store.commands.setCalendarEntryPages(dayKey, entry.bookId, Number((event.target as HTMLInputElement).value));
+    onChange: (pages) => {
+      store.commands.setCalendarEntryPages(dayKey, entry.bookId, pages);
     },
+    min: 0,
+    max: MAX_ACTUAL_PAGES_INPUT,
+    step: 0.1,
   });
-  pagesInput.min = '0';
-  pagesInput.max = MAX_ACTUAL_PAGES_INPUT;
-  pagesInput.step = '0.1';
 
   return el(
     'div',
@@ -54,11 +53,23 @@ export function renderCalendarEntryActions(
     el(
       'div',
       { className: 'calendar-log-fields' },
-      el('label', { className: 'calendar-log-field' }, el('span', { text: 'Minutes spent' }), actualInput),
-      el('label', { className: 'calendar-log-field' }, el('span', { text: 'Pages read' }), pagesInput),
+      el(
+        'label',
+        { className: 'calendar-log-field' },
+        el('span', { text: 'Minutes spent' }),
+        actualInput,
+      ),
+      el(
+        'label',
+        { className: 'calendar-log-field' },
+        el('span', { text: 'Pages read' }),
+        pagesInput,
+      ),
     ),
     button(entry.done ? 'Done' : 'Mark done', {
-      className: entry.done ? 'primary-button calendar-action-button' : 'ghost-button calendar-action-button',
+      className: entry.done
+        ? 'primary-button calendar-action-button'
+        : 'ghost-button calendar-action-button',
       onClick: (event) => {
         stopCalendarAction(event);
         store.commands.markCalendarEntryDone(dayKey, entry.bookId, !entry.done);
@@ -92,7 +103,9 @@ export function renderSelectedCalendarLogPanel(
   const day = viewModel.calendarWeeks
     .flatMap((week) => week.days)
     .find((candidate) => candidate.key === selected.dateKey);
-  const entry = day?.entries.find((candidate) => candidate.bookId === selected.bookId);
+  const entry = day?.entries.find(
+    (candidate) => candidate.bookId === selected.bookId,
+  );
   if (!entry) return null;
 
   return el(
@@ -101,10 +114,21 @@ export function renderSelectedCalendarLogPanel(
     el(
       'div',
       { className: 'calendar-log-panel-head' },
-      el('div', {}, el('strong', { text: `Log progress: ${entry.short}` }), el('div', { className: 'muted-copy', text: selected.dateKey })),
-      el('div', { className: 'muted-copy', text: `${round0(entry.mins)}m planned · ${formatOneDecimal(entry.readPages + entry.skimPages)} pages planned` }),
+      el(
+        'div',
+        {},
+        el('strong', { text: `Log progress: ${entry.short}` }),
+        el('div', { className: 'muted-copy', text: selected.dateKey }),
+      ),
+      el('div', {
+        className: 'muted-copy',
+        text: `${round0(entry.mins)}m planned · ${formatOneDecimal(entry.readPages + entry.skimPages)} pages planned`,
+      }),
     ),
-    el('div', { className: 'calendar-chip-detail muted-copy', text: calendarDetailText(entry) }),
+    el('div', {
+      className: 'calendar-chip-detail muted-copy',
+      text: calendarDetailText(entry),
+    }),
     renderCalendarEntryActions(selected.dateKey, entry, store),
   );
 }

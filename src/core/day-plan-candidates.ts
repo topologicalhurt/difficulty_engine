@@ -1,4 +1,12 @@
-import { normalizePrereqMode } from './constraints';
+import { normalizePrereqMode } from './constraint-normalizers';
+import {
+  DAY_PLAN_BACKFILL_STAGE_PENALTY,
+  DAY_PLAN_BUDGET_EPSILON_MINUTES,
+  DAY_PLAN_CANDIDATE_SCAN_LIMIT,
+  DAY_PLAN_COSTUDY_GROUP_BONUS_PER_MEMBER,
+  DAY_PLAN_SMART_PREREQ_STAGE_PENALTY,
+  DAY_PLAN_SOFT_PREREQ_STAGE_PENALTY,
+} from './constants';
 import { chooseStarterTenths } from './day-plan-chunk-choice';
 import { marginalMinutesForTenths } from './day-plan-work';
 import type { PlanningState } from './internal-types';
@@ -33,9 +41,11 @@ interface CandidateSetInput {
 }
 
 function stagePenalty(project: PlannerProjectV1, stage: DayStartMode): number {
-  if (stage === 'backfill') return 0.22;
+  if (stage === 'backfill') return DAY_PLAN_BACKFILL_STAGE_PENALTY;
   if (stage !== 'prereq') return 0;
-  return normalizePrereqMode(project.constraints.prereqMode) === 'soft' ? 0.68 : 0.42;
+  return normalizePrereqMode(project.constraints.prereqMode) === 'soft'
+    ? DAY_PLAN_SOFT_PREREQ_STAGE_PENALTY
+    : DAY_PLAN_SMART_PREREQ_STAGE_PENALTY;
 }
 
 function groupedCandidates(
@@ -53,6 +63,42 @@ function groupedCandidates(
   return grouped;
 }
 
+function candidateFrontier(input: CandidateSetInput): PlanningState[] {
+  if (input.candidates.length <= DAY_PLAN_CANDIDATE_SCAN_LIMIT) {
+    return input.candidates;
+  }
+  const ranked = [...input.candidates].sort(
+    (left, right) =>
+      input.priorityScore(right, false) - input.priorityScore(left, false) ||
+      left.short.localeCompare(right.short),
+  );
+  const feasible: PlanningState[] = [];
+  const deferred: PlanningState[] = [];
+  const budgetLeft = input.budgetMinutes - input.dayUsedMinutes;
+  for (const state of ranked) {
+    const step = chooseStarterTenths(
+      state,
+      budgetLeft,
+      input.project,
+      input.isPracticalMode,
+    );
+    if (step > 0) {
+      feasible.push(state);
+      if (feasible.length >= DAY_PLAN_CANDIDATE_SCAN_LIMIT) break;
+      continue;
+    }
+    if (deferred.length < DAY_PLAN_CANDIDATE_SCAN_LIMIT) {
+      deferred.push(state);
+    }
+  }
+  return feasible.length >= DAY_PLAN_CANDIDATE_SCAN_LIMIT
+    ? feasible
+    : [
+        ...feasible,
+        ...deferred.slice(0, DAY_PLAN_CANDIDATE_SCAN_LIMIT - feasible.length),
+      ];
+}
+
 function isStrictSynchronizedGroup(
   key: string,
   groupStates: PlanningState[],
@@ -61,9 +107,9 @@ function isStrictSynchronizedGroup(
 ): boolean {
   return Boolean(
     strictGroups[key] &&
-      strictGroups[key].size === groupStates.length &&
-      groupStates.length > 1 &&
-      [...strictGroups[key]].every((id) => candidateSet.has(id)),
+    strictGroups[key].size === groupStates.length &&
+    groupStates.length > 1 &&
+    [...strictGroups[key]].every((id) => candidateSet.has(id)),
   );
 }
 
@@ -74,8 +120,12 @@ function compareCandidateSets(
   right: CandidateSet,
 ): number {
   if (dailyBookMode === 'daily_cohort') {
-    const leftActive = left.members.filter((member) => member.state.actualStart != null).length;
-    const rightActive = right.members.filter((member) => member.state.actualStart != null).length;
+    const leftActive = left.members.filter(
+      (member) => member.state.actualStart != null,
+    ).length;
+    const rightActive = right.members.filter(
+      (member) => member.state.actualStart != null,
+    ).length;
     if (leftActive !== rightActive) return rightActive - leftActive;
     if (leftActive > 0 && left.members.length !== right.members.length) {
       return left.members.length - right.members.length;
@@ -89,12 +139,20 @@ function compareCandidateSets(
 
 export function buildCandidateSets(input: CandidateSetInput): CandidateSet[] {
   const penalty = stagePenalty(input.project, input.stage);
-  const candidateSet = new Set(input.candidates.map((state) => state.id));
+  const candidates = candidateFrontier(input);
+  const candidateSet = new Set(candidates.map((state) => state.id));
   const sets: CandidateSet[] = [];
 
-  Object.entries(groupedCandidates(input.candidates, input.entryIds)).forEach(
+  Object.entries(groupedCandidates(candidates, input.entryIds)).forEach(
     ([key, groupStates]) => {
-      if (isStrictSynchronizedGroup(key, groupStates, input.strictGroups, candidateSet)) {
+      if (
+        isStrictSynchronizedGroup(
+          key,
+          groupStates,
+          input.strictGroups,
+          candidateSet,
+        )
+      ) {
         const steps = groupStates
           .map((state) => ({
             state,
@@ -107,18 +165,26 @@ export function buildCandidateSets(input: CandidateSetInput): CandidateSet[] {
           }))
           .filter((member) => member.step > 0);
         const totalMins = sum(
-          steps.map((member) => marginalMinutesForTenths(member.state, member.step)),
+          steps.map((member) =>
+            marginalMinutesForTenths(member.state, member.step),
+          ),
         );
         if (
           steps.length === groupStates.length &&
-          input.dayEntriesLength + steps.length <= Math.max(input.maxParallel, steps.length) &&
-          totalMins <= input.budgetMinutes - input.dayUsedMinutes + 1e-6
+          input.dayEntriesLength + steps.length <=
+            Math.max(input.maxParallel, steps.length) &&
+          totalMins <=
+            input.budgetMinutes -
+              input.dayUsedMinutes +
+              DAY_PLAN_BUDGET_EPSILON_MINUTES
         ) {
           sets.push({
             members: steps,
             score:
-              mean(steps.map((member) => input.priorityScore(member.state, false))) +
-              0.18 * steps.length -
+              mean(
+                steps.map((member) => input.priorityScore(member.state, false)),
+              ) +
+              DAY_PLAN_COSTUDY_GROUP_BONUS_PER_MEMBER * steps.length -
               penalty,
           });
         }
@@ -143,6 +209,11 @@ export function buildCandidateSets(input: CandidateSetInput): CandidateSet[] {
   );
 
   return sets.sort((left, right) =>
-    compareCandidateSets(input.dailyBookMode, input.isPracticalMode, left, right),
+    compareCandidateSets(
+      input.dailyBookMode,
+      input.isPracticalMode,
+      left,
+      right,
+    ),
   );
 }

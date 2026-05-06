@@ -16,7 +16,11 @@ export function normalizeOpenLibraryKey(
   const id = (pathMatch?.[2] ?? bareMatch?.[1] ?? '').toUpperCase();
   if (!id) return null;
 
-  const inferredKind = id.endsWith('W') ? 'work' : id.endsWith('M') ? 'edition' : null;
+  const inferredKind = id.endsWith('W')
+    ? 'work'
+    : id.endsWith('M')
+      ? 'edition'
+      : null;
   if (!inferredKind) return null;
   if (kind !== 'any' && inferredKind !== kind) return null;
   if (type === 'works' && inferredKind !== 'work') return null;

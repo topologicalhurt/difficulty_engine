@@ -1,8 +1,11 @@
 import { sanitizeChapterTitles } from '../core/chapter-titles';
 import { normalizeOpenLibraryKey } from '../core/openlibrary-keys';
 import { safeNumber } from '../core/utils';
-import { cleanedIsbn, isFullIsbnQuery } from './book-search';
-import type { EditionResponse, SearchResponse, WorkResponse } from './openlibrary-types';
+import type {
+  EditionResponse,
+  SearchResponse,
+  WorkResponse,
+} from './openlibrary-types';
 import {
   chooseBestDoc,
   fetchAuthorNames,
@@ -10,19 +13,18 @@ import {
   normalizeDescription,
   searchSuggestionFromDoc,
 } from './openlibrary-search';
+import { extractPublishedYear, firstValidIsbn } from './source-metadata';
 import type { StrategyContext } from './toc-strategy-context';
 import type { StrategyCandidate } from './toc-merge';
-
-function extractYear(value: string | null | undefined): number | null {
-  const match = String(value ?? '').match(/\b(1[5-9]\d{2}|20\d{2}|21\d{2})\b/);
-  return match ? Number(match[1]) : null;
-}
 
 function candidateFromEdition(
   edition: EditionResponse,
   authors: string[],
 ): StrategyCandidate {
-  const chapters = sanitizeChapterTitles(normalizeChapters(edition.table_of_contents), { source: 'structured' });
+  const chapters = sanitizeChapterTitles(
+    normalizeChapters(edition.table_of_contents),
+    { source: 'structured' },
+  );
   return {
     provider: 'openlibrary',
     sourceUrl: `https://openlibrary.org${edition.key ?? '/'}`,
@@ -32,17 +34,26 @@ function candidateFromEdition(
     subjects: edition.subjects ?? [],
     pages: edition.number_of_pages ?? null,
     publisher: edition.publishers?.[0] ?? '',
-    year: extractYear(edition.publish_date),
+    year: extractPublishedYear(edition.publish_date),
     authors,
-    isbn: edition.isbn_13?.[0] ?? edition.isbn_10?.[0] ?? null,
+    isbn: firstValidIsbn([
+      ...(edition.isbn_13 ?? []),
+      ...(edition.isbn_10 ?? []),
+    ]),
     openLibraryKey: normalizeOpenLibraryKey(edition.key, 'edition'),
     openLibraryEditionKey: normalizeOpenLibraryKey(edition.key, 'edition'),
-    openLibraryWorkKey: normalizeOpenLibraryKey(edition.works?.[0]?.key, 'work'),
+    openLibraryWorkKey: normalizeOpenLibraryKey(
+      edition.works?.[0]?.key,
+      'work',
+    ),
     tocSource: chapters.length ? 'openlibrary' : 'none',
   };
 }
 
-function candidateFromWork(work: WorkResponse, workKey: string): StrategyCandidate {
+function candidateFromWork(
+  work: WorkResponse,
+  workKey: string,
+): StrategyCandidate {
   return {
     provider: 'openlibrary',
     sourceUrl: `https://openlibrary.org${workKey}`,
@@ -54,23 +65,30 @@ function candidateFromWork(work: WorkResponse, workKey: string): StrategyCandida
   };
 }
 
-export async function openLibraryEditionCandidate(context: StrategyContext): Promise<StrategyCandidate | null> {
-  const isbn = isFullIsbnQuery(context.book.isbn ?? '') ? cleanedIsbn(context.book.isbn ?? '') : '';
+export async function openLibraryEditionCandidate(
+  context: StrategyContext,
+): Promise<StrategyCandidate | null> {
+  const isbn = firstValidIsbn([context.book.isbn]) ?? '';
   const editionKey =
-    normalizeOpenLibraryKey(context.book.openLibraryEditionKey, 'edition')
-    ?? normalizeOpenLibraryKey(context.book.openLibraryKey, 'edition')
-    ?? null;
+    normalizeOpenLibraryKey(context.book.openLibraryEditionKey, 'edition') ??
+    normalizeOpenLibraryKey(context.book.openLibraryKey, 'edition') ??
+    null;
   const urls = [
     isbn ? `https://openlibrary.org/isbn/${isbn}.json` : '',
-    editionKey
-      ? `https://openlibrary.org${editionKey}.json`
-      : '',
+    editionKey ? `https://openlibrary.org${editionKey}.json` : '',
   ].filter(Boolean);
 
   for (const url of urls) {
     try {
-      const edition = await context.fetchJson<EditionResponse>(url, context.signal);
-      const authors = await fetchAuthorNames(context.fetchJson, edition.authors ?? [], context.signal);
+      const edition = await context.fetchJson<EditionResponse>(
+        url,
+        context.signal,
+      );
+      const authors = await fetchAuthorNames(
+        context.fetchJson,
+        edition.authors ?? [],
+        context.signal,
+      );
       return candidateFromEdition(edition, authors);
     } catch {
       continue;
@@ -84,9 +102,9 @@ export async function openLibraryWorkCandidate(
   preferredWorkKey?: string | null,
 ): Promise<StrategyCandidate | null> {
   const workKey =
-    normalizeOpenLibraryKey(preferredWorkKey, 'work')
-    ?? normalizeOpenLibraryKey(context.book.openLibraryWorkKey, 'work')
-    ?? null;
+    normalizeOpenLibraryKey(preferredWorkKey, 'work') ??
+    normalizeOpenLibraryKey(context.book.openLibraryWorkKey, 'work') ??
+    null;
   if (!workKey) {
     return null;
   }
@@ -101,16 +119,20 @@ export async function openLibraryWorkCandidate(
   }
 }
 
-export async function openLibrarySearchCandidates(context: StrategyContext): Promise<StrategyCandidate[]> {
+export async function openLibrarySearchCandidates(
+  context: StrategyContext,
+): Promise<StrategyCandidate[]> {
   const params = new URLSearchParams({
     title: context.book.title,
     author: context.book.authors[0] ?? '',
     limit: '5',
   });
-  const response = await context.fetchJson<SearchResponse>(
-    `https://openlibrary.org/search.json?${params.toString()}`,
-    context.signal,
-  ).catch(() => ({ docs: [] }));
+  const response = await context
+    .fetchJson<SearchResponse>(
+      `https://openlibrary.org/search.json?${params.toString()}`,
+      context.signal,
+    )
+    .catch(() => ({ docs: [] }));
   const bestDoc = chooseBestDoc(context.book, response.docs ?? [], 5);
   if (!bestDoc) {
     return [];
@@ -131,8 +153,14 @@ export async function openLibrarySearchCandidates(context: StrategyContext): Pro
       authors: suggestion.authors,
       isbn: suggestion.isbn,
       openLibraryKey: normalizeOpenLibraryKey(suggestion.openLibraryKey, 'any'),
-      openLibraryEditionKey: normalizeOpenLibraryKey(suggestion.openLibraryEditionKey, 'edition'),
-      openLibraryWorkKey: normalizeOpenLibraryKey(suggestion.openLibraryWorkKey, 'work'),
+      openLibraryEditionKey: normalizeOpenLibraryKey(
+        suggestion.openLibraryEditionKey,
+        'edition',
+      ),
+      openLibraryWorkKey: normalizeOpenLibraryKey(
+        suggestion.openLibraryWorkKey,
+        'work',
+      ),
     });
   }
 

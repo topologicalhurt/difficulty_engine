@@ -29,7 +29,11 @@ export function packLanePreservingSchedule(
       .map((free, lane) => ({ free, lane }))
       .sort((left, right) => left.free - right.free || left.lane - right.lane)
       .slice(0, Math.max(1, count));
-    const start = Math.max(prereqEnd, requestedStart, ...picked.map((entry) => entry.free));
+    const start = Math.max(
+      prereqEnd,
+      requestedStart,
+      ...picked.map((entry) => entry.free),
+    );
     return { start, laneIds: picked.map((entry) => entry.lane) };
   };
 
@@ -108,7 +112,9 @@ export function packLanePreservingSchedule(
   return result;
 }
 
-export function packFlexibleSchedule(input: SchedulePackingInput): SchedulePackingResult {
+export function packFlexibleSchedule(
+  input: SchedulePackingInput,
+): SchedulePackingResult {
   const result: SchedulePackingResult = { schedule: [], byId: {} };
 
   input.orderedGroups.forEach((group) => {
@@ -120,7 +126,12 @@ export function packFlexibleSchedule(input: SchedulePackingInput): SchedulePacki
     ) {
       let batchStart = Math.max(
         0,
-        externalPrerequisiteEnd(group.ids, input.itemById, result.byId, input.groupLookup),
+        externalPrerequisiteEnd(
+          group.ids,
+          input.itemById,
+          result.byId,
+          input.groupLookup,
+        ),
         requestedManualStart(members),
       );
       for (
@@ -150,11 +161,25 @@ export function packFlexibleSchedule(input: SchedulePackingInput): SchedulePacki
 
     const start = Math.max(
       0,
-      externalPrerequisiteEnd(group.ids, input.itemById, result.byId, input.groupLookup),
+      externalPrerequisiteEnd(
+        group.ids,
+        input.itemById,
+        result.byId,
+        input.groupLookup,
+      ),
       requestedManualStart(members),
     );
     members.forEach((item) => {
-      buildAndAddScheduleEntry(input, result, item, start, group, 0, members.length, 0);
+      buildAndAddScheduleEntry(
+        input,
+        result,
+        item,
+        start,
+        group,
+        0,
+        members.length,
+        0,
+      );
     });
   });
 
@@ -162,7 +187,9 @@ export function packFlexibleSchedule(input: SchedulePackingInput): SchedulePacki
   return result;
 }
 
-export function sortScheduleItems(schedule: SchedulePlanItem[]): SchedulePlanItem[] {
+export function sortScheduleItems(
+  schedule: SchedulePlanItem[],
+): SchedulePlanItem[] {
   return [...schedule].sort(
     (left, right) =>
       left.ds - right.ds ||

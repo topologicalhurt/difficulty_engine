@@ -1,9 +1,12 @@
 import { bookOrderPolicy, compareBookPlanOrder } from './book-order';
-import { normalizeSchedAlgo } from './constraints';
+import { normalizeSchedAlgo } from './constraint-normalizers';
 import type { PlannerProjectV1, SchedulePlanItem } from './types';
 import { maxOr } from './utils';
 
-function topoSort(ids: string[], prereqById: Record<string, string[]>): string[] {
+function topoSort(
+  ids: string[],
+  prereqById: Record<string, string[]>,
+): string[] {
   const indegree: Record<string, number> = {};
   const outgoing: Record<string, string[]> = {};
   ids.forEach((id) => {
@@ -50,12 +53,19 @@ function chainLength(
   memo[id] =
     (itemDays[id] || 1) +
     (children.length
-      ? Math.max(...children.map((next) => chainLength(next, outgoing, memo, itemDays)))
+      ? Math.max(
+          ...children.map((next) =>
+            chainLength(next, outgoing, memo, itemDays),
+          ),
+        )
       : 0);
   return memo[id];
 }
 
-function childMap(ids: string[], prereqById: Record<string, string[]>): Record<string, string[]> {
+function childMap(
+  ids: string[],
+  prereqById: Record<string, string[]>,
+): Record<string, string[]> {
   const children: Record<string, string[]> = {};
   ids.forEach((id) => {
     children[id] = [];
@@ -74,7 +84,9 @@ function criticalPathLengths(
   prereqById: Record<string, string[]>,
 ): Record<string, number> {
   const memo: Record<string, number> = {};
-  const itemDays = Object.fromEntries(items.map((item) => [item.id, item.baseDays]));
+  const itemDays = Object.fromEntries(
+    items.map((item) => [item.id, item.baseDays]),
+  );
   const children = childMap(ids, prereqById);
   ids.forEach((id) => {
     chainLength(id, children, memo, itemDays);
@@ -102,7 +114,9 @@ function fastestListOrder(
   while (order.length < ids.length) {
     const ready = ids
       .filter((id) => !selected.has(id))
-      .filter((id) => (prereqById[id] || []).every((parent) => selected.has(parent)))
+      .filter((id) =>
+        (prereqById[id] || []).every((parent) => selected.has(parent)),
+      )
       .sort(
         (left, right) =>
           (orderFirst ? compareBookPlanOrder(project, left, right) : 0) ||
@@ -117,8 +131,13 @@ function fastestListOrder(
     if (!next) break;
     const lane = laneFree
       .map((free, index) => ({ free, index }))
-      .sort((left, right) => left.free - right.free || left.index - right.index)[0];
-    const prereqEnd = maxOr((prereqById[next] || []).map((parent) => endById[parent] || 0), 0);
+      .sort(
+        (left, right) => left.free - right.free || left.index - right.index,
+      )[0];
+    const prereqEnd = maxOr(
+      (prereqById[next] || []).map((parent) => endById[parent] || 0),
+      0,
+    );
     const start = Math.max(lane?.free || 0, prereqEnd);
     const end = start + Math.max(1, itemMap[next]?.baseDays || 1);
     laneFree[lane?.index || 0] = end;
@@ -162,7 +181,8 @@ export function scheduleOrder(
         left.localeCompare(right),
     );
   }
-  if (schedAlgo === 'fastest') return fastestListOrder(ids, items, prereqById, project);
+  if (schedAlgo === 'fastest')
+    return fastestListOrder(ids, items, prereqById, project);
   return [...order].sort(
     (left, right) =>
       orderCompare(left, right) ||

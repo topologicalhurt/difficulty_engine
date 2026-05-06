@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_CONSTRAINTS, createDefaultSourceSettings } from '../../src/core/defaults';
+import {
+  DEFAULT_CONSTRAINTS,
+  createDefaultAiRecommendationSettings,
+  createDefaultSourceSettings,
+} from '../../src/core/defaults';
 import type { BookRecord, PlannerProjectV1 } from '../../src/core/types';
 import { computeSnapshot } from './engine-test-utils';
 
@@ -48,14 +52,22 @@ function project(): PlannerProjectV1 {
     library: {
       books: {
         intro: book('intro', 'Intro', 5, 220, ['linear algebra', 'vectors']),
-        advanced: book('advanced', 'Advanced', 5.2, 420, ['linear algebra', 'optimization']),
+        advanced: book('advanced', 'Advanced', 5.2, 420, [
+          'linear algebra',
+          'optimization',
+        ]),
       },
     },
     manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
     constraints: { ...DEFAULT_CONSTRAINTS, sd: '2026-01-05', par: 1 },
+    aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: { ganttView: 'plan', ganttZoom: 1, planColorMode: 'category_mono' },
+    uiPreferences: {
+      ganttView: 'plan',
+      ganttZoom: 1,
+      planColorMode: 'category_mono',
+    },
   };
 }
 
@@ -64,7 +76,9 @@ function targetSpread(values: number[]): number {
 }
 
 function average(values: number[]): number {
-  return values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  return (
+    values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length)
+  );
 }
 
 describe('page floors and relative pacing', () => {
@@ -80,11 +94,17 @@ describe('page floors and relative pacing', () => {
     };
 
     const snapshot = computeSnapshot(input);
-    const blocked = Object.values(snapshot.dayPlan.byBookStats).filter((stat) => stat.hardInfeasible);
+    const blocked = Object.values(snapshot.dayPlan.byBookStats).filter(
+      (stat) => stat.hardInfeasible,
+    );
 
     expect(blocked.length).toBeGreaterThan(0);
     expect(blocked[0].infeasibleReason).toContain('10 pg/day floor');
-    expect(snapshot.renderModel.warnings.some((warning) => warning.code === 'strict-floor-infeasible')).toBe(true);
+    expect(
+      snapshot.renderModel.warnings.some(
+        (warning) => warning.code === 'strict-floor-infeasible',
+      ),
+    ).toBe(true);
   });
 
   it('relaxes page floors only in relaxed recommendation mode', () => {
@@ -127,10 +147,16 @@ describe('page floors and relative pacing', () => {
       constraints: { ...absolute.constraints, relativePacingStrength: 100 },
     };
 
-    const absoluteTargets = computeSnapshot(absolute).schedulePlan.items.map((item) => item.pacingPageTarget);
-    const relativeTargets = computeSnapshot(relative).schedulePlan.items.map((item) => item.pacingPageTarget);
+    const absoluteTargets = computeSnapshot(absolute).schedulePlan.items.map(
+      (item) => item.pacingPageTarget,
+    );
+    const relativeTargets = computeSnapshot(relative).schedulePlan.items.map(
+      (item) => item.pacingPageTarget,
+    );
 
-    expect(targetSpread(relativeTargets)).toBeGreaterThan(targetSpread(absoluteTargets));
+    expect(targetSpread(relativeTargets)).toBeGreaterThan(
+      targetSpread(absoluteTargets),
+    );
   });
 
   it('raises relaxed-mode page targets when the recommended minimum rises', () => {
@@ -151,15 +177,21 @@ describe('page floors and relative pacing', () => {
       constraints: { ...lowFloor.constraints, minPg: 25 },
     };
 
-    const lowTargets = computeSnapshot(lowFloor).schedulePlan.items.map((item) => item.pacingPageTarget);
-    const highTargets = computeSnapshot(highFloor).schedulePlan.items.map((item) => item.pacingPageTarget);
+    const lowTargets = computeSnapshot(lowFloor).schedulePlan.items.map(
+      (item) => item.pacingPageTarget,
+    );
+    const highTargets = computeSnapshot(highFloor).schedulePlan.items.map(
+      (item) => item.pacingPageTarget,
+    );
 
     expect(average(highTargets)).toBeGreaterThan(average(lowTargets));
   });
 
   it('allows different relative pacing curves to shape mid-ranked books differently', () => {
     const linear = project();
-    linear.library.books.middle = book('middle', 'Middle', 5.1, 300, ['middle topic']);
+    linear.library.books.middle = book('middle', 'Middle', 5.1, 300, [
+      'middle topic',
+    ]);
     linear.constraints = {
       ...linear.constraints,
       relativePacingStrength: 100,
@@ -173,11 +205,16 @@ describe('page floors and relative pacing', () => {
     };
     const power: PlannerProjectV1 = {
       ...linear,
-      constraints: { ...linear.constraints, relativePacingCurve: 'power' as const },
+      constraints: {
+        ...linear.constraints,
+        relativePacingCurve: 'power' as const,
+      },
     };
 
-    const linearMiddle = computeSnapshot(linear).schedulePlan.byId.middle.pacingPageTarget;
-    const powerMiddle = computeSnapshot(power).schedulePlan.byId.middle.pacingPageTarget;
+    const linearMiddle =
+      computeSnapshot(linear).schedulePlan.byId.middle.pacingPageTarget;
+    const powerMiddle =
+      computeSnapshot(power).schedulePlan.byId.middle.pacingPageTarget;
 
     expect(powerMiddle).toBeGreaterThan(linearMiddle);
   });
@@ -241,9 +278,15 @@ describe('page floors and relative pacing', () => {
     });
     const days = Object.keys(snapshot.dayPlan.byDate).sort();
     const rotatingDays = Object.keys(rotating.dayPlan.byDate).sort();
-    const firstDayIds = snapshot.dayPlan.byDate[days[0]].map((entry) => entry.bookId).sort();
-    const secondDayIds = snapshot.dayPlan.byDate[days[1]].map((entry) => entry.bookId).sort();
-    const rotatingSecondDayIds = rotating.dayPlan.byDate[rotatingDays[1]].map((entry) => entry.bookId).sort();
+    const firstDayIds = snapshot.dayPlan.byDate[days[0]]
+      .map((entry) => entry.bookId)
+      .sort();
+    const secondDayIds = snapshot.dayPlan.byDate[days[1]]
+      .map((entry) => entry.bookId)
+      .sort();
+    const rotatingSecondDayIds = rotating.dayPlan.byDate[rotatingDays[1]]
+      .map((entry) => entry.bookId)
+      .sort();
 
     expect(firstDayIds).toEqual(['a', 'b']);
     expect(secondDayIds).toEqual(['a', 'b']);
@@ -285,7 +328,9 @@ describe('page floors and relative pacing', () => {
 
     expect(strict.dayPlan.byDate[strictFirstDate]).toHaveLength(1);
     expect(
-      strict.renderModel.warnings.some((warning) => warning.code === 'strict-parallel-floor-conflict'),
+      strict.renderModel.warnings.some(
+        (warning) => warning.code === 'strict-parallel-floor-conflict',
+      ),
     ).toBe(true);
     expect(relaxed.dayPlan.byDate[relaxedFirstDate]).toHaveLength(3);
   });

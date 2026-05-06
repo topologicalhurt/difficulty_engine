@@ -10,11 +10,18 @@ export const ENRICHMENT_CONTRACTS: WiringContract[] = [
     projectWrites: ['library.books', 'enrichmentCache'],
     uiReads: [],
     uiWrites: ['banner'],
-    snapshotEffects: ['topics', 'relations', 'difficultyModel', 'schedulePlan', 'dayPlan'],
+    snapshotEffects: [
+      'topics',
+      'relations',
+      'difficultyModel',
+      'schedulePlan',
+      'dayPlan',
+    ],
     renderEffects: ['library', 'plan', 'graphs', 'diagnostics'],
     recomputePolicy: 'async_then_snapshot',
     testIds: ['tests/app/store.test.ts', 'tests/app/wiring-contracts.test.ts'],
-    notes: 'Enrichment writes project/cache first, then recomputes through the normal pipeline.',
+    notes:
+      'Enrichment writes project/cache first, then recomputes through the normal pipeline.',
   },
   {
     id: 'enrichment.refreshAll',
@@ -25,10 +32,17 @@ export const ENRICHMENT_CONTRACTS: WiringContract[] = [
     projectWrites: ['library.books', 'enrichmentCache'],
     uiReads: [],
     uiWrites: ['banner'],
-    snapshotEffects: ['topics', 'relations', 'difficultyModel', 'schedulePlan', 'dayPlan'],
+    snapshotEffects: [
+      'topics',
+      'relations',
+      'difficultyModel',
+      'schedulePlan',
+      'dayPlan',
+    ],
     renderEffects: ['library', 'plan', 'graphs', 'diagnostics'],
     recomputePolicy: 'async_then_snapshot',
     testIds: ['tests/app/wiring-contracts.test.ts'],
-    notes: 'Bulk enrichment is serialized through the single-book enrichment command.',
+    notes:
+      'Bulk enrichment is serialized through the single-book enrichment command.',
   },
 ];

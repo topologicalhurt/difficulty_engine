@@ -1,4 +1,8 @@
-import type { DifficultyMappingViewModel } from '../app/selectors/constraints';
+import type { DifficultyMappingViewModel } from '../app/selectors/difficulty-mapping';
+import {
+  RAW_DIFFICULTY_MIN,
+  RAW_DIFFICULTY_SPAN,
+} from '../core/difficulty-mapping';
 import { el } from './dom';
 import { svgEl } from './graph-svg';
 
@@ -12,12 +16,21 @@ const DIFFICULTY_CHART = {
 
 function chartPoint(raw: number, mapped: number): { x: number; y: number } {
   return {
-    x: DIFFICULTY_CHART.x + ((raw - 1) / 9) * DIFFICULTY_CHART.width,
-    y: DIFFICULTY_CHART.y + DIFFICULTY_CHART.height - ((mapped - 1) / 9) * DIFFICULTY_CHART.height,
+    x:
+      DIFFICULTY_CHART.x +
+      ((raw - RAW_DIFFICULTY_MIN) / RAW_DIFFICULTY_SPAN) *
+        DIFFICULTY_CHART.width,
+    y:
+      DIFFICULTY_CHART.y +
+      DIFFICULTY_CHART.height -
+      ((mapped - RAW_DIFFICULTY_MIN) / RAW_DIFFICULTY_SPAN) *
+        DIFFICULTY_CHART.height,
   };
 }
 
-function pathFor(points: Array<{ rawDifficulty: number; displayDifficulty: number }>): string {
+function pathFor(
+  points: Array<{ rawDifficulty: number; displayDifficulty: number }>,
+): string {
   return points
     .map((point, index) => {
       const pos = chartPoint(point.rawDifficulty, point.displayDifficulty);
@@ -62,8 +75,20 @@ function axisNodes(): SVGElement[] {
   labels[2]!.textContent = '1';
   labels[3]!.textContent = '10';
   return [
-    svgEl('line', { x1: '56', y1: '206', x2: '348', y2: '206', class: 'chart-axis' }),
-    svgEl('line', { x1: '56', y1: '30', x2: '56', y2: '206', class: 'chart-axis' }),
+    svgEl('line', {
+      x1: '56',
+      y1: '206',
+      x2: '348',
+      y2: '206',
+      class: 'chart-axis',
+    }),
+    svgEl('line', {
+      x1: '56',
+      y1: '30',
+      x2: '56',
+      y2: '206',
+      class: 'chart-axis',
+    }),
     ...labels,
   ];
 }
@@ -84,18 +109,51 @@ function legendNodes(labels: string[]): SVGElement[] {
       rx: '6',
       class: 'difficulty-map-legend-box',
     }),
-    svgEl('line', { x1: '382', y1: '68', x2: '412', y2: '68', class: 'difficulty-map-identity' }),
+    svgEl('line', {
+      x1: '382',
+      y1: '68',
+      x2: '412',
+      y2: '68',
+      class: 'difficulty-map-identity',
+    }),
     legendText('420', '72', labels[0] ?? 'Identity'),
-    svgEl('line', { x1: '382', y1: '94', x2: '412', y2: '94', class: 'difficulty-map-curve' }),
+    svgEl('line', {
+      x1: '382',
+      y1: '94',
+      x2: '412',
+      y2: '94',
+      class: 'difficulty-map-curve',
+    }),
     legendText('420', '98', labels[1] ?? 'Current curve'),
-    svgEl('circle', { cx: '390', cy: '120', r: '3', fill: 'hsl(158 72% 58%)', class: 'difficulty-map-dot' }),
-    svgEl('circle', { cx: '402', cy: '120', r: '3', fill: 'hsl(98 72% 58%)', class: 'difficulty-map-dot' }),
-    svgEl('circle', { cx: '414', cy: '120', r: '3', fill: 'hsl(38 72% 58%)', class: 'difficulty-map-dot' }),
+    svgEl('circle', {
+      cx: '390',
+      cy: '120',
+      r: '3',
+      fill: 'hsl(158 72% 58%)',
+      class: 'difficulty-map-dot',
+    }),
+    svgEl('circle', {
+      cx: '402',
+      cy: '120',
+      r: '3',
+      fill: 'hsl(98 72% 58%)',
+      class: 'difficulty-map-dot',
+    }),
+    svgEl('circle', {
+      cx: '414',
+      cy: '120',
+      r: '3',
+      fill: 'hsl(38 72% 58%)',
+      class: 'difficulty-map-dot',
+    }),
     legendText('426', '124', labels[2] ?? 'Books'),
   ];
 }
 
-function renderBookDots(svg: SVGSVGElement, viewModel: DifficultyMappingViewModel): void {
+function renderBookDots(
+  svg: SVGSVGElement,
+  viewModel: DifficultyMappingViewModel,
+): void {
   viewModel.books.forEach((book) => {
     const pos = chartPoint(book.rawDifficulty, book.displayDifficulty);
     const y = Math.max(42, Math.min(202, pos.y + book.plotOffset));
@@ -113,7 +171,9 @@ function renderBookDots(svg: SVGSVGElement, viewModel: DifficultyMappingViewMode
   });
 }
 
-export function renderDifficultyMappingChart(viewModel: DifficultyMappingViewModel): HTMLElement {
+export function renderDifficultyMappingChart(
+  viewModel: DifficultyMappingViewModel,
+): HTMLElement {
   const svg = svgEl('svg', {
     class: 'difficulty-map-svg',
     viewBox: '0 0 520 250',
@@ -124,8 +184,14 @@ export function renderDifficultyMappingChart(viewModel: DifficultyMappingViewMod
     ...axisNodes(),
     ...renderCurveGuide(viewModel.floorGuide, 'floor'),
     ...renderCurveGuide(viewModel.ceilingGuide, 'ceiling'),
-    svgEl('path', { d: pathFor(viewModel.identity), class: 'difficulty-map-identity' }),
-    svgEl('path', { d: pathFor(viewModel.curve), class: 'difficulty-map-curve' }),
+    svgEl('path', {
+      d: pathFor(viewModel.identity),
+      class: 'difficulty-map-identity',
+    }),
+    svgEl('path', {
+      d: pathFor(viewModel.curve),
+      class: 'difficulty-map-curve',
+    }),
     ...legendNodes(viewModel.legendLabels),
   );
   renderBookDots(svg, viewModel);

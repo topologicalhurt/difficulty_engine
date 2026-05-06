@@ -43,29 +43,44 @@ function evidenceSources(book: CorpusBook): string[] {
     book.subjectTexts.length ? 'subjects' : '',
     book.enrichment.description.trim() ? 'description' : '',
     book.chapterProfiles.length ? 'chapters' : '',
-    book.sourcePath || book.enrichment.tocSource === 'pdf' ? 'local document' : '',
+    book.sourcePath || book.enrichment.tocSource === 'pdf'
+      ? 'local document'
+      : '',
     provenanceConfidence(book) ? 'enrichment provenance' : '',
   ].filter(Boolean);
 }
 
 function metadataConfidence(book: CorpusBook, topicCount: number): number {
-  const descriptionWords = book.enrichment.description.trim().split(/\s+/).filter(Boolean).length;
+  const descriptionWords = book.enrichment.description
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
   const titleSpecificity =
-    Math.min(1, Object.keys(book.focusTokenCounts).length / METADATA_CONFIDENCE.titleTokenNormalizer) *
-    METADATA_CONFIDENCE.titleWeight;
+    Math.min(
+      1,
+      Object.keys(book.focusTokenCounts).length /
+        METADATA_CONFIDENCE.titleTokenNormalizer,
+    ) * METADATA_CONFIDENCE.titleWeight;
   const subjectScore =
-    Math.min(1, book.subjectTexts.length / METADATA_CONFIDENCE.subjectNormalizer) *
-    METADATA_CONFIDENCE.subjectWeight;
+    Math.min(
+      1,
+      book.subjectTexts.length / METADATA_CONFIDENCE.subjectNormalizer,
+    ) * METADATA_CONFIDENCE.subjectWeight;
   const descriptionScore =
-    Math.min(1, descriptionWords / METADATA_CONFIDENCE.descriptionWordNormalizer) *
-    METADATA_CONFIDENCE.descriptionWeight;
+    Math.min(
+      1,
+      descriptionWords / METADATA_CONFIDENCE.descriptionWordNormalizer,
+    ) * METADATA_CONFIDENCE.descriptionWeight;
   const chapterScore =
-    Math.min(1, book.chapterProfiles.length / METADATA_CONFIDENCE.chapterNormalizer) *
-    METADATA_CONFIDENCE.chapterWeight;
+    Math.min(
+      1,
+      book.chapterProfiles.length / METADATA_CONFIDENCE.chapterNormalizer,
+    ) * METADATA_CONFIDENCE.chapterWeight;
   const topicScore =
     Math.min(1, topicCount / METADATA_CONFIDENCE.topicNormalizer) *
     METADATA_CONFIDENCE.topicWeight;
-  const provenanceScore = provenanceConfidence(book) * METADATA_CONFIDENCE.provenanceWeight;
+  const provenanceScore =
+    provenanceConfidence(book) * METADATA_CONFIDENCE.provenanceWeight;
   const localSourceScore =
     book.sourcePath || book.enrichment.tocSource === 'pdf'
       ? METADATA_CONFIDENCE.localSourceWeight
@@ -109,9 +124,17 @@ function initialWorkload(
       book.seedEstimate * INITIAL_WORKLOAD_MODEL.seedWeight +
         stats.baseComplexity * INITIAL_WORKLOAD_MODEL.complexityWeight +
         pagePressure * INITIAL_WORKLOAD_MODEL.pagePressureWeight +
-        clamp(stats.topicCount / INITIAL_WORKLOAD_MODEL.topicCountNormalizer, 0, 1) *
+        clamp(
+          stats.topicCount / INITIAL_WORKLOAD_MODEL.topicCountNormalizer,
+          0,
+          1,
+        ) *
           INITIAL_WORKLOAD_MODEL.topicCountWeight +
-        clamp(stats.weightedRarity / INITIAL_WORKLOAD_MODEL.rarityNormalizer, 0, 1) *
+        clamp(
+          stats.weightedRarity / INITIAL_WORKLOAD_MODEL.rarityNormalizer,
+          0,
+          1,
+        ) *
           INITIAL_WORKLOAD_MODEL.rarityWeight +
         (depths[book.id] || 0) * INITIAL_WORKLOAD_MODEL.graphDepthWeight +
         prereqCount * INITIAL_WORKLOAD_MODEL.prerequisiteCountWeight,
@@ -136,7 +159,13 @@ function buildProfile(
     lexicalDensity: book.lexicalDensity,
   };
   const confidence = metadataConfidence(book, stats.topicCount);
-  const workload = initialWorkload(book, topicIndex, relationInfo, depths, corpus.pageMedian);
+  const workload = initialWorkload(
+    book,
+    topicIndex,
+    relationInfo,
+    depths,
+    corpus.pageMedian,
+  );
   const sparseSpecialized =
     confidence < WORKLOAD_LOW_METADATA_CONFIDENCE &&
     stats.topicCount >= WORKLOAD_SPECIALIZED_TOPIC_COUNT &&
@@ -161,6 +190,11 @@ export function buildWorkloadProfiles(
   topicIndex: TopicIndex,
   relationInfo: RelationInfo,
 ): WorkloadProfile[] {
-  const depths = topologicalDepth(corpus.books.map((book) => book.id), relationInfo.prereqById);
-  return corpus.books.map((book) => buildProfile(book, corpus, topicIndex, relationInfo, depths));
+  const depths = topologicalDepth(
+    corpus.books.map((book) => book.id),
+    relationInfo.prereqById,
+  );
+  return corpus.books.map((book) =>
+    buildProfile(book, corpus, topicIndex, relationInfo, depths),
+  );
 }

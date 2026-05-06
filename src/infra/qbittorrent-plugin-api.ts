@@ -1,7 +1,10 @@
 import type { QbittorrentPluginInfo } from '../core/types';
 import type { SearchResultsResponse } from './qbittorrent-types';
 
-export type QbittorrentApi = (path: string, init?: RequestInit) => Promise<Response>;
+export type QbittorrentApi = (
+  path: string,
+  init?: RequestInit,
+) => Promise<Response>;
 
 const SEARCH_POLL_ATTEMPTS = 6;
 const SEARCH_POLL_INTERVAL_MS = 450;
@@ -35,7 +38,11 @@ export async function startQbittorrentSearch(
   pluginsToUse: string,
   category: string,
 ): Promise<number | null> {
-  const body = new URLSearchParams({ pattern, plugins: pluginsToUse, category });
+  const body = new URLSearchParams({
+    pattern,
+    plugins: pluginsToUse,
+    category,
+  });
   const response = await api('/search/start', {
     method: 'POST',
     body,
@@ -60,7 +67,10 @@ export async function readQbittorrentSearchResults(
   return (await response.json()) as SearchResultsResponse;
 }
 
-export async function deleteQbittorrentSearch(api: QbittorrentApi, id: number): Promise<void> {
+export async function deleteQbittorrentSearch(
+  api: QbittorrentApi,
+  id: number,
+): Promise<void> {
   const body = new URLSearchParams({ id: String(id) });
   await api('/search/delete', {
     method: 'POST',
@@ -76,14 +86,25 @@ export async function runQbittorrentPluginSearch(
   category: string,
   limit: number,
 ): Promise<SearchResultsResponse> {
-  const searchId = await startQbittorrentSearch(api, pattern, pluginName, category);
+  const searchId = await startQbittorrentSearch(
+    api,
+    pattern,
+    pluginName,
+    category,
+  );
   if (searchId == null) return {};
   try {
     let payload: SearchResultsResponse = {};
     for (let attempt = 0; attempt < SEARCH_POLL_ATTEMPTS; attempt += 1) {
       payload = await readQbittorrentSearchResults(api, searchId, limit);
-      if (payload.status === 'Stopped' || (payload.results?.length ?? 0) >= limit) break;
-      await new Promise((resolve) => globalThis.setTimeout(resolve, SEARCH_POLL_INTERVAL_MS));
+      if (
+        payload.status === 'Stopped' ||
+        (payload.results?.length ?? 0) >= limit
+      )
+        break;
+      await new Promise((resolve) =>
+        globalThis.setTimeout(resolve, SEARCH_POLL_INTERVAL_MS),
+      );
     }
     return payload;
   } finally {

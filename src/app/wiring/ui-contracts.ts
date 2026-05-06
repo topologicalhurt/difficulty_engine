@@ -13,7 +13,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['gantt'],
     recomputePolicy: 'persistence_only',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/parameter-matrix.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/app/parameter-matrix.test.ts',
+    ],
     notes: 'Persisted display preference; the solved schedule is unchanged.',
   },
   {
@@ -28,7 +31,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['gantt'],
     recomputePolicy: 'persistence_only',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/parameter-matrix.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/app/parameter-matrix.test.ts',
+    ],
     notes: 'Persisted display preference; the solved schedule is unchanged.',
   },
   {
@@ -44,7 +50,8 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     renderEffects: ['book inspector', 'calendar log drawer'],
     recomputePolicy: 'ui_only',
     testIds: ['tests/app/wiring-contracts.test.ts', 'scripts/smoke.mjs'],
-    notes: 'Calendar selection is UI-only but keeps the exact date/book log drawer open across rerenders.',
+    notes:
+      'Calendar selection is UI-only but keeps the exact date/book log drawer open across rerenders.',
   },
   {
     id: 'ui.documentOpen',
@@ -59,7 +66,8 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     renderEffects: ['book inspector'],
     recomputePolicy: 'ui_only',
     testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/store.test.ts'],
-    notes: 'Opening a document is a local side effect through the bridge and does not change planner truth.',
+    notes:
+      'Opening a document is a local side effect through the bridge and does not change planner truth.',
   },
   {
     id: 'ui.documentReader',
@@ -74,7 +82,8 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     renderEffects: ['book inspector', 'document reader'],
     recomputePolicy: 'ui_only',
     testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/store.test.ts'],
-    notes: 'Reader text is local UI state loaded from the bridge and is not persisted in the project.',
+    notes:
+      'Reader text is local UI state loaded from the bridge and is not persisted in the project.',
   },
   {
     id: 'ui.documentReaderClose',
@@ -103,7 +112,11 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['gantt', 'calendar'],
     recomputePolicy: 'persistence_only',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/app/parameter-matrix.test.ts'],
-    notes: 'Persisted display preference; Gantt and calendar colors change without recomputing solver truth.',
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/app/parameter-matrix.test.ts',
+    ],
+    notes:
+      'Persisted display preference; Gantt and calendar colors change without recomputing solver truth.',
   },
 ];

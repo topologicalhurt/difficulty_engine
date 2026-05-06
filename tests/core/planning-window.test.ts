@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { horizonMonthsFromEndDate, targetEndDateKey } from '../../src/core/planning-window';
+import {
+  horizonMonthsFromEndDate,
+  targetEndDateKey,
+} from '../../src/core/planning-window';
 
 describe('planning window date conversion', () => {
   it('converts the stored month horizon into a visible target end date', () => {

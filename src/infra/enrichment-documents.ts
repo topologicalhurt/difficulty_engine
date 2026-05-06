@@ -6,9 +6,9 @@ import type {
 } from '../core/types';
 import { qbittorrentRuntimeEnabled } from '../core/source-settings-policy';
 import {
-  choosePreferredDocumentCandidate,
   defaultDocumentAcquisitionPolicy,
   mergeDocumentRefs,
+  rankDocumentCandidates,
 } from './document-acquisition';
 import type {
   AcquiredDocument,
@@ -21,6 +21,7 @@ import {
   dedupeAcquiredDocuments,
   loadCompletedDocumentRefs,
 } from './completed-document-loader';
+import { isoTimestamp } from './cache-time';
 
 type JsonFetcher = <T>(url: string, signal?: AbortSignal) => Promise<T>;
 
@@ -35,11 +36,17 @@ interface BookEnrichmentLoaderOptions {
 }
 
 interface BookEnrichmentLoader {
-  loadBook(request: EnrichmentRequest, cacheKey: string): Promise<EnrichmentResponse>;
+  loadBook(
+    request: EnrichmentRequest,
+    cacheKey: string,
+  ): Promise<EnrichmentResponse>;
 }
 
 function shouldUseQbittorrentProvider(request: EnrichmentRequest): boolean {
-  return qbittorrentRuntimeEnabled(request.sourceSettings, request.qbittorrentConnection);
+  return qbittorrentRuntimeEnabled(
+    request.sourceSettings,
+    request.qbittorrentConnection,
+  );
 }
 
 function effectiveDocumentPolicy(
@@ -62,7 +69,10 @@ function documentProvider(
   if (options.documentAcquisitionProvider) {
     return options.documentAcquisitionProvider;
   }
-  if (!shouldUseQbittorrentProvider(request) || !request.qbittorrentConnection) {
+  if (
+    !shouldUseQbittorrentProvider(request) ||
+    !request.qbittorrentConnection
+  ) {
     return undefined;
   }
   return createQBittorrentProvider({
@@ -91,16 +101,23 @@ async function acquireCandidateDocuments(
       policy,
       signal: request.signal,
     });
-    const candidate = choosePreferredDocumentCandidate(candidates, policy);
-    if (!candidate) {
-      return [];
+    for (const candidate of rankDocumentCandidates(candidates, policy)) {
+      try {
+        const acquired = await provider.acquire(candidate, {
+          book: request.book,
+          policy,
+          signal: request.signal,
+        });
+        if (acquired) return [acquired];
+      } catch (error) {
+        logger.warn('enrichment.document_acquisition.candidate_failed', {
+          bookId: request.book.id,
+          candidateId: candidate.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
-    const acquired = await provider.acquire(candidate, {
-      book: request.book,
-      policy,
-      signal: request.signal,
-    });
-    return acquired ? [acquired] : [];
+    return [];
   } catch (error) {
     logger.warn('enrichment.document_acquisition.failed', {
       bookId: request.book.id,
@@ -122,21 +139,31 @@ function mergeResolvedDocumentRefs(
     : undefined;
   const existingSelection =
     request.book.selectedDocumentId &&
-    mergedDocuments?.some((document) => document.id === request.book.selectedDocumentId)
+    mergedDocuments?.some(
+      (document) => document.id === request.book.selectedDocumentId,
+    )
       ? request.book.selectedDocumentId
       : null;
   const selectedDocumentId =
     existingSelection ??
     mergedDocuments?.find((document) => document.status === 'complete')?.id ??
     mergedDocuments?.[0]?.id;
-  return mergedDocuments ? { documents: mergedDocuments, selectedDocumentId } : {};
+  return mergedDocuments
+    ? { documents: mergedDocuments, selectedDocumentId }
+    : {};
 }
 
-export function createBookEnrichmentLoader(options: BookEnrichmentLoaderOptions): BookEnrichmentLoader {
-  const documentPolicy = options.documentAcquisitionPolicy ?? defaultDocumentAcquisitionPolicy();
+export function createBookEnrichmentLoader(
+  options: BookEnrichmentLoaderOptions,
+): BookEnrichmentLoader {
+  const documentPolicy =
+    options.documentAcquisitionPolicy ?? defaultDocumentAcquisitionPolicy();
 
   return {
-    async loadBook(request: EnrichmentRequest, cacheKey: string): Promise<EnrichmentResponse> {
+    async loadBook(
+      request: EnrichmentRequest,
+      cacheKey: string,
+    ): Promise<EnrichmentResponse> {
       const completedDocuments = await loadCompletedDocumentRefs(
         request,
         options.fetchImpl,
@@ -174,7 +201,7 @@ export function createBookEnrichmentLoader(options: BookEnrichmentLoaderOptions)
               {
                 provider: 'manual',
                 sourceUrl: 'local://project',
-                fetchedAt: new Date().toISOString(),
+                fetchedAt: isoTimestamp(),
                 confidence: MANUAL_PROVENANCE_CONFIDENCE,
               },
             ],

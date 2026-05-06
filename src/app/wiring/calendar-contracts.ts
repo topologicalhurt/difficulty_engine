@@ -14,7 +14,8 @@ export const CALENDAR_CONTRACTS: WiringContract[] = [
     renderEffects: ['calendar', 'warnings', 'stats'],
     recomputePolicy: 'snapshot',
     testIds: ['tests/app/store.test.ts', 'tests/app/parameter-matrix.test.ts'],
-    notes: 'Deferrals are canonical manual overrides and must update the day plan.',
+    notes:
+      'Deferrals are canonical manual overrides and must update the day plan.',
   },
   {
     id: 'calendar.done',
@@ -59,7 +60,8 @@ export const CALENDAR_CONTRACTS: WiringContract[] = [
     renderEffects: ['calendar', 'warnings', 'stats'],
     recomputePolicy: 'snapshot',
     testIds: ['tests/app/store.test.ts', 'tests/app/parameter-matrix.test.ts'],
-    notes: 'Actual pages alter canonical progress accounting independently of logged minutes.',
+    notes:
+      'Actual pages alter canonical progress accounting independently of logged minutes.',
   },
   {
     id: 'calendar.clearActual',

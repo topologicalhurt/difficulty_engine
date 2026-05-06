@@ -26,7 +26,12 @@ function book(): BookRecord {
     ignored: false,
     constantRD: false,
     completed: false,
-    enrichment: { chapters: [], description: '', olSubjects: [], tocSource: 'none' },
+    enrichment: {
+      chapters: [],
+      description: '',
+      olSubjects: [],
+      tocSource: 'none',
+    },
   };
 }
 
@@ -56,17 +61,24 @@ describe('Internet Archive TOC candidates', () => {
         metadataUrls.push(url);
         return {
           metadata: { title: 'Complex analysis' },
-          files: [{ name: 'complex_djvu.txt', format: 'DjVuTXT', size: '1200' }],
+          files: [
+            { name: 'complex_djvu.txt', format: 'DjVuTXT', size: '1200' },
+          ],
         } as T;
       },
       fetchImpl: async () =>
-        new Response('Contents\nChapter 1 Foundations 1\nChapter 2 Contours 24', {
-          status: 200,
-          headers: { 'content-type': 'text/plain' },
-        }),
+        new Response(
+          'Contents\nChapter 1 Foundations 1\nChapter 2 Contours 24',
+          {
+            status: 200,
+            headers: { 'content-type': 'text/plain' },
+          },
+        ),
     });
 
-    expect(metadataUrls).toEqual(['https://archive.org/metadata/no-creator-same-title']);
+    expect(metadataUrls).toEqual([
+      'https://archive.org/metadata/no-creator-same-title',
+    ]);
     expect(candidates[0]?.chapters).toEqual([
       'Contents',
       'Chapter 1 Foundations',

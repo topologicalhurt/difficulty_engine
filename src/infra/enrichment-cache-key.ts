@@ -27,13 +27,15 @@ function sourceMaskKey(request: EnrichmentRequest): string {
 
 function documentCacheKey(request: EnrichmentRequest): string {
   return (request.book.documents ?? [])
-    .map((document) => [
-      document.id,
-      document.status,
-      document.storagePath,
-      document.sha256 ?? '',
-      document.updatedAt,
-    ].join(':'))
+    .map((document) =>
+      [
+        document.id,
+        document.status,
+        document.storagePath,
+        document.sha256 ?? '',
+        document.updatedAt,
+      ].join(':'),
+    )
     .sort()
     .join('|');
 }

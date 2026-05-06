@@ -1,17 +1,28 @@
-import { studyDateFromSlot } from '../../core/time';
+import { plannerClock, studyDateFromSlot } from '../../core/time';
+import {
+  formatWholeNumber,
+  formatWholePercent,
+} from '../../core/number-format';
+import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 import type {
   AppState,
   CalendarEntry,
-  DifficultyBreakdown,
-  RelationEvidence,
-  SchedulePlanItem,
   ScheduleRow,
   WarningItem,
 } from '../../core/types';
-import { round1 } from '../../core/utils';
-import { buildCalendarWeeks, type CalendarWeek } from './plan-view-model';
+import { compactItems, compactJoin, round1 } from '../../core/utils';
+import { buildCalendarWeeks, type CalendarWeek } from './calendar-weeks';
+import { formatPlanFullDate, formatPlanShortDate } from './date-labels';
 import { selectPlanColors, type PlanColorMetadata } from './plan-colors';
-import { selectBookProgress, selectOverallProgress, type BookProgressView, type OverallProgressView } from './progress';
+import {
+  selectProgressSummary,
+  type OverallProgressView,
+} from './progress';
+import { memoizeSelector } from './memo';
+import {
+  selectBookInspector,
+  type BookInspectorViewModel,
+} from './plan-inspector';
 
 export interface StatCardView {
   label: string;
@@ -29,20 +40,6 @@ export interface GanttViewModel {
   weekCount: number;
 }
 
-export interface BookInspectorViewModel {
-  fallbackId: string | null;
-  bookTitle: string;
-  displayGroup: string;
-  pages: number;
-  schedule: SchedulePlanItem | null;
-  dayStats: AppState['snapshot']['dayPlan']['byBookStats'][string] | null;
-  difficulty: DifficultyBreakdown | null;
-  progress: BookProgressView | null;
-  incoming: RelationEvidence[];
-  outgoing: RelationEvidence[];
-  explanation: string[];
-}
-
 export interface PlanViewModel {
   selectedBookId: string | null;
   selectedCalendarEntry: AppState['ui']['selectedCalendarEntry'];
@@ -57,50 +54,71 @@ export interface PlanViewModel {
   timelineLabel(slot: number): string;
 }
 
-function roundWhole(value: number): string {
-  return String(Math.round(value || 0));
-}
-
-function formatPlanDate(date?: Date): string {
-  return date
-    ? date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '—';
-}
-
 export function selectTimelineLabel(state: AppState): (slot: number) => string {
   return (slot: number) =>
-    studyDateFromSlot(
-      state.project,
-      slot,
-      new Date(`${state.project.constraints.sd}T12:00:00Z`),
-    ).toLocaleDateString('en-AU', {
-      day: 'numeric',
-      month: 'short',
-    });
+    formatPlanShortDate(
+      studyDateFromSlot(
+        state.project,
+        slot,
+        plannerClock.timelineStart(state.project),
+      ),
+    );
 }
 
-function selectPlanStats(state: AppState): StatCardView[] {
+function selectPlanStats(
+  state: AppState,
+  progress: OverallProgressView,
+): StatCardView[] {
   const stats = state.snapshot.scheduleStats;
-  const progress = selectOverallProgress(state);
   return [
-    { label: 'Projected finish', value: formatPlanDate(stats.finishDate), hint: `${round1(stats.spanWeeks)} weeks` },
-    { label: 'Overall progress', value: `${roundWhole(progress.percent)}%`, hint: progress.label },
-    { label: 'Planned hours', value: roundWhole(stats.totalHours), hint: `${roundWhole(stats.remainingHours)} hours remaining` },
+    {
+      label: 'Projected finish',
+      value: formatPlanFullDate(stats.finishDate),
+      hint: `${round1(stats.spanWeeks)} weeks`,
+    },
+    {
+      label: 'Overall progress',
+      value: formatWholePercent(progress.percent),
+      hint: progress.label,
+    },
+    {
+      label: 'Planned hours',
+      value: formatWholeNumber(stats.totalHours),
+      hint: `${formatWholeNumber(stats.remainingHours)} hours remaining`,
+    },
     {
       label: 'Parallel occupancy',
-      value: `${roundWhole(stats.peakBooks)}/${state.project.constraints.par}`,
-      hint: `${roundWhole(stats.unfilledParallelSlots)} unfilled slots`,
+      value: `${formatWholeNumber(stats.peakBooks)}/${state.project.constraints.par}`,
+      hint: `${formatWholeNumber(stats.unfilledParallelSlots)} unfilled slots`,
     },
-    { label: 'Relaxed floors', value: roundWhole(stats.floorRelaxedBooks), hint: `${roundWhole(stats.floorRelaxedDays)} affected days` },
-    { label: 'Backfilled starts', value: roundWhole(stats.backfilledStarts), hint: `${roundWhole(stats.prereqOverlapStarts)} overlap starts` },
-    { label: 'Hard blockers', value: roundWhole(stats.hardInfeasibleBooks), hint: `${roundWhole(stats.blockedBooks)} currently blocked` },
+    {
+      label: 'Relaxed floors',
+      value: formatWholeNumber(stats.floorRelaxedBooks),
+      hint: `${formatWholeNumber(stats.floorRelaxedDays)} affected days`,
+    },
+    {
+      label: 'Backfilled starts',
+      value: formatWholeNumber(stats.backfilledStarts),
+      hint: `${formatWholeNumber(stats.prereqOverlapStarts)} overlap starts`,
+    },
+    {
+      label: 'Hard blockers',
+      value: formatWholeNumber(stats.hardInfeasibleBooks),
+      hint: `${formatWholeNumber(stats.blockedBooks)} currently blocked`,
+    },
   ];
 }
 
 function selectGantt(state: AppState): GanttViewModel {
   const rows = state.snapshot.renderModel.gantt.rows
     .slice()
-    .sort((left, right) => left.lane - right.lane || left.targetStart - right.targetStart || left.short.localeCompare(right.short));
+    .sort((left, right) =>
+      compareChain(
+        compareNumberAsc(left.lane, right.lane),
+        compareNumberAsc(left.targetStart, right.targetStart),
+        compareText(left.short, right.short),
+      ),
+    );
   const maxSlot = Math.max(
     state.snapshot.renderModel.gantt.totalSlots,
     ...rows.map((row) => Math.max(row.targetEnd, row.actualEnd ?? 0)),
@@ -117,64 +135,65 @@ function selectGantt(state: AppState): GanttViewModel {
   };
 }
 
-function selectInspector(state: AppState): BookInspectorViewModel {
-  const fallbackId =
-    state.ui.selectedBookId ||
-    state.snapshot.renderModel.gantt.rows[0]?.id ||
-    Object.keys(state.project.library.books)[0] ||
-    null;
-  const book = fallbackId ? state.project.library.books[fallbackId] : undefined;
-  const difficulty = fallbackId ? state.snapshot.difficultyModel[fallbackId] : undefined;
-  return {
-    fallbackId,
-    bookTitle: book?.title ?? '',
-    displayGroup: book?.displayGroup || 'Ungrouped',
-    pages: book?.pages ?? 0,
-    schedule: fallbackId ? state.snapshot.schedulePlan.byId[fallbackId] ?? null : null,
-    dayStats: fallbackId ? state.snapshot.dayPlan.byBookStats[fallbackId] ?? null : null,
-    difficulty: difficulty ?? null,
-    progress: fallbackId ? selectBookProgress(state, fallbackId) : null,
-    incoming: fallbackId ? state.snapshot.relations.filter((relation) => relation.to === fallbackId) : [],
-    outgoing: fallbackId ? state.snapshot.relations.filter((relation) => relation.from === fallbackId) : [],
-    explanation: difficulty?.explanation.slice(0, 4) ?? [],
-  };
-}
+const selectPlanViewModelMemo = memoizeSelector(
+  'plan.viewModel',
+  (state: AppState) => [
+    state.project,
+    state.snapshot,
+    state.ui.selectedBookId,
+    state.ui.selectedCalendarEntry,
+    state.ui.ganttView,
+    state.ui.ganttZoom,
+    state.ui.planColorMode,
+  ],
+  (state: AppState): PlanViewModel => {
+    const progress = selectProgressSummary(state);
+    return {
+      selectedBookId: state.ui.selectedBookId,
+      selectedCalendarEntry: state.ui.selectedCalendarEntry,
+      emptyDayPolicy: state.project.constraints.emptyDayPolicy,
+      stats: selectPlanStats(state, progress.overall),
+      gantt: selectGantt(state),
+      calendarWeeks: buildCalendarWeeks(state),
+      colors: selectPlanColors(state),
+      progress: progress.overall,
+      warnings: state.snapshot.renderModel.warnings,
+      inspector: selectBookInspector(state, progress.byBook),
+      timelineLabel: selectTimelineLabel(state),
+    };
+  },
+);
 
 export function selectPlanViewModel(state: AppState): PlanViewModel {
-  return {
-    selectedBookId: state.ui.selectedBookId,
-    selectedCalendarEntry: state.ui.selectedCalendarEntry,
-    emptyDayPolicy: state.project.constraints.emptyDayPolicy,
-    stats: selectPlanStats(state),
-    gantt: selectGantt(state),
-    calendarWeeks: buildCalendarWeeks(state),
-    colors: selectPlanColors(state),
-    progress: selectOverallProgress(state),
-    warnings: state.snapshot.renderModel.warnings,
-    inspector: selectInspector(state),
-    timelineLabel: selectTimelineLabel(state),
-  };
+  return selectPlanViewModelMemo(state);
 }
 
-export function calendarBadges(entry: CalendarEntry): Array<{ label: string; tone?: 'neutral' | 'success' | 'warn' | 'danger' }> {
-  return [
+export function calendarBadges(
+  entry: CalendarEntry,
+): Array<{ label: string; tone?: 'neutral' | 'success' | 'warn' | 'danger' }> {
+  return compactItems([
     { label: entry.track || `Lane ${entry.lane + 1}` },
     entry.done ? { label: 'Done', tone: 'success' as const } : null,
     entry.actualOverride ? { label: 'Actual', tone: 'success' as const } : null,
-  ].filter(Boolean) as Array<{ label: string; tone?: 'neutral' | 'success' | 'warn' | 'danger' }>;
+  ]);
 }
 
 export function calendarDetailText(entry: CalendarEntry): string {
-  return [
-    `${entry.short}: ${roundWhole(entry.mins)} planned minute(s), ${round1(entry.readPages)} page(s)`,
-    entry.skimPages ? `${round1(entry.skimPages)} skim page(s)` : null,
-    entry.boosted ? 'Boost day: unused time was reassigned here' : null,
-    entry.floorRelaxed ? `Floor relaxed ${round1(entry.effectiveMinPg)}/${round1(entry.strictMinPg)} pg` : null,
-    entry.backfilled ? 'Backfilled into an otherwise empty slot' : null,
-    entry.prereqOverlap ? 'Started using prerequisite-overlap policy' : null,
-    entry.actualOverride
-      ? `Actual override: ${roundWhole(entry.actualMinutes ?? entry.mins)} minute(s), ${round1(entry.actualPages ?? entry.readPages + entry.skimPages)} page(s)`
-      : null,
-    entry.done ? 'Marked done' : null,
-  ].filter(Boolean).join(' · ');
+  return compactJoin(
+    [
+      `${entry.short}: ${formatWholeNumber(entry.mins)} planned minute(s), ${round1(entry.readPages)} page(s)`,
+      entry.skimPages ? `${round1(entry.skimPages)} skim page(s)` : null,
+      entry.boosted ? 'Boost day: unused time was reassigned here' : null,
+      entry.floorRelaxed
+        ? `Floor relaxed ${round1(entry.effectiveMinPg)}/${round1(entry.strictMinPg)} pg`
+        : null,
+      entry.backfilled ? 'Backfilled into an otherwise empty slot' : null,
+      entry.prereqOverlap ? 'Started using prerequisite-overlap policy' : null,
+      entry.actualOverride
+        ? `Actual override: ${formatWholeNumber(entry.actualMinutes ?? entry.mins)} minute(s), ${round1(entry.actualPages ?? entry.readPages + entry.skimPages)} page(s)`
+        : null,
+      entry.done ? 'Marked done' : null,
+    ],
+    ' · ',
+  );
 }

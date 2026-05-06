@@ -1,4 +1,9 @@
-import { cleanedIsbn, isIsbnLikeInput, isValidIsbn, normalizedIsbn } from '../core/isbn';
+import {
+  cleanedIsbn,
+  isIsbnLikeInput,
+  isValidIsbn,
+  normalizedIsbn,
+} from '../core/isbn';
 
 export const DEFAULT_SEARCH_PAGE_SIZE = 15;
 export const MIN_TEXT_SEARCH_CHARS = 2;

@@ -17,13 +17,22 @@
   --radius: 4px;
   --radius-sm: 2px;
   --radius-xs: 1px;
-  --font-ui: 'SFMono-Regular', 'SF Mono', 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
-  --font-display: 'SFMono-Regular', 'SF Mono', 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  --font-ui:
+    'SFMono-Regular', 'SF Mono', 'JetBrains Mono', 'Menlo', 'Monaco',
+    'Consolas', monospace;
+  --font-display:
+    'SFMono-Regular', 'SF Mono', 'JetBrains Mono', 'Menlo', 'Monaco',
+    'Consolas', monospace;
   min-height: 100vh;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(111, 211, 163, 0.04), transparent 24%),
+    radial-gradient(
+      circle at top left,
+      rgba(111, 211, 163, 0.04),
+      transparent 24%
+    ),
     linear-gradient(180deg, #09101d 0%, #0d1422 100%);
+  isolation: isolate;
   font-family: var(--font-ui);
 }
 
@@ -32,8 +41,14 @@
   box-sizing: border-box;
 }
 
-body {
+body.difficulty-engine-standalone {
   margin: 0;
+  background: #0b1020;
+}
+
+body.difficulty-engine-standalone #app {
+  min-height: 100vh;
+  background: #0b1020;
 }
 
 .difficulty-engine-app button,
@@ -208,6 +223,12 @@ body {
   border-color: var(--border-strong);
 }
 
+.book-list-item:hover,
+.calendar-chip:hover,
+.ladder-row:hover {
+  transform: none;
+}
+
 .tab-button.active,
 .primary-button {
   background: rgba(111, 211, 163, 0.12);
@@ -341,6 +362,14 @@ body {
   resize: vertical;
 }
 
+.ai-prompt-area {
+  min-height: 180px;
+}
+
+.ai-proposal-card {
+  border-left: 3px solid rgba(111, 211, 163, 0.56);
+}
+
 .checkbox-input {
   width: 18px;
   height: 18px;
@@ -429,11 +458,19 @@ body {
 }
 
 .bar-fill {
-  background: linear-gradient(180deg, rgba(111, 211, 163, 0.98), rgba(91, 179, 218, 0.98));
+  background: linear-gradient(
+    180deg,
+    rgba(111, 211, 163, 0.98),
+    rgba(91, 179, 218, 0.98)
+  );
 }
 
 .bar-fill-muted {
-  background: linear-gradient(180deg, rgba(249, 204, 99, 0.95), rgba(230, 154, 69, 0.95));
+  background: linear-gradient(
+    180deg,
+    rgba(249, 204, 99, 0.95),
+    rgba(230, 154, 69, 0.95)
+  );
 }
 
 .bar-value {
@@ -582,7 +619,11 @@ body {
 .progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(111, 211, 163, 0.92), rgba(91, 179, 218, 0.92));
+  background: linear-gradient(
+    90deg,
+    rgba(111, 211, 163, 0.92),
+    rgba(91, 179, 218, 0.92)
+  );
 }
 
 .progress-detail {
@@ -630,7 +671,11 @@ body {
 }
 
 .settings-shell .card {
-  background: linear-gradient(180deg, rgba(17, 26, 45, 0.98), rgba(17, 26, 45, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(17, 26, 45, 0.98),
+    rgba(17, 26, 45, 0.92)
+  );
 }
 
 .settings-grid {
@@ -730,6 +775,7 @@ body {
 .gantt-board-row {
   padding: 10px;
   background: rgba(255, 255, 255, 0.025);
+  contain: layout paint;
 }
 
 .gantt-board-row.selected {
@@ -749,8 +795,18 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01)),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 100%);
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.025),
+      rgba(255, 255, 255, 0.01)
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.02) 0,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 100%
+    );
   overflow: hidden;
 }
 
@@ -814,6 +870,7 @@ body {
 .calendar-week {
   display: grid;
   gap: 10px;
+  contain: layout paint;
 }
 
 .calendar-week-label {
@@ -835,6 +892,7 @@ body {
   min-width: 0;
   overflow: hidden;
   padding: 8px;
+  contain: layout paint;
 }
 
 .calendar-day-cell.has-work {
@@ -1123,9 +1181,10 @@ body {
   min-height: 260px;
   cursor: grab;
   touch-action: none;
+  contain: layout paint;
 }
 
-.graph-viewport-frame[data-dragging="true"] {
+.graph-viewport-frame[data-dragging='true'] {
   cursor: grabbing;
 }
 

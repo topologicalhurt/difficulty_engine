@@ -10,6 +10,7 @@ import {
   documentStatus,
   fileMatchScore,
   preferredTorrentFile,
+  selectedTorrentFileIsTrusted,
 } from './qbittorrent-selection';
 import type { TorrentFile, TorrentInfo } from './qbittorrent-types';
 import {
@@ -20,20 +21,31 @@ import {
   sourceContentKindFromPath,
   TEXT_MIME,
 } from './qbittorrent-file-kinds';
+import { isoTimestamp } from './cache-time';
 
 async function selectedTorrentFile(
   client: QBittorrentClient,
   info: TorrentInfo,
+  candidate: DocumentCandidate,
   request: DocumentAcquisitionRequest,
 ): Promise<TorrentFile | null> {
   if (!info.hash) return null;
   const files = await client.torrentFiles(info.hash).catch(() => []);
   const selected = preferredTorrentFile(files, request);
   const selectedIndex = selected?.index;
+  if (selected && !selectedTorrentFileIsTrusted(selected, candidate, request)) {
+    const allIndexes = files
+      .map((file) => file.index)
+      .filter((index): index is number => index != null);
+    await client.setFilePriority(info.hash, allIndexes, 0);
+    return null;
+  }
   if (selectedIndex != null) {
     const otherIndexes = files
       .map((file) => file.index)
-      .filter((index): index is number => index != null && index !== selectedIndex);
+      .filter(
+        (index): index is number => index != null && index !== selectedIndex,
+      );
     await client.setFilePriority(info.hash, otherIndexes, 0);
     await client.setFilePriority(info.hash, [selectedIndex], 7);
   }
@@ -48,12 +60,18 @@ async function readCompletedDocument(
 ): Promise<{ text?: string; bytes?: Uint8Array }> {
   if (status !== 'complete') return {};
   if (contentType === TEXT_MIME) {
-    return { text: await client.readTextDocument(storagePath).catch(() => undefined) };
+    return {
+      text: await client.readTextDocument(storagePath).catch(() => undefined),
+    };
   }
   if (contentType !== PDF_MIME) return {};
-  const text = await client.readTextDocument(storagePath).catch(() => undefined);
+  const text = await client
+    .readTextDocument(storagePath)
+    .catch(() => undefined);
   if (text) return { text };
-  return { bytes: await client.readByteDocument(storagePath).catch(() => undefined) };
+  return {
+    bytes: await client.readByteDocument(storagePath).catch(() => undefined),
+  };
 }
 
 export async function acquireTorrentDocument(
@@ -69,27 +87,41 @@ export async function acquireTorrentDocument(
     info = await client.torrentInfo(candidate);
   }
   const savePath = await client.effectiveSavePath();
-  let storagePath = info?.content_path ?? info?.save_path ?? savePath ?? candidate.title;
+  let storagePath =
+    info?.content_path ?? info?.save_path ?? savePath ?? candidate.title;
   let selected: TorrentFile | null = null;
   if (info?.hash) {
-    selected = await selectedTorrentFile(client, info, request);
+    selected = await selectedTorrentFile(client, info, candidate, request);
+    if (!selected) return null;
     if (selected?.index != null) {
-      storagePath = joinStoragePath(info.save_path ?? savePath, selected.name ?? storagePath);
+      storagePath = joinStoragePath(
+        info.save_path ?? savePath,
+        selected.name ?? storagePath,
+      );
     }
     await client.resumeTorrent(info.hash);
   }
 
   const contentType = contentTypeFromPath(storagePath ?? candidate.sourceUrl);
   const status = documentStatus(info, selected);
-  const { text, bytes } = await readCompletedDocument(client, storagePath, contentType, status);
-  const now = new Date().toISOString();
+  const { text, bytes } = await readCompletedDocument(
+    client,
+    storagePath,
+    contentType,
+    status,
+  );
+  const now = isoTimestamp();
   const fileName = basename(storagePath);
   const progress = selected?.progress ?? info?.progress ?? 0;
-  const contentKind = sourceContentKindFromPath(storagePath, candidate.contentKind);
+  const contentKind = sourceContentKindFromPath(
+    storagePath,
+    candidate.contentKind,
+  );
   const refStatus =
     text || bytes
       ? 'complete'
-      : status === 'complete' && (contentKind === 'text' || contentKind === 'ocr_text')
+      : status === 'complete' &&
+          (contentKind === 'text' || contentKind === 'ocr_text')
         ? 'unreadable'
         : status;
 
@@ -118,15 +150,16 @@ export async function acquireTorrentDocument(
       status: refStatus,
       matchScore: selected
         ? fileMatchScore(selected, request)
-        : candidate.matchScore ?? candidate.confidence,
+        : (candidate.matchScore ?? candidate.confidence),
       availability: {
         seeders: candidate.seeders ?? null,
         peers: candidate.peers ?? null,
         progress,
         state: info?.state ?? (info ? 'tracked' : 'unknown'),
-        reason: status === 'stalled'
-          ? 'Torrent is stalled or has no active download progress.'
-          : undefined,
+        reason:
+          status === 'stalled'
+            ? 'Torrent is stalled or has no active download progress.'
+            : undefined,
       },
       provenance: {
         provider: 'qbittorrent',

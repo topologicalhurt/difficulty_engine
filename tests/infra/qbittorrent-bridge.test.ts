@@ -16,7 +16,7 @@ interface BridgeModule {
 }
 
 async function bridgeModule(): Promise<BridgeModule> {
-  return await import('../../scripts/qbittorrent-bridge.mjs') as BridgeModule;
+  return (await import('../../scripts/qbittorrent-bridge.mjs')) as BridgeModule;
 }
 
 function listen(server: Server): Promise<string> {
@@ -49,7 +49,10 @@ describe('qBittorrent browser bridge', () => {
         res.end('Unauthorized');
         return;
       }
-      res.setHeader('set-cookie', 'SID=bridge-test; HttpOnly; SameSite=Strict; path=/');
+      res.setHeader(
+        'set-cookie',
+        'SID=bridge-test; HttpOnly; SameSite=Strict; path=/',
+      );
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify([{ name: 'open', enabled: true }]));
     });
@@ -73,7 +76,10 @@ describe('qBittorrent browser bridge', () => {
       expect(first.headers.get('access-control-allow-origin')).toBe('file://');
       expect(second.status).toBe(200);
       expect(seen[0]).toMatchObject({ origin: undefined, cookie: undefined });
-      expect(seen[1]).toMatchObject({ origin: undefined, cookie: 'SID=bridge-test' });
+      expect(seen[1]).toMatchObject({
+        origin: undefined,
+        cookie: 'SID=bridge-test',
+      });
     } finally {
       await close(bridge);
       await close(upstream);
@@ -91,16 +97,22 @@ describe('qBittorrent browser bridge', () => {
     });
     const targetBaseUrl = await listen(upstream);
     const { createQbittorrentBridgeServer } = await bridgeModule();
-    const bridge = createQbittorrentBridgeServer({ targetBaseUrl, dataRoot: root });
+    const bridge = createQbittorrentBridgeServer({
+      targetBaseUrl,
+      dataRoot: root,
+    });
     const bridgeBaseUrl = await listen(bridge);
 
     try {
       const api = await fetch(`${bridgeBaseUrl}/api/v2/app/version`, {
         headers: { Origin: 'https://evil.example' },
       });
-      const docs = await fetch(`${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: allowed }).toString()}`, {
-        headers: { Origin: 'https://evil.example' },
-      });
+      const docs = await fetch(
+        `${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: allowed }).toString()}`,
+        {
+          headers: { Origin: 'https://evil.example' },
+        },
+      );
 
       expect(api.status).toBe(403);
       expect(docs.status).toBe(403);
@@ -110,6 +122,34 @@ describe('qBittorrent browser bridge', () => {
       await close(bridge);
       await close(upstream);
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects loopback browser origins that are not in a custom allowlist', async () => {
+    let upstreamCalled = false;
+    const upstream = createServer((_req, res) => {
+      upstreamCalled = true;
+      res.end('should not be reached');
+    });
+    const targetBaseUrl = await listen(upstream);
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({
+      targetBaseUrl,
+      allowedOrigins: ['https://planner.example'],
+    });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const response = await fetch(`${bridgeBaseUrl}/api/v2/app/version`, {
+        headers: { Origin: 'http://127.0.0.1:4184' },
+      });
+
+      expect(response.status).toBe(403);
+      expect(response.headers.get('access-control-allow-origin')).toBeNull();
+      expect(upstreamCalled).toBe(false);
+    } finally {
+      await close(bridge);
+      await close(upstream);
     }
   });
 
@@ -125,17 +165,98 @@ describe('qBittorrent browser bridge', () => {
 
     try {
       const listed = await fetch(`${bridgeBaseUrl}/documents/list`);
-      const text = await fetch(`${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: allowed }).toString()}`);
-      const status = await fetch(`${bridgeBaseUrl}/documents/status?${new URLSearchParams({ path: allowed }).toString()}`);
-      const rejected = await fetch(`${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: outside }).toString()}`);
+      const text = await fetch(
+        `${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: allowed }).toString()}`,
+      );
+      const status = await fetch(
+        `${bridgeBaseUrl}/documents/status?${new URLSearchParams({ path: allowed }).toString()}`,
+      );
+      const rejected = await fetch(
+        `${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: outside }).toString()}`,
+      );
 
       expect(listed.status).toBe(200);
       expect(await text.text()).toContain('Chapter 1');
       expect((await status.json()).sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(rejected.status).toBe(400);
-      expect(await rejected.text()).toContain('outside the configured data folder');
+      expect(await rejected.text()).toContain(
+        'outside the configured data folder',
+      );
     } finally {
       await close(bridge);
+    }
+  });
+
+  it('rejects unsupported document files instead of opening or byte-reading them', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'difficulty-docs-'));
+    const unsupported = join(root, 'tool.command');
+    await writeFile(unsupported, '#!/bin/sh\necho unsafe', 'utf8');
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({ dataRoot: root });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const read = await fetch(
+        `${bridgeBaseUrl}/documents/read-bytes?${new URLSearchParams({ path: unsupported }).toString()}`,
+      );
+      const open = await fetch(`${bridgeBaseUrl}/documents/open`, {
+        method: 'POST',
+        body: JSON.stringify({ path: unsupported }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      expect(read.status).toBe(400);
+      expect(open.status).toBe(400);
+      expect(await open.text()).toContain(
+        'Only text, EPUB, and PDF documents can be accessed.',
+      );
+    } finally {
+      await close(bridge);
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects oversized document action request bodies', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'difficulty-docs-'));
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({ dataRoot: root });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const response = await fetch(`${bridgeBaseUrl}/documents/open`, {
+        method: 'POST',
+        body: 'x'.repeat(20_000),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      expect(response.status).toBe(400);
+      expect(await response.text()).toContain('Request body is too large.');
+    } finally {
+      await close(bridge);
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects oversized local document reads through the bridge', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'difficulty-docs-'));
+    const hugeText = join(root, 'huge.txt');
+    await writeFile(hugeText, 'x'.repeat(9 * 1024 * 1024), 'utf8');
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({ dataRoot: root });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const response = await fetch(
+        `${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: hugeText }).toString()}`,
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.text()).toContain(
+        'Text document is too large to read through the bridge.',
+      );
+    } finally {
+      await close(bridge);
+      await rm(root, { recursive: true, force: true });
     }
   });
 
@@ -149,7 +270,9 @@ describe('qBittorrent browser bridge', () => {
 
     try {
       const projectRelativePath = relative(process.cwd(), allowed);
-      const text = await fetch(`${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: projectRelativePath }).toString()}`);
+      const text = await fetch(
+        `${bridgeBaseUrl}/documents/read-text?${new URLSearchParams({ path: projectRelativePath }).toString()}`,
+      );
 
       expect(text.status).toBe(200);
       expect(await text.text()).toContain('Relative path');
@@ -168,7 +291,9 @@ describe('qBittorrent browser bridge', () => {
     const bridgeBaseUrl = await listen(bridge);
 
     try {
-      const status = await fetch(`${bridgeBaseUrl}/documents/status?${new URLSearchParams({ path: `${relative(join(root, '..', '..'), root)}/book.pdf` }).toString()}`);
+      const status = await fetch(
+        `${bridgeBaseUrl}/documents/status?${new URLSearchParams({ path: `${relative(join(root, '..', '..'), root)}/book.pdf` }).toString()}`,
+      );
 
       expect(status.status).toBe(200);
       expect((await status.json()).name).toBe('book.pdf');

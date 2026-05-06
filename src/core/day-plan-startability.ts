@@ -39,7 +39,10 @@ export function recordUnderfilledParallelSlots(
     feasibleBooks,
   );
   startability.unfilledParallelSlots += maxParallel - dayEntries.length;
-  if (startableTotal > dayEntries.length && feasibleBooks <= dayEntries.length) {
+  if (
+    startableTotal > dayEntries.length &&
+    feasibleBooks <= dayEntries.length
+  ) {
     startability.parallelFitBlockedDays += 1;
   }
 }

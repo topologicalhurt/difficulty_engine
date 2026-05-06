@@ -5,8 +5,11 @@ import {
   normalizeString,
   normalizeStringArray,
 } from './project-normalize-primitives';
+import { EPOCH_ISO_TIMESTAMP } from './time';
 
-export function normalizeProvenance(value: unknown): EnrichmentFieldProvenance | undefined {
+export function normalizeProvenance(
+  value: unknown,
+): EnrichmentFieldProvenance | undefined {
   if (!value || typeof value !== 'object') {
     return undefined;
   }
@@ -18,7 +21,7 @@ export function normalizeProvenance(value: unknown): EnrichmentFieldProvenance |
   return {
     provider,
     sourceUrl: normalizeString(raw.sourceUrl) || undefined,
-    fetchedAt: normalizeString(raw.fetchedAt) || new Date(0).toISOString(),
+    fetchedAt: normalizeString(raw.fetchedAt) || EPOCH_ISO_TIMESTAMP,
     confidence: safeNumber(raw.confidence, 0),
     strategy: normalizeString(raw.strategy) || undefined,
     inferred: normalizeBoolean(raw.inferred),

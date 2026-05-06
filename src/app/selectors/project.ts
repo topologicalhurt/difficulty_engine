@@ -3,27 +3,29 @@ import type {
   DocumentSourceKey,
   MetadataSourceKey,
 } from '../../core/types';
-import {
-  DEFAULT_QBITTORRENT_WEB_UI_URL,
-} from '../../core/defaults';
+import { DEFAULT_QBITTORRENT_WEB_UI_URL } from '../../core/defaults';
 
 type SourceProviderDefinition = {
   label: string;
   detail: string;
-} & ({
-  kind: 'metadata';
-  key: MetadataSourceKey;
-} | {
-  kind: 'document';
-  key: DocumentSourceKey;
-});
+} & (
+  | {
+      kind: 'metadata';
+      key: MetadataSourceKey;
+    }
+  | {
+      kind: 'document';
+      key: DocumentSourceKey;
+    }
+);
 
 const SOURCE_PROVIDER_DEFINITIONS = [
   {
     kind: 'metadata',
     key: 'openlibrary',
     label: 'Open Library',
-    detail: 'Search, bibliographic metadata, subjects, editions, and structured TOCs.',
+    detail:
+      'Search, bibliographic metadata, subjects, editions, and structured TOCs.',
   },
   {
     kind: 'metadata',
@@ -41,13 +43,15 @@ const SOURCE_PROVIDER_DEFINITIONS = [
     kind: 'document',
     key: 'directUrl',
     label: 'Direct URL documents',
-    detail: 'Fetch legal user-provided text, EPUB, or PDF URLs attached to a book.',
+    detail:
+      'Fetch legal user-provided text, EPUB, or PDF URLs attached to a book.',
   },
   {
     kind: 'document',
     key: 'localFile',
     label: 'Local files',
-    detail: 'Allow host-provided local file paths when the embedding environment supports them.',
+    detail:
+      'Allow host-provided local file paths when the embedding environment supports them.',
   },
   {
     kind: 'document',
@@ -59,7 +63,8 @@ const SOURCE_PROVIDER_DEFINITIONS = [
     kind: 'document',
     key: 'qbittorrent',
     label: 'qBittorrent acquisition',
-    detail: 'Preferred TOC/document source when the local bridge is enabled; lawful/user-owned torrents only.',
+    detail:
+      'Preferred TOC/document source when the local bridge is enabled; lawful/user-owned torrents only.',
   },
 ] as const satisfies readonly SourceProviderDefinition[];
 
@@ -92,11 +97,13 @@ export interface ProjectViewModel {
 }
 
 function shellQuote(value: string): string {
-  return value.includes(' ') ? `"${value.replace(/"/g, '\\"')}"` : value;
+  if (/^[A-Za-z0-9_./:-]+$/.test(value)) return value;
+  return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
 export function selectProjectViewModel(state: AppState): ProjectViewModel {
   const localPassword = state.ui.qbittorrentConnection.password;
+  const allowedOrigins = 'http://127.0.0.1:*,http://localhost:*';
   const sourceProviders = SOURCE_PROVIDER_DEFINITIONS.map((definition) => ({
     ...definition,
     checked: sourceProviderChecked(definition, state),
@@ -106,11 +113,13 @@ export function selectProjectViewModel(state: AppState): ProjectViewModel {
     importExportDirty: state.ui.importExportDirty,
     sourceSettings: state.project.sourceSettings,
     sourceProviders,
-    contentPreferenceLabel: state.project.sourceSettings.contentPreference.join(' -> '),
+    contentPreferenceLabel:
+      state.project.sourceSettings.contentPreference.join(' -> '),
     qbittorrentConnection: state.ui.qbittorrentConnection,
     qbittorrentStatus: state.ui.qbittorrentStatus,
-    exportedCredentialFree: !localPassword || !state.ui.importExportText.includes(localPassword),
-    qbittorrentLaunchCommand: `npm run qbittorrent:launch -- --url ${DEFAULT_QBITTORRENT_WEB_UI_URL} --bridge-url ${state.ui.qbittorrentConnection.baseUrl} --data-root ${shellQuote(state.ui.qbittorrentConnection.savePath)} --allowed-origin http://127.0.0.1:*,http://localhost:*`,
-    qbittorrentConfigureCommand: `npm run qbittorrent:launch -- --enable-webui --url ${DEFAULT_QBITTORRENT_WEB_UI_URL} --bridge-url ${state.ui.qbittorrentConnection.baseUrl} --data-root ${shellQuote(state.ui.qbittorrentConnection.savePath)} --allowed-origin http://127.0.0.1:*,http://localhost:*`,
+    exportedCredentialFree:
+      !localPassword || !state.ui.importExportText.includes(localPassword),
+    qbittorrentLaunchCommand: `npm run qbittorrent:launch -- --url ${shellQuote(DEFAULT_QBITTORRENT_WEB_UI_URL)} --bridge-url ${shellQuote(state.ui.qbittorrentConnection.baseUrl)} --data-root ${shellQuote(state.ui.qbittorrentConnection.savePath)} --allowed-origin ${shellQuote(allowedOrigins)}`,
+    qbittorrentConfigureCommand: `npm run qbittorrent:launch -- --enable-webui --url ${shellQuote(DEFAULT_QBITTORRENT_WEB_UI_URL)} --bridge-url ${shellQuote(state.ui.qbittorrentConnection.baseUrl)} --data-root ${shellQuote(state.ui.qbittorrentConnection.savePath)} --allowed-origin ${shellQuote(allowedOrigins)}`,
   };
 }

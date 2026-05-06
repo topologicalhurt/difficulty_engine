@@ -3,15 +3,36 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPlannerStore } from '../../src/app/store';
 import { createPlannerEngine } from '../../src/core/engine';
 import { plannerClock } from '../../src/core/time';
-import type { EnrichmentProvider } from '../../src/core/types';
+import type {
+  EnrichmentProvider,
+  QbittorrentIntegrationService,
+  QbittorrentPluginInfo,
+} from '../../src/core/types';
 import { makeProject, silentLogger } from './store-test-utils';
+
+function createDeferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (error: unknown) => void;
+} {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
 describe('store qBittorrent settings', () => {
   it('stores qBittorrent connection settings locally without exporting credentials', () => {
     const savedConnections: unknown[] = [];
     const store = createPlannerStore({
       initialProject: makeProject(),
-      engine: createPlannerEngine({ clock: plannerClock, logger: silentLogger }),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
       enrichmentProvider: {
         fetchBook: vi.fn(),
         searchBooks: vi.fn(),
@@ -23,6 +44,8 @@ describe('store qBittorrent settings', () => {
         saveQbittorrentConnection: (settings) => {
           savedConnections.push(settings);
         },
+        loadAiConnection: () => undefined,
+        saveAiConnection: () => undefined,
       },
     });
 
@@ -39,7 +62,10 @@ describe('store qBittorrent settings', () => {
       },
     });
 
-    const exported = JSON.parse(store.exportProject()) as Record<string, unknown>;
+    const exported = JSON.parse(store.exportProject()) as Record<
+      string,
+      unknown
+    >;
     expect(savedConnections).toHaveLength(1);
     expect(JSON.stringify(exported)).not.toContain('local-secret');
     expect(exported).toHaveProperty('sourceSettings');
@@ -50,7 +76,10 @@ describe('store qBittorrent settings', () => {
     const savedConnections: unknown[] = [];
     const store = createPlannerStore({
       initialProject: makeProject(),
-      engine: createPlannerEngine({ clock: plannerClock, logger: silentLogger }),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
       enrichmentProvider: {
         fetchBook: vi.fn(),
         searchBooks: vi.fn(),
@@ -62,6 +91,8 @@ describe('store qBittorrent settings', () => {
         saveQbittorrentConnection: (settings) => {
           savedConnections.push(settings);
         },
+        loadAiConnection: () => undefined,
+        saveAiConnection: () => undefined,
       },
     });
 
@@ -72,32 +103,49 @@ describe('store qBittorrent settings', () => {
 
     expect(savedConnections).toHaveLength(2);
     expect(state.ui.qbittorrentConnection.enabled).toBe(true);
-    expect(state.ui.qbittorrentConnection.baseUrl).toBe('http://127.0.0.1:8787');
+    expect(state.ui.qbittorrentConnection.baseUrl).toBe(
+      'http://127.0.0.1:8787',
+    );
     expect(state.project.sourceSettings.documentSources.qbittorrent).toBe(true);
     expect(state.project.sourceSettings.qbittorrent.searchPlugins).toBe(true);
-    expect(state.project.sourceSettings.qbittorrent.requireKnownAccessBasis).toBe(true);
+    expect(
+      state.project.sourceSettings.qbittorrent.requireKnownAccessBasis,
+    ).toBe(true);
     expect(state.project.sourceSettings.qbittorrent.allowedSites).toEqual(
-      expect.arrayContaining(['archive.org', 'gutenberg.org', 'standardebooks.org']),
+      expect.arrayContaining([
+        'archive.org',
+        'gutenberg.org',
+        'standardebooks.org',
+      ]),
     );
     expect(exported).not.toContain('local-secret');
   });
 
   it('passes source masks and local qBittorrent settings into enrichment requests', async () => {
-    const fetchBook = vi.fn(async ({ book, sourceSettings, qbittorrentConnection }) => ({
-      cacheKey: book.id,
-      bookPatch: {},
-      enrichment: book.enrichment,
-      provenance: [
-        {
-          provider: sourceSettings.documentSources.qbittorrent && qbittorrentConnection?.enabled ? 'qbittorrent' : 'test',
-          fetchedAt: '2026-01-05T00:00:00.000Z',
-          confidence: 1,
-        },
-      ],
-    }));
+    const fetchBook = vi.fn(
+      async ({ book, sourceSettings, qbittorrentConnection }) => ({
+        cacheKey: book.id,
+        bookPatch: {},
+        enrichment: book.enrichment,
+        provenance: [
+          {
+            provider:
+              sourceSettings.documentSources.qbittorrent &&
+              qbittorrentConnection?.enabled
+                ? 'qbittorrent'
+                : 'test',
+            fetchedAt: '2026-01-05T00:00:00.000Z',
+            confidence: 1,
+          },
+        ],
+      }),
+    );
     const store = createPlannerStore({
       initialProject: makeProject(),
-      engine: createPlannerEngine({ clock: plannerClock, logger: silentLogger }),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
       enrichmentProvider: {
         fetchBook,
         searchBooks: vi.fn(),
@@ -122,6 +170,91 @@ describe('store qBittorrent settings', () => {
         }),
         qbittorrentConnection: expect.objectContaining({ enabled: true }),
       }),
+    );
+  });
+
+  it('ignores stale connection test results after local settings change', async () => {
+    const connectionResult = createDeferred<void>();
+    const qbittorrentService: QbittorrentIntegrationService = {
+      testConnection: vi.fn(() => connectionResult.promise),
+      listPlugins: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: {
+        fetchBook: vi.fn(),
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      qbittorrentService,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    const pendingTest = store.commands.testQbittorrentConnection();
+    store.commands.updateQbittorrentLocalSettings({
+      enabled: true,
+      baseUrl: 'http://127.0.0.1:8788',
+    });
+    connectionResult.resolve(undefined);
+    await pendingTest;
+
+    const state = store.selectors.getState();
+    expect(state.ui.qbittorrentStatus.state).toBe('idle');
+    expect(state.ui.qbittorrentStatus.message).toBe(
+      'qBittorrent settings saved locally.',
+    );
+    expect(state.ui.banner?.message).not.toBe(
+      'qBittorrent connection succeeded.',
+    );
+  });
+
+  it('ignores stale plugin refresh results after local settings change', async () => {
+    const plugins: QbittorrentPluginInfo[] = [
+      {
+        name: 'plugin-a',
+        fullName: 'Plugin A',
+        enabled: true,
+        url: 'https://example.org',
+        supportedCategories: [],
+      },
+    ];
+    const pluginResult = createDeferred<QbittorrentPluginInfo[]>();
+    const qbittorrentService: QbittorrentIntegrationService = {
+      testConnection: vi.fn(),
+      listPlugins: vi.fn(() => pluginResult.promise),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: {
+        fetchBook: vi.fn(),
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      qbittorrentService,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    const pendingRefresh = store.commands.refreshQbittorrentPlugins();
+    store.commands.updateQbittorrentLocalSettings({
+      enabled: true,
+      baseUrl: 'http://127.0.0.1:8789',
+    });
+    pluginResult.resolve(plugins);
+    await pendingRefresh;
+
+    const state = store.selectors.getState();
+    expect(state.ui.qbittorrentStatus.state).toBe('idle');
+    expect(state.ui.qbittorrentStatus.plugins).toEqual([]);
+    expect(state.ui.qbittorrentStatus.message).toBe(
+      'qBittorrent settings saved locally.',
     );
   });
 });

@@ -1,16 +1,24 @@
 import { DAYS_PER_WEEK } from '../core/date-constants';
 import type { PlannerStore, ScheduleRow } from '../core/types';
+import { compactItems } from '../core/utils';
 import { badge, el } from './dom';
 import { formatCssPercent, formatOneDecimal } from './format';
 
 function rowBadges(row: ScheduleRow): HTMLElement[] {
-  return [
+  return compactItems([
     badge(`Lane ${row.lane + 1}`),
-    row.floorRelaxed ? badge(`Floor ${formatOneDecimal(row.effectiveMinPg)}/${formatOneDecimal(row.strictMinPg)} pg`, 'warn') : null,
+    row.floorRelaxed
+      ? badge(
+          `Floor ${formatOneDecimal(row.effectiveMinPg)}/${formatOneDecimal(row.strictMinPg)} pg`,
+          'warn',
+        )
+      : null,
     row.backfilled ? badge('Backfilled', 'success') : null,
     row.prereqOverlapUsed ? badge('Prereq overlap', 'warn') : null,
-    row.unresolvedPages > 0 ? badge(`${formatOneDecimal(row.unresolvedPages)} unresolved`, 'danger') : null,
-  ].filter(Boolean) as HTMLElement[];
+    row.unresolvedPages > 0
+      ? badge(`${formatOneDecimal(row.unresolvedPages)} unresolved`, 'danger')
+      : null,
+  ]);
 }
 
 export function renderGanttRow(
@@ -25,11 +33,15 @@ export function renderGanttRow(
   const selected = selectedBookId === row.id;
   const safeMaxSlot = Math.max(1, maxSlot);
   const targetStart = formatCssPercent(row.targetStart / safeMaxSlot);
-  const targetWidth = formatCssPercent(Math.max(1, row.targetEnd - row.targetStart) / safeMaxSlot);
+  const targetWidth = formatCssPercent(
+    Math.max(1, row.targetEnd - row.targetStart) / safeMaxSlot,
+  );
   const actualStartSlot = row.actualStart ?? row.targetStart;
   const actualEndSlot = row.actualEnd ?? row.targetEnd;
   const actualStart = formatCssPercent(actualStartSlot / safeMaxSlot);
-  const actualWidth = formatCssPercent(Math.max(1, actualEndSlot - actualStartSlot) / safeMaxSlot);
+  const actualWidth = formatCssPercent(
+    Math.max(1, actualEndSlot - actualStartSlot) / safeMaxSlot,
+  );
   const release = formatCssPercent(row.releaseSlot / safeMaxSlot);
   const weekCount = Math.max(1, Math.ceil(maxSlot / DAYS_PER_WEEK));
 
@@ -48,7 +60,11 @@ export function renderGanttRow(
         { className: 'muted-copy' },
         `Target ${timelineLabel(row.targetStart)} - ${timelineLabel(row.targetEnd)}`,
       ),
-      el('div', { className: 'badge-row compact-badge-row' }, ...rowBadges(row)),
+      el(
+        'div',
+        { className: 'badge-row compact-badge-row' },
+        ...rowBadges(row),
+      ),
     ),
     el(
       'div',
@@ -58,7 +74,9 @@ export function renderGanttRow(
         { className: 'gantt-gridlines' },
         ...Array.from({ length: weekCount }, (_, index) => {
           const marker = el('div', { className: 'gantt-week-marker' });
-          marker.style.left = formatCssPercent((index * DAYS_PER_WEEK) / safeMaxSlot);
+          marker.style.left = formatCssPercent(
+            (index * DAYS_PER_WEEK) / safeMaxSlot,
+          );
           return marker;
         }),
       ),

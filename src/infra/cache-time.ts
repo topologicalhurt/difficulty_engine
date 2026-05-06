@@ -9,3 +9,7 @@ export function cacheEntryIsFresh(expiresAt: number, nowMs: NowMs): boolean {
 export function cacheExpiresAt(cacheTtlMs: number, nowMs: NowMs): number {
   return nowMs() + cacheTtlMs;
 }
+
+export function isoTimestamp(nowMs: NowMs = systemNowMs): string {
+  return new Date(nowMs()).toISOString();
+}

@@ -1,6 +1,10 @@
 import { badge, card, el } from './dom';
 
-function renderAuditList(title: string, items: string[], tone: 'neutral' | 'warn' | 'danger'): HTMLElement {
+function renderAuditList(
+  title: string,
+  items: string[],
+  tone: 'neutral' | 'warn' | 'danger',
+): HTMLElement {
   return card(
     title,
     items.length
@@ -8,10 +12,18 @@ function renderAuditList(title: string, items: string[], tone: 'neutral' | 'warn
           'div',
           { className: 'stack-list' },
           ...items.map((item) =>
-            el('div', { className: 'stack-row' }, badge(title.toLowerCase(), tone), el('div', { text: item })),
+            el(
+              'div',
+              { className: 'stack-row' },
+              badge(title.toLowerCase(), tone),
+              el('div', { text: item }),
+            ),
           ),
         )
-      : el('div', { className: 'muted-copy', text: `No ${title.toLowerCase()}.` }),
+      : el('div', {
+          className: 'muted-copy',
+          text: `No ${title.toLowerCase()}.`,
+        }),
   );
 }
 

@@ -1,4 +1,9 @@
-export type EnrichmentStatus = 'idle' | 'loading' | 'success' | 'stale' | 'failed';
+export type EnrichmentStatus =
+  | 'idle'
+  | 'loading'
+  | 'success'
+  | 'stale'
+  | 'failed';
 export type BookSearchStatus = 'idle' | 'loading' | 'success' | 'failed';
 
 export interface EnrichmentFieldProvenance {
@@ -15,7 +20,14 @@ export interface BookEnrichment {
   chapters: string[];
   description: string;
   olSubjects: string[];
-  tocSource: 'none' | 'manual' | 'search' | 'openlibrary' | 'google_books' | 'internet_archive' | 'pdf';
+  tocSource:
+    | 'none'
+    | 'manual'
+    | 'search'
+    | 'openlibrary'
+    | 'google_books'
+    | 'internet_archive'
+    | 'pdf';
   provenance?: Partial<
     Record<'chapters' | 'description' | 'subjects', EnrichmentFieldProvenance>
   >;

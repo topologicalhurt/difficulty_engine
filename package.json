@@ -12,13 +12,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node ./scripts/smoke.mjs",
+    "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
+    "perf": "node ./scripts/perf.mjs",
+    "perf:ci": "node ./scripts/perf.mjs --ci",
     "stabilize": "python3 scripts/change_safety_report.py && npm run check && npm run build && python3 scripts/audit_source.py && python3 scripts/architecture_report.py && npm run test:e2e",
     "qbittorrent:launch": "node ./scripts/qbittorrent-launch.mjs",
     "qbittorrent:bridge": "node ./scripts/qbittorrent-bridge.mjs",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "check": "npm run lint && npm run typecheck && npm run svelte-check && npm run test"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@types/node": "^25.6.0",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",
@@ -27,7 +31,10 @@
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "globals": "^17.5.0",
+    "jsdom": "^29.1.1",
     "prettier": "^3.6.2",
+    "svelte": "^5.55.5",
+    "svelte-check": "^4.4.8",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

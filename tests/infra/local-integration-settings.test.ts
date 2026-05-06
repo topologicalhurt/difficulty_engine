@@ -22,7 +22,7 @@ describe('local integration settings', () => {
       baseUrl: 'http://127.0.0.1:8787',
       username: 'connor',
       password: 'local-secret',
-      savePath: 'data/documents',
+      savePath: 'output/data/documents',
       category: 'difficulty-engine',
       timeoutMs: 10000,
     });

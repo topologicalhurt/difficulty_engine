@@ -14,7 +14,9 @@ describe('book search query filtering', () => {
     expect(isFullIsbnQuery('978-1-2345-6789-7')).toBe(true);
     expect(isFullIsbnQuery('9781234567890')).toBe(false);
     expect(openLibrarySearchParams('9781234567890').has('isbn')).toBe(false);
-    expect(openLibrarySearchParams('9781234567897').get('isbn')).toBe('9781234567897');
+    expect(openLibrarySearchParams('9781234567897').get('isbn')).toBe(
+      '9781234567897',
+    );
   });
 
   it('does not classify malformed alphanumeric text as an ISBN query', () => {

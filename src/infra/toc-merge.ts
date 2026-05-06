@@ -1,5 +1,16 @@
 import { sanitizeChapterTitles } from '../core/chapter-titles';
-import type { BookEnrichment, BookRecord, EnrichmentFieldProvenance } from '../core/types';
+import type {
+  BookEnrichment,
+  BookRecord,
+  EnrichmentFieldProvenance,
+} from '../core/types';
+import { compactItems, uniqueCompactStrings } from '../core/utils';
+import {
+  bestChapterCandidate,
+  existingChapterCandidate,
+  preferredTocSource,
+} from './toc-candidate-ranking';
+import { isoTimestamp } from './cache-time';
 
 export interface StrategyCandidate {
   provider: EnrichmentFieldProvenance['provider'];
@@ -29,53 +40,13 @@ export interface StrategyResolution {
   provenance: EnrichmentFieldProvenance[];
 }
 
-function uniqueNonEmptyStrings(values: Array<string | null | undefined>, limit = 40): string[] {
-  return Array.from(
-    new Set(
-      values
-        .map((value) => String(value ?? '').trim())
-        .filter(Boolean),
-    ),
-  ).slice(0, limit);
-}
-
-function preferredTocSource(
-  current: BookEnrichment['tocSource'],
+function buildProvenance(
   candidates: StrategyCandidate[],
-): BookEnrichment['tocSource'] {
-  const winner = bestChapterCandidate(candidates);
-  return winner?.tocSource ?? current;
-}
-
-function chapterSourcePriority(candidate: StrategyCandidate): number {
-  const source = candidate.tocSource;
-  if (source === 'manual') return 100;
-  if (source === 'pdf') return 90;
-  if (source === 'internet_archive') return 80;
-  if (source === 'openlibrary') return 70;
-  if (source === 'google_books') return 50;
-  if (source === 'search') return 40;
-  if (candidate.provider === 'manual') return 60;
-  return 0;
-}
-
-function bestChapterCandidate(candidates: StrategyCandidate[]): StrategyCandidate | undefined {
-  return [...candidates]
-    .filter((candidate) => candidate.chapters?.length)
-    .sort((left, right) => {
-      const priorityDelta = chapterSourcePriority(right) - chapterSourcePriority(left);
-      if (priorityDelta !== 0) return priorityDelta;
-      const confidenceDelta = right.confidence - left.confidence;
-      if (confidenceDelta !== 0) return confidenceDelta;
-      const countDelta = (right.chapters?.length ?? 0) - (left.chapters?.length ?? 0);
-      if (countDelta !== 0) return countDelta;
-      return left.provider.localeCompare(right.provider) || left.sourceUrl.localeCompare(right.sourceUrl);
-    })[0];
-}
-
-function buildProvenance(candidates: StrategyCandidate[]): EnrichmentFieldProvenance[] {
-  return uniqueNonEmptyStrings(
-    candidates.map((candidate) => `${candidate.provider}::${candidate.sourceUrl}`),
+): EnrichmentFieldProvenance[] {
+  return uniqueCompactStrings(
+    candidates.map(
+      (candidate) => `${candidate.provider}::${candidate.sourceUrl}`,
+    ),
     12,
   ).map((key) => {
     const [provider, sourceUrl] = key.split('::');
@@ -85,7 +56,7 @@ function buildProvenance(candidates: StrategyCandidate[]): EnrichmentFieldProven
     return {
       provider,
       sourceUrl,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: isoTimestamp(),
       confidence: candidate?.confidence ?? 0.5,
       strategy: candidate?.strategy,
       inferred: candidate?.inferred,
@@ -109,88 +80,125 @@ function provenanceFor(
   );
 }
 
+function candidateValueIsPresent(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  return value != null && value !== '';
+}
+
+function firstCandidateValue<T>(
+  candidates: StrategyCandidate[],
+  select: (candidate: StrategyCandidate) => T | null | undefined,
+  accept?: (candidate: StrategyCandidate, value: T) => boolean,
+): T | undefined {
+  for (const candidate of candidates) {
+    const value = select(candidate);
+    if (
+      candidateValueIsPresent(value) &&
+      (!accept || accept(candidate, value as T))
+    ) {
+      return value as T;
+    }
+  }
+  return undefined;
+}
+
 export function mergeStrategyCandidates(
   book: BookRecord,
   candidates: StrategyCandidate[],
 ): StrategyResolution {
-  const selectedChapterCandidate = bestChapterCandidate(candidates);
+  const chapterCandidates = compactItems([
+    existingChapterCandidate(book),
+    ...candidates,
+  ]);
+  const selectedChapterCandidate = bestChapterCandidate(chapterCandidates);
   const candidateChapters = sanitizeChapterTitles(
     selectedChapterCandidate?.chapters ?? [],
-    { source: 'structured' },
+    {
+      source:
+        selectedChapterCandidate?.tocSource === 'manual'
+          ? 'manual'
+          : 'structured',
+    },
   );
   const chapters = candidateChapters.length
     ? candidateChapters
     : sanitizeChapterTitles(book.enrichment.chapters, { source: 'imported' });
+  const pickCandidateValue = <T>(
+    select: (candidate: StrategyCandidate) => T | null | undefined,
+    accept?: (candidate: StrategyCandidate, value: T) => boolean,
+  ): T | undefined => firstCandidateValue(candidates, select, accept);
   const description =
-    candidates.find((candidate) => candidate.description)?.description
-    ?? book.enrichment.description;
-  const subjects = uniqueNonEmptyStrings([
-    ...book.subjects,
-    ...book.enrichment.olSubjects,
-    ...candidates.flatMap((candidate) => candidate.subjects ?? []),
-  ]);
+    pickCandidateValue((candidate) => candidate.description) ??
+    book.enrichment.description;
+  const subjects = uniqueCompactStrings(
+    [
+      ...book.subjects,
+      ...book.enrichment.olSubjects,
+      ...candidates.flatMap((candidate) => candidate.subjects ?? []),
+    ],
+    40,
+  );
   const preferredPages =
-    candidates.find(
-      (candidate) => candidate.provider !== 'manual' && (candidate.pages ?? 0) > 0,
-    )?.pages
-    ?? candidates.find((candidate) => (candidate.pages ?? 0) > 0)?.pages;
+    pickCandidateValue(
+      (candidate) => candidate.pages,
+      (candidate, pages) => candidate.provider !== 'manual' && pages > 0,
+    ) ??
+    pickCandidateValue(
+      (candidate) => candidate.pages,
+      (_candidate, pages) => pages > 0,
+    );
   const provenance = buildProvenance(candidates);
 
   return {
     bookPatch: {
-      authors:
-        candidates.find((candidate) => candidate.authors?.length)?.authors
-        ?? undefined,
+      authors: pickCandidateValue((candidate) => candidate.authors),
       pages: preferredPages ?? undefined,
       subjects,
-      publisher:
-        candidates.find((candidate) => candidate.publisher)?.publisher
-        ?? undefined,
-      isbn:
-        candidates.find((candidate) => candidate.isbn)?.isbn
-        ?? undefined,
-      year:
-        candidates.find((candidate) => candidate.year != null)?.year
-        ?? undefined,
-      openLibraryKey:
-        candidates.find((candidate) => candidate.openLibraryKey)?.openLibraryKey
-        ?? undefined,
-      openLibraryEditionKey:
-        candidates.find((candidate) => candidate.openLibraryEditionKey)?.openLibraryEditionKey
-        ?? undefined,
-      openLibraryWorkKey:
-        candidates.find((candidate) => candidate.openLibraryWorkKey)?.openLibraryWorkKey
-        ?? undefined,
-      googleBooksId:
-        candidates.find((candidate) => candidate.googleBooksId)?.googleBooksId
-        ?? undefined,
+      publisher: pickCandidateValue((candidate) => candidate.publisher),
+      isbn: pickCandidateValue((candidate) => candidate.isbn),
+      year: pickCandidateValue((candidate) => candidate.year),
+      openLibraryKey: pickCandidateValue(
+        (candidate) => candidate.openLibraryKey,
+      ),
+      openLibraryEditionKey: pickCandidateValue(
+        (candidate) => candidate.openLibraryEditionKey,
+      ),
+      openLibraryWorkKey: pickCandidateValue(
+        (candidate) => candidate.openLibraryWorkKey,
+      ),
+      googleBooksId: pickCandidateValue((candidate) => candidate.googleBooksId),
     },
     enrichment: {
       chapters,
       description,
       olSubjects: subjects,
-      tocSource: preferredTocSource(book.enrichment.tocSource, candidates),
+      tocSource: preferredTocSource(
+        book.enrichment.tocSource,
+        chapterCandidates,
+      ),
       provenance: {
         chapters:
           chapters.length && provenance[0]
-            ? provenanceFor(provenance, candidates, (candidate) =>
+            ? (provenanceFor(provenance, candidates, (candidate) =>
                 Boolean(
                   selectedChapterCandidate &&
                   candidate.provider === selectedChapterCandidate.provider &&
                   candidate.sourceUrl === selectedChapterCandidate.sourceUrl &&
                   candidate.tocSource === selectedChapterCandidate.tocSource,
-                ))
-              ?? book.enrichment.provenance?.chapters
+                ),
+              ) ?? book.enrichment.provenance?.chapters)
             : book.enrichment.provenance?.chapters,
         description:
           description && provenance[0]
-            ? provenanceFor(provenance, candidates, (candidate) => Boolean(candidate.description))
-              ?? book.enrichment.provenance?.description
+            ? (provenanceFor(provenance, candidates, (candidate) =>
+                Boolean(candidate.description),
+              ) ?? book.enrichment.provenance?.description)
             : book.enrichment.provenance?.description,
         subjects:
           subjects.length && provenance[0]
-            ? provenanceFor(provenance, candidates, (candidate) => Boolean(candidate.subjects?.length))
-              ?? book.enrichment.provenance?.subjects
+            ? (provenanceFor(provenance, candidates, (candidate) =>
+                Boolean(candidate.subjects?.length),
+              ) ?? book.enrichment.provenance?.subjects)
             : book.enrichment.provenance?.subjects,
       },
     },

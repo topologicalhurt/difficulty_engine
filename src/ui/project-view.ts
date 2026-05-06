@@ -5,7 +5,10 @@ import { renderImportExportCard } from './project-import-export-card';
 import { renderQbittorrentCard } from './project-qbittorrent-card';
 import { renderSourceProvidersCard } from './project-source-providers-card';
 
-export function renderProjectView(state: AppState, store: PlannerStore): HTMLElement {
+export function renderProjectView(
+  state: AppState,
+  store: PlannerStore,
+): HTMLElement {
   const viewModel = selectProjectViewModel(state);
   return el(
     'div',

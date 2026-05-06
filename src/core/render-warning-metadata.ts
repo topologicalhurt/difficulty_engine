@@ -14,7 +14,12 @@ export function buildMetadataWarnings(
         book.enrichment.chapters.length > 0 ||
         Boolean(book.enrichment.description.trim());
       const cacheStatus = project.enrichmentCache[book.id]?.status;
-      return !book.ignored && !book.completed && !hasLocalEvidence && cacheStatus !== 'success';
+      return (
+        !book.ignored &&
+        !book.completed &&
+        !hasLocalEvidence &&
+        cacheStatus !== 'success'
+      );
     })
     .map((book) => book.id);
 
@@ -32,7 +37,12 @@ export function buildMetadataWarnings(
   const lowDifficultyConfidenceIds = Object.entries(snapshot.difficultyModel)
     .filter(([id, difficulty]) => {
       const book = project.library.books[id];
-      return Boolean(book && !book.ignored && !book.completed && difficulty.metadataConfidence < 0.35);
+      return Boolean(
+        book &&
+        !book.ignored &&
+        !book.completed &&
+        difficulty.metadataConfidence < 0.35,
+      );
     })
     .map(([id]) => id);
 

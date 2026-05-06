@@ -10,6 +10,32 @@ export function unique<T>(values: T[]): T[] {
   return [...new Set(values.filter(Boolean))];
 }
 
+export function compactString(value: unknown): string {
+  return String(value ?? '').trim();
+}
+
+export function compactStrings(values: unknown[]): string[] {
+  return values.map(compactString).filter(Boolean);
+}
+
+export function compactJoin(values: unknown[], separator: string): string {
+  return compactStrings(values).join(separator);
+}
+
+export function compactItems<T>(
+  values: readonly (T | null | undefined | false)[],
+): T[] {
+  return values.filter((value): value is T => Boolean(value));
+}
+
+export function uniqueCompactStrings(
+  values: unknown[],
+  limit?: number,
+): string[] {
+  const result = Array.from(new Set(compactStrings(values)));
+  return limit == null ? result : result.slice(0, limit);
+}
+
 export function safeNumber(value: unknown, fallback: number): number {
   const parsed = Number.parseFloat(String(value ?? ''));
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -24,7 +50,9 @@ export function round2(value: number): number {
 }
 
 export function mean(values: number[]): number {
-  return values.length ? values.reduce((total, value) => total + value, 0) / values.length : 0;
+  return values.length
+    ? values.reduce((total, value) => total + value, 0) / values.length
+    : 0;
 }
 
 export function sum(values: number[]): number {

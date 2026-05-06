@@ -20,9 +20,9 @@ const FORBIDDEN_PHRASES = [
 
 describe('user-facing copy', () => {
   it('avoids implementation-facing tab descriptions', () => {
-    const copy = USER_FACING_COPY_FILES
-      .map((path) => readFileSync(join(process.cwd(), path), 'utf8'))
-      .join('\n');
+    const copy = USER_FACING_COPY_FILES.map((path) =>
+      readFileSync(join(process.cwd(), path), 'utf8'),
+    ).join('\n');
 
     FORBIDDEN_PHRASES.forEach((phrase) => {
       expect(copy).not.toContain(phrase);

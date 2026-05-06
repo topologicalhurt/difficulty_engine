@@ -12,7 +12,26 @@ function sourceFiles(dir = SRC): string[] {
       const path = join(dir, entry);
       const stat = statSync(path);
       if (stat.isDirectory()) return sourceFiles(path);
-      return path.endsWith('.ts') ? [path] : [];
+      return path.endsWith('.ts') || path.endsWith('.svelte') ? [path] : [];
+    })
+    .sort();
+}
+
+function repositoryFiles(dir = ROOT): string[] {
+  const ignored = new Set([
+    '.git',
+    'node_modules',
+    'coverage',
+    'test-results',
+    'data',
+  ]);
+  return readdirSync(dir)
+    .flatMap((entry) => {
+      if (dir === ROOT && ignored.has(entry)) return [];
+      const path = join(dir, entry);
+      const stat = statSync(path);
+      if (stat.isDirectory()) return repositoryFiles(path);
+      return [path];
     })
     .sort();
 }
@@ -26,12 +45,26 @@ function relativeSourcePath(path: string): string {
 }
 
 describe('source architecture guardrails', () => {
+  it('keeps removable local artifacts out of the repository tree', () => {
+    const junkArtifactPattern =
+      /(^|\/)(?:\.DS_Store|\.eslintcache|\.tsbuildinfo)$|(?:\.bak|\.backup|\.old|\.orig|\.rej|\.tmp|~)$/;
+    const violations = repositoryFiles()
+      .map(relativeSourcePath)
+      .filter((path) => junkArtifactPattern.test(path.replace(/\\/g, '/')));
+
+    expect(violations).toEqual([]);
+  });
+
   it('keeps source modules below the hard audit size limit', () => {
     const oversized = sourceFiles()
       .map((path) => ({ path, lines: lineCount(path) }))
       .filter((file) => file.lines > 500);
 
-    expect(oversized.map((file) => `${relativeSourcePath(file.path)} (${file.lines})`)).toEqual([]);
+    expect(
+      oversized.map(
+        (file) => `${relativeSourcePath(file.path)} (${file.lines})`,
+      ),
+    ).toEqual([]);
   });
 
   it('keeps extracted orchestration files small enough to remain orchestration-only', () => {
@@ -43,7 +76,11 @@ describe('source architecture guardrails', () => {
     ]);
 
     const violations = Array.from(modules.entries())
-      .map(([path, maxLines]) => ({ path, maxLines, lines: lineCount(join(ROOT, path)) }))
+      .map(([path, maxLines]) => ({
+        path,
+        maxLines,
+        lines: lineCount(join(ROOT, path)),
+      }))
       .filter((module) => module.lines > module.maxLines);
 
     expect(violations).toEqual([]);
@@ -61,14 +98,57 @@ describe('source architecture guardrails', () => {
     ]);
     const violations = sourceFiles()
       .filter((path) => !allowed.has(relativeSourcePath(path)))
-      .filter((path) => /^\s*export\s+(?:type\s+)?(?:\*|\{[^}]+\})\s+from\s+['"]/m.test(readFileSync(path, 'utf8')))
+      .filter((path) =>
+        /^\s*export\s+(?:type\s+)?(?:\*|\{[^}]+\})\s+from\s+['"]/m.test(
+          readFileSync(path, 'utf8'),
+        ),
+      )
       .map(relativeSourcePath);
 
     expect(violations).toEqual([]);
   });
 
+  it('keeps dropped migration terminology out of shipped source paths and text', () => {
+    const forbiddenPattern =
+      /\b(deprecated|dropped|legacy|obsolete|transitional)\b|\bbackwards?\s+compatibility\b|\bprototype[-\s]+(?:era|state|implementation|wip)\b/i;
+    const violations = sourceFiles()
+      .map((path) => ({
+        path: relativeSourcePath(path),
+        text: readFileSync(path, 'utf8'),
+      }))
+      .filter(
+        (source) =>
+          forbiddenPattern.test(source.path) ||
+          forbiddenPattern.test(source.text),
+      )
+      .map((source) => source.path);
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps architecture documents aligned with the current runtime contracts', () => {
+    const docs = ['ARCHITECTURE.md', 'CHANGE_GUIDE.md', 'README.md'];
+    const stalePattern =
+      /\b(?:DOM-driven|typed DOM views|framework-light and DOM)\b/i;
+    const staleDocs = docs.filter((path) =>
+      stalePattern.test(readFileSync(join(ROOT, path), 'utf8')),
+    );
+    const architecture = readFileSync(join(ROOT, 'ARCHITECTURE.md'), 'utf8');
+    const changeGuide = readFileSync(join(ROOT, 'CHANGE_GUIDE.md'), 'utf8');
+
+    expect(staleDocs).toEqual([]);
+    expect(architecture).toContain('PlannerComputeAdapter');
+    expect(architecture).toContain('Svelte');
+    expect(changeGuide).toContain('Document content priority');
+    expect(changeGuide).toContain('Add Or Change Worker Compute Or Persistence');
+  });
+
   it('keeps core, infra, and app layer imports one-directional', () => {
-    const importPattern = /^\s*import(?:\s+type)?[^'"]*from\s+['"](?<specifier>\.{1,2}\/[^'"]+)['"]/gm;
+    const importPattern =
+      /^\s*import(?:\s+type)?[^'"]*from\s+['"](?<specifier>\.{1,2}\/[^'"]+)['"]/gm;
+    const appUiImportAllowlist = new Set([
+      'src/app/mount.ts -> src/ui/svelte/AppShell.svelte',
+    ]);
     const violations: string[] = [];
     for (const path of sourceFiles()) {
       const relativePath = relativeSourcePath(path);
@@ -77,19 +157,31 @@ describe('source architecture guardrails', () => {
         const specifier = match.groups?.specifier;
         if (!specifier) continue;
         const target = join(dirname(path), specifier).replace(/\\/g, '/');
-        const resolved = sourceFiles().find((file) => file === `${target}.ts` || file === `${target}/index.ts`);
+        const resolved = sourceFiles().find(
+          (file) =>
+            file === target ||
+            file === `${target}.ts` ||
+            file === `${target}.svelte` ||
+            file === `${target}/index.ts`,
+        );
         if (!resolved) continue;
         const relativeTarget = relativeSourcePath(resolved);
-        if (relativePath.startsWith('src/core/') && /src\/(?:app|ui|infra)\//.test(relativeTarget)) {
+        if (
+          relativePath.startsWith('src/core/') &&
+          /src\/(?:app|ui|infra)\//.test(relativeTarget)
+        ) {
           violations.push(`${relativePath} -> ${relativeTarget}`);
         }
-        if (relativePath.startsWith('src/infra/') && /src\/(?:app|ui)\//.test(relativeTarget)) {
+        if (
+          relativePath.startsWith('src/infra/') &&
+          /src\/(?:app|ui)\//.test(relativeTarget)
+        ) {
           violations.push(`${relativePath} -> ${relativeTarget}`);
         }
         if (
           relativePath.startsWith('src/app/') &&
           relativeTarget.startsWith('src/ui/') &&
-          !(relativePath === 'src/app/mount.ts' && relativeTarget === 'src/ui/app-shell.ts')
+          !appUiImportAllowlist.has(`${relativePath} -> ${relativeTarget}`)
         ) {
           violations.push(`${relativePath} -> ${relativeTarget}`);
         }
@@ -102,19 +194,57 @@ describe('source architecture guardrails', () => {
   it('keeps shared calendar constants centralized', () => {
     const declarations = sourceFiles()
       .filter((path) => !path.endsWith('src/core/date-constants.ts'))
-      .filter((path) => /\bconst\s+DAYS_PER_WEEK\s*=/.test(readFileSync(path, 'utf8')))
+      .filter((path) =>
+        /\bconst\s+DAYS_PER_WEEK\s*=/.test(readFileSync(path, 'utf8')),
+      )
       .map(relativeSourcePath);
 
     expect(declarations).toEqual([]);
   });
 
+  it('keeps selector date labels behind date-label helpers', () => {
+    const allowed = new Set(['src/app/selectors/date-labels.ts']);
+    const violations = sourceFiles()
+      .map(relativeSourcePath)
+      .filter(
+        (path) => path.startsWith('src/app/selectors/') && !allowed.has(path),
+      )
+      .filter((path) =>
+        /\btoLocaleDateString\s*\(/.test(
+          readFileSync(join(ROOT, path), 'utf8'),
+        ),
+      );
+
+    expect(violations).toEqual([]);
+  });
+
   it('keeps select controls behind the shared selectInput primitive', () => {
-    const allowed = new Set(['src/ui/dom.ts']);
-    const adHocSelectPattern = /(?:document\.createElement\(['"](?:select|option)['"]\)|\bel\(['"](?:select|option)['"])/;
+    const allowed = new Set(['src/ui/form-controls.ts']);
+    const adHocSelectPattern =
+      /(?:document\.createElement\(['"](?:select|option)['"]\)|\bel\(['"](?:select|option)['"])/;
     const violations = sourceFiles()
       .map(relativeSourcePath)
       .filter((path) => path.startsWith('src/ui/') && !allowed.has(path))
-      .filter((path) => adHocSelectPattern.test(readFileSync(join(ROOT, path), 'utf8')));
+      .filter((path) =>
+        adHocSelectPattern.test(readFileSync(join(ROOT, path), 'utf8')),
+      );
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps text, numeric, file, and checkbox inputs behind shared control primitives', () => {
+    const allowed = new Set([
+      'src/ui/form-controls.ts',
+      'src/ui/constraint-field.ts',
+    ]);
+    const adHocInputPattern =
+      /(?:document\.createElement\(['"](?:input|textarea)['"]\)|\bel\(['"](?:input|textarea)['"])/;
+    const violations = sourceFiles()
+      .map(relativeSourcePath)
+      .filter((path) => path.startsWith('src/ui/') && !allowed.has(path))
+      .filter((path) =>
+        adHocInputPattern.test(readFileSync(join(ROOT, path), 'utf8')),
+      );
 
     expect(violations).toEqual([]);
   });
@@ -125,18 +255,23 @@ describe('source architecture guardrails', () => {
     const violations = sourceFiles()
       .map(relativeSourcePath)
       .filter((path) => path.startsWith('src/ui/') && !allowed.has(path))
-      .filter((path) => localPercentPattern.test(readFileSync(join(ROOT, path), 'utf8')));
+      .filter((path) =>
+        localPercentPattern.test(readFileSync(join(ROOT, path), 'utf8')),
+      );
 
     expect(violations).toEqual([]);
   });
 
   it('keeps CSS percentage strings behind formatCssPercent', () => {
     const allowed = new Set(['src/ui/format.ts']);
-    const localCssPercentPattern = /style\.(?:width|height|left)\s*=.*\*\s*100.*%/;
+    const localCssPercentPattern =
+      /style\.(?:width|height|left)\s*=.*\*\s*100.*%/;
     const violations = sourceFiles()
       .map(relativeSourcePath)
       .filter((path) => path.startsWith('src/ui/') && !allowed.has(path))
-      .filter((path) => localCssPercentPattern.test(readFileSync(join(ROOT, path), 'utf8')));
+      .filter((path) =>
+        localCssPercentPattern.test(readFileSync(join(ROOT, path), 'utf8')),
+      );
 
     expect(violations).toEqual([]);
   });
@@ -147,7 +282,9 @@ describe('source architecture guardrails', () => {
     const violations = sourceFiles()
       .map(relativeSourcePath)
       .filter((path) => path.startsWith('src/infra/'))
-      .filter((path) => directSourceFlagPattern.test(readFileSync(join(ROOT, path), 'utf8')));
+      .filter((path) =>
+        directSourceFlagPattern.test(readFileSync(join(ROOT, path), 'utf8')),
+      );
 
     expect(violations).toEqual([]);
   });
@@ -157,7 +294,23 @@ describe('source architecture guardrails', () => {
     const violations = sourceFiles()
       .map(relativeSourcePath)
       .filter((path) => path.startsWith('src/infra/') && !allowed.has(path))
-      .filter((path) => /\bDate\.now\s*\(/.test(readFileSync(join(ROOT, path), 'utf8')));
+      .filter((path) =>
+        /\bDate\.now\s*\(/.test(readFileSync(join(ROOT, path), 'utf8')),
+      );
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps infra ISO timestamps behind cache-time helpers', () => {
+    const allowed = new Set(['src/infra/cache-time.ts']);
+    const violations = sourceFiles()
+      .map(relativeSourcePath)
+      .filter((path) => path.startsWith('src/infra/') && !allowed.has(path))
+      .filter((path) =>
+        /new Date\s*\([^)]*\)\.toISOString\s*\(/.test(
+          readFileSync(join(ROOT, path), 'utf8'),
+        ),
+      );
 
     expect(violations).toEqual([]);
   });
@@ -167,10 +320,31 @@ describe('source architecture guardrails', () => {
     expect(existsSync(guide)).toBe(true);
     expect(readFileSync(guide, 'utf8')).toContain('Default Change Loop');
     expect(readFileSync(guide, 'utf8')).toContain('Canonical Patterns');
-    expect(existsSync(join(ROOT, 'scripts', 'change_safety_report.py'))).toBe(true);
+    expect(existsSync(join(ROOT, 'scripts', 'change_safety_report.py'))).toBe(
+      true,
+    );
   });
 
   it('ships the architecture report script used by design reviews', () => {
-    expect(existsSync(join(ROOT, 'scripts', 'architecture_report.py'))).toBe(true);
+    expect(existsSync(join(ROOT, 'scripts', 'architecture_report.py'))).toBe(
+      true,
+    );
+  });
+
+  it('ships matcher audit tooling and keeps infra fuzzy helpers centralized', () => {
+    expect(existsSync(join(ROOT, 'scripts', 'matcher_audit.py'))).toBe(true);
+    expect(existsSync(join(ROOT, 'src', 'infra', 'token-similarity.ts'))).toBe(
+      false,
+    );
+    const duplicateMatcherPattern =
+      /\bfunction\s+(?:tokenSet|jaccardTokenSimilarity)\b/;
+    const violations = sourceFiles()
+      .map(relativeSourcePath)
+      .filter((path) => path.startsWith('src/infra/'))
+      .filter((path) =>
+        duplicateMatcherPattern.test(readFileSync(join(ROOT, path), 'utf8')),
+      );
+
+    expect(violations).toEqual([]);
   });
 });

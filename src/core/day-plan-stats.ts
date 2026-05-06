@@ -18,13 +18,16 @@ export function buildDayPlanBookStats(
       actualWks:
         state.actualStart == null || state.actualEnd == null
           ? 0
-          : (state.actualEnd - state.actualStart) / Math.max(1, project.constraints.dpw),
+          : (state.actualEnd - state.actualStart) /
+            Math.max(1, project.constraints.dpw),
       usedDays: state.usedDays,
       minutes: state.usedMinutes,
       remainingMinutes: Math.max(
         0,
         (state.readRemainTenths / 10) * state.mppRead +
-          (state.skimRemainTenths / 10) * state.mppRead * (state.skimRatio || 0.35),
+          (state.skimRemainTenths / 10) *
+            state.mppRead *
+            (state.skimRatio || 0.35),
       ),
       dayPages: state.usedDays ? state.usedTenths / 10 / state.usedDays : 0,
       peakDayPages: state.peakTenths / 10,
@@ -43,7 +46,10 @@ export function buildDayPlanBookStats(
       relaxationReason: state.relaxationReason,
       backfilled: Boolean(state.backfilled),
       prereqOverlapUsed: Boolean(state.prereqOverlapUsed),
-      releaseFidelity: state.actualStart == null ? true : state.actualStart >= state.releaseSlot,
+      releaseFidelity:
+        state.actualStart == null
+          ? true
+          : state.actualStart >= state.releaseSlot,
       laneFidelity:
         !state.laneEnforced ||
         !state.lanePrevId ||

@@ -39,7 +39,12 @@ export const SEARCH_CONTRACTS: WiringContract[] = [
     projectReads: [],
     projectWrites: [],
     uiReads: ['bookSearchQuery', 'bookSearchOffset'],
-    uiWrites: ['bookSearchStatus', 'bookSearchResults', 'bookSearchHasMore', 'bookSearchOffset'],
+    uiWrites: [
+      'bookSearchStatus',
+      'bookSearchResults',
+      'bookSearchHasMore',
+      'bookSearchOffset',
+    ],
     snapshotEffects: [],
     renderEffects: ['search results'],
     recomputePolicy: 'ui_only',
@@ -54,7 +59,12 @@ export const SEARCH_CONTRACTS: WiringContract[] = [
     projectReads: [],
     projectWrites: [],
     uiReads: ['bookSearchQuery', 'bookSearchHasMore', 'bookSearchOffset'],
-    uiWrites: ['bookSearchStatus', 'bookSearchResults', 'bookSearchHasMore', 'bookSearchOffset'],
+    uiWrites: [
+      'bookSearchStatus',
+      'bookSearchResults',
+      'bookSearchHasMore',
+      'bookSearchOffset',
+    ],
     snapshotEffects: [],
     renderEffects: ['search results'],
     recomputePolicy: 'ui_only',
@@ -74,6 +84,7 @@ export const SEARCH_CONTRACTS: WiringContract[] = [
     renderEffects: [],
     recomputePolicy: 'ui_only',
     testIds: ['tests/app/wiring-contracts.test.ts'],
-    notes: 'Local timer state is allowed because it only delays dispatching a registered command.',
+    notes:
+      'Local timer state is allowed because it only delays dispatching a registered command.',
   },
 ];

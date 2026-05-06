@@ -28,24 +28,38 @@ function book(title: string): BookRecord {
     ignored: false,
     constantRD: false,
     completed: false,
-    enrichment: { chapters: [], description: '', olSubjects: [], tocSource: 'none' },
+    enrichment: {
+      chapters: [],
+      description: '',
+      olSubjects: [],
+      tocSource: 'none',
+    },
   };
 }
 
 describe('Open Library result filtering', () => {
   it('rejects unrelated first-page documents instead of accepting the first result', () => {
     expect(
-      chooseBestDoc(book('Functional Analysis'), [
-        { title: 'Cooking With Herbs', author_name: ['Someone Else'] },
-      ], 5),
+      chooseBestDoc(
+        book('Functional Analysis'),
+        [{ title: 'Cooking With Herbs', author_name: ['Someone Else'] }],
+        5,
+      ),
     ).toBeUndefined();
   });
 
   it('accepts close title matches even when punctuation differs', () => {
     expect(
-      chooseBestDoc(book('Functional Analysis'), [
-        { title: 'Functional Analysis: An Introduction', author_name: ['A. Author'] },
-      ], 5)?.title,
+      chooseBestDoc(
+        book('Functional Analysis'),
+        [
+          {
+            title: 'Functional Analysis: An Introduction',
+            author_name: ['A. Author'],
+          },
+        ],
+        5,
+      )?.title,
     ).toBe('Functional Analysis: An Introduction');
   });
 
@@ -56,18 +70,32 @@ describe('Open Library result filtering', () => {
       cacheTtlMs: 100,
       retryCount: 0,
       nowMs: () => now,
-      jsonFetcher: async <T,>(): Promise<T> => {
+      jsonFetcher: async <T>(): Promise<T> => {
         calls += 1;
         return {
-          docs: [{ title: `Functional Analysis ${calls}`, author_name: ['A. Author'] }],
+          docs: [
+            {
+              title: `Functional Analysis ${calls}`,
+              author_name: ['A. Author'],
+            },
+          ],
         } as T;
       },
     });
-    const request = { query: 'functional analysis', sourceSettings: createDefaultSourceSettings() };
+    const request = {
+      query: 'functional analysis',
+      sourceSettings: createDefaultSourceSettings(),
+    };
 
-    expect((await runner.searchBooks(request)).results[0]?.title).toBe('Functional Analysis 1');
-    expect((await runner.searchBooks(request)).results[0]?.title).toBe('Functional Analysis 1');
+    expect((await runner.searchBooks(request)).results[0]?.title).toBe(
+      'Functional Analysis 1',
+    );
+    expect((await runner.searchBooks(request)).results[0]?.title).toBe(
+      'Functional Analysis 1',
+    );
     now = 1101;
-    expect((await runner.searchBooks(request)).results[0]?.title).toBe('Functional Analysis 2');
+    expect((await runner.searchBooks(request)).results[0]?.title).toBe(
+      'Functional Analysis 2',
+    );
   });
 });

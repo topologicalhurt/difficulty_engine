@@ -1,4 +1,7 @@
-import type { ProjectViewModel, ProjectSourceProviderRow } from '../app/selectors/project';
+import type {
+  ProjectViewModel,
+  ProjectSourceProviderRow,
+} from '../app/selectors/project';
 import type { PlannerStore, SourceSettings } from '../core/types';
 import { card, el } from './dom';
 import { sourceCheckbox } from './project-view-controls';
@@ -9,13 +12,27 @@ function sourceProviderPatch(
   checked: boolean,
 ): Partial<SourceSettings> {
   return row.kind === 'metadata'
-    ? { metadataSources: { ...sourceSettings.metadataSources, [row.key]: checked } }
-    : { documentSources: { ...sourceSettings.documentSources, [row.key]: checked } };
+    ? {
+        metadataSources: {
+          ...sourceSettings.metadataSources,
+          [row.key]: checked,
+        },
+      }
+    : {
+        documentSources: {
+          ...sourceSettings.documentSources,
+          [row.key]: checked,
+        },
+      };
 }
 
-export function renderSourceProvidersCard(viewModel: ProjectViewModel, store: PlannerStore): HTMLElement {
+export function renderSourceProvidersCard(
+  viewModel: ProjectViewModel,
+  store: PlannerStore,
+): HTMLElement {
   const sourceSettings = viewModel.sourceSettings;
-  const update = (patch: Partial<SourceSettings>): void => store.commands.updateSourceSettings(patch);
+  const update = (patch: Partial<SourceSettings>): void =>
+    store.commands.updateSourceSettings(patch);
   return card(
     'Source providers',
     el('p', {

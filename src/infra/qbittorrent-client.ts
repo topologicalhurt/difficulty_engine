@@ -3,17 +3,21 @@ import type {
   QbittorrentPluginInfo,
 } from '../core/types';
 import type { DocumentCandidate } from './document-acquisition';
-import { readBridgeByteDocument, readBridgeTextDocument } from './qbittorrent-document-api';
+import {
+  readBridgeByteDocument,
+  readBridgeTextDocument,
+} from './qbittorrent-document-api';
 import {
   DEFAULT_QBITTORRENT_TIMEOUT_MS,
   isAbsoluteStoragePath,
   requestQbittorrentApi,
   trimQbittorrentBaseUrl,
 } from './qbittorrent-http';
-import { normalizeQbittorrentPlugins, runQbittorrentPluginSearch } from './qbittorrent-plugin-api';
 import {
-  hashFromMagnet,
-} from './qbittorrent-selection';
+  normalizeQbittorrentPlugins,
+  runQbittorrentPluginSearch,
+} from './qbittorrent-plugin-api';
+import { hashFromMagnet } from './qbittorrent-selection';
 import type {
   SearchResultsResponse,
   TorrentFile,
@@ -59,7 +63,14 @@ export class QBittorrentClient {
   }
 
   async api(path: string, init: RequestInit = {}): Promise<Response> {
-    return requestQbittorrentApi(this.fetchImpl, this.baseUrl, path, init, this.cookie, this.timeoutMs);
+    return requestQbittorrentApi(
+      this.fetchImpl,
+      this.baseUrl,
+      path,
+      init,
+      this.cookie,
+      this.timeoutMs,
+    );
   }
 
   async login(): Promise<void> {
@@ -87,11 +98,16 @@ export class QBittorrentClient {
 
   async effectiveSavePath(): Promise<string | undefined> {
     if (!this.options.savePath) return undefined;
-    if (isAbsoluteStoragePath(this.options.savePath)) return this.options.savePath;
+    if (isAbsoluteStoragePath(this.options.savePath))
+      return this.options.savePath;
     if (this.bridgeDataRoot) return this.bridgeDataRoot;
-    const response = await this.fetchImpl(`${this.baseUrl}/__health`).catch(() => null);
+    const response = await this.fetchImpl(`${this.baseUrl}/__health`).catch(
+      () => null,
+    );
     if (!response?.ok) return this.options.savePath;
-    const payload = (await response.json().catch(() => null)) as { dataRoot?: string } | null;
+    const payload = (await response.json().catch(() => null)) as {
+      dataRoot?: string;
+    } | null;
     this.bridgeDataRoot = payload?.dataRoot || null;
     return this.bridgeDataRoot ?? this.options.savePath;
   }
@@ -111,19 +127,33 @@ export class QBittorrentClient {
     const items = (await response.json()) as TorrentInfo[];
     const hash = hashFromMagnet(candidate.sourceUrl);
     if (hash) {
-      const exact = items.find((item) => String(item.hash ?? '').toLowerCase() === hash);
+      const exact = items.find(
+        (item) => String(item.hash ?? '').toLowerCase() === hash,
+      );
       if (exact) return exact;
     }
     const normalizedTitle = candidate.title.toLowerCase();
-    return items.find((item) => String(item.name ?? '').toLowerCase().includes(normalizedTitle)) ?? null;
+    return (
+      items.find((item) =>
+        String(item.name ?? '')
+          .toLowerCase()
+          .includes(normalizedTitle),
+      ) ?? null
+    );
   }
 
   async torrentFiles(hash: string): Promise<TorrentFile[]> {
-    const response = await this.api(`/torrents/files?${new URLSearchParams({ hash }).toString()}`);
+    const response = await this.api(
+      `/torrents/files?${new URLSearchParams({ hash }).toString()}`,
+    );
     return (await response.json()) as TorrentFile[];
   }
 
-  async setFilePriority(hash: string, indexes: number[], priority: number): Promise<void> {
+  async setFilePriority(
+    hash: string,
+    indexes: number[],
+    priority: number,
+  ): Promise<void> {
     if (!indexes.length) return;
     const body = new URLSearchParams({
       hash,
@@ -179,6 +209,12 @@ export class QBittorrentClient {
     category: string,
     limit: number,
   ): Promise<SearchResultsResponse> {
-    return runQbittorrentPluginSearch(this.api.bind(this), pattern, pluginName, category, limit);
+    return runQbittorrentPluginSearch(
+      this.api.bind(this),
+      pattern,
+      pluginName,
+      category,
+      limit,
+    );
   }
 }

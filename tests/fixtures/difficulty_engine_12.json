@@ -2,16 +2,12 @@
   "books": {
     "complex_analysis_mo5ad8yg": {
       "title": "Complex Analysis",
-      "authors": [
-        "Theodore W. Gamelin"
-      ],
+      "authors": ["Theodore W. Gamelin"],
       "short": "Complex Analysis",
       "category": "Mathematics",
       "intrinsic": 7.8,
       "pages": 471,
-      "prereqs": [
-        "fourier_analysis_mo5agzrp"
-      ],
+      "prereqs": ["fourier_analysis_mo5agzrp"],
       "isbn": "9780387950693",
       "subjects": [
         "Mathematical analysis",
@@ -19,21 +15,13 @@
         "Mathematics"
       ],
       "completed": false,
-      "editionKeys": [
-        "OL7448715M",
-        "OL37150449M",
-        "OL7448703M"
-      ],
-      "iaIds": [
-        "complexanalysis00game"
-      ],
+      "editionKeys": ["OL7448715M", "OL37150449M", "OL7448703M"],
+      "iaIds": ["complexanalysis00game"],
       "mutuals": []
     },
     "make_analog_synthesizers_mo5ado70": {
       "title": "Make : Analog Synthesizers",
-      "authors": [
-        "Ray Wilson"
-      ],
+      "authors": ["Ray Wilson"],
       "short": "Make",
       "category": "Electronics + Audio",
       "intrinsic": 4,
@@ -46,17 +34,12 @@
         "Computer sound processing"
       ],
       "completed": false,
-      "editionKeys": [
-        "OL27592090M"
-      ],
+      "editionKeys": ["OL27592090M"],
       "mutuals": []
     },
     "the_art_of_electronics_mo5aduug": {
       "title": "The art of electronics",
-      "authors": [
-        "Paul Horowitz",
-        "Winfield Hill"
-      ],
+      "authors": ["Paul Horowitz", "Winfield Hill"],
       "short": "The art of electronics",
       "category": "Electronics + Audio",
       "intrinsic": 7,
@@ -111,10 +94,7 @@
     },
     "real_analysis_mo5ael4s": {
       "title": "Real Analysis",
-      "authors": [
-        "Elias M. Stein",
-        "Rami Shakarchi"
-      ],
+      "authors": ["Elias M. Stein", "Rami Shakarchi"],
       "short": "Real Analysis",
       "category": "Mathematics",
       "intrinsic": 8.8,
@@ -140,11 +120,7 @@
     },
     "fourier_analysis_mo5agzrp": {
       "title": "Fourier Analysis",
-      "authors": [
-        "Elias M. Stein",
-        "Elias M. M. Stein",
-        "Rami Shakarchi"
-      ],
+      "authors": ["Elias M. Stein", "Elias M. M. Stein", "Rami Shakarchi"],
       "short": "Fourier Analysis",
       "category": "Mathematics",
       "intrinsic": 8,
@@ -178,9 +154,7 @@
     },
     "introduction_to_electrody_mo6hhpxq": {
       "title": "Introduction to electrodynamics",
-      "authors": [
-        "David Jeffrey Griffiths"
-      ],
+      "authors": ["David Jeffrey Griffiths"],
       "short": "Introduction to electrodynam",
       "category": "Physics",
       "intrinsic": 9,
@@ -232,9 +206,7 @@
     },
     "dsp_with_fpgas_mo6hn8yd": {
       "title": "DSP with FPGAs",
-      "authors": [
-        "Uwe Meyer-Baese"
-      ],
+      "authors": ["Uwe Meyer-Baese"],
       "short": "DSP with FPGAs",
       "category": "DSP / FPGA / Code",
       "intrinsic": 9,
@@ -246,12 +218,8 @@
       "isbn": "0975549499",
       "subjects": [],
       "completed": false,
-      "editionKeys": [
-        "OL9490483M"
-      ],
-      "mutuals": [
-        "designing_digital_systems_mo8bcgv6"
-      ],
+      "editionKeys": ["OL9490483M"],
+      "mutuals": ["designing_digital_systems_mo8bcgv6"],
       "lockDiff": false,
       "noPropOut": false,
       "allowPrereqOverlap": false,
@@ -260,9 +228,7 @@
     },
     "discrete_time_signal_proc_mo6ho3x9": {
       "title": "Discrete-time Signal Processing, 2nd, Second Edition",
-      "authors": [
-        "Ronald W. Oppenheim Alan V. / Schafer"
-      ],
+      "authors": ["Ronald W. Oppenheim Alan V. / Schafer"],
       "short": "Discrete-time Signal Process",
       "category": "DSP / FPGA / Code",
       "intrinsic": 8,
@@ -271,16 +237,12 @@
       "isbn": "9788131704929",
       "subjects": [],
       "completed": false,
-      "editionKeys": [
-        "OL50509883M"
-      ],
+      "editionKeys": ["OL50509883M"],
       "mutuals": []
     },
     "wavelet_tour_of_signal_pr_mo6hpr3t": {
       "title": "Wavelet Tour of Signal Processing",
-      "authors": [
-        "Stéphane Mallat"
-      ],
+      "authors": ["Stéphane Mallat"],
       "short": "Wavelet Tour of Signal Proce",
       "category": "Mathematics",
       "intrinsic": 6.7,
@@ -292,47 +254,29 @@
         "real_analysis_mo5ael4s"
       ],
       "isbn": "0080922023",
-      "subjects": [
-        "Wavelets (mathematics)"
-      ],
+      "subjects": ["Wavelets (mathematics)"],
       "completed": false,
-      "editionKeys": [
-        "OL34594226M",
-        "OL34582980M",
-        "OL15954191M"
-      ],
+      "editionKeys": ["OL34594226M", "OL34582980M", "OL15954191M"],
       "mutuals": []
     },
     "mathematics_of_the_discre_mo6hwwdq": {
       "title": "Mathematics of the Discrete Fourier Transform",
-      "authors": [
-        "Julius Smith"
-      ],
+      "authors": ["Julius Smith"],
       "short": "Mathematics of the Discrete ",
       "category": "Mathematics",
       "intrinsic": 6,
       "pages": 322,
-      "prereqs": [
-        "discrete_time_signal_proc_mo6ho3x9"
-      ],
+      "prereqs": ["discrete_time_signal_proc_mo6ho3x9"],
       "isbn": "1439208875",
       "subjects": [],
       "completed": false,
-      "editionKeys": [
-        "OL54273159M",
-        "OL9782886M",
-        "OL27073377M"
-      ],
-      "iaIds": [
-        "mathematicsofdis0000smit"
-      ],
+      "editionKeys": ["OL54273159M", "OL9782886M", "OL27073377M"],
+      "iaIds": ["mathematicsofdis0000smit"],
       "mutuals": []
     },
     "practical_electronics_for_mo6i27ol": {
       "title": "Practical Electronics for Inventors",
-      "authors": [
-        "Paul Scherz"
-      ],
+      "authors": ["Paul Scherz"],
       "short": "Practical Electronics for In",
       "category": "Electronics + Audio",
       "intrinsic": 5,
@@ -371,9 +315,7 @@
     },
     "programming_in_c_mo6i890z": {
       "title": "Programming in C",
-      "authors": [
-        "Stephen G. Kochan"
-      ],
+      "authors": ["Stephen G. Kochan"],
       "short": "Programming in C",
       "category": "DSP / FPGA / Code",
       "intrinsic": 5,
@@ -419,9 +361,7 @@
     },
     "naive_lie_theory_mo6ijbu2": {
       "title": "Naive Lie Theory",
-      "authors": [
-        "John C. Stillwell"
-      ],
+      "authors": ["John C. Stillwell"],
       "short": "Naive Lie Theory",
       "category": "Mathematics",
       "intrinsic": 9.5,
@@ -431,10 +371,7 @@
         "real_analysis_mo5ael4s"
       ],
       "isbn": "9781441926814",
-      "subjects": [
-        "Lie groups",
-        "Lie algebras"
-      ],
+      "subjects": ["Lie groups", "Lie algebras"],
       "completed": false,
       "editionKeys": [
         "OL22682744M",
@@ -442,9 +379,7 @@
         "OL28164928M",
         "OL37094605M"
       ],
-      "iaIds": [
-        "naivelietheoryun00stil"
-      ],
+      "iaIds": ["naivelietheoryun00stil"],
       "mutuals": [],
       "lockDiff": false,
       "noPropOut": false,
@@ -454,42 +389,30 @@
     },
     "introduction_to_digital_f_mo6k4k6w": {
       "title": "Introduction to Digital Filters",
-      "authors": [
-        "Julius O. Smith III"
-      ],
+      "authors": ["Julius O. Smith III"],
       "short": "Introduction to Digital Filt",
       "category": "DSP / FPGA / Code",
       "intrinsic": 4.5,
       "pages": 478,
-      "prereqs": [
-        "mathematics_of_the_discre_mo6hwwdq"
-      ],
+      "prereqs": ["mathematics_of_the_discre_mo6hwwdq"],
       "isbn": "9780974560717",
       "subjects": [],
       "completed": false,
-      "editionKeys": [
-        "OL11804257M"
-      ],
+      "editionKeys": ["OL11804257M"],
       "mutuals": []
     },
     "spectral_audio_signal_pro_mo6l02ta": {
       "title": "Spectral Audio Signal Processing",
-      "authors": [
-        "Julius O. Smith III"
-      ],
+      "authors": ["Julius O. Smith III"],
       "short": "Spectral Audio Signal Proces",
       "category": "DSP / FPGA / Code",
       "intrinsic": 5.3,
       "pages": 674,
-      "prereqs": [
-        "introduction_to_digital_f_mo6k4k6w"
-      ],
+      "prereqs": ["introduction_to_digital_f_mo6k4k6w"],
       "isbn": "0974560731",
       "subjects": [],
       "completed": false,
-      "editionKeys": [
-        "OL37770716M"
-      ],
+      "editionKeys": ["OL37770716M"],
       "mutuals": [],
       "lockDiff": false,
       "noPropOut": false,
@@ -499,9 +422,7 @@
     },
     "linear_algebra_done_right_mo7zl33d": {
       "title": "Linear Algebra Done Right",
-      "authors": [
-        "Sheldon Axler"
-      ],
+      "authors": ["Sheldon Axler"],
       "short": "Linear Algebra Done Right",
       "category": "Mathematics",
       "intrinsic": 5.8,
@@ -521,14 +442,9 @@
         "OL670720M",
         "OL26876034M"
       ],
-      "iaIds": [
-        "linearalgebradon0000axle_h2m2",
-        "linearalgebradon0000axle"
-      ],
+      "iaIds": ["linearalgebradon0000axle_h2m2", "linearalgebradon0000axle"],
       "completed": false,
-      "mutuals": [
-        "calculus_an_intuitive_and_mo7zmlcu"
-      ],
+      "mutuals": ["calculus_an_intuitive_and_mo7zmlcu"],
       "lockDiff": false,
       "noPropOut": false,
       "allowPrereqOverlap": false,
@@ -537,9 +453,7 @@
     },
     "calculus_an_intuitive_and_mo7zmlcu": {
       "title": "Calculus, An Intuitive and Physical Approach",
-      "authors": [
-        "Morris Kline"
-      ],
+      "authors": ["Morris Kline"],
       "short": "Calculus, An Intuitive and P",
       "category": "Mathematics",
       "intrinsic": 5.5,
@@ -550,30 +464,20 @@
       "publisher": "Wiley",
       "olWorkKey": "/works/OL11371090W",
       "olEditionKey": "OL15052615M",
-      "editionKeys": [
-        "OL15052615M"
-      ],
-      "iaIds": [
-        "calculusintuitiv0000morr"
-      ],
+      "editionKeys": ["OL15052615M"],
+      "iaIds": ["calculusintuitiv0000morr"],
       "completed": false,
-      "mutuals": [
-        "linear_algebra_done_right_mo7zl33d"
-      ]
+      "mutuals": ["linear_algebra_done_right_mo7zl33d"]
     },
     "designing_digital_systems_mo8bcgv6": {
       "title": "Designing Digital Systems with SystemVerilog (v2. 1)",
-      "authors": [
-        "Brent E. Nelson"
-      ],
+      "authors": ["Brent E. Nelson"],
       "short": "Designing Digital Systems wi",
       "category": "DSP / FPGA / Code",
       "intrinsic": 4.8,
       "pages": 300,
       "prereqs": [],
-      "mutuals": [
-        "dsp_with_fpgas_mo6hn8yd"
-      ],
+      "mutuals": ["dsp_with_fpgas_mo6hn8yd"],
       "ignored": false,
       "constantRD": false,
       "isbn": "9798727537466",
@@ -581,9 +485,7 @@
       "publisher": "Independently Published",
       "olWorkKey": "/works/OL34477958W",
       "olEditionKey": "OL46767034M",
-      "editionKeys": [
-        "OL46767034M"
-      ],
+      "editionKeys": ["OL46767034M"],
       "iaIds": [],
       "completed": false
     }

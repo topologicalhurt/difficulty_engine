@@ -20,7 +20,10 @@ export function renderGraphPanels(model: GraphRenderModel): HTMLElement {
           'Prerequisite flow from foundational books to later books. Drag to pan and wheel to zoom.',
           dag,
         )
-      : emptyState('No DAG to show', 'Prerequisite edges appear here once the solver infers them.'),
+      : emptyState(
+          'No DAG to show',
+          'Prerequisite edges appear here once the solver infers them.',
+        ),
     network
       ? renderInteractiveGraphCard(
           'network',
@@ -28,7 +31,10 @@ export function renderGraphPanels(model: GraphRenderModel): HTMLElement {
           'Green lines are prerequisite flow, blue hubs show co-study groups, amber lines show references.',
           network,
         )
-      : emptyState('No network to show', 'Relation links appear here once the library has enough evidence.'),
+      : emptyState(
+          'No network to show',
+          'Relation links appear here once the library has enough evidence.',
+        ),
     hypergraph
       ? renderInteractiveGraphCard(
           'hypergraph',
@@ -36,6 +42,9 @@ export function renderGraphPanels(model: GraphRenderModel): HTMLElement {
           'Overlap hubs show clusters of books that share reusable material and skim opportunities.',
           hypergraph,
         )
-      : emptyState('No hypergraph to show', 'Overlap clusters appear here once books share enough topic evidence.'),
+      : emptyState(
+          'No hypergraph to show',
+          'Overlap clusters appear here once books share enough topic evidence.',
+        ),
   );
 }

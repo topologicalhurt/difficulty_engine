@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createDefaultSourceSettings } from '../../src/core/defaults';
 import type { BookRecord } from '../../src/core/types';
+import { mergeStrategyCandidates } from '../../src/infra/toc-merge';
 import { resolveBookEnrichment } from '../../src/infra/toc-strategies';
 
 function makeBook(): BookRecord {
@@ -50,10 +51,13 @@ describe('resolveBookEnrichment', () => {
       book,
       fetchJson: async () => ({}) as never,
       fetchImpl: async () =>
-        new Response('/Title (Contents) /Title (Chapter 1 Signals) /Title (Chapter 2 Systems)', {
-          status: 200,
-          headers: { 'content-type': 'application/pdf' },
-        }),
+        new Response(
+          '/Title (Contents) /Title (Chapter 1 Signals) /Title (Chapter 2 Systems)',
+          {
+            status: 200,
+            headers: { 'content-type': 'application/pdf' },
+          },
+        ),
     });
 
     expect(resolution.enrichment.chapters).toEqual([
@@ -65,9 +69,38 @@ describe('resolveBookEnrichment', () => {
     expect(resolution.provenance[0]?.provider).toBe('direct_url');
   });
 
+  it('rejects oversized direct document responses before TOC extraction', async () => {
+    const book = makeBook();
+    book.sourcePath = 'https://example.test/huge.pdf';
+    const sourceSettings = createDefaultSourceSettings();
+    sourceSettings.metadataSources.openlibrary = false;
+    sourceSettings.metadataSources.googleBooks = false;
+    sourceSettings.metadataSources.internetArchive = false;
+    sourceSettings.documentSources.internetArchiveText = false;
+
+    const resolution = await resolveBookEnrichment({
+      book,
+      sourceSettings,
+      fetchJson: async () => ({}) as never,
+      fetchImpl: async () =>
+        new Response('/Title (Contents) /Title (Chapter 1 Should Not Load)', {
+          status: 200,
+          headers: {
+            'content-type': 'application/pdf',
+            'content-length': String(9 * 1024 * 1024),
+          },
+        }),
+    });
+
+    expect(resolution.enrichment.chapters).toEqual([]);
+    expect(resolution.provenance).toEqual([]);
+  });
+
   it('does not fetch non-remote or insecure external source paths from the browser context', async () => {
     const fetchCalls: string[] = [];
-    const fetchImpl = async (url: string | URL | Request): Promise<Response> => {
+    const fetchImpl = async (
+      url: string | URL | Request,
+    ): Promise<Response> => {
       fetchCalls.push(String(url));
       return new Response('Chapter 1 Should Not Load', {
         status: 200,
@@ -128,7 +161,8 @@ describe('resolveBookEnrichment', () => {
               volumeInfo: {
                 title: 'Signals and Systems',
                 authors: ['A. Author'],
-                description: 'This new edition includes a chapter on the latest microcontrollers and new sections covering test equipment.',
+                description:
+                  'This new edition includes a chapter on the latest microcontrollers and new sections covering test equipment.',
                 categories: ['Electrical engineering'],
                 pageCount: 620,
               },
@@ -148,9 +182,16 @@ describe('resolveBookEnrichment', () => {
     expect(resolution.bookPatch.publisher).toBe('OL Press');
     expect(resolution.bookPatch.openLibraryEditionKey).toBe('/books/OL123M');
     expect(resolution.bookPatch.googleBooksId).toBe('google-1');
-    expect(resolution.enrichment.description).toBe('Open Library work description.');
+    expect(resolution.enrichment.description).toBe(
+      'Open Library work description.',
+    );
     expect(resolution.enrichment.olSubjects).toEqual(
-      expect.arrayContaining(['signals', 'systems', 'engineering', 'Electrical engineering']),
+      expect.arrayContaining([
+        'signals',
+        'systems',
+        'engineering',
+        'Electrical engineering',
+      ]),
     );
     expect(resolution.enrichment.chapters).toEqual([]);
     expect(resolution.provenance.map((entry) => entry.provider)).toEqual(
@@ -172,7 +213,8 @@ describe('resolveBookEnrichment', () => {
               id: 'google-blurb',
               volumeInfo: {
                 title: 'Marketing Blurb',
-                description: 'Includes a chapter on the latest microcontrollers and new sections covering test equipment.',
+                description:
+                  'Includes a chapter on the latest microcontrollers and new sections covering test equipment.',
               },
             },
             {
@@ -195,7 +237,9 @@ describe('resolveBookEnrichment', () => {
       'Chapter 1 Signals',
       'Chapter 2 Systems',
     ]);
-    expect(resolution.enrichment.chapters).not.toContain('chapter on the latest microcontrollers');
+    expect(resolution.enrichment.chapters).not.toContain(
+      'chapter on the latest microcontrollers',
+    );
   });
 
   it('replaces stale non-manual imported chapters with a completed PDF TOC', async () => {
@@ -236,7 +280,9 @@ describe('resolveBookEnrichment', () => {
       'CHAPTER 2 Theory',
       'CHAPTER 3 Basic Electronic Circuit Components',
     ]);
-    expect(resolution.enrichment.provenance?.chapters?.provider).toBe('qbittorrent');
+    expect(resolution.enrichment.provenance?.chapters?.provider).toBe(
+      'qbittorrent',
+    );
   });
 
   it('uses Internet Archive text as an additional online TOC source', async () => {
@@ -305,7 +351,96 @@ describe('resolveBookEnrichment', () => {
     expect(resolution.enrichment.olSubjects).toEqual(
       expect.arrayContaining(['Signal processing', 'Systems engineering']),
     );
-    expect(resolution.provenance.map((entry) => entry.provider)).toContain('internet_archive');
+    expect(resolution.provenance.map((entry) => entry.provider)).toContain(
+      'internet_archive',
+    );
+  });
+
+  it('prefers a much fuller credible TOC over a tiny partial source', () => {
+    const book = makeBook();
+    const resolution = mergeStrategyCandidates(book, [
+      {
+        provider: 'direct_url',
+        sourceUrl: 'https://example.test/partial.pdf',
+        confidence: 0.64,
+        chapters: ['Chapter 1 Setup', 'Chapter 2 Basics'],
+        tocSource: 'pdf',
+        strategy: 'explicit_toc_region',
+      },
+      {
+        provider: 'internet_archive',
+        sourceUrl: 'https://archive.org/details/full',
+        confidence: 0.78,
+        chapters: [
+          'Chapter 1 Setup',
+          'Chapter 2 Basics',
+          'Chapter 3 Components',
+          'Chapter 4 Instruments',
+          'Chapter 5 Filters',
+          'Chapter 6 Oscillators',
+          'Chapter 7 Microcontrollers',
+          'Appendix A Reference Tables',
+        ],
+        tocSource: 'internet_archive',
+        strategy: 'explicit_toc_region',
+      },
+    ]);
+
+    expect(resolution.enrichment.tocSource).toBe('internet_archive');
+    expect(resolution.enrichment.chapters).toHaveLength(8);
+  });
+
+  it('does not override explicit manual chapters with automated TOCs', () => {
+    const book = makeBook();
+    const resolution = mergeStrategyCandidates(book, [
+      {
+        provider: 'manual',
+        sourceUrl: 'local://project',
+        confidence: 1,
+        chapters: ['Chapter 1 Manual Path', 'Chapter 2 Manual Finish'],
+        tocSource: 'manual',
+      },
+      {
+        provider: 'internet_archive',
+        sourceUrl: 'https://archive.org/details/full',
+        confidence: 0.9,
+        chapters: Array.from(
+          { length: 12 },
+          (_, index) => `Chapter ${index + 1} Automated`,
+        ),
+        tocSource: 'internet_archive',
+        strategy: 'explicit_toc_region',
+      },
+    ]);
+
+    expect(resolution.enrichment.tocSource).toBe('manual');
+    expect(resolution.enrichment.chapters).toEqual([
+      'Chapter 1 Manual Path',
+      'Chapter 2 Manual Finish',
+    ]);
+  });
+
+  it('keeps stronger existing automated chapters over a tiny weak refresh', () => {
+    const book = makeBook();
+    book.enrichment.tocSource = 'internet_archive';
+    book.enrichment.chapters = Array.from(
+      { length: 10 },
+      (_, index) => `Chapter ${index + 1} Existing`,
+    );
+
+    const resolution = mergeStrategyCandidates(book, [
+      {
+        provider: 'google_books',
+        sourceUrl: 'https://books.google.com/books?id=weak',
+        confidence: 0.45,
+        chapters: ['Chapter 1 Weak', 'Chapter 2 Weak'],
+        tocSource: 'google_books',
+        strategy: 'explicit_toc_region',
+      },
+    ]);
+
+    expect(resolution.enrichment.tocSource).toBe('internet_archive');
+    expect(resolution.enrichment.chapters).toEqual(book.enrichment.chapters);
   });
 
   it('does not treat descriptive summary sentences as chapter titles', async () => {

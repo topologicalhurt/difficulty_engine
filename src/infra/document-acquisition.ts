@@ -1,5 +1,14 @@
-import type { BookDocumentAvailability, BookDocumentRef, BookRecord } from '../core/types';
+import type {
+  BookDocumentAvailability,
+  BookDocumentRef,
+  BookRecord,
+} from '../core/types';
+import {
+  DEFAULT_CONTENT_PREFERENCE,
+  DEFAULT_DOCUMENT_DATA_ROOT,
+} from '../core/default-source-settings';
 import type { SourceContentKind, SourceSettings } from '../core/types';
+import { contentKindPriorityForPreference } from './document-content-priority';
 import { compareDocumentCandidateQuality } from './qbittorrent-selection';
 
 export type DocumentAccessBasis =
@@ -57,8 +66,13 @@ export interface DocumentAcquisitionRequest {
 export interface DocumentAcquisitionProvider {
   readonly id: string;
   readonly enabled: boolean;
-  findCandidates(request: DocumentAcquisitionRequest): Promise<DocumentCandidate[]>;
-  acquire(candidate: DocumentCandidate, request: DocumentAcquisitionRequest): Promise<AcquiredDocument | null>;
+  findCandidates(
+    request: DocumentAcquisitionRequest,
+  ): Promise<DocumentCandidate[]>;
+  acquire(
+    candidate: DocumentCandidate,
+    request: DocumentAcquisitionRequest,
+  ): Promise<AcquiredDocument | null>;
 }
 
 export interface DocumentStorageAdapter {
@@ -69,20 +83,17 @@ export interface DocumentStorageAdapter {
   ): Promise<AcquiredDocument>;
 }
 
-const CONTENT_KIND_PRIORITY: Record<DocumentContentKind, number> = {
-  text: 0,
-  epub: 1,
-  ocr_text: 2,
-  pdf: 3,
-  unknown: 4,
-};
-
 export function defaultDocumentAcquisitionPolicy(): DocumentAcquisitionPolicy {
   return {
     enabled: false,
-    allowedAccess: ['public_domain', 'open_access', 'user_owned', 'user_provided'],
-    dataRoot: 'data/documents',
-    contentPreference: ['text', 'epub', 'ocr_text', 'pdf'],
+    allowedAccess: [
+      'public_domain',
+      'open_access',
+      'user_owned',
+      'user_provided',
+    ],
+    dataRoot: DEFAULT_DOCUMENT_DATA_ROOT,
+    contentPreference: [...DEFAULT_CONTENT_PREFERENCE],
   };
 }
 
@@ -101,14 +112,21 @@ export function choosePreferredDocumentCandidate(
   candidates: DocumentCandidate[],
   policy: DocumentAcquisitionPolicy,
 ): DocumentCandidate | null {
-  const orderedKinds = [...policy.contentPreference, 'unknown'];
-  const priorityFor = (kind: DocumentContentKind): number => {
-    const index = orderedKinds.indexOf(kind);
-    return index >= 0 ? index : CONTENT_KIND_PRIORITY[kind];
-  };
+  return rankDocumentCandidates(candidates, policy)[0] ?? null;
+}
+
+export function rankDocumentCandidates(
+  candidates: DocumentCandidate[],
+  policy: DocumentAcquisitionPolicy,
+): DocumentCandidate[] {
+  const priorityFor = contentKindPriorityForPreference(
+    policy.contentPreference,
+  );
   return [...candidates]
     .filter((candidate) => isLawfulDocumentCandidate(candidate, policy))
-    .sort((left, right) => compareDocumentCandidateQuality(left, right, priorityFor))[0] ?? null;
+    .sort((left, right) =>
+      compareDocumentCandidateQuality(left, right, priorityFor),
+  );
 }
 
 export function mergeDocumentRefs(
@@ -129,8 +147,10 @@ export function mergeDocumentRefs(
       },
     });
   });
-  return [...byId.values()].sort((left, right) =>
-    left.fileName.localeCompare(right.fileName) || left.id.localeCompare(right.id),
+  return [...byId.values()].sort(
+    (left, right) =>
+      left.fileName.localeCompare(right.fileName) ||
+      left.id.localeCompare(right.id),
   );
 }
 

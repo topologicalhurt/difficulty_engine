@@ -6,7 +6,10 @@ export const ENRICHMENT_CACHE_TTL_MS = 6 * 60 * 60 * 1_000;
 
 export type JsonFetcher = <T>(url: string, signal?: AbortSignal) => Promise<T>;
 
-function mergeAbortSignals(signal: AbortSignal | undefined, controller: AbortController): () => void {
+function mergeAbortSignals(
+  signal: AbortSignal | undefined,
+  controller: AbortController,
+): () => void {
   if (!signal) return () => {};
   const onAbort = (): void => controller.abort(signal.reason);
   signal.addEventListener('abort', onAbort, { once: true });
@@ -45,7 +48,10 @@ export async function fetchJson<T>(
   }
 }
 
-export async function withRetry<T>(attempt: () => Promise<T>, retries: number): Promise<T> {
+export async function withRetry<T>(
+  attempt: () => Promise<T>,
+  retries: number,
+): Promise<T> {
   let lastError: unknown;
   for (let index = 0; index <= retries; index += 1) {
     try {

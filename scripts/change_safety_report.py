@@ -6,6 +6,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CANONICAL_PATTERNS = [
     (
+        "UI shell",
+        "src/ui/svelte/AppShell.svelte",
+        "The mounted app shell is Svelte; tab bodies consume selectors and commands through the active tab host.",
+    ),
+    (
         "UI controls",
         "src/ui/dom.ts",
         "Use button, selectInput, inputField, badge, card, and emptyState instead of local control factories.",
@@ -14,6 +19,36 @@ CANONICAL_PATTERNS = [
         "UI formatting",
         "src/ui/format.ts",
         "Use formatPercent, formatOneDecimal, round0, formatDate, parseCsv, and joinCsv for display strings.",
+    ),
+    (
+        "Number formatting",
+        "src/core/number-format.ts",
+        "Use shared number/percent formatters instead of local finite-number helpers.",
+    ),
+    (
+        "Display colors",
+        "src/core/display-colors.ts",
+        "Use shared HSL, gradient, group color, and normalized range helpers instead of local color hashing.",
+    ),
+    (
+        "Stable sorting",
+        "src/core/sort.ts",
+        "Use shared comparator helpers for deterministic multi-field sort chains.",
+    ),
+    (
+        "String compaction, joining, and deduplication",
+        "src/core/utils.ts",
+        "Use compactString, compactStrings, compactJoin, and uniqueCompactStrings instead of local trim/filter/join/Set helpers.",
+    ),
+    (
+        "External-source matching",
+        "src/core/matchers.ts",
+        "Use shared title/author/ISBN matching decisions instead of provider-local fuzzy scoring.",
+    ),
+    (
+        "Provider metadata cleanup",
+        "src/infra/source-metadata.ts",
+        "Use normalizeProviderText, extractPublishedYear, and firstValidIsbn for provider metadata parsing.",
     ),
     (
         "Progress",
@@ -56,9 +91,19 @@ CANONICAL_PATTERNS = [
         "Infra cache expiry uses injected time helpers instead of raw Date.now calls.",
     ),
     (
-        "Document content ranking",
+        "Document content priority",
+        "src/infra/document-content-priority.ts",
+        "Content preference ordering is shared by document acquisition and qBittorrent ranking.",
+    ),
+    (
+        "Document content kind and paths",
         "src/infra/qbittorrent-file-kinds.ts",
-        "Content kind, MIME, and path helpers are shared by document and qBittorrent flows.",
+        "Content kind, MIME, and safe path helpers are shared by document and qBittorrent flows.",
+    ),
+    (
+        "Worker compute and persistence",
+        "src/app/store-runtime.ts",
+        "Project changes commit synchronously; worker results only replace snapshots.",
     ),
     (
         "Source enablement policy",

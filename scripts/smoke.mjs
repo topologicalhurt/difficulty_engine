@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { sveltePlugin } from './svelte-esbuild-plugin.mjs';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distFile = resolve(rootDir, 'dist', 'difficulty_engine.html');
@@ -13,10 +14,14 @@ const port = 4184;
 
 function buildIfNeeded() {
   return new Promise((resolveBuild, rejectBuild) => {
-    const child = spawn(process.execPath, [resolve(rootDir, 'scripts', 'build.mjs')], {
-      cwd: rootDir,
-      stdio: 'inherit',
-    });
+    const child = spawn(
+      process.execPath,
+      [resolve(rootDir, 'scripts', 'build.mjs')],
+      {
+        cwd: rootDir,
+        stdio: 'inherit',
+      },
+    );
     child.on('exit', (code) => {
       if (code === 0) resolveBuild(undefined);
       else rejectBuild(new Error(`build failed with code ${code}`));
@@ -34,6 +39,7 @@ async function main() {
     platform: 'browser',
     write: false,
     sourcemap: false,
+    plugins: [sveltePlugin()],
   });
   const embedJs = libraryBundle.outputFiles[0]?.text ?? '';
   const embeddedHtml = `<!doctype html>
@@ -210,7 +216,9 @@ async function main() {
     res.end(html);
   });
 
-  await new Promise((resolveServer) => server.listen(port, '127.0.0.1', resolveServer));
+  await new Promise((resolveServer) =>
+    server.listen(port, '127.0.0.1', resolveServer),
+  );
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
@@ -222,7 +230,11 @@ async function main() {
     await page.getByRole('heading', { name: 'Study Planner' }).waitFor();
     await page.getByRole('button', { name: 'Add book' }).click();
     await page.getByText('Book 1').waitFor();
-    await page.locator('.book-list-item').filter({ hasText: 'Book 1' }).first().click();
+    await page
+      .locator('.book-list-item')
+      .filter({ hasText: 'Book 1' })
+      .first()
+      .click();
     const titleInput = page.locator('[data-focus-key="book:book-1:title"]');
     await titleInput.waitFor();
     await titleInput.click();
@@ -232,17 +244,27 @@ async function main() {
         document.activeElement instanceof HTMLElement &&
         document.activeElement.dataset.focusKey === 'book:book-1:title',
     );
-    await page.getByRole('navigation').getByRole('button', { name: 'Constraints' }).click();
+    await page
+      .getByRole('navigation')
+      .getByRole('button', { name: 'Constraints' })
+      .click();
     await page.getByRole('heading', { name: 'Plan Window' }).waitFor();
     await page.getByText('Target end date').waitFor();
-    await page.getByRole('navigation').getByRole('button', { name: 'Plan' }).click();
+    await page
+      .getByRole('navigation')
+      .getByRole('button', { name: 'Plan' })
+      .click();
     await page.getByRole('heading', { name: 'Gantt timeline' }).waitFor();
     await page.getByLabel('Plan color mode').selectOption('detected_genre');
     await page.getByRole('button', { name: '+' }).first().click();
-    const standaloneCalendarCell = page.locator('.calendar-day-cell.has-work').first();
+    const standaloneCalendarCell = page
+      .locator('.calendar-day-cell.has-work')
+      .first();
     await standaloneCalendarCell.waitFor();
     await standaloneCalendarCell.click({ position: { x: 8, y: 8 } });
-    const progressPanel = page.locator('.planner-side-column .calendar-log-panel').first();
+    const progressPanel = page
+      .locator('.planner-side-column .calendar-log-panel')
+      .first();
     await progressPanel.waitFor();
     await progressPanel.getByLabel(/Actual pages for/).fill('3.5');
     await progressPanel.getByLabel(/Actual pages for/).press('Tab');
@@ -258,12 +280,21 @@ async function main() {
       .getByRole('navigation')
       .getByRole('button', { name: 'Plan' })
       .click();
-    const quickAddCard = page.locator('#embed-root .card').filter({ hasText: 'Quick add' }).first();
-    await quickAddCard.getByPlaceholder('Search by title, author, or ISBN...').fill('smoke');
+    const quickAddCard = page
+      .locator('#embed-root .card')
+      .filter({ hasText: 'Quick add' })
+      .first();
+    await quickAddCard
+      .getByPlaceholder('Search by title, author, or ISBN...')
+      .fill('smoke');
     await quickAddCard.getByRole('button', { name: 'Search' }).click();
     await quickAddCard.getByText('Smoke Search Result').waitFor();
     await quickAddCard.getByRole('button', { name: 'Add' }).first().click();
-    await page.locator('#embed-root .book-list-item').filter({ hasText: 'Smoke Search Result' }).first().waitFor();
+    await page
+      .locator('#embed-root .book-list-item')
+      .filter({ hasText: 'Smoke Search Result' })
+      .first()
+      .waitFor();
     await page
       .locator('#embed-root')
       .getByRole('navigation')
@@ -276,23 +307,35 @@ async function main() {
       .getByRole('navigation')
       .getByRole('button', { name: 'Library' })
       .click();
-    const searchResultRows = page.locator('#embed-root .book-list-item').filter({ hasText: 'Smoke Search Result' });
+    const searchResultRows = page
+      .locator('#embed-root .book-list-item')
+      .filter({ hasText: 'Smoke Search Result' });
     if ((await searchResultRows.count()) !== 1) {
-      throw new Error('Duplicate search result book was added to the embedded library.');
+      throw new Error(
+        'Duplicate search result book was added to the embedded library.',
+      );
     }
     await page
       .locator('#embed-root')
       .getByRole('navigation')
       .getByRole('button', { name: 'Graphs' })
       .click();
-    await page.locator('#embed-root').getByRole('heading', { name: 'Prerequisite DAG' }).waitFor();
+    await page
+      .locator('#embed-root')
+      .getByRole('heading', { name: 'Prerequisite DAG' })
+      .waitFor();
     await page.waitForFunction(() =>
       Boolean(document.querySelector('#embed-root svg.graph-svg [marker-end]')),
     );
-    const graphCard = page.locator('#embed-root .card').filter({ hasText: 'Prerequisite DAG' }).first();
+    const graphCard = page
+      .locator('#embed-root .card')
+      .filter({ hasText: 'Prerequisite DAG' })
+      .first();
     await graphCard.getByRole('button', { name: '+' }).click();
     await page.waitForFunction(() => {
-      const content = document.querySelector('#embed-root .graph-viewport-content');
+      const content = document.querySelector(
+        '#embed-root .graph-viewport-content',
+      );
       return Boolean(content && getComputedStyle(content).transform !== 'none');
     });
     await page
@@ -300,35 +343,58 @@ async function main() {
       .getByRole('navigation')
       .getByRole('button', { name: 'Info' })
       .click();
-    await page.locator('#embed-root').getByRole('heading', { name: 'How to use the planner' }).waitFor();
+    await page
+      .locator('#embed-root')
+      .getByRole('heading', { name: 'How to use the planner' })
+      .waitFor();
     await page
       .locator('#embed-root')
       .getByRole('navigation')
       .getByRole('button', { name: 'Project' })
       .click();
-    const projectArea = page.locator('#embed-root [data-focus-key="project:json"]');
+    const projectArea = page.locator(
+      '#embed-root [data-focus-key="project:json"]',
+    );
     const projectJson = await projectArea.inputValue();
-    await projectArea.fill(projectJson.replace('Embedded Planning Book', 'Embedded Planning Book Updated'));
-    await page.locator('#embed-root').getByRole('button', { name: 'Load JSON from editor' }).click();
+    await projectArea.fill(
+      projectJson.replace(
+        'Embedded Planning Book',
+        'Embedded Planning Book Updated',
+      ),
+    );
+    await page
+      .locator('#embed-root')
+      .getByRole('button', { name: 'Load JSON from editor' })
+      .click();
     await page
       .locator('#embed-root')
       .getByRole('navigation')
       .getByRole('button', { name: 'Library' })
       .click();
     await page.waitForFunction(() => {
-      const input = document.querySelector('#embed-root [data-focus-key="book:intro:title"]');
-      return input instanceof HTMLInputElement && input.value === 'Embedded Planning Book Updated';
+      const input = document.querySelector(
+        '#embed-root [data-focus-key="book:intro:title"]',
+      );
+      return (
+        input instanceof HTMLInputElement &&
+        input.value === 'Embedded Planning Book Updated'
+      );
     });
     await page
       .locator('#embed-root')
       .getByRole('navigation')
       .getByRole('button', { name: 'Plan' })
       .click();
-    await page.locator('#embed-root').getByRole('heading', { name: 'Gantt timeline' }).waitFor();
+    await page
+      .locator('#embed-root')
+      .getByRole('heading', { name: 'Gantt timeline' })
+      .waitFor();
     if (pageErrors.length) {
       throw pageErrors[0];
     }
-    process.stdout.write('Browser smoke passed for standalone and embedded mount.\n');
+    process.stdout.write(
+      'Browser smoke passed for standalone and embedded mount.\n',
+    );
   } finally {
     await browser.close();
     await new Promise((resolveServer) => server.close(resolveServer));
@@ -336,6 +402,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? error.stack : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
