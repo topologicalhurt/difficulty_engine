@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  chapterTitleDecision,
   extractChapterCandidatesFromText,
   sanitizeChapterTitles,
 } from '../../src/core/chapter-titles';
+import { CHAPTER_TITLE_PATTERN_SPECS } from '../../src/core/chapter-title-patterns';
 
 describe('chapter title detection', () => {
   it('accepts common structural chapter naming schemes', () => {
@@ -90,5 +92,30 @@ describe('chapter title detection', () => {
       '3 Linear Maps',
       'Preface',
     ]);
+  });
+
+  it('exposes auditable matcher decisions for accepted and rejected titles', () => {
+    const accepted = chapterTitleDecision('Appendix A Reference Tables');
+    const rejected = chapterTitleDecision(
+      'chapter on the latest microcontrollers',
+      'provider_snippet',
+    );
+
+    expect(accepted.accepted).toBe(true);
+    expect(accepted.reasons).toContain('structural_marker');
+    expect(rejected.accepted).toBe(false);
+    expect(rejected.rejectedReasons).toContain('narrative_or_marketing_text');
+  });
+
+  it('registers every chapter-title pattern with purpose and examples', () => {
+    expect(CHAPTER_TITLE_PATTERN_SPECS.length).toBeGreaterThan(3);
+    expect(
+      CHAPTER_TITLE_PATTERN_SPECS.every(
+        (spec) =>
+          spec.id &&
+          spec.purpose &&
+          ((spec.accepts?.length ?? 0) > 0 || (spec.rejects?.length ?? 0) > 0),
+      ),
+    ).toBe(true);
   });
 });

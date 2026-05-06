@@ -5,6 +5,7 @@ import {
   extractExplicitTocChapters,
   inferChapterHeadersFromText,
 } from '../../src/infra/document-text-extractor';
+import { TOC_EXTRACTION_PATTERN_SPECS } from '../../src/infra/toc-extraction-patterns';
 
 describe('document text extraction', () => {
   it('prefers PDF outline titles when present', () => {
@@ -196,5 +197,17 @@ describe('document text extraction', () => {
     });
 
     expect(extraction).toBeNull();
+  });
+
+  it('registers TOC extraction patterns with documented intent', () => {
+    expect(TOC_EXTRACTION_PATTERN_SPECS.length).toBeGreaterThan(3);
+    expect(
+      TOC_EXTRACTION_PATTERN_SPECS.every(
+        (spec) =>
+          spec.id &&
+          spec.purpose &&
+          ((spec.accepts?.length ?? 0) > 0 || (spec.rejects?.length ?? 0) > 0),
+      ),
+    ).toBe(true);
   });
 });

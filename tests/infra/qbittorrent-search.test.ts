@@ -9,6 +9,7 @@ import {
   defaultDocumentAcquisitionPolicy,
 } from '../../src/infra/document-acquisition';
 import { createQBittorrentProvider } from '../../src/infra/qbittorrent-provider';
+import { qbittorrentSearchPatterns } from '../../src/infra/qbittorrent-search';
 
 describe('qBittorrent search precision', () => {
   it('uses seeders rather than leechers when otherwise comparable torrent candidates compete', () => {
@@ -143,8 +144,18 @@ describe('qBittorrent search precision', () => {
       },
     });
 
-    expect(searchStartBodies).toHaveLength(1);
+    expect(searchStartBodies).toHaveLength(4);
     expect(searchStartBodies[0]?.get('pattern')).toBe('9781111111111');
+    expect(
+      new Set(searchStartBodies.map((body) => body.get('pattern'))),
+    ).toEqual(
+      new Set([
+        '9781111111111',
+        'precise systems a author',
+        'precise systems author',
+        'precise systems',
+      ]),
+    );
     expect(candidates.map((candidate) => candidate.sourceUrl)).toEqual([
       'magnet:?xt=urn:btih:highseed',
       'magnet:?xt=urn:btih:lowseed',
@@ -266,12 +277,28 @@ describe('qBittorrent search precision', () => {
     });
 
     expect(searchStartBodies.map((body) => body.get('plugins')).sort()).toEqual(
-      ['archive', 'standard'],
+      [
+        'archive',
+        'archive',
+        'archive',
+        'archive',
+        'standard',
+        'standard',
+        'standard',
+        'standard',
+      ],
     );
     expect(
       new Set(searchStartBodies.map((body) => body.get('pattern'))),
-    ).toEqual(new Set(['9781111111111']));
-    expect(resultLimits).toEqual(['30', '30']);
+    ).toEqual(
+      new Set([
+        '9781111111111',
+        'precise systems a author',
+        'precise systems author',
+        'precise systems',
+      ]),
+    );
+    expect(resultLimits).toEqual(Array.from({ length: 8 }, () => '30'));
     expect(candidates.map((candidate) => candidate.sourceUrl)).toEqual([
       'magnet:?xt=urn:btih:standard',
       'magnet:?xt=urn:btih:archive',
@@ -449,10 +476,38 @@ describe('qBittorrent search precision', () => {
 
     expect(searchStartBodies.map((body) => body.get('pattern'))).toEqual([
       '9781111111111',
-      'Precise Systems A Author',
+      'precise systems a author',
+      'precise systems author',
+      'precise systems',
     ]);
     expect(candidates.map((candidate) => candidate.sourceUrl)).toEqual([
       'magnet:?xt=urn:btih:lawfultitle',
     ]);
+  });
+
+  it('builds precise title and author fallback searches without edition noise', () => {
+    const patterns = qbittorrentSearchPatterns({
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Practical Electronics for Inventors, 4th Edition',
+        short: 'Practical Electronics',
+        authors: ['Paul Scherz'],
+        isbn: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+      },
+    });
+
+    expect(patterns).toEqual([
+      'practical electronics for inventors paul scherz',
+      'practical electronics for inventors scherz',
+      'practical electronics paul scherz',
+      'practical electronics scherz',
+      'practical electronics for inventors',
+      'practical electronics',
+    ]);
+    expect(patterns.join(' ')).not.toMatch(/4th|Edition/i);
   });
 });

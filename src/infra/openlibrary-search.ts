@@ -1,4 +1,9 @@
 import type { BookSearchSuggestion, EnrichmentRequest } from '../core/types';
+import {
+  bookMatchDecision,
+  jaccardTokenSimilarity,
+  normalizeMatcherText,
+} from '../core/matchers';
 import { normalizeOpenLibraryKey } from '../core/openlibrary-keys';
 import { cleanedIsbn, isFullIsbnQuery } from './book-search';
 import type {
@@ -6,7 +11,6 @@ import type {
   OpenLibraryJsonFetcher,
   SearchDoc,
 } from './openlibrary-types';
-import { jaccardTokenSimilarity } from './token-similarity';
 
 const MIN_DOC_RELEVANCE_SCORE = 1;
 
@@ -19,13 +23,25 @@ function docRelevanceScore(
   const isbn = isFullIsbnQuery(book.isbn ?? '')
     ? cleanedIsbn(book.isbn ?? '')
     : '';
+  const decision = bookMatchDecision({
+    target: { title: book.title, authors: book.authors, isbn: book.isbn },
+    candidate: {
+      title: doc.title,
+      authors: doc.author_name,
+      isbn: doc.isbn ?? null,
+    },
+    sourceMode: 'metadata',
+    minimumScore: 0,
+  });
   const titleSimilarity = jaccardTokenSimilarity(book.title, doc.title);
   return (
     (isbn && (doc.isbn ?? []).some((entry) => cleanedIsbn(entry) === isbn)
       ? 5
       : 0) +
-    (doc.title?.toLowerCase() === title ? 3 : 0) +
+    (normalizeMatcherText(doc.title) === normalizeMatcherText(title) ? 3 : 0) +
     (titleSimilarity >= 0.65 ? titleSimilarity * 2 : 0) +
+    (decision.reasons.includes('isbn_match') ? 1 : 0) +
+    (decision.reasons.includes('author_support') ? 0.25 : 0) +
     (author && doc.author_name?.some((entry) => entry.toLowerCase() === author)
       ? 0.5
       : 0)

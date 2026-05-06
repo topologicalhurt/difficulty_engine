@@ -2340,7 +2340,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
         allowedPlugins: [],
         allowedSites: [...QBITTORRENT_OPEN_SOURCE_SITES],
         categories: ["all"],
-        maxResults: 30,
+        maxResults: 50,
         requireKnownAccessBasis: true
       },
       contentPreference: [...DEFAULT_CONTENT_PREFERENCE]
@@ -2953,10 +2953,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     };
   }
 
-  // src/core/chapter-titles.ts
-  var MAX_CHAPTER_TITLE_LENGTH = 140;
-  var MAX_CHAPTER_WORDS = 18;
-  var MIN_CHAPTER_TITLE_LENGTH = 2;
+  // src/core/chapter-title-patterns.ts
   var UNSTRUCTURED_SPLIT_PATTERN = /(?:\r?\n|;\s+|\|\s+|(?<=\.)\s+(?=(?:chapter|ch\.?|part|appendix|lecture|lesson|module|unit|\d+[.)])))/i;
   var STRUCTURAL_SENTENCE_PATTERN = /\b(?:(?:chapter|ch\.?|appendix|lecture|lesson|module|unit|section)\s+[^.;|\n]{2,120}|(?:part|book|volume|vol\.?|week|session)\s+(?:[ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b[^.;|\n]{0,120}|\d+(?:\.\d+)*[.)]\s+[^.;|\n]{2,120})/giu;
   var DOT_LEADER_PAGE_PATTERN = /\s*\.{2,}\s*(?:[ivxlcdm]+|\d{1,4})\s*$/i;
@@ -2975,88 +2972,6 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   var DESCRIPTION_WORD_PATTERN = /\b(?:description|overview|summary|synopsis|blurb)\b/i;
   var MARKETING_TOC_FRAGMENT_PATTERN = /^(?:chapter\s+(?:on|new)\b|new\s+(?:sections?\s+covering|and\s+revised)\b)/i;
   var PLAIN_PAGE_SUFFIX_PATTERN = /^(.+?)\s+((?:[ivxlcdm]+)|(?:\d{1,4}))$/i;
-  function wordsIn(value) {
-    return value.split(/\s+/).filter(Boolean);
-  }
-  function stripPlainPageSuffix(value) {
-    const match = value.match(PLAIN_PAGE_SUFFIX_PATTERN);
-    if (!match) return value;
-    const body = (match[1] ?? "").trim();
-    if (STRUCTURAL_PREFIX_ONLY_PATTERN.test(body)) return value;
-    if (wordsIn(body).length >= 2 || FRONT_BACK_MATTER_PATTERN.test(body))
-      return body;
-    return value;
-  }
-  function normalizeChapterTitle(value) {
-    return value.replace(/<[^>]+>/g, " ").replace(DOT_LEADER_PAGE_PATTERN, "").replace(LEADING_MARKER_PATTERN, "").replace(/\s+/g, " ").replace(/[.;]\s*$/, "").trim();
-  }
-  function hasStructuralMarker(title) {
-    return STRUCTURAL_PREFIX_PATTERN.test(title) || FRONT_BACK_MATTER_PATTERN.test(title) || NUMBERED_TITLE_PATTERN.test(title) || WORD_NUMBER_TITLE_PATTERN.test(title);
-  }
-  function isNarrativeText(title) {
-    if (URL_OR_ISBN_PATTERN.test(title)) return true;
-    if (DESCRIPTION_WORD_PATTERN.test(title)) return true;
-    if (MARKETING_TOC_FRAGMENT_PATTERN.test(title)) return true;
-    if (NARRATIVE_START_PATTERN.test(title)) return true;
-    if (NARRATIVE_VERB_PATTERN.test(title)) return true;
-    if (MARKETING_VERB_PATTERN.test(title)) return true;
-    if (SENTENCE_BOUNDARY_PATTERN.test(title) && wordsIn(title).length > 8)
-      return true;
-    return false;
-  }
-  function isConcisePlainTitle(title) {
-    const words = wordsIn(title);
-    if (words.length > 10) return false;
-    if (/[.!?]$/.test(title)) return false;
-    if (title.includes(":") && words.length > 12) return false;
-    return !isNarrativeText(title);
-  }
-  function isLikelyChapterTitle(value, source = "structured") {
-    const title = normalizeChapterTitle(value);
-    if (title.length < MIN_CHAPTER_TITLE_LENGTH || title.length > MAX_CHAPTER_TITLE_LENGTH) {
-      return false;
-    }
-    if (!LETTER_PATTERN.test(title)) {
-      return false;
-    }
-    const words = wordsIn(title);
-    if (words.length > MAX_CHAPTER_WORDS && !STRUCTURAL_PREFIX_PATTERN.test(title)) {
-      return false;
-    }
-    if (isNarrativeText(title)) {
-      return false;
-    }
-    if (hasStructuralMarker(title)) {
-      return true;
-    }
-    return source !== "unstructured" && isConcisePlainTitle(title);
-  }
-  function sanitizeChapterTitles(values, options = {}) {
-    const seen = /* @__PURE__ */ new Set();
-    const chapters = [];
-    const source = options.source ?? "structured";
-    values.forEach((value) => {
-      const title = stripPlainPageSuffix(normalizeChapterTitle(value));
-      const key = title.toLowerCase();
-      if (!isLikelyChapterTitle(title, source) || seen.has(key)) {
-        return;
-      }
-      seen.add(key);
-      chapters.push(title);
-    });
-    return chapters.slice(0, options.limit ?? 80);
-  }
-  function extractChapterCandidatesFromText(text, options = {}) {
-    const input = String(text);
-    const parts = input.split(UNSTRUCTURED_SPLIT_PATTERN).map((line) => line.trim()).filter(Boolean);
-    const structuralMatches = Array.from(
-      input.matchAll(STRUCTURAL_SENTENCE_PATTERN)
-    ).map((match) => match[0]).filter(Boolean);
-    return sanitizeChapterTitles([...parts, ...structuralMatches], {
-      limit: options.limit,
-      source: options.source ?? "unstructured"
-    });
-  }
 
   // src/core/isbn.ts
   var ISBN10_PATTERN = /^\d{9}[\dX]$/;
@@ -3094,6 +3009,273 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     if (!compact) return false;
     if (!/^[0-9X]+$/.test(compact)) return false;
     return compact.indexOf("X") < 0 || compact.endsWith("X");
+  }
+
+  // src/core/matchers.ts
+  var MATCHER_LIMITS = {
+    minTokenLength: 3,
+    closeTitleScore: 0.65,
+    weakBookMatchScore: 0.34,
+    authorSupportTitleFloor: 0.35,
+    authorScoreWeight: 0.12,
+    genericTitleTokenLimit: 3,
+    genericTitleAuthorFloor: 0.12
+  };
+  function matcherDecision(input) {
+    const score = Math.max(0, Math.min(1, input.score));
+    const confidence = !input.accepted ? "rejected" : score >= 0.8 ? "high" : score >= 0.55 ? "medium" : "low";
+    return {
+      accepted: input.accepted,
+      score,
+      confidence,
+      reasons: input.reasons ?? [],
+      rejectedReasons: input.rejectedReasons ?? [],
+      sourceMode: input.sourceMode,
+      evidenceAnchors: input.evidenceAnchors ?? []
+    };
+  }
+  function normalizeMatcherText(value) {
+    return String(value ?? "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/[^\p{L}\p{N}'-]+/gu, " ").replace(/\s+/g, " ").trim();
+  }
+  function matchTokens(value) {
+    return normalizeMatcherText(value).split(/\s+/).map((token) => token.replace(/^['-]+|['-]+$/g, "")).filter((token) => token.length >= MATCHER_LIMITS.minTokenLength);
+  }
+  function matchTokenSet(value) {
+    return new Set(matchTokens(value));
+  }
+  function jaccardTokenSimilarity(left, right) {
+    const leftTokens = matchTokenSet(left);
+    const rightTokens = matchTokenSet(right);
+    if (!leftTokens.size || !rightTokens.size) return 0;
+    let shared = 0;
+    leftTokens.forEach((token) => {
+      if (rightTokens.has(token)) shared += 1;
+    });
+    return shared / Math.max(1, leftTokens.size + rightTokens.size - shared);
+  }
+  function tokenContainmentSimilarity(left, right) {
+    const leftTokens = matchTokenSet(left);
+    const rightTokens = matchTokenSet(right);
+    if (leftTokens.size < 2 || rightTokens.size < 2) return 0;
+    let shared = 0;
+    leftTokens.forEach((token) => {
+      if (rightTokens.has(token)) shared += 1;
+    });
+    return shared / leftTokens.size;
+  }
+  function sharesAnyMatchToken(left, right) {
+    const leftTokens = matchTokenSet(left);
+    return matchTokens(right).some((token) => leftTokens.has(token));
+  }
+  function normalizedIsbnText(value) {
+    return cleanedIsbn(value).toLowerCase();
+  }
+  function isbnAppearsInText(isbn, text) {
+    const normalized = normalizedIsbnText(isbn);
+    return Boolean(normalized && normalizedIsbnText(text).includes(normalized));
+  }
+  function candidateIsbnMatches(isbn, candidate) {
+    const targetIsbn = normalizedIsbnText(isbn);
+    if (!targetIsbn) return false;
+    const values = Array.isArray(candidate.isbn) ? candidate.isbn : [candidate.isbn];
+    return values.some((value) => normalizedIsbnText(value) === targetIsbn);
+  }
+  function exactTitleMatch(targetTitle, candidateTitle) {
+    return normalizeMatcherText(targetTitle) !== "" && normalizeMatcherText(targetTitle) === normalizeMatcherText(candidateTitle);
+  }
+  function bookMatchDecision(input) {
+    const target = input.target;
+    const candidate = input.candidate;
+    const candidateText = [
+      candidate.title ?? "",
+      candidate.text ?? "",
+      ...candidate.authors ?? []
+    ].join(" ");
+    const candidateTitle = candidate.title ?? candidate.text ?? "";
+    const titleScore = Math.max(
+      jaccardTokenSimilarity(target.title, candidateTitle),
+      tokenContainmentSimilarity(target.title, candidateTitle)
+    );
+    const shortScore = Math.max(
+      jaccardTokenSimilarity(target.short || target.title, candidateTitle),
+      tokenContainmentSimilarity(target.short || target.title, candidateTitle)
+    );
+    const titleBase = Math.max(titleScore, shortScore);
+    const authorText = (target.authors ?? []).join(" ");
+    const candidateAuthorText = (candidate.authors ?? []).join(" ");
+    const authorSimilarity = Math.max(
+      jaccardTokenSimilarity(authorText, candidateText),
+      jaccardTokenSimilarity(authorText, candidateAuthorText)
+    );
+    const authorScore = authorText && titleBase > MATCHER_LIMITS.authorSupportTitleFloor ? authorSimilarity * MATCHER_LIMITS.authorScoreWeight : 0;
+    const isbnMatch = candidateIsbnMatches(target.isbn, candidate) || isbnAppearsInText(target.isbn, candidateText);
+    const exactTitle = exactTitleMatch(target.title, candidateTitle);
+    const score = isbnMatch ? 1 : Math.min(1, titleBase + authorScore);
+    const minimumScore = input.minimumScore ?? MATCHER_LIMITS.weakBookMatchScore;
+    const reasons = [
+      isbnMatch ? "isbn_match" : "",
+      exactTitle ? "exact_title" : "",
+      titleBase >= MATCHER_LIMITS.closeTitleScore ? "close_title" : "",
+      authorSimilarity >= MATCHER_LIMITS.genericTitleAuthorFloor ? "author_support" : ""
+    ].filter(Boolean);
+    const rejectedReasons = [
+      score < minimumScore ? "below_minimum_score" : "",
+      !candidateTitle && !candidate.text ? "missing_candidate_title" : ""
+    ].filter(Boolean);
+    return matcherDecision({
+      accepted: score >= minimumScore,
+      score,
+      sourceMode: input.sourceMode,
+      reasons,
+      rejectedReasons,
+      evidenceAnchors: [candidateTitle, candidateAuthorText].filter(Boolean)
+    });
+  }
+  function genericTitleAuthorConflict(target, candidate) {
+    const titleTokens = matchTokenSet(target.title);
+    const authorText = (target.authors ?? []).join(" ");
+    const candidateAuthorText = [
+      ...candidate.authors ?? [],
+      candidate.text ?? ""
+    ].join(" ");
+    if (titleTokens.size > MATCHER_LIMITS.genericTitleTokenLimit) return false;
+    if (!authorText || !candidateAuthorText) return false;
+    return jaccardTokenSimilarity(authorText, candidateAuthorText) < MATCHER_LIMITS.genericTitleAuthorFloor;
+  }
+
+  // src/core/chapter-titles.ts
+  var MAX_CHAPTER_TITLE_LENGTH = 140;
+  var MAX_CHAPTER_WORDS = 18;
+  var MIN_CHAPTER_TITLE_LENGTH = 2;
+  function wordsIn(value) {
+    return value.split(/\s+/).filter(Boolean);
+  }
+  function stripPlainPageSuffix(value) {
+    const match = value.match(PLAIN_PAGE_SUFFIX_PATTERN);
+    if (!match) return value;
+    const body = (match[1] ?? "").trim();
+    if (STRUCTURAL_PREFIX_ONLY_PATTERN.test(body)) return value;
+    if (wordsIn(body).length >= 2 || FRONT_BACK_MATTER_PATTERN.test(body))
+      return body;
+    return value;
+  }
+  function normalizeChapterTitle(value) {
+    return value.replace(/<[^>]+>/g, " ").replace(DOT_LEADER_PAGE_PATTERN, "").replace(LEADING_MARKER_PATTERN, "").replace(/\s+/g, " ").replace(/[.;]\s*$/, "").trim();
+  }
+  function hasStructuralMarker(title) {
+    return STRUCTURAL_PREFIX_PATTERN.test(title) || FRONT_BACK_MATTER_PATTERN.test(title) || NUMBERED_TITLE_PATTERN.test(title) || WORD_NUMBER_TITLE_PATTERN.test(title);
+  }
+  function matcherSourceMode(source) {
+    if (source === "unstructured") return "provider_snippet";
+    if (source === "provider_snippet") return "provider_snippet";
+    if (source === "manual") return "manual";
+    if (source === "imported") return "metadata";
+    return "structured";
+  }
+  function isNarrativeText(title) {
+    if (URL_OR_ISBN_PATTERN.test(title)) return true;
+    if (DESCRIPTION_WORD_PATTERN.test(title)) return true;
+    if (MARKETING_TOC_FRAGMENT_PATTERN.test(title)) return true;
+    if (NARRATIVE_START_PATTERN.test(title)) return true;
+    if (NARRATIVE_VERB_PATTERN.test(title)) return true;
+    if (MARKETING_VERB_PATTERN.test(title)) return true;
+    if (SENTENCE_BOUNDARY_PATTERN.test(title) && wordsIn(title).length > 8)
+      return true;
+    return false;
+  }
+  function isConcisePlainTitle(title) {
+    const words = wordsIn(title);
+    if (words.length > 10) return false;
+    if (/[.!?]$/.test(title)) return false;
+    if (title.includes(":") && words.length > 12) return false;
+    return !isNarrativeText(title);
+  }
+  function isLikelyChapterTitle(value, source = "structured") {
+    return chapterTitleDecision(value, source).accepted;
+  }
+  function chapterTitleDecision(value, source = "structured") {
+    const title = normalizeChapterTitle(value);
+    if (title.length < MIN_CHAPTER_TITLE_LENGTH || title.length > MAX_CHAPTER_TITLE_LENGTH) {
+      return matcherDecision({
+        accepted: false,
+        score: 0,
+        sourceMode: matcherSourceMode(source),
+        rejectedReasons: ["invalid_length"],
+        evidenceAnchors: [title].filter(Boolean)
+      });
+    }
+    if (!LETTER_PATTERN.test(title)) {
+      return matcherDecision({
+        accepted: false,
+        score: 0,
+        sourceMode: matcherSourceMode(source),
+        rejectedReasons: ["missing_letters"],
+        evidenceAnchors: [title]
+      });
+    }
+    const words = wordsIn(title);
+    if (words.length > MAX_CHAPTER_WORDS && !STRUCTURAL_PREFIX_PATTERN.test(title)) {
+      return matcherDecision({
+        accepted: false,
+        score: 0.1,
+        sourceMode: matcherSourceMode(source),
+        rejectedReasons: ["too_many_words"],
+        evidenceAnchors: [title]
+      });
+    }
+    if (isNarrativeText(title)) {
+      return matcherDecision({
+        accepted: false,
+        score: 0.1,
+        sourceMode: matcherSourceMode(source),
+        rejectedReasons: ["narrative_or_marketing_text"],
+        evidenceAnchors: [title]
+      });
+    }
+    if (hasStructuralMarker(title)) {
+      return matcherDecision({
+        accepted: true,
+        score: 0.9,
+        sourceMode: matcherSourceMode(source),
+        reasons: ["structural_marker"],
+        evidenceAnchors: [title]
+      });
+    }
+    const plainAllowed = !["unstructured", "provider_snippet"].includes(source) && isConcisePlainTitle(title);
+    return matcherDecision({
+      accepted: plainAllowed,
+      score: plainAllowed ? 0.62 : 0.2,
+      sourceMode: matcherSourceMode(source),
+      reasons: plainAllowed ? ["concise_plain_title"] : [],
+      rejectedReasons: plainAllowed ? [] : ["missing_structural_evidence"],
+      evidenceAnchors: [title]
+    });
+  }
+  function sanitizeChapterTitles(values, options = {}) {
+    const seen = /* @__PURE__ */ new Set();
+    const chapters = [];
+    const source = options.source ?? "structured";
+    values.forEach((value) => {
+      const title = stripPlainPageSuffix(normalizeChapterTitle(value));
+      const key = title.toLowerCase();
+      if (!isLikelyChapterTitle(title, source) || seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      chapters.push(title);
+    });
+    return chapters.slice(0, options.limit ?? 80);
+  }
+  function extractChapterCandidatesFromText(text, options = {}) {
+    const input = String(text);
+    const parts = input.split(UNSTRUCTURED_SPLIT_PATTERN).map((line) => line.trim()).filter(Boolean);
+    const structuralMatches = Array.from(
+      input.matchAll(STRUCTURAL_SENTENCE_PATTERN)
+    ).map((match) => match[0]).filter(Boolean);
+    return sanitizeChapterTitles([...parts, ...structuralMatches], {
+      limit: options.limit,
+      source: options.source ?? "unstructured"
+    });
   }
 
   // src/core/openlibrary-keys.ts
@@ -17537,23 +17719,6 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     return `${basePath.replace(/\/+$/, "")}/${filePath.replace(/^\/+/, "")}`;
   }
 
-  // src/infra/token-similarity.ts
-  function normalizedTokenSet(value) {
-    return new Set(
-      String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/).map((part) => part.trim()).filter((part) => part.length > 2)
-    );
-  }
-  function jaccardTokenSimilarity(left, right) {
-    const leftTokens = normalizedTokenSet(left);
-    const rightTokens = normalizedTokenSet(right);
-    if (!leftTokens.size || !rightTokens.size) return 0;
-    let shared = 0;
-    leftTokens.forEach((token) => {
-      if (rightTokens.has(token)) shared += 1;
-    });
-    return shared / Math.max(1, leftTokens.size + rightTokens.size - shared);
-  }
-
   // src/infra/qbittorrent-selection.ts
   var MIN_PLUGIN_SEEDERS = 1;
   var MIN_TORRENT_MATCH_SCORE = 0.34;
@@ -17563,18 +17728,20 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   var TORRENT_SEEDER_SCORE_CAP = 120;
   var BAD_FILE_NAME_PATTERN = /\b(?:sample|preview|solution|solutions|answer|answers|instructor|slides|cover|front\s*matter|copyright)\b/i;
   function normalizedBookIsbn(value) {
-    return String(value ?? "").replace(/[^0-9x]/gi, "").toLowerCase();
+    return normalizedIsbnText(value);
   }
   function bookMatchScore(title, request) {
     const book = request.book;
-    const authorText = book.authors.join(" ");
-    const titleScore = jaccardTokenSimilarity(book.title, title);
-    const shortScore = jaccardTokenSimilarity(book.short || book.title, title);
-    const titleBase = Math.max(titleScore, shortScore);
-    const authorScore = authorText && titleBase > 0.35 ? jaccardTokenSimilarity(authorText, title) * 0.12 : 0;
-    const isbn = normalizedBookIsbn(book.isbn);
-    const isbnScore = isbn && title.replace(/[^0-9x]/gi, "").toLowerCase().includes(isbn) ? 1 : 0;
-    return Math.max(Math.min(1, titleBase + authorScore), isbnScore);
+    return bookMatchDecision({
+      target: {
+        title: book.title,
+        short: book.short,
+        authors: book.authors,
+        isbn: book.isbn
+      },
+      candidate: { title },
+      sourceMode: "external_search"
+    }).score;
   }
   function fileMatchScore(file, request) {
     const name = file.name ?? "";
@@ -17742,15 +17909,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     return [...literalTitles, ...hexTitles].filter(Boolean);
   }
 
-  // src/infra/document-text-extractor.ts
-  var TEXT_SCAN_CHARS = 26e4;
-  var CONTENTS_REGION_MAX_LINES = 900;
-  var EARLY_TEXT_LINES = 260;
-  var MIN_EXPLICIT_TOC_CHAPTERS = 2;
-  var MIN_PDF_OUTLINE_CHAPTERS = 2;
-  var MIN_INFERRED_HEADER_COUNT = 3;
-  var MAX_INFERRED_HEADER_COUNT = 80;
-  var HEADER_MAX_LENGTH = 110;
+  // src/infra/toc-extraction-patterns.ts
   var PDF_OBJECT_NOISE_PATTERN = /(?:\/(?:Type|Length|Filter|Subtype|Resources|Font)\b|endobj|xref|trailer)/i;
   var CONTENTS_LINE_PATTERN = /^(?:table of )?contents$/i;
   var EXPLICIT_CONTENTS_PATTERN = /\b(?:table of contents|contents)\b/i;
@@ -17762,6 +17921,16 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   var TOC_CONTINUATION_START_PATTERN = /^[\p{Lu}\d][\p{L}\p{N}',:&() -]{2,100}$/u;
   var PAGE_HEADER_PATTERN = /^\s*(?:\d{1,4}\s+)?([A-Z][\p{L}\p{N}',:&() -]{3,100})\s*(?:\d{1,4})?\s*$/u;
   var FRONT_BACK_LINE_PATTERN = /^(?:index|references|bibliography|copyright|isbn|all rights reserved)\b/i;
+
+  // src/infra/document-text-extractor.ts
+  var TEXT_SCAN_CHARS = 26e4;
+  var CONTENTS_REGION_MAX_LINES = 900;
+  var EARLY_TEXT_LINES = 260;
+  var MIN_EXPLICIT_TOC_CHAPTERS = 2;
+  var MIN_PDF_OUTLINE_CHAPTERS = 2;
+  var MIN_INFERRED_HEADER_COUNT = 3;
+  var MAX_INFERRED_HEADER_COUNT = 80;
+  var HEADER_MAX_LENGTH = 110;
   function decodeBytes(bytes) {
     return decodePdfBytes(bytes).slice(0, TEXT_SCAN_CHARS);
   }
@@ -17912,20 +18081,8 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
 
   // src/infra/internet-archive-matching.ts
   var ARCHIVE_SEARCH_ROWS = 6;
-  function tokenSet(value) {
-    return new Set(
-      String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/).filter((part) => part.length > 2)
-    );
-  }
   function archiveTokenSimilarity(left, right) {
-    const leftTokens = tokenSet(left);
-    const rightTokens = tokenSet(right);
-    if (!leftTokens.size || !rightTokens.size) return 0;
-    let shared = 0;
-    leftTokens.forEach((token) => {
-      if (rightTokens.has(token)) shared += 1;
-    });
-    return shared / Math.max(1, leftTokens.size + rightTokens.size - shared);
+    return jaccardTokenSimilarity(left, right);
   }
   function creatorText(value) {
     return Array.isArray(value) ? value.join(" ") : String(value ?? "");
@@ -17933,11 +18090,10 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   function creatorConflictsForGenericTitle(book, doc) {
     const creator = creatorText(doc.creator);
     if (!creator || !book.authors.length) return false;
-    const authorScore = Math.max(
-      0,
-      ...book.authors.map((author) => archiveTokenSimilarity(author, creator))
+    return genericTitleAuthorConflict(
+      { title: book.title, authors: book.authors },
+      { title: doc.title, text: creator }
     );
-    return tokenSet(book.title).size <= 3 && authorScore < 0.12;
   }
   function archiveRelevance(book, doc) {
     const titleScore = archiveTokenSimilarity(book.title, doc.title);
@@ -18395,6 +18551,22 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       return left.provider.localeCompare(right.provider) || left.sourceUrl.localeCompare(right.sourceUrl);
     })[0];
   }
+  function existingChapterCandidate(book) {
+    const chapters = sanitizeChapterTitles(book.enrichment.chapters, {
+      source: book.enrichment.tocSource === "manual" ? "manual" : "imported"
+    });
+    if (!chapters.length) return null;
+    return {
+      provider: book.enrichment.tocSource === "manual" ? "manual" : "local_document",
+      sourceUrl: "local://current-enrichment",
+      confidence: book.enrichment.tocSource === "manual" ? 1 : 0.54,
+      chapters,
+      tocSource: book.enrichment.tocSource,
+      strategy: "existing_chapters",
+      inferred: book.enrichment.provenance?.chapters?.inferred,
+      evidenceAnchors: book.enrichment.provenance?.chapters?.evidenceAnchors
+    };
+  }
   function buildProvenance(candidates) {
     return uniqueNonEmptyStrings(
       candidates.map(
@@ -18425,10 +18597,16 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     );
   }
   function mergeStrategyCandidates(book, candidates) {
-    const selectedChapterCandidate = bestChapterCandidate(candidates);
+    const chapterCandidates2 = [
+      existingChapterCandidate(book),
+      ...candidates
+    ].filter(Boolean);
+    const selectedChapterCandidate = bestChapterCandidate(chapterCandidates2);
     const candidateChapters = sanitizeChapterTitles(
       selectedChapterCandidate?.chapters ?? [],
-      { source: "structured" }
+      {
+        source: selectedChapterCandidate?.tocSource === "manual" ? "manual" : "structured"
+      }
     );
     const chapters = candidateChapters.length ? candidateChapters : sanitizeChapterTitles(book.enrichment.chapters, { source: "imported" });
     const description = candidates.find((candidate) => candidate.description)?.description ?? book.enrichment.description;
@@ -18458,7 +18636,10 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
         chapters,
         description,
         olSubjects: subjects,
-        tocSource: preferredTocSource(book.enrichment.tocSource, candidates),
+        tocSource: preferredTocSource(
+          book.enrichment.tocSource,
+          chapterCandidates2
+        ),
         provenance: {
           chapters: chapters.length && provenance[0] ? provenanceFor(
             provenance,
@@ -18489,8 +18670,18 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     const title = book.title.trim().toLowerCase();
     const author = book.authors[0]?.trim().toLowerCase();
     const isbn = isFullIsbnQuery(book.isbn ?? "") ? cleanedIsbn(book.isbn ?? "") : "";
+    const decision = bookMatchDecision({
+      target: { title: book.title, authors: book.authors, isbn: book.isbn },
+      candidate: {
+        title: doc.title,
+        authors: doc.author_name,
+        isbn: doc.isbn ?? null
+      },
+      sourceMode: "metadata",
+      minimumScore: 0
+    });
     const titleSimilarity = jaccardTokenSimilarity(book.title, doc.title);
-    return (isbn && (doc.isbn ?? []).some((entry) => cleanedIsbn(entry) === isbn) ? 5 : 0) + (doc.title?.toLowerCase() === title ? 3 : 0) + (titleSimilarity >= 0.65 ? titleSimilarity * 2 : 0) + (author && doc.author_name?.some((entry) => entry.toLowerCase() === author) ? 0.5 : 0);
+    return (isbn && (doc.isbn ?? []).some((entry) => cleanedIsbn(entry) === isbn) ? 5 : 0) + (normalizeMatcherText(doc.title) === normalizeMatcherText(title) ? 3 : 0) + (titleSimilarity >= 0.65 ? titleSimilarity * 2 : 0) + (decision.reasons.includes("isbn_match") ? 1 : 0) + (decision.reasons.includes("author_support") ? 0.25 : 0) + (author && doc.author_name?.some((entry) => entry.toLowerCase() === author) ? 0.5 : 0);
   }
   function stableSearchKey(query, offset, limit) {
     return `${query.trim().toLowerCase()}::${offset}::${limit}`;
@@ -19280,23 +19471,54 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   }
 
   // src/infra/qbittorrent-search.ts
-  var PLUGIN_SEARCH_FALLBACK_LIMIT = 2;
-  function qbittorrentSearchPatterns(request) {
-    const isbn = normalizedBookIsbn(request.book.isbn);
-    const title = request.book.title.trim();
-    const author = request.book.authors[0]?.trim() ?? "";
+  var MAX_QBITTORRENT_SEARCH_PATTERNS = 6;
+  var SEARCH_NOISE_WORD_PATTERN = /\b(?:\d+(?:st|nd|rd|th)?\s+(?:edition|ed\.?)|(?:edition|ed\.?)\s*\d+|revised|updated|international|student|instructor'?s?|solutions?|manual|workbook|companion)\b/gi;
+  var TITLE_TRAILING_DETAIL_PATTERN = /\s*(?::|\(|\s[-–—]\s).*$/;
+  var MIN_SEARCH_TOKEN_LENGTH = 3;
+  function compactSearchText(value) {
+    return normalizeMatcherText(
+      value.replace(SEARCH_NOISE_WORD_PATTERN, " ").replace(/[,:;]+/g, " ").replace(/[()[\]{}]/g, " ")
+    );
+  }
+  function uniqueNonEmpty(values) {
     return Array.from(
       new Set(
-        [isbn, [title, author].filter(Boolean).join(" "), title].filter(Boolean)
+        values.map((value) => compactSearchText(value ?? "")).filter(Boolean)
       )
-    ).slice(0, isbn ? PLUGIN_SEARCH_FALLBACK_LIMIT : 1);
+    );
   }
-  function shouldStopAfterSearchPattern(pattern, request, candidates) {
+  function sharesSearchToken(left, right) {
+    return left.length >= MIN_SEARCH_TOKEN_LENGTH && sharesAnyMatchToken(left, right);
+  }
+  function titleSearchVariants(title, shortTitle) {
+    const compactTitle = compactSearchText(title);
+    const titleWithoutTrailingDetail = compactSearchText(
+      title.replace(TITLE_TRAILING_DETAIL_PATTERN, "")
+    );
+    return uniqueNonEmpty([
+      compactTitle,
+      titleWithoutTrailingDetail,
+      sharesSearchToken(compactTitle, shortTitle) ? shortTitle : ""
+    ]);
+  }
+  function authorSearchVariants(authors) {
+    const firstAuthor = compactSearchText(authors[0] ?? "");
+    const authorParts = firstAuthor.split(/\s+/).filter(Boolean);
+    const lastName = authorParts.length ? authorParts[authorParts.length - 1] : "";
+    return uniqueNonEmpty([firstAuthor, lastName]).filter(
+      (author) => author.length > 2
+    );
+  }
+  function qbittorrentSearchPatterns(request) {
     const isbn = normalizedBookIsbn(request.book.isbn);
-    return Boolean(
-      isbn && pattern === isbn && candidates.some(
-        (candidate) => candidate.accessBasis != null && request.policy.allowedAccess.includes(candidate.accessBasis)
-      )
+    const titles = titleSearchVariants(request.book.title, request.book.short);
+    const authors = authorSearchVariants(request.book.authors);
+    const titleAuthorPatterns = titles.flatMap(
+      (title) => authors.map((author) => `${title} ${author}`)
+    );
+    return uniqueNonEmpty([isbn, ...titleAuthorPatterns, ...titles]).slice(
+      0,
+      MAX_QBITTORRENT_SEARCH_PATTERNS
     );
   }
   function candidatesFromSearchResults(results, allowedPlugins, request, idPrefix = `qbittorrent-search:${request.book.id}`) {
@@ -19363,10 +19585,12 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     const category = settings.categories[0] ?? "all";
     const seenUrls = /* @__PURE__ */ new Set();
     const candidates = [];
-    for (const pattern of qbittorrentSearchPatterns(request)) {
-      const perPlugin = await Promise.all(
-        allowedPlugins.map(async (plugin) => ({
+    const patterns = qbittorrentSearchPatterns(request);
+    const searchJobs = await Promise.all(
+      patterns.flatMap(
+        (pattern, patternIndex) => allowedPlugins.map(async (plugin) => ({
           plugin,
+          patternIndex,
           payload: await client.runSinglePluginSearch(
             pattern,
             plugin.name,
@@ -19374,22 +19598,20 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
             settings.maxResults
           ).catch(() => ({}))
         }))
-      );
-      const patternCandidates = perPlugin.flatMap(
-        ({ plugin, payload }) => candidatesFromSearchResults(
-          (payload.results ?? []).slice(0, settings.maxResults),
-          [plugin],
-          request,
-          `qbittorrent-search:${request.book.id}:${plugin.name}`
-        )
+      )
+    );
+    for (const { plugin, patternIndex, payload } of searchJobs) {
+      const patternCandidates = candidatesFromSearchResults(
+        (payload.results ?? []).slice(0, settings.maxResults),
+        [plugin],
+        request,
+        `qbittorrent-search:${request.book.id}:${patternIndex}:${plugin.name}`
       );
       for (const candidate of patternCandidates) {
         if (seenUrls.has(candidate.sourceUrl)) continue;
         seenUrls.add(candidate.sourceUrl);
         candidates.push(candidate);
       }
-      if (shouldStopAfterSearchPattern(pattern, request, patternCandidates))
-        break;
     }
     return sortSearchCandidates(candidates, request).slice(
       0,

@@ -420,6 +420,29 @@ describe('resolveBookEnrichment', () => {
     ]);
   });
 
+  it('keeps stronger existing automated chapters over a tiny weak refresh', () => {
+    const book = makeBook();
+    book.enrichment.tocSource = 'internet_archive';
+    book.enrichment.chapters = Array.from(
+      { length: 10 },
+      (_, index) => `Chapter ${index + 1} Existing`,
+    );
+
+    const resolution = mergeStrategyCandidates(book, [
+      {
+        provider: 'google_books',
+        sourceUrl: 'https://books.google.com/books?id=weak',
+        confidence: 0.45,
+        chapters: ['Chapter 1 Weak', 'Chapter 2 Weak'],
+        tocSource: 'google_books',
+        strategy: 'explicit_toc_region',
+      },
+    ]);
+
+    expect(resolution.enrichment.tocSource).toBe('internet_archive');
+    expect(resolution.enrichment.chapters).toEqual(book.enrichment.chapters);
+  });
+
   it('does not treat descriptive summary sentences as chapter titles', async () => {
     const book = makeBook();
     book.enrichment.chapters = [

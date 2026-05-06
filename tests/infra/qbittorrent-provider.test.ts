@@ -498,12 +498,17 @@ describe('qBittorrent document provider', () => {
       },
     });
 
-    expect(searchStartBodies).toHaveLength(1);
-    expect(searchStartBodies[0]?.get('pattern')).toBe(
-      'Fixture Book Author Name',
-    );
-    expect(searchStartBodies[0]?.get('plugins')).toBe('openarchive');
-    expect(searchStartBodies[0]?.get('category')).toBe('books');
+    expect(searchStartBodies.map((body) => body.get('pattern'))).toEqual([
+      'fixture book author name',
+      'fixture book name',
+      'fixture book',
+    ]);
+    expect(
+      new Set(searchStartBodies.map((body) => body.get('plugins'))),
+    ).toEqual(new Set(['openarchive']));
+    expect(
+      new Set(searchStartBodies.map((body) => body.get('category'))),
+    ).toEqual(new Set(['books']));
     expect(candidates).toEqual([
       expect.objectContaining({
         provider: 'qbittorrent',

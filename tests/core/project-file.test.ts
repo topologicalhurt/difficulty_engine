@@ -35,7 +35,7 @@ describe('project-file boundary', () => {
     ]);
     expect(parsed.sourceSettings.documentSources.qbittorrent).toBe(true);
     expect(parsed.sourceSettings.qbittorrent.searchPlugins).toBe(true);
-    expect(parsed.sourceSettings.qbittorrent.maxResults).toBe(30);
+    expect(parsed.sourceSettings.qbittorrent.maxResults).toBe(50);
     expect(parsed.sourceSettings.qbittorrent.allowedSites).toEqual(
       expect.arrayContaining([
         'archive.org',

@@ -5,7 +5,7 @@ import type {
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import type { TorrentFile, TorrentInfo } from './qbittorrent-types';
 import { contentKindPriorityForPreference } from './document-content-priority';
-import { jaccardTokenSimilarity } from './token-similarity';
+import { bookMatchDecision, normalizedIsbnText } from '../core/matchers';
 
 export const MIN_PLUGIN_SEEDERS = 1;
 export const MIN_TORRENT_MATCH_SCORE = 0.34;
@@ -17,9 +17,7 @@ export const BAD_FILE_NAME_PATTERN =
   /\b(?:sample|preview|solution|solutions|answer|answers|instructor|slides|cover|front\s*matter|copyright)\b/i;
 
 export function normalizedBookIsbn(value: string | null | undefined): string {
-  return String(value ?? '')
-    .replace(/[^0-9x]/gi, '')
-    .toLowerCase();
+  return normalizedIsbnText(value);
 }
 
 export function bookMatchScore(
@@ -27,24 +25,16 @@ export function bookMatchScore(
   request: DocumentAcquisitionRequest,
 ): number {
   const book = request.book;
-  const authorText = book.authors.join(' ');
-  const titleScore = jaccardTokenSimilarity(book.title, title);
-  const shortScore = jaccardTokenSimilarity(book.short || book.title, title);
-  const titleBase = Math.max(titleScore, shortScore);
-  const authorScore =
-    authorText && titleBase > 0.35
-      ? jaccardTokenSimilarity(authorText, title) * 0.12
-      : 0;
-  const isbn = normalizedBookIsbn(book.isbn);
-  const isbnScore =
-    isbn &&
-    title
-      .replace(/[^0-9x]/gi, '')
-      .toLowerCase()
-      .includes(isbn)
-      ? 1
-      : 0;
-  return Math.max(Math.min(1, titleBase + authorScore), isbnScore);
+  return bookMatchDecision({
+    target: {
+      title: book.title,
+      short: book.short,
+      authors: book.authors,
+      isbn: book.isbn,
+    },
+    candidate: { title },
+    sourceMode: 'external_search',
+  }).score;
 }
 
 export function fileMatchScore(

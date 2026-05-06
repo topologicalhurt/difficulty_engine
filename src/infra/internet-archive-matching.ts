@@ -1,4 +1,8 @@
 import type { BookRecord } from '../core/types';
+import {
+  genericTitleAuthorConflict,
+  jaccardTokenSimilarity,
+} from '../core/matchers';
 import { cleanedIsbn, isFullIsbnQuery } from './book-search';
 
 export interface ArchiveSearchDoc {
@@ -9,28 +13,11 @@ export interface ArchiveSearchDoc {
 
 const ARCHIVE_SEARCH_ROWS = 6;
 
-function tokenSet(value: string | undefined): Set<string> {
-  return new Set(
-    String(value ?? '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .split(/\s+/)
-      .filter((part) => part.length > 2),
-  );
-}
-
 export function archiveTokenSimilarity(
   left: string | undefined,
   right: string | undefined,
 ): number {
-  const leftTokens = tokenSet(left);
-  const rightTokens = tokenSet(right);
-  if (!leftTokens.size || !rightTokens.size) return 0;
-  let shared = 0;
-  leftTokens.forEach((token) => {
-    if (rightTokens.has(token)) shared += 1;
-  });
-  return shared / Math.max(1, leftTokens.size + rightTokens.size - shared);
+  return jaccardTokenSimilarity(left, right);
 }
 
 function creatorText(value: ArchiveSearchDoc['creator']): string {
@@ -43,11 +30,10 @@ export function creatorConflictsForGenericTitle(
 ): boolean {
   const creator = creatorText(doc.creator);
   if (!creator || !book.authors.length) return false;
-  const authorScore = Math.max(
-    0,
-    ...book.authors.map((author) => archiveTokenSimilarity(author, creator)),
+  return genericTitleAuthorConflict(
+    { title: book.title, authors: book.authors },
+    { title: doc.title, text: creator },
   );
-  return tokenSet(book.title).size <= 3 && authorScore < 0.12;
 }
 
 export function archiveRelevance(

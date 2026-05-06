@@ -2,6 +2,7 @@ import type {
   DocumentAcquisitionRequest,
   DocumentCandidate,
 } from './document-acquisition';
+import { normalizeMatcherText, sharesAnyMatchToken } from '../core/matchers';
 import type { QbittorrentPluginInfo } from '../core/types';
 import {
   bookMatchScore,
@@ -18,35 +19,73 @@ import {
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import type { SearchResult } from './qbittorrent-types';
 
-const PLUGIN_SEARCH_FALLBACK_LIMIT = 2;
+const MAX_QBITTORRENT_SEARCH_PATTERNS = 6;
+
+// Search plugins are literal-string matchers more often than semantic searchers.
+// Keep variants precise, but remove edition/noise words that commonly hide hits.
+const SEARCH_NOISE_WORD_PATTERN =
+  /\b(?:\d+(?:st|nd|rd|th)?\s+(?:edition|ed\.?)|(?:edition|ed\.?)\s*\d+|revised|updated|international|student|instructor'?s?|solutions?|manual|workbook|companion)\b/gi;
+const TITLE_TRAILING_DETAIL_PATTERN = /\s*(?::|\(|\s[-–—]\s).*$/;
+const MIN_SEARCH_TOKEN_LENGTH = 3;
+
+function compactSearchText(value: string): string {
+  return normalizeMatcherText(
+    value
+      .replace(SEARCH_NOISE_WORD_PATTERN, ' ')
+      .replace(/[,:;]+/g, ' ')
+      .replace(/[()[\]{}]/g, ' '),
+  );
+}
+
+function uniqueNonEmpty(values: Array<string | null | undefined>): string[] {
+  return Array.from(
+    new Set(
+      values.map((value) => compactSearchText(value ?? '')).filter(Boolean),
+    ),
+  );
+}
+
+function sharesSearchToken(left: string, right: string): boolean {
+  return (
+    left.length >= MIN_SEARCH_TOKEN_LENGTH && sharesAnyMatchToken(left, right)
+  );
+}
+
+function titleSearchVariants(title: string, shortTitle: string): string[] {
+  const compactTitle = compactSearchText(title);
+  const titleWithoutTrailingDetail = compactSearchText(
+    title.replace(TITLE_TRAILING_DETAIL_PATTERN, ''),
+  );
+  return uniqueNonEmpty([
+    compactTitle,
+    titleWithoutTrailingDetail,
+    sharesSearchToken(compactTitle, shortTitle) ? shortTitle : '',
+  ]);
+}
+
+function authorSearchVariants(authors: string[]): string[] {
+  const firstAuthor = compactSearchText(authors[0] ?? '');
+  const authorParts = firstAuthor.split(/\s+/).filter(Boolean);
+  const lastName = authorParts.length
+    ? authorParts[authorParts.length - 1]
+    : '';
+  return uniqueNonEmpty([firstAuthor, lastName]).filter(
+    (author) => author.length > 2,
+  );
+}
 
 export function qbittorrentSearchPatterns(
   request: DocumentAcquisitionRequest,
 ): string[] {
   const isbn = normalizedBookIsbn(request.book.isbn);
-  const title = request.book.title.trim();
-  const author = request.book.authors[0]?.trim() ?? '';
-  return Array.from(
-    new Set(
-      [isbn, [title, author].filter(Boolean).join(' '), title].filter(Boolean),
-    ),
-  ).slice(0, isbn ? PLUGIN_SEARCH_FALLBACK_LIMIT : 1);
-}
-
-export function shouldStopAfterSearchPattern(
-  pattern: string,
-  request: DocumentAcquisitionRequest,
-  candidates: DocumentCandidate[],
-): boolean {
-  const isbn = normalizedBookIsbn(request.book.isbn);
-  return Boolean(
-    isbn &&
-      pattern === isbn &&
-      candidates.some(
-        (candidate) =>
-          candidate.accessBasis != null &&
-          request.policy.allowedAccess.includes(candidate.accessBasis),
-      ),
+  const titles = titleSearchVariants(request.book.title, request.book.short);
+  const authors = authorSearchVariants(request.book.authors);
+  const titleAuthorPatterns = titles.flatMap((title) =>
+    authors.map((author) => `${title} ${author}`),
+  );
+  return uniqueNonEmpty([isbn, ...titleAuthorPatterns, ...titles]).slice(
+    0,
+    MAX_QBITTORRENT_SEARCH_PATTERNS,
   );
 }
 

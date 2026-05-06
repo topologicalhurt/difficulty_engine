@@ -277,4 +277,21 @@ describe('source architecture guardrails', () => {
       true,
     );
   });
+
+  it('ships matcher audit tooling and keeps infra fuzzy helpers centralized', () => {
+    expect(existsSync(join(ROOT, 'scripts', 'matcher_audit.py'))).toBe(true);
+    expect(existsSync(join(ROOT, 'src', 'infra', 'token-similarity.ts'))).toBe(
+      false,
+    );
+    const duplicateMatcherPattern =
+      /\bfunction\s+(?:tokenSet|jaccardTokenSimilarity)\b/;
+    const violations = sourceFiles()
+      .map(relativeSourcePath)
+      .filter((path) => path.startsWith('src/infra/'))
+      .filter((path) =>
+        duplicateMatcherPattern.test(readFileSync(join(ROOT, path), 'utf8')),
+      );
+
+    expect(violations).toEqual([]);
+  });
 });

@@ -103,6 +103,24 @@ function bestChapterCandidate(
     })[0];
 }
 
+function existingChapterCandidate(book: BookRecord): StrategyCandidate | null {
+  const chapters = sanitizeChapterTitles(book.enrichment.chapters, {
+    source: book.enrichment.tocSource === 'manual' ? 'manual' : 'imported',
+  });
+  if (!chapters.length) return null;
+  return {
+    provider:
+      book.enrichment.tocSource === 'manual' ? 'manual' : 'local_document',
+    sourceUrl: 'local://current-enrichment',
+    confidence: book.enrichment.tocSource === 'manual' ? 1 : 0.54,
+    chapters,
+    tocSource: book.enrichment.tocSource,
+    strategy: 'existing_chapters',
+    inferred: book.enrichment.provenance?.chapters?.inferred,
+    evidenceAnchors: book.enrichment.provenance?.chapters?.evidenceAnchors,
+  };
+}
+
 function buildProvenance(
   candidates: StrategyCandidate[],
 ): EnrichmentFieldProvenance[] {
@@ -147,10 +165,19 @@ export function mergeStrategyCandidates(
   book: BookRecord,
   candidates: StrategyCandidate[],
 ): StrategyResolution {
-  const selectedChapterCandidate = bestChapterCandidate(candidates);
+  const chapterCandidates = [
+    existingChapterCandidate(book),
+    ...candidates,
+  ].filter(Boolean) as StrategyCandidate[];
+  const selectedChapterCandidate = bestChapterCandidate(chapterCandidates);
   const candidateChapters = sanitizeChapterTitles(
     selectedChapterCandidate?.chapters ?? [],
-    { source: 'structured' },
+    {
+      source:
+        selectedChapterCandidate?.tocSource === 'manual'
+          ? 'manual'
+          : 'structured',
+    },
   );
   const chapters = candidateChapters.length
     ? candidateChapters
@@ -202,7 +229,10 @@ export function mergeStrategyCandidates(
       chapters,
       description,
       olSubjects: subjects,
-      tocSource: preferredTocSource(book.enrichment.tocSource, candidates),
+      tocSource: preferredTocSource(
+        book.enrichment.tocSource,
+        chapterCandidates,
+      ),
       provenance: {
         chapters:
           chapters.length && provenance[0]

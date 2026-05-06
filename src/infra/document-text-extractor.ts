@@ -4,6 +4,19 @@ import {
   sanitizeChapterTitles,
 } from '../core/chapter-titles';
 import { decodePdfBytes, extractPdfOutlineTitles } from './pdf-outline-titles';
+import {
+  BARE_NUMBER_MARKER_PATTERN,
+  BODY_CHAPTER_START_PATTERN,
+  CONTENTS_LINE_PATTERN,
+  DECIMAL_HEADER_PATTERN,
+  EXPLICIT_CONTENTS_PATTERN,
+  FRONT_BACK_LINE_PATTERN,
+  MARKER_ONLY_CHAPTER_PATTERN,
+  NUMBERED_HEADER_PATTERN,
+  PAGE_HEADER_PATTERN,
+  PDF_OBJECT_NOISE_PATTERN,
+  TOC_CONTINUATION_START_PATTERN,
+} from './toc-extraction-patterns';
 
 export type DocumentExtractionStrategy =
   | 'pdf_outline'
@@ -26,25 +39,6 @@ const MIN_PDF_OUTLINE_CHAPTERS = 2;
 const MIN_INFERRED_HEADER_COUNT = 3;
 const MAX_INFERRED_HEADER_COUNT = 80;
 const HEADER_MAX_LENGTH = 110;
-const PDF_OBJECT_NOISE_PATTERN =
-  /(?:\/(?:Type|Length|Filter|Subtype|Resources|Font)\b|endobj|xref|trailer)/i;
-const CONTENTS_LINE_PATTERN = /^(?:table of )?contents$/i;
-const EXPLICIT_CONTENTS_PATTERN = /\b(?:table of contents|contents)\b/i;
-const BODY_CHAPTER_START_PATTERN =
-  /^(?:chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(?:\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*$/i;
-const MARKER_ONLY_CHAPTER_PATTERN =
-  /^(chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)$/i;
-const NUMBERED_HEADER_PATTERN =
-  /^(?:chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(?:\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i;
-const DECIMAL_HEADER_PATTERN =
-  /^\d{1,2}(?:\.\d{1,2}){0,2}\s+[\p{Lu}\p{N}][^.!?]{2,}$/u;
-const BARE_NUMBER_MARKER_PATTERN = /^(?:\d{1,2}|[ivxlcdm]{1,8})[.)]?$/i;
-const TOC_CONTINUATION_START_PATTERN =
-  /^[\p{Lu}\d][\p{L}\p{N}',:&() -]{2,100}$/u;
-const PAGE_HEADER_PATTERN =
-  /^\s*(?:\d{1,4}\s+)?([A-Z][\p{L}\p{N}',:&() -]{3,100})\s*(?:\d{1,4})?\s*$/u;
-const FRONT_BACK_LINE_PATTERN =
-  /^(?:index|references|bibliography|copyright|isbn|all rights reserved)\b/i;
 
 function decodeBytes(bytes: Uint8Array): string {
   return decodePdfBytes(bytes).slice(0, TEXT_SCAN_CHARS);

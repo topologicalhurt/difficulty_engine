@@ -7,7 +7,6 @@ import type { QBittorrentClient } from './qbittorrent-client';
 import {
   candidatesFromSearchResults,
   qbittorrentSearchPatterns,
-  shouldStopAfterSearchPattern,
   sortSearchCandidates,
 } from './qbittorrent-search';
 import { pluginIsAllowed } from './qbittorrent-source-policy';
@@ -36,11 +35,13 @@ export async function pluginSearchCandidates(
   const category = settings.categories[0] ?? 'all';
   const seenUrls = new Set<string>();
   const candidates: DocumentCandidate[] = [];
+  const patterns = qbittorrentSearchPatterns(request);
 
-  for (const pattern of qbittorrentSearchPatterns(request)) {
-    const perPlugin = await Promise.all(
+  const searchJobs = await Promise.all(
+    patterns.flatMap((pattern, patternIndex) =>
       allowedPlugins.map(async (plugin) => ({
         plugin,
+        patternIndex,
         payload: await client
           .runSinglePluginSearch(
             pattern,
@@ -50,23 +51,23 @@ export async function pluginSearchCandidates(
           )
           .catch((): SearchResultsResponse => ({})),
       })),
-    );
-    const patternCandidates = perPlugin.flatMap(({ plugin, payload }) =>
-      candidatesFromSearchResults(
-        (payload.results ?? []).slice(0, settings.maxResults),
-        [plugin],
-        request,
-        `qbittorrent-search:${request.book.id}:${plugin.name}`,
-      ),
+    ),
+  );
+
+  for (const { plugin, patternIndex, payload } of searchJobs) {
+    const patternCandidates = candidatesFromSearchResults(
+      (payload.results ?? []).slice(0, settings.maxResults),
+      [plugin],
+      request,
+      `qbittorrent-search:${request.book.id}:${patternIndex}:${plugin.name}`,
     );
     for (const candidate of patternCandidates) {
       if (seenUrls.has(candidate.sourceUrl)) continue;
       seenUrls.add(candidate.sourceUrl);
       candidates.push(candidate);
     }
-    if (shouldStopAfterSearchPattern(pattern, request, patternCandidates))
-      break;
   }
+
   return sortSearchCandidates(candidates, request).slice(
     0,
     settings.maxResults,

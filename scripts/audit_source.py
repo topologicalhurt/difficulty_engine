@@ -43,6 +43,9 @@ JUNK_ARTIFACT_RE = re.compile(
     r"(^|/)(?:\.DS_Store|\.eslintcache|\.tsbuildinfo)$"
     r"|(?:\.bak|\.backup|\.old|\.orig|\.rej|\.tmp|~)$"
 )
+INFRA_DUPLICATE_MATCHER_RE = re.compile(
+    r"\bfunction\s+(?:tokenSet|jaccardTokenSimilarity)\b"
+)
 
 MAX_TS_LINES = 500
 WARN_TS_LINES = 250
@@ -130,6 +133,9 @@ def main() -> int:
         if path.exists():
             failures.append(f"Removed runtime artifact still present: {path.relative_to(ROOT)}")
 
+    if (SRC / "infra" / "token-similarity.ts").exists():
+        failures.append("Duplicate infra matcher helper still present: src/infra/token-similarity.ts")
+
     oversized = [path for path in source_files if len(read_text(path).splitlines()) > MAX_TS_LINES]
     if oversized:
         failures.extend(
@@ -171,6 +177,10 @@ def main() -> int:
             failures.append(f"Default export in library source: {path.relative_to(ROOT)}")
         if "src/core/" in str(path.relative_to(ROOT)) and BROWSER_GLOBAL_RE.search(text):
             failures.append(f"Browser global used inside core module: {path.relative_to(ROOT)}")
+        if relative_path.startswith("src/infra/") and INFRA_DUPLICATE_MATCHER_RE.search(text):
+            failures.append(
+                f"Ad hoc infra fuzzy matcher should use src/core/matchers.ts: {path.relative_to(ROOT)}"
+            )
         if (
             "src/ui/" in str(path.relative_to(ROOT))
             and path.name not in APPROVED_UI_RAW_STATE_FILES
