@@ -3,7 +3,7 @@ import {
   genericTitleAuthorConflict,
   jaccardTokenSimilarity,
 } from '../core/matchers';
-import { cleanedIsbn, isFullIsbnQuery } from './book-search';
+import { firstValidIsbn } from './source-metadata';
 
 export interface ArchiveSearchDoc {
   identifier?: string;
@@ -52,9 +52,7 @@ export function archiveRelevance(
 
 export function archiveSearchUrls(book: BookRecord): string[] {
   const urls: string[] = [];
-  const isbn = isFullIsbnQuery(book.isbn ?? '')
-    ? cleanedIsbn(book.isbn ?? '')
-    : '';
+  const isbn = firstValidIsbn([book.isbn]) ?? '';
   const buildUrl = (query: string): string => {
     const params = new URLSearchParams();
     params.set('q', query);

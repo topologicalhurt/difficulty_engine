@@ -1,7 +1,6 @@
 import { sanitizeChapterTitles } from '../core/chapter-titles';
 import { normalizeOpenLibraryKey } from '../core/openlibrary-keys';
 import { safeNumber } from '../core/utils';
-import { cleanedIsbn, isFullIsbnQuery } from './book-search';
 import type {
   EditionResponse,
   SearchResponse,
@@ -14,13 +13,9 @@ import {
   normalizeDescription,
   searchSuggestionFromDoc,
 } from './openlibrary-search';
+import { extractPublishedYear, firstValidIsbn } from './source-metadata';
 import type { StrategyContext } from './toc-strategy-context';
 import type { StrategyCandidate } from './toc-merge';
-
-function extractYear(value: string | null | undefined): number | null {
-  const match = String(value ?? '').match(/\b(1[5-9]\d{2}|20\d{2}|21\d{2})\b/);
-  return match ? Number(match[1]) : null;
-}
 
 function candidateFromEdition(
   edition: EditionResponse,
@@ -39,9 +34,12 @@ function candidateFromEdition(
     subjects: edition.subjects ?? [],
     pages: edition.number_of_pages ?? null,
     publisher: edition.publishers?.[0] ?? '',
-    year: extractYear(edition.publish_date),
+    year: extractPublishedYear(edition.publish_date),
     authors,
-    isbn: edition.isbn_13?.[0] ?? edition.isbn_10?.[0] ?? null,
+    isbn: firstValidIsbn([
+      ...(edition.isbn_13 ?? []),
+      ...(edition.isbn_10 ?? []),
+    ]),
     openLibraryKey: normalizeOpenLibraryKey(edition.key, 'edition'),
     openLibraryEditionKey: normalizeOpenLibraryKey(edition.key, 'edition'),
     openLibraryWorkKey: normalizeOpenLibraryKey(
@@ -70,9 +68,7 @@ function candidateFromWork(
 export async function openLibraryEditionCandidate(
   context: StrategyContext,
 ): Promise<StrategyCandidate | null> {
-  const isbn = isFullIsbnQuery(context.book.isbn ?? '')
-    ? cleanedIsbn(context.book.isbn ?? '')
-    : '';
+  const isbn = firstValidIsbn([context.book.isbn]) ?? '';
   const editionKey =
     normalizeOpenLibraryKey(context.book.openLibraryEditionKey, 'edition') ??
     normalizeOpenLibraryKey(context.book.openLibraryKey, 'edition') ??

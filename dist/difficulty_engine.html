@@ -18084,6 +18084,29 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     return extractExplicitTocChapters(text) ?? inferChapterHeadersFromText(text);
   }
 
+  // src/infra/source-metadata.ts
+  var HTML_TAG_PATTERN = /<[^>]+>/g;
+  var PUBLISHED_YEAR_PATTERN = /\b(1[5-9]\d{2}|20\d{2}|21\d{2})\b/;
+  function normalizeProviderText(value) {
+    return compactString(
+      String(value ?? "").replace(HTML_TAG_PATTERN, " ")
+    ).replace(/\s+/g, " ");
+  }
+  function normalizeProviderTextArray(values) {
+    return compactStrings(values.map(normalizeProviderText));
+  }
+  function extractPublishedYear(value) {
+    const match = normalizeProviderText(value).match(PUBLISHED_YEAR_PATTERN);
+    return match ? Number(match[1]) : null;
+  }
+  function firstValidIsbn(values) {
+    for (const value of values) {
+      const isbn = normalizedIsbn(String(value ?? ""));
+      if (isbn) return isbn;
+    }
+    return null;
+  }
+
   // src/infra/internet-archive-matching.ts
   var ARCHIVE_SEARCH_ROWS = 6;
   function archiveTokenSimilarity(left, right) {
@@ -18112,7 +18135,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   }
   function archiveSearchUrls(book) {
     const urls = [];
-    const isbn = isFullIsbnQuery(book.isbn ?? "") ? cleanedIsbn(book.isbn ?? "") : "";
+    const isbn = firstValidIsbn([book.isbn]) ?? "";
     const buildUrl = (query) => {
       const params = new URLSearchParams();
       params.set("q", query);
@@ -18375,11 +18398,8 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   }
 
   // src/infra/google-books.ts
-  function normalizeGoogleBooksText(value) {
-    return String(value ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  }
   function googleQuery(book) {
-    const isbn = isFullIsbnQuery(book.isbn ?? "") ? cleanedIsbn(book.isbn ?? "") : "";
+    const isbn = firstValidIsbn([book.isbn]);
     if (isbn) {
       return `isbn:${isbn}`;
     }
@@ -18387,39 +18407,29 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     const author = book.authors[0]?.trim() ?? "";
     return [title ? `intitle:${title}` : "", author ? `inauthor:${author}` : ""].filter(Boolean).join("+");
   }
-  function extractGoogleYear(value) {
-    const match = normalizeGoogleBooksText(value).match(
-      /\b(1[5-9]\d{2}|20\d{2}|21\d{2})\b/
-    );
-    return match ? Number(match[1]) : null;
-  }
   function extractGoogleIsbn(volume) {
     const identifiers = volume.volumeInfo?.industryIdentifiers ?? [];
     const preferred = identifiers.find((entry) => entry.type === "ISBN_13") ?? identifiers.find((entry) => entry.type === "ISBN_10") ?? identifiers[0];
-    const normalized = cleanedIsbn(preferred?.identifier ?? "");
-    if (!isFullIsbnQuery(normalized)) {
-      return null;
-    }
-    return normalized || null;
+    return firstValidIsbn([preferred?.identifier]);
   }
   function chapterCandidates(volume) {
     const snippets = [
       volume.volumeInfo?.description ?? "",
       volume.searchInfo?.textSnippet ?? ""
-    ].map((value) => normalizeGoogleBooksText(value)).filter(Boolean);
+    ].map((value) => normalizeProviderText(value)).filter(Boolean);
     return snippets.flatMap((snippet) => extractExplicitTocChapters(snippet)?.chapters ?? []).slice(0, 40);
   }
   function googleBooksSuggestion(volume) {
     return {
-      title: normalizeGoogleBooksText(volume.volumeInfo?.title),
-      authors: (volume.volumeInfo?.authors ?? []).map((author) => normalizeGoogleBooksText(author)).filter(Boolean),
-      description: normalizeGoogleBooksText(
+      title: normalizeProviderText(volume.volumeInfo?.title),
+      authors: normalizeProviderTextArray(volume.volumeInfo?.authors ?? []),
+      description: normalizeProviderText(
         volume.volumeInfo?.description || volume.searchInfo?.textSnippet
       ),
-      publisher: normalizeGoogleBooksText(volume.volumeInfo?.publisher),
-      year: extractGoogleYear(volume.volumeInfo?.publishedDate),
+      publisher: normalizeProviderText(volume.volumeInfo?.publisher),
+      year: extractPublishedYear(volume.volumeInfo?.publishedDate),
       pages: volume.volumeInfo?.pageCount ?? null,
-      subjects: (volume.volumeInfo?.categories ?? []).map((category) => normalizeGoogleBooksText(category)).filter(Boolean),
+      subjects: normalizeProviderTextArray(volume.volumeInfo?.categories ?? []),
       isbn: extractGoogleIsbn(volume),
       googleBooksId: volume.id ?? null,
       chapters: chapterCandidates(volume)
@@ -18672,7 +18682,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   function docRelevanceScore(book, doc) {
     const title = book.title.trim().toLowerCase();
     const author = book.authors[0]?.trim().toLowerCase();
-    const isbn = isFullIsbnQuery(book.isbn ?? "") ? cleanedIsbn(book.isbn ?? "") : "";
+    const isbn = firstValidIsbn([book.isbn]) ?? "";
     const decision = bookMatchDecision({
       target: { title: book.title, authors: book.authors, isbn: book.isbn },
       candidate: {
@@ -18684,7 +18694,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       minimumScore: 0
     });
     const titleSimilarity = jaccardTokenSimilarity(book.title, doc.title);
-    return (isbn && (doc.isbn ?? []).some((entry) => cleanedIsbn(entry) === isbn) ? 5 : 0) + (normalizeMatcherText(doc.title) === normalizeMatcherText(title) ? 3 : 0) + (titleSimilarity >= 0.65 ? titleSimilarity * 2 : 0) + (decision.reasons.includes("isbn_match") ? 1 : 0) + (decision.reasons.includes("author_support") ? 0.25 : 0) + (author && doc.author_name?.some((entry) => entry.toLowerCase() === author) ? 0.5 : 0);
+    return (isbn && (doc.isbn ?? []).some((entry) => firstValidIsbn([entry]) === isbn) ? 5 : 0) + (normalizeMatcherText(doc.title) === normalizeMatcherText(title) ? 3 : 0) + (titleSimilarity >= 0.65 ? titleSimilarity * 2 : 0) + (decision.reasons.includes("isbn_match") ? 1 : 0) + (decision.reasons.includes("author_support") ? 0.25 : 0) + (author && doc.author_name?.some((entry) => entry.toLowerCase() === author) ? 0.5 : 0);
   }
   function stableSearchKey(query, offset, limit) {
     return `${query.trim().toLowerCase()}::${offset}::${limit}`;
@@ -18694,20 +18704,20 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       return "";
     }
     if (Array.isArray(value)) {
-      return value.join(" ").trim();
+      return normalizeProviderText(value.join(" "));
     }
     if (typeof value === "object") {
-      return String(value.value ?? "").trim();
+      return normalizeProviderText(value.value);
     }
-    return value.trim();
+    return normalizeProviderText(value);
   }
   function normalizeChapters(value) {
     if (!Array.isArray(value)) {
       return [];
     }
     return value.map(
-      (entry) => typeof entry === "string" ? entry : String(entry?.title ?? "").trim()
-    ).map((entry) => entry.trim()).filter(Boolean).slice(0, 80);
+      (entry) => typeof entry === "string" ? entry : normalizeProviderText(entry?.title)
+    ).map(normalizeProviderText).filter(Boolean).slice(0, 80);
   }
   function chooseBestDoc(book, docs, searchResultLimit) {
     const ranked = docs.slice(0, searchResultLimit).map((doc) => ({ doc, score: docRelevanceScore(book, doc) })).sort(
@@ -18718,16 +18728,17 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     return ranked[0] && ranked[0].score >= MIN_DOC_RELEVANCE_SCORE ? ranked[0].doc : void 0;
   }
   function searchSuggestionFromDoc(doc) {
-    const title = String(doc.title ?? "").trim();
+    const title = normalizeProviderText(doc.title);
     if (!title) {
       return null;
     }
-    const authors = (doc.author_name ?? []).map((entry) => entry.trim()).filter(Boolean);
-    const publisher = doc.publisher?.find((entry) => entry.trim())?.trim() ?? "";
-    const isbn = doc.isbn?.find((entry) => isFullIsbnQuery(entry))?.trim() ?? null;
-    const subjects = Array.from(
-      /* @__PURE__ */ new Set([...doc.subject ?? [], ...doc.subject_facet ?? []])
-    ).map((entry) => entry.trim()).filter(Boolean).slice(0, 10);
+    const authors = normalizeProviderTextArray(doc.author_name ?? []);
+    const publisher = normalizeProviderTextArray(doc.publisher ?? [])[0] ?? "";
+    const isbn = firstValidIsbn(doc.isbn ?? []);
+    const subjects = uniqueCompactStrings(
+      [...doc.subject ?? [], ...doc.subject_facet ?? []],
+      10
+    );
     const subtitleParts = [
       authors.slice(0, 2).join(", "),
       doc.first_publish_year ? String(doc.first_publish_year) : "",
@@ -18789,8 +18800,8 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     return names.filter(Boolean);
   }
   async function isbnSuggestion(fetchJson2, query, signal) {
-    const isbn = cleanedIsbn(query).toUpperCase();
-    if (!isFullIsbnQuery(isbn)) {
+    const isbn = firstValidIsbn([query])?.toUpperCase() ?? "";
+    if (!isbn) {
       return null;
     }
     try {
@@ -18803,22 +18814,20 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
         edition.authors ?? [],
         signal
       );
-      const yearMatch = String(edition.publish_date ?? "").match(
-        /\b(1[5-9]\d{2}|20\d{2}|21\d{2})\b/
-      );
+      const year = extractPublishedYear(edition.publish_date);
       return {
         key: edition.key || isbn,
-        title: String(edition.title ?? "").trim() || isbn,
+        title: normalizeProviderText(edition.title) || isbn,
         authors,
         subtitle: [
           authors.slice(0, 2).join(", "),
-          yearMatch?.[1] ?? "",
+          year ? String(year) : "",
           (edition.publishers ?? [])[0] ?? ""
         ].filter(Boolean).join(" \xB7 "),
         isbn,
-        year: yearMatch ? Number(yearMatch[1]) : null,
+        year,
         publisher: (edition.publishers ?? [])[0] ?? "",
-        subjects: (edition.subjects ?? []).map((entry) => entry.trim()).filter(Boolean).slice(0, 10),
+        subjects: uniqueCompactStrings(edition.subjects ?? [], 10),
         description: normalizeDescription(edition.description),
         pages: edition.number_of_pages ?? null,
         openLibraryKey: edition.key ?? null,
@@ -18831,10 +18840,6 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   }
 
   // src/infra/toc-openlibrary-candidates.ts
-  function extractYear(value) {
-    const match = String(value ?? "").match(/\b(1[5-9]\d{2}|20\d{2}|21\d{2})\b/);
-    return match ? Number(match[1]) : null;
-  }
   function candidateFromEdition(edition, authors) {
     const chapters = sanitizeChapterTitles(
       normalizeChapters(edition.table_of_contents),
@@ -18849,9 +18854,12 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       subjects: edition.subjects ?? [],
       pages: edition.number_of_pages ?? null,
       publisher: edition.publishers?.[0] ?? "",
-      year: extractYear(edition.publish_date),
+      year: extractPublishedYear(edition.publish_date),
       authors,
-      isbn: edition.isbn_13?.[0] ?? edition.isbn_10?.[0] ?? null,
+      isbn: firstValidIsbn([
+        ...edition.isbn_13 ?? [],
+        ...edition.isbn_10 ?? []
+      ]),
       openLibraryKey: normalizeOpenLibraryKey(edition.key, "edition"),
       openLibraryEditionKey: normalizeOpenLibraryKey(edition.key, "edition"),
       openLibraryWorkKey: normalizeOpenLibraryKey(
@@ -18873,7 +18881,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     };
   }
   async function openLibraryEditionCandidate(context) {
-    const isbn = isFullIsbnQuery(context.book.isbn ?? "") ? cleanedIsbn(context.book.isbn ?? "") : "";
+    const isbn = firstValidIsbn([context.book.isbn]) ?? "";
     const editionKey = normalizeOpenLibraryKey(context.book.openLibraryEditionKey, "edition") ?? normalizeOpenLibraryKey(context.book.openLibraryKey, "edition") ?? null;
     const urls = [
       isbn ? `https://openlibrary.org/isbn/${isbn}.json` : "",

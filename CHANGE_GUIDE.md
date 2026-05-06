@@ -69,6 +69,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - UI formatting: `src/ui/format.ts`
 - String compaction/deduplication: `src/core/utils.ts`
 - External-source matching: `src/core/matchers.ts`
+- Provider metadata cleanup: `src/infra/source-metadata.ts`
 - Progress display/math: `src/app/selectors/progress.ts` and `src/ui/progress.ts`
 - Date constants and weekday math: `src/core/date-constants.ts`, `src/core/time.ts`, `src/core/weekdays.ts`
 - Planner constraints and pacing math: `src/core/constraints.ts`
