@@ -7,7 +7,6 @@ import {
 import type { SourceSettings } from '../../src/core/types';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
 import { createQBittorrentProvider } from '../../src/infra/qbittorrent-provider';
-import { preferredTorrentFile } from '../../src/infra/qbittorrent-selection';
 
 function qbitPolicy(
   patch: { sourceSettings?: SourceSettings } = {},
@@ -24,31 +23,6 @@ function qbitPolicy(
 }
 
 describe('qBittorrent document provider', () => {
-  it('selects text before an exact-match PDF inside the same torrent', () => {
-    const selected = preferredTorrentFile(
-      [
-        {
-          index: 0,
-          name: 'Fixture Book Exact Edition.pdf',
-          size: 10_000,
-          progress: 1,
-        },
-        {
-          index: 1,
-          name: 'Fixture Book extracted text.txt',
-          size: 3_000,
-          progress: 0.4,
-        },
-      ],
-      {
-        book: { ...EXAMPLE_BOOK, title: 'Fixture Book Exact Edition' },
-        policy: qbitPolicy(),
-      },
-    );
-
-    expect(selected?.name).toBe('Fixture Book extracted text.txt');
-  });
-
   it('does not call qBittorrent when the source mask disables it', async () => {
     const fetchImpl = vi.fn();
     const provider = createQBittorrentProvider({

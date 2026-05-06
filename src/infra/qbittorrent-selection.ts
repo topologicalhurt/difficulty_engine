@@ -163,12 +163,15 @@ export function preferredTorrentFile(
       )
       .filter((file) => !BAD_FILE_NAME_PATTERN.test(file.name ?? ''))
       .sort((left, right) => {
+        const matchDelta =
+          fileMatchScore(right, request) - fileMatchScore(left, request);
+        if (Math.abs(matchDelta) > SIGNIFICANT_MATCH_SCORE_DELTA) {
+          return matchDelta;
+        }
         const kindDelta =
           priorityFor(contentKindFromUrl(left.name ?? '')) -
           priorityFor(contentKindFromUrl(right.name ?? ''));
         if (kindDelta !== 0) return kindDelta;
-        const matchDelta =
-          fileMatchScore(right, request) - fileMatchScore(left, request);
         if (matchDelta !== 0) return matchDelta;
         const progressDelta = (right.progress ?? 0) - (left.progress ?? 0);
         if (progressDelta !== 0) return progressDelta;
