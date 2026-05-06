@@ -10,10 +10,12 @@ import {
   MAX_RELATION_INDEX_TOPIC_FREQUENCY,
   RELATION_CONFIDENCE_PRIMARY_WEIGHT,
   RELATION_CONFIDENCE_SECONDARY_WEIGHT,
+  RELATION_INDEX_TOKEN_PAIR_WEIGHT,
 } from './constants';
 import type { CorpusSnapshot, PairSignal, TopicIndex } from './internal-types';
 import { relationPairKey } from './relation-graph-utils';
 import { pairSignal } from './relation-signals';
+import { tokenizeWords } from './text';
 import type { RelationEvidence } from './types';
 import { clamp, round2 } from './utils';
 
@@ -68,24 +70,26 @@ function relationPairIndexes(
   const indexById = new Map(books.map((book, index) => [book.id, index]));
   const pairScores = new Map<string, number>();
   const topicToBookIds = new Map<string, string[]>();
+  const topicTokenToBookIds = new Map<string, string[]>();
   books.forEach((book) => {
     (topicIndex.byBook[book.id] ?? []).forEach((topic) => {
       const ids = topicToBookIds.get(topic.phrase) ?? [];
       ids.push(book.id);
       topicToBookIds.set(topic.phrase, ids);
+      tokenizeWords(topic.phrase).forEach((token) => {
+        const tokenIds = topicTokenToBookIds.get(token) ?? [];
+        tokenIds.push(book.id);
+        topicTokenToBookIds.set(token, tokenIds);
+      });
     });
   });
 
-  topicToBookIds.forEach((ids) => {
-    const sortedIds = [...new Set(ids)].sort();
-    if (sortedIds.length > MAX_RELATION_INDEX_TOPIC_FREQUENCY) return;
-    for (let left = 0; left < sortedIds.length; left += 1) {
-      for (let right = left + 1; right < sortedIds.length; right += 1) {
-        const key = relationPairKey(sortedIds[left], sortedIds[right]);
-        pairScores.set(key, (pairScores.get(key) ?? 0) + 1);
-      }
-    }
-  });
+  addIndexedPairScores(pairScores, topicToBookIds, 1);
+  addIndexedPairScores(
+    pairScores,
+    topicTokenToBookIds,
+    RELATION_INDEX_TOKEN_PAIR_WEIGHT,
+  );
 
   const cappedPairKeys = cappedIndexedPairKeys(pairScores, requiredPairKeys);
 
@@ -106,6 +110,23 @@ function relationPairIndexes(
       ([leftA, rightA], [leftB, rightB]) =>
         leftA - leftB || rightA - rightB,
     );
+}
+
+function addIndexedPairScores(
+  pairScores: Map<string, number>,
+  buckets: Map<string, string[]>,
+  weight: number,
+): void {
+  buckets.forEach((ids) => {
+    const sortedIds = [...new Set(ids)].sort();
+    if (sortedIds.length > MAX_RELATION_INDEX_TOPIC_FREQUENCY) return;
+    for (let left = 0; left < sortedIds.length; left += 1) {
+      for (let right = left + 1; right < sortedIds.length; right += 1) {
+        const key = relationPairKey(sortedIds[left], sortedIds[right]);
+        pairScores.set(key, (pairScores.get(key) ?? 0) + weight);
+      }
+    }
+  });
 }
 
 function cappedIndexedPairKeys(

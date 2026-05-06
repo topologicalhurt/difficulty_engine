@@ -79,20 +79,31 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
     if (failCount) emitEvent('blocking-warning-raised', { failCount });
   }
 
-  function applyComputedProject(
+  function applyProjectState(
     project: PlannerProjectV1,
     ui: UiState,
-    snapshotState: Pick<AppState, 'snapshot' | 'performance'>,
+    performance: AppState['performance'],
   ): void {
     state = {
       project,
       ui,
-      snapshot: snapshotState.snapshot,
+      snapshot: state.snapshot,
       enrichment: { byBookId: project.enrichmentCache },
-      performance: snapshotState.performance,
+      performance,
     };
     notifyState();
     emitEvent('project-changed');
+  }
+
+  function applyComputedSnapshot(
+    snapshotState: Pick<AppState, 'snapshot' | 'performance'>,
+  ): void {
+    state = {
+      ...state,
+      snapshot: snapshotState.snapshot,
+      performance: snapshotState.performance,
+    };
+    notifyState();
     emitEvent('snapshot-updated');
     maybeEmitBlockingWarning();
   }
@@ -161,15 +172,16 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
       ) {
         const computeRevision = ++pendingComputeRevision;
         const startedAt = readPerformanceNowMs();
+        applyProjectState(canonicalProject, nextUi, nextPerformance);
         options.computeAdapter
           .compute(canonicalProject)
           .then((snapshot) => {
             if (computeRevision !== pendingComputeRevision) return;
             const workerMs = readPerformanceNowMs() - startedAt;
-            applyComputedProject(canonicalProject, nextUi, {
+            applyComputedSnapshot({
               snapshot,
               performance: {
-                ...nextPerformance,
+                ...state.performance,
                 lastSnapshotMs: workerMs,
                 lastWorkerMs: workerMs,
               },

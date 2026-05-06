@@ -19,6 +19,44 @@ function flushMicrotasks(): Promise<void> {
 }
 
 describe('worker compute integration', () => {
+  it('commits and emits project changes before worker snapshots resolve', () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    const pending: Array<{
+      project: PlannerProjectV1;
+      resolve(snapshot: EngineSnapshot): void;
+    }> = [];
+    const computeAdapter: PlannerComputeAdapter = {
+      mode: 'worker',
+      compute: vi.fn(
+        (project) =>
+          new Promise<EngineSnapshot>((resolve) => {
+            pending.push({ project, resolve });
+          }),
+      ),
+      cancelCurrent: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine,
+      computeAdapter,
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+    const events: string[] = [];
+    store.subscriptions.subscribeEvents((event) => events.push(event.type));
+
+    store.commands.updateConstraint('hpd', 2);
+
+    expect(pending).toHaveLength(1);
+    expect(store.selectors.getProject().constraints.hpd).toBe(2);
+    expect(JSON.parse(store.exportProject()).constraints.hpd).toBe(2);
+    expect(events).toEqual(['project-changed']);
+  });
+
   it('ignores stale worker snapshot responses', async () => {
     const engine = createPlannerEngine({
       clock: plannerClock,
@@ -58,5 +96,41 @@ describe('worker compute integration', () => {
     pending[1]?.resolve(engine.computeSnapshot(pending[1].project));
     await flushMicrotasks();
     expect(store.selectors.getProject().constraints.hpd).toBe(4);
+  });
+
+  it('keeps newer UI state when a worker snapshot resolves', async () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    const pending: Array<{
+      project: PlannerProjectV1;
+      resolve(snapshot: EngineSnapshot): void;
+    }> = [];
+    const computeAdapter: PlannerComputeAdapter = {
+      mode: 'worker',
+      compute: vi.fn(
+        (project) =>
+          new Promise<EngineSnapshot>((resolve) => {
+            pending.push({ project, resolve });
+          }),
+      ),
+      cancelCurrent: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine,
+      computeAdapter,
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    store.commands.updateConstraint('hpd', 2);
+    store.commands.setActiveView('graphs');
+    pending[0]?.resolve(engine.computeSnapshot(pending[0].project));
+    await flushMicrotasks();
+
+    expect(store.selectors.getState().ui.activeView).toBe('graphs');
   });
 });

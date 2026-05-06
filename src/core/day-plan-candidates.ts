@@ -67,14 +67,36 @@ function candidateFrontier(input: CandidateSetInput): PlanningState[] {
   if (input.candidates.length <= DAY_PLAN_CANDIDATE_SCAN_LIMIT) {
     return input.candidates;
   }
-  return [...input.candidates]
-    .sort(
-      (left, right) =>
-        input.priorityScore(right, false) -
-          input.priorityScore(left, false) ||
-        left.short.localeCompare(right.short),
-    )
-    .slice(0, DAY_PLAN_CANDIDATE_SCAN_LIMIT);
+  const ranked = [...input.candidates].sort(
+    (left, right) =>
+      input.priorityScore(right, false) - input.priorityScore(left, false) ||
+      left.short.localeCompare(right.short),
+  );
+  const feasible: PlanningState[] = [];
+  const deferred: PlanningState[] = [];
+  const budgetLeft = input.budgetMinutes - input.dayUsedMinutes;
+  for (const state of ranked) {
+    const step = chooseStarterTenths(
+      state,
+      budgetLeft,
+      input.project,
+      input.isPracticalMode,
+    );
+    if (step > 0) {
+      feasible.push(state);
+      if (feasible.length >= DAY_PLAN_CANDIDATE_SCAN_LIMIT) break;
+      continue;
+    }
+    if (deferred.length < DAY_PLAN_CANDIDATE_SCAN_LIMIT) {
+      deferred.push(state);
+    }
+  }
+  return feasible.length >= DAY_PLAN_CANDIDATE_SCAN_LIMIT
+    ? feasible
+    : [
+        ...feasible,
+        ...deferred.slice(0, DAY_PLAN_CANDIDATE_SCAN_LIMIT - feasible.length),
+      ];
 }
 
 function isStrictSynchronizedGroup(

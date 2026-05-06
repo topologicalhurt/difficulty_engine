@@ -88,6 +88,8 @@ export const MAX_EXHAUSTIVE_RELATION_BOOKS = 80;
 export const MAX_RELATION_INDEX_TOPIC_FREQUENCY = 180;
 // Large-library relation inference keeps only the strongest indexed neighbors per book.
 export const MAX_INDEXED_RELATION_CANDIDATES_PER_BOOK = 16;
+// Token-neighbor pairs preserve fuzzy topic recall without reverting to all-pairs scoring.
+export const RELATION_INDEX_TOKEN_PAIR_WEIGHT = 0.35;
 // Strategy meta-search is useful for normal plans but too expensive for large libraries.
 export const MAX_FASTEST_META_SEARCH_BOOKS = 300;
 
