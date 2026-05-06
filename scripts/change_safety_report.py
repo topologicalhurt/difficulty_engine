@@ -21,6 +21,11 @@ CANONICAL_PATTERNS = [
         "Use shared number/percent formatters instead of local finite-number helpers.",
     ),
     (
+        "Display colors",
+        "src/core/display-colors.ts",
+        "Use shared HSL, gradient, group color, and normalized range helpers instead of local color hashing.",
+    ),
+    (
         "Stable sorting",
         "src/core/sort.ts",
         "Use shared comparator helpers for deterministic multi-field sort chains.",

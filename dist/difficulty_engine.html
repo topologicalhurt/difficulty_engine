@@ -12451,9 +12451,15 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     };
   }
 
-  // src/app/selectors/color-utils.ts
+  // src/core/display-colors.ts
   var FLAT_RANGE_EPSILON = 1e-9;
   var NEUTRAL_RANGE_PERCENT = 0.5;
+  var DEFAULT_GROUP_HUE_START = 0;
+  var DEFAULT_GROUP_HUE_SPAN = 360;
+  var DEFAULT_GROUP_SATURATION = 72;
+  var DEFAULT_GROUP_LIGHTNESS = 58;
+  var DEFAULT_GRADIENT_SATURATION = 72;
+  var DEFAULT_GRADIENT_LIGHTNESS = 56;
   function hashText(value) {
     let hash = 0;
     for (let index = 0; index < value.length; index += 1) {
@@ -12461,17 +12467,33 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     }
     return hash;
   }
-  function gradientColor(percent, startHue, endHue, lightness = 56) {
+  function hslColor(hue, saturation, lightness) {
+    return `hsl(${Math.round(hue)} ${saturation}% ${lightness}%)`;
+  }
+  function groupColor(group, options = {}) {
+    const hueStart = options.hueStart ?? DEFAULT_GROUP_HUE_START;
+    const hueSpan = options.hueSpan ?? DEFAULT_GROUP_HUE_SPAN;
+    const label = group || options.fallback || "";
+    const hue = hueStart + hashText(label) % hueSpan;
+    return hslColor(
+      hue,
+      options.saturation ?? DEFAULT_GROUP_SATURATION,
+      options.lightness ?? DEFAULT_GROUP_LIGHTNESS
+    );
+  }
+  function gradientColor(percent, startHue, endHue, lightness = DEFAULT_GRADIENT_LIGHTNESS) {
     const bounded = clamp(percent, 0, 1);
-    const colorHue = startHue + (endHue - startHue) * bounded;
-    return `hsl(${Math.round(colorHue)} 72% ${lightness}%)`;
+    const hue = startHue + (endHue - startHue) * bounded;
+    return hslColor(hue, DEFAULT_GRADIENT_SATURATION, lightness);
   }
   function normalizedRange(values, value) {
     const finite = values.filter(Number.isFinite);
     if (!finite.length) return NEUTRAL_RANGE_PERCENT;
     const min = Math.min(...finite);
     const max = Math.max(...finite);
-    if (Math.abs(max - min) < FLAT_RANGE_EPSILON) return NEUTRAL_RANGE_PERCENT;
+    if (Math.abs(max - min) < FLAT_RANGE_EPSILON) {
+      return NEUTRAL_RANGE_PERCENT;
+    }
     return clamp((value - min) / (max - min), 0, 1);
   }
 
@@ -13340,12 +13362,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   var round0 = formatWholeNumber;
   var formatPercent = formatRatioPercent;
   function colorForGroup(group) {
-    let hash = 0;
-    for (const char of group) {
-      hash = hash * 31 + char.charCodeAt(0) >>> 0;
-    }
-    const hue = hash % 360;
-    return `hsl(${hue} 72% 58%)`;
+    return groupColor(group);
   }
   function parseCsv(value) {
     return value.split(",").map((part) => part.trim()).filter(Boolean);
@@ -15941,8 +15958,13 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   var READING_TIME_GRADIENT_START_HUE = 205;
   var READING_TIME_GRADIENT_END_HUE = 42;
   function monoGroupColor(group) {
-    const colorHue = MONO_GROUP_HUE_START + hashText(group || "Ungrouped") % MONO_GROUP_HUE_SPAN;
-    return `hsl(${colorHue} 42% 55%)`;
+    return groupColor(group, {
+      fallback: "Ungrouped",
+      hueStart: MONO_GROUP_HUE_START,
+      hueSpan: MONO_GROUP_HUE_SPAN,
+      saturation: 42,
+      lightness: 55
+    });
   }
   function detectedGenreLabel(state, bookId) {
     const book = state.project.library.books[bookId];

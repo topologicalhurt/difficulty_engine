@@ -5,9 +5,9 @@ import {
   RAW_DIFFICULTY_MIN,
   RAW_DIFFICULTY_SPAN,
 } from '../../core/difficulty-mapping';
+import { gradientColor } from '../../core/display-colors';
 import type { AppState } from '../../core/types';
 import { round1 } from '../../core/utils';
-import { gradientColor } from './color-utils';
 
 const SAMPLE_COUNT = 25;
 const DIFFICULTY_COLOR_START_HUE = 158;

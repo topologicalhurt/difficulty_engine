@@ -4,6 +4,7 @@ import {
   formatRatioPercent,
   formatWholeNumber,
 } from '../core/number-format';
+import { groupColor } from '../core/display-colors';
 
 export { formatCssPercent, formatOneDecimal };
 
@@ -11,12 +12,7 @@ export const round0 = formatWholeNumber;
 export const formatPercent = formatRatioPercent;
 
 export function colorForGroup(group: string): string {
-  let hash = 0;
-  for (const char of group) {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  }
-  const hue = hash % 360;
-  return `hsl(${hue} 72% 58%)`;
+  return groupColor(group);
 }
 
 export function formatDate(value?: Date): string {

@@ -1,6 +1,10 @@
 import type { AppState, PlanColorMode } from '../../core/types';
 import { safeNumber } from '../../core/utils';
-import { gradientColor, hashText, normalizedRange } from './color-utils';
+import {
+  gradientColor,
+  groupColor,
+  normalizedRange,
+} from '../../core/display-colors';
 
 const MONO_GROUP_HUE_START = 160;
 const MONO_GROUP_HUE_SPAN = 34;
@@ -15,10 +19,13 @@ export interface PlanColorMetadata {
 }
 
 function monoGroupColor(group: string): string {
-  const colorHue =
-    MONO_GROUP_HUE_START +
-    (hashText(group || 'Ungrouped') % MONO_GROUP_HUE_SPAN);
-  return `hsl(${colorHue} 42% 55%)`;
+  return groupColor(group, {
+    fallback: 'Ungrouped',
+    hueStart: MONO_GROUP_HUE_START,
+    hueSpan: MONO_GROUP_HUE_SPAN,
+    saturation: 42,
+    lightness: 55,
+  });
 }
 
 function detectedGenreLabel(state: AppState, bookId: string): string {
