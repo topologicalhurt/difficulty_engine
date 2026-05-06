@@ -12,6 +12,7 @@
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "allowJs": true,
+    "noEmit": true,
     "skipLibCheck": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "types": ["node"]

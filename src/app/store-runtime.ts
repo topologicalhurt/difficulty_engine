@@ -2,11 +2,17 @@ import { normalizeProject, serializeProject } from '../core/project-file';
 import type {
   AppState,
   CreatePlannerStoreOptions,
+  PlannerComputeAdapter,
   PlannerProjectV1,
   PlannerStoreEvent,
   UiState,
 } from '../core/types';
-import { buildUi, withSnapshot } from './store-helpers';
+import { readPerformanceNowMs } from './performance';
+import {
+  INITIAL_PERFORMANCE_STATE,
+  buildUi,
+  withSnapshot,
+} from './store-helpers';
 import { assertProjectMutation, assertUiMutation } from './wiring/executor';
 import type { WiringContractId } from './wiring/contracts';
 
@@ -17,6 +23,7 @@ interface StoreRuntimeOptions {
   initialProject: PlannerProjectV1;
   initialUiPatch?: Partial<UiState>;
   engine: CreatePlannerStoreOptions['engine'];
+  computeAdapter?: PlannerComputeAdapter;
 }
 
 export interface StoreRuntime {
@@ -42,9 +49,11 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
     options.initialProject,
     buildUi(options.initialProject, options.initialUiPatch),
     options.engine,
+    INITIAL_PERFORMANCE_STATE,
   );
   const stateListeners = new Set<StateListener>();
   const eventListeners = new Set<EventListener>();
+  let pendingComputeRevision = 0;
 
   function notifyState(): void {
     stateListeners.forEach((listener) => listener(state));
@@ -70,6 +79,24 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
     if (failCount) emitEvent('blocking-warning-raised', { failCount });
   }
 
+  function applyComputedProject(
+    project: PlannerProjectV1,
+    ui: UiState,
+    snapshotState: Pick<AppState, 'snapshot' | 'performance'>,
+  ): void {
+    state = {
+      project,
+      ui,
+      snapshot: snapshotState.snapshot,
+      enrichment: { byBookId: project.enrichmentCache },
+      performance: snapshotState.performance,
+    };
+    notifyState();
+    emitEvent('project-changed');
+    emitEvent('snapshot-updated');
+    maybeEmitBlockingWarning();
+  }
+
   return {
     getState(): AppState {
       return state;
@@ -82,6 +109,10 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
           ...state.ui,
           ...uiPatch,
         }),
+        performance: {
+          ...state.performance,
+          uiRevision: state.performance.uiRevision + 1,
+        },
       };
       notifyState();
     },
@@ -115,13 +146,52 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
           uiPatch.importExportDirty ??
           (keepDraft && importExportText !== serializedProject),
       });
+      const nextPerformance = {
+        ...state.performance,
+        projectRevision: state.performance.projectRevision + 1,
+        uiRevision: state.performance.uiRevision + 1,
+        snapshotRevision: recompute
+          ? state.performance.snapshotRevision + 1
+          : state.performance.snapshotRevision,
+      };
+      if (
+        recompute &&
+        options.computeAdapter &&
+        options.computeAdapter.mode === 'worker'
+      ) {
+        const computeRevision = ++pendingComputeRevision;
+        const startedAt = readPerformanceNowMs();
+        options.computeAdapter
+          .compute(canonicalProject)
+          .then((snapshot) => {
+            if (computeRevision !== pendingComputeRevision) return;
+            const workerMs = readPerformanceNowMs() - startedAt;
+            applyComputedProject(canonicalProject, nextUi, {
+              snapshot,
+              performance: {
+                ...nextPerformance,
+                lastSnapshotMs: workerMs,
+                lastWorkerMs: workerMs,
+              },
+            });
+          })
+          .catch(() => {
+            if (computeRevision === pendingComputeRevision) {
+              pendingComputeRevision += 1;
+            }
+          });
+        return;
+      }
       state = recompute
-        ? withSnapshot(canonicalProject, nextUi, options.engine)
+        ? withSnapshot(canonicalProject, nextUi, options.engine, {
+            ...nextPerformance,
+          })
         : {
             ...state,
             project: canonicalProject,
             ui: nextUi,
             enrichment: { byBookId: canonicalProject.enrichmentCache },
+            performance: nextPerformance,
           };
       notifyState();
       emitEvent('project-changed');

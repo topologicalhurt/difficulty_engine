@@ -80,6 +80,14 @@ export interface AppState {
   enrichment: {
     byBookId: Record<string, EnrichmentCacheEntry>;
   };
+  performance: {
+    projectRevision: number;
+    uiRevision: number;
+    snapshotRevision: number;
+    lastSnapshotMs: number;
+    lastRenderMs: number;
+    lastWorkerMs: number;
+  };
 }
 
 export interface ConstraintFieldOption {

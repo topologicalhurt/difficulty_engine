@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createProjectSaveQueue, mountPlannerApp } from '../../src/app/mount';
@@ -54,19 +56,15 @@ describe('project persistence save queue', () => {
   });
 
   it('waits for pending persistence before app unmount resolves', async () => {
-    vi.stubGlobal('document', {
-      createElement: () => ({ className: '' }),
-    });
     let releaseSave!: () => void;
     let resolveSaveStarted!: () => void;
     const saveStarted = new Promise<void>((resolve) => {
       resolveSaveStarted = resolve;
     });
     const saves: string[] = [];
+    const container = document.createElement('div');
     const handle = await mountPlannerApp({
-      container: {
-        replaceChildren: vi.fn(),
-      } as unknown as HTMLElement,
+      container,
       initialProject: makeProject(),
       persistence: {
         load: () => undefined,

@@ -7,18 +7,38 @@ import type {
   PlannerProjectV1,
   UiState,
 } from '../core/types';
+import { readPerformanceNowMs } from './performance';
+
+export type AppPerformanceState = AppState['performance'];
+
+export const INITIAL_PERFORMANCE_STATE: AppPerformanceState = {
+  projectRevision: 0,
+  uiRevision: 0,
+  snapshotRevision: 0,
+  lastSnapshotMs: 0,
+  lastRenderMs: 0,
+  lastWorkerMs: 0,
+};
 
 export function withSnapshot(
   project: PlannerProjectV1,
   ui: UiState,
   engine: CreatePlannerStoreOptions['engine'],
+  performance: AppPerformanceState = INITIAL_PERFORMANCE_STATE,
 ): AppState {
+  const startedAt = readPerformanceNowMs();
+  const snapshot = engine.computeSnapshot(project);
+  const lastSnapshotMs = readPerformanceNowMs() - startedAt;
   return {
     project,
     ui,
-    snapshot: engine.computeSnapshot(project),
+    snapshot,
     enrichment: {
       byBookId: project.enrichmentCache,
+    },
+    performance: {
+      ...performance,
+      lastSnapshotMs,
     },
   };
 }

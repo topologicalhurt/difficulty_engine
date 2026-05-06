@@ -104,6 +104,14 @@ function graphState(
     snapshot,
     ui: { ...DEFAULT_UI_STATE },
     enrichment: { byBookId: {} },
+    performance: {
+      projectRevision: 0,
+      uiRevision: 0,
+      snapshotRevision: 0,
+      lastSnapshotMs: 0,
+      lastRenderMs: 0,
+      lastWorkerMs: 0,
+    },
   };
 }
 

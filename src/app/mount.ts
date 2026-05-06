@@ -2,6 +2,7 @@ import { createPlannerStore } from './store';
 import { createPlannerEngine } from '../core/engine';
 import { createEmptyProject, normalizeProject } from '../core/project-file';
 import type {
+  AppState,
   Logger,
   MountPlannerAppOptions,
   PersistenceAdapter,
@@ -9,7 +10,15 @@ import type {
   PlannerProjectV1,
 } from '../core/types';
 import { createAiRecommendationClient } from '../infra/ai-recommendation-client';
-import { renderApp } from '../ui/app-shell';
+import AppShell from '../ui/svelte/AppShell.svelte';
+import { mount as mountSvelte, unmount as unmountSvelte } from 'svelte';
+import { writable } from 'svelte/store';
+import { countVisibleDomNodes, readPerformanceNowMs } from './performance';
+import {
+  createSyncComputeAdapter,
+  createWorkerComputeAdapter,
+} from './compute-adapter';
+import { selectorMetricSnapshot } from './selectors/memo';
 
 type ScheduledRender =
   | { kind: 'animation-frame'; id: number }
@@ -17,7 +26,7 @@ type ScheduledRender =
 
 async function resolveInitialProject(
   options: MountPlannerAppOptions,
-): Promise<MountPlannerAppOptions['initialProject']> {
+): Promise<PlannerProjectV1> {
   if (options.initialProject) {
     return options.initialProject;
   }
@@ -96,9 +105,23 @@ export async function mountPlannerApp(
     clock: options.clock,
     logger: options.logger,
   });
+  const workerThresholdBooks = options.performance?.workerThresholdBooks ?? 200;
+  const initialBookCount = Object.keys(initialProject.library.books).length;
+  const useWorkerCompute =
+    options.computeMode === 'worker' ||
+    ((options.computeMode ?? 'auto') === 'auto' &&
+      initialBookCount >= workerThresholdBooks);
+  const computeAdapter = useWorkerCompute
+    ? createWorkerComputeAdapter({
+        engine,
+        clock: options.clock,
+        logger: options.logger,
+      })
+    : createSyncComputeAdapter(engine);
   const store = createPlannerStore({
     initialProject,
     engine,
+    computeAdapter,
     enrichmentProvider: options.enrichmentProvider,
     aiRecommendationProvider:
       options.aiRecommendationProvider ??
@@ -116,6 +139,11 @@ export async function mountPlannerApp(
   options.container.replaceChildren(host);
 
   let latestState = store.selectors.getState();
+  const appState = writable<AppState>(latestState);
+  const shell = mountSvelte(AppShell, {
+    target: host,
+    props: { appState, store },
+  });
   let pendingRender: ScheduledRender | null = null;
   let mounted = true;
   const saveQueue = options.persistence
@@ -146,8 +174,30 @@ export async function mountPlannerApp(
   function flushRender(): void {
     pendingRender = null;
     if (!mounted) return;
+    const renderStartedAt = readPerformanceNowMs();
     try {
-      renderApp(host, latestState, store);
+      appState.set(latestState);
+      const renderMs = readPerformanceNowMs() - renderStartedAt;
+      if (
+        options.performance?.collectMetrics ||
+        options.onPerformanceSample
+      ) {
+        const selectorMs = Object.values(selectorMetricSnapshot()).reduce(
+          (sum, item) => sum + item.lastMs,
+          0,
+        );
+        options.onPerformanceSample?.({
+          bookCount: Object.keys(latestState.project.library.books).length,
+          relationCount: latestState.snapshot.relations.length,
+          visibleDomNodes: countVisibleDomNodes(host),
+          snapshotMs: latestState.performance.lastSnapshotMs,
+          selectorMs,
+          renderMs,
+          workerMs: latestState.performance.lastWorkerMs,
+          longTaskCount: 0,
+          timestamp: options.clock.now().getTime(),
+        });
+      }
     } catch (error) {
       options.logger.error('planner.render.failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -176,6 +226,8 @@ export async function mountPlannerApp(
       unsubscribeState();
       unsubscribeEvents();
       if (saveQueue) await saveQueue.flush();
+      await unmountSvelte(shell);
+      computeAdapter.destroy?.();
       options.container.replaceChildren();
     },
   };

@@ -40,6 +40,7 @@ export function createPlannerStore(
       ...(initialAiConnection ? { aiConnection: initialAiConnection } : {}),
     },
     engine: options.engine,
+    computeAdapter: options.computeAdapter,
   });
 
   const runCatalogSearch = createCatalogSearchRunner({

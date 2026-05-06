@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { sveltePlugin } from './svelte-esbuild-plugin.mjs';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distFile = resolve(rootDir, 'dist', 'difficulty_engine.html');
@@ -38,6 +39,7 @@ async function main() {
     platform: 'browser',
     write: false,
     sourcemap: false,
+    plugins: [sveltePlugin()],
   });
   const embedJs = libraryBundle.outputFiles[0]?.text ?? '';
   const embeddedHtml = `<!doctype html>

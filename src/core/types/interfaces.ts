@@ -94,6 +94,25 @@ export interface PlannerEngine {
   computeSnapshot(project: PlannerProjectV1): EngineSnapshot;
 }
 
+export interface PlannerComputeAdapter {
+  readonly mode: 'sync' | 'worker';
+  compute(project: PlannerProjectV1): Promise<EngineSnapshot>;
+  cancelCurrent(): void;
+  destroy?(): void;
+}
+
+export interface PlannerPerformanceSample {
+  bookCount: number;
+  relationCount: number;
+  visibleDomNodes: number;
+  snapshotMs: number;
+  selectorMs: number;
+  renderMs: number;
+  workerMs: number;
+  longTaskCount: number;
+  timestamp: number;
+}
+
 export interface PlannerStoreSelectors {
   getState(): AppState;
   getProject(): PlannerProjectV1;
@@ -181,6 +200,7 @@ export interface PlannerStore {
 export interface CreatePlannerStoreOptions {
   initialProject?: PlannerProjectV1;
   engine: PlannerEngine;
+  computeAdapter?: PlannerComputeAdapter;
   enrichmentProvider: EnrichmentProvider;
   aiRecommendationProvider?: AiRecommendationProvider;
   localSettings?: LocalIntegrationSettingsAdapter;
@@ -199,6 +219,12 @@ export interface MountPlannerAppOptions {
   qbittorrentService?: QbittorrentIntegrationService;
   logger: Logger;
   clock: Clock;
+  computeMode?: 'auto' | 'sync' | 'worker';
+  performance?: {
+    workerThresholdBooks?: number;
+    collectMetrics?: boolean;
+  };
+  onPerformanceSample?: (sample: PlannerPerformanceSample) => void;
 }
 
 export interface PlannerAppHandle {

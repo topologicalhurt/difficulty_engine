@@ -126,6 +126,12 @@ export default [
     },
   },
   {
+    files: ['src/svelte.d.ts'],
+    rules: {
+      'import/no-default-export': 'off',
+    },
+  },
+  {
     files: ['tests/**/*.ts'],
     rules: {
       '@typescript-eslint/explicit-function-return-type': 'off',
