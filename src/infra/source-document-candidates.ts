@@ -7,6 +7,7 @@ import type {
 import { documentSourceEnabled } from '../core/source-settings-policy';
 import { extractDocumentChapters } from './document-text-extractor';
 import type { AcquiredDocument } from './document-acquisition';
+import { isPdfDocument } from './qbittorrent-file-kinds';
 import { isLoopbackHost } from './url-security';
 
 const DIRECT_DOCUMENT_MAX_BYTES = 8 * 1024 * 1024;
@@ -125,14 +126,12 @@ export async function sourceDocumentCandidate(
     });
     if (!response.ok) return null;
     const contentType = response.headers.get('content-type') ?? '';
-    const isPdf =
-      contentType.includes('pdf') || /\.pdf(?:$|\?)/i.test(sourcePath);
     const bytes = await readLimitedResponseBytes(
       response,
       DIRECT_DOCUMENT_MAX_BYTES,
     );
     if (!bytes) return null;
-    const extraction = isPdf
+    const extraction = isPdfDocument(sourcePath, contentType)
       ? extractDocumentChapters({
           bytes,
           contentType,

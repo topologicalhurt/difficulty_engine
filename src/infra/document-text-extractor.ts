@@ -3,6 +3,7 @@ import {
   isLikelyChapterTitle,
   sanitizeChapterTitles,
 } from '../core/chapter-titles';
+import { isPdfDocument } from './qbittorrent-file-kinds';
 import { decodePdfBytes, extractPdfOutlineTitles } from './pdf-outline-titles';
 import {
   BARE_NUMBER_MARKER_PATTERN,
@@ -246,9 +247,7 @@ export function extractDocumentChapters(input: {
   sourceUrl?: string;
 }): DocumentChapterExtraction | null {
   const isPdf = Boolean(
-    input.bytes &&
-    (input.contentType?.includes('pdf') ||
-      /\.pdf(?:$|\?)/i.test(input.sourceUrl ?? '')),
+    input.bytes && isPdfDocument(input.sourceUrl, input.contentType),
   );
   const text = input.text ?? (input.bytes ? decodeBytes(input.bytes) : '');
   if (isPdf && input.bytes) {

@@ -17753,10 +17753,10 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   var TEXT_MIME = "text/plain";
   var PDF_MIME = "application/pdf";
   var EPUB_MIME = "application/epub+zip";
-  var OCR_TEXT_EXT_PATTERN = /(?:_djvu\.txt|ocr\.txt)$/i;
-  var TEXT_EXT_PATTERN = /(?:\.txt|\.text)$/i;
-  var EPUB_EXT_PATTERN = /\.epub$/i;
-  var PDF_EXT_PATTERN = /\.pdf$/i;
+  var OCR_TEXT_EXT_PATTERN = /(?:_djvu\.txt|ocr\.txt)(?:$|[?#])/i;
+  var TEXT_EXT_PATTERN = /(?:\.txt|\.text)(?:$|[?#])/i;
+  var EPUB_EXT_PATTERN = /\.epub(?:$|[?#])/i;
+  var PDF_EXT_PATTERN = /\.pdf(?:$|[?#])/i;
   function contentKindFromUrl(url) {
     if (OCR_TEXT_EXT_PATTERN.test(url)) return "ocr_text";
     if (TEXT_EXT_PATTERN.test(url)) return "text";
@@ -17770,6 +17770,11 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     if (EPUB_EXT_PATTERN.test(path)) return EPUB_MIME;
     if (PDF_EXT_PATTERN.test(path)) return PDF_MIME;
     return "application/octet-stream";
+  }
+  function isPdfDocument(pathOrUrl, contentType) {
+    return Boolean(
+      contentType?.toLowerCase().includes("pdf") || PDF_EXT_PATTERN.test(pathOrUrl ?? "")
+    );
   }
   function sourceContentKindFromPath(path, fallback) {
     const detected = contentKindFromUrl(path);
@@ -18134,7 +18139,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   }
   function extractDocumentChapters(input) {
     const isPdf = Boolean(
-      input.bytes && (input.contentType?.includes("pdf") || /\.pdf(?:$|\?)/i.test(input.sourceUrl ?? ""))
+      input.bytes && isPdfDocument(input.sourceUrl, input.contentType)
     );
     const text = input.text ?? (input.bytes ? decodeBytes(input.bytes) : "");
     if (isPdf && input.bytes) {
@@ -18419,13 +18424,12 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       });
       if (!response.ok) return null;
       const contentType = response.headers.get("content-type") ?? "";
-      const isPdf = contentType.includes("pdf") || /\.pdf(?:$|\?)/i.test(sourcePath);
       const bytes = await readLimitedResponseBytes(
         response,
         DIRECT_DOCUMENT_MAX_BYTES
       );
       if (!bytes) return null;
-      const extraction2 = isPdf ? extractDocumentChapters({
+      const extraction2 = isPdfDocument(sourcePath, contentType) ? extractDocumentChapters({
         bytes,
         contentType,
         sourceUrl: sourcePath

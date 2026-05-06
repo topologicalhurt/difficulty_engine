@@ -3,10 +3,10 @@ import type { DocumentCandidate } from './document-acquisition';
 export const TEXT_MIME = 'text/plain';
 export const PDF_MIME = 'application/pdf';
 export const EPUB_MIME = 'application/epub+zip';
-export const OCR_TEXT_EXT_PATTERN = /(?:_djvu\.txt|ocr\.txt)$/i;
-export const TEXT_EXT_PATTERN = /(?:\.txt|\.text)$/i;
-export const EPUB_EXT_PATTERN = /\.epub$/i;
-export const PDF_EXT_PATTERN = /\.pdf$/i;
+export const OCR_TEXT_EXT_PATTERN = /(?:_djvu\.txt|ocr\.txt)(?:$|[?#])/i;
+export const TEXT_EXT_PATTERN = /(?:\.txt|\.text)(?:$|[?#])/i;
+export const EPUB_EXT_PATTERN = /\.epub(?:$|[?#])/i;
+export const PDF_EXT_PATTERN = /\.pdf(?:$|[?#])/i;
 
 export function contentKindFromUrl(
   url: string,
@@ -24,6 +24,16 @@ export function contentTypeFromPath(path: string): string {
   if (EPUB_EXT_PATTERN.test(path)) return EPUB_MIME;
   if (PDF_EXT_PATTERN.test(path)) return PDF_MIME;
   return 'application/octet-stream';
+}
+
+export function isPdfDocument(
+  pathOrUrl: string | null | undefined,
+  contentType?: string | null,
+): boolean {
+  return Boolean(
+    contentType?.toLowerCase().includes('pdf') ||
+    PDF_EXT_PATTERN.test(pathOrUrl ?? ''),
+  );
 }
 
 export function sourceContentKindFromPath(
