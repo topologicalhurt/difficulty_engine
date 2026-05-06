@@ -1,4 +1,4 @@
-import type { BookInspectorViewModel } from '../app/selectors/plan';
+import type { BookInspectorViewModel } from '../app/selectors/plan-inspector';
 import type { WarningItem } from '../core/types';
 import { badge, card, el, emptyState } from './dom';
 import { formatOneDecimal, round0 } from './format';

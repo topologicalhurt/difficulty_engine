@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { EXAMPLE_BOOK } from '../../src/core/defaults';
+import type { SourceContentKind } from '../../src/core/types';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
 import {
   qbittorrentSearchPatterns,
@@ -18,7 +19,12 @@ describe('qBittorrent search patterns and ordering', () => {
       },
       policy: {
         ...defaultDocumentAcquisitionPolicy(),
-        contentPreference: ['pdf', 'text', 'epub', 'ocr_text'] as const,
+        contentPreference: [
+          'pdf',
+          'text',
+          'epub',
+          'ocr_text',
+        ] as SourceContentKind[],
       },
     };
     const common = {
