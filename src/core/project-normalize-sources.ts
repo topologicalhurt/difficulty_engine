@@ -126,7 +126,7 @@ export function normalizeQbittorrentConnectionSettings(
   return {
     enabled:
       raw.enabled == null ? defaults.enabled : normalizeBoolean(raw.enabled),
-    baseUrl: normalizeString(raw.baseUrl, defaults.baseUrl) || defaults.baseUrl,
+    baseUrl: normalizeHttpUrl(raw.baseUrl, defaults.baseUrl),
     username: normalizeString(raw.username),
     password: normalizeString(raw.password),
     savePath:
@@ -141,4 +141,16 @@ export function normalizeQbittorrentConnectionSettings(
       true,
     ),
   };
+}
+
+function normalizeHttpUrl(value: unknown, fallback: string): string {
+  const normalized = normalizeString(value, fallback) || fallback;
+  try {
+    const url = new URL(normalized);
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? normalized
+      : fallback;
+  } catch {
+    return fallback;
+  }
 }

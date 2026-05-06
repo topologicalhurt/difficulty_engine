@@ -45,4 +45,24 @@ describe('project view model', () => {
       'text -> epub -> ocr_text -> pdf',
     );
   });
+
+  it('shell-quotes generated qBittorrent commands for unsafe paths', () => {
+    const store = projectStore();
+    store.commands.updateQbittorrentLocalSettings({
+      baseUrl: 'http://127.0.0.1:8123/bridge; echo bad',
+      savePath: "output/data/books; echo 'bad'",
+    });
+
+    const viewModel = selectProjectViewModel(store.selectors.getState());
+
+    expect(viewModel.qbittorrentLaunchCommand).toContain(
+      "--bridge-url 'http://127.0.0.1:8123/bridge; echo bad'",
+    );
+    expect(viewModel.qbittorrentLaunchCommand).toContain(
+      "--data-root 'output/data/books; echo '\\''bad'\\'''",
+    );
+    expect(viewModel.qbittorrentLaunchCommand).toContain(
+      "--allowed-origin 'http://127.0.0.1:*,http://localhost:*'",
+    );
+  });
 });

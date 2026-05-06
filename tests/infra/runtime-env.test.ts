@@ -51,6 +51,7 @@ describe('runtime env config', () => {
 
     expect(assignment).not.toContain('env-secret');
     expect(assignment).not.toContain('apiKey');
+    expect(assignment).not.toContain('enabled');
     expect(assignment).toContain('gpt-5-mini');
   });
 });

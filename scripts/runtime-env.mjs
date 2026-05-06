@@ -59,6 +59,7 @@ export function redactRuntimeEnvSecrets(config) {
   if (redacted.ai && typeof redacted.ai === 'object') {
     const safeAi = { ...redacted.ai };
     delete safeAi.apiKey;
+    delete safeAi.enabled;
     if (Object.keys(safeAi).length) {
       redacted.ai = safeAi;
     } else {

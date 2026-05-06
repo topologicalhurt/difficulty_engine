@@ -1,5 +1,6 @@
 import type { ProjectViewModel } from '../app/selectors/project';
 import type { PlannerStore } from '../core/types';
+import { runConfirmableAction } from './confirmable-action';
 import { button, card, el } from './dom';
 import { fileInputControl, inputField, textAreaControl } from './form-controls';
 
@@ -62,7 +63,13 @@ export function renderImportExportCard(
       }),
       button('New empty project', {
         className: 'ghost-button danger-button',
-        onClick: () => store.commands.resetProject(),
+        onClick: () =>
+          runConfirmableAction(store, {
+            id: 'project.reset',
+            message:
+              'Click New empty project again to confirm replacing the current reading list.',
+            action: () => store.commands.resetProject(),
+          }),
       }),
     ),
     fileInput,

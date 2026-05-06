@@ -313,4 +313,80 @@ describe('worker compute integration', () => {
     expect(store.selectors.getProject().constraints.hpd).toBe(3);
     adapter.destroy?.();
   });
+
+  it('ignores a pending worker result after a newer sync recompute', async () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    let shouldDefer = true;
+    const pending: Array<{
+      project: PlannerProjectV1;
+      resolve(snapshot: EngineSnapshot): void;
+    }> = [];
+    const computeAdapter: PlannerComputeAdapter = {
+      mode: 'worker',
+      shouldDefer: () => shouldDefer,
+      compute: vi.fn(
+        (project) =>
+          new Promise<EngineSnapshot>((resolve) => {
+            pending.push({ project, resolve });
+          }),
+      ),
+      cancelCurrent: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine,
+      computeAdapter,
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    store.commands.updateConstraint('hpd', 2);
+    expect(pending).toHaveLength(1);
+    shouldDefer = false;
+    store.commands.updateConstraint('hpd', 4);
+    const snapshotAfterSyncRecompute = store.selectors.getSnapshot();
+
+    pending[0]?.resolve(engine.computeSnapshot(pending[0].project));
+    await flushMicrotasks();
+
+    expect(store.selectors.getProject().constraints.hpd).toBe(4);
+    expect(store.selectors.getSnapshot()).toBe(snapshotAfterSyncRecompute);
+  });
+
+  it('falls back to a sync snapshot when a host worker adapter rejects', async () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    const computeAdapter: PlannerComputeAdapter = {
+      mode: 'worker',
+      shouldDefer: () => true,
+      compute: vi.fn(async () => {
+        throw new Error('host worker unavailable');
+      }),
+      cancelCurrent: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine,
+      computeAdapter,
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+    const initialSnapshot = store.selectors.getSnapshot();
+    const events: string[] = [];
+    store.subscriptions.subscribeEvents((event) => events.push(event.type));
+
+    store.commands.updateConstraint('hpd', 4);
+    await flushMicrotasks();
+
+    expect(store.selectors.getProject().constraints.hpd).toBe(4);
+    expect(store.selectors.getSnapshot()).not.toBe(initialSnapshot);
+    expect(events).toEqual(['project-changed', 'snapshot-updated']);
+  });
 });

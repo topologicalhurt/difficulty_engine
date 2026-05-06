@@ -1,5 +1,6 @@
 import type { BookEditorViewModel } from '../app/selectors/library';
 import type { AppState, BookRecord, PlannerStore } from '../core/types';
+import { runConfirmableAction } from './confirmable-action';
 import { badge, button, card, el } from './dom';
 import { formatOneDecimal } from './format';
 import { enrichmentBadge } from './library-controls';
@@ -26,7 +27,12 @@ export function renderBookDetailToolbar(
     }),
     button('Remove book', {
       className: 'ghost-button danger-button',
-      onClick: () => store.commands.removeBook(book.id),
+      onClick: () =>
+        runConfirmableAction(store, {
+          id: `library.remove.${book.id}`,
+          message: `Click Remove book again to confirm deleting ${book.short || book.title}.`,
+          action: () => store.commands.removeBook(book.id),
+        }),
     }),
   );
 }

@@ -188,12 +188,31 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
               },
             });
           })
-          .catch(() => {
-            if (computeRevision === pendingComputeRevision) {
-              pendingComputeRevision += 1;
+          .catch((error: unknown) => {
+            if (computeRevision !== pendingComputeRevision) return;
+            pendingComputeRevision += 1;
+            if (
+              error instanceof Error &&
+              error.message === 'Planner compute cancelled'
+            ) {
+              return;
             }
+            const fallbackStartedAt = readPerformanceNowMs();
+            const snapshot = options.engine.computeSnapshot(state.project);
+            const fallbackMs = readPerformanceNowMs() - fallbackStartedAt;
+            applyComputedSnapshot({
+              snapshot,
+              performance: {
+                ...state.performance,
+                lastSnapshotMs: fallbackMs,
+                lastWorkerMs: readPerformanceNowMs() - startedAt,
+              },
+            });
           });
         return;
+      }
+      if (options.computeAdapter?.mode === 'worker') {
+        pendingComputeRevision += 1;
       }
       state = recompute
         ? withSnapshot(canonicalProject, nextUi, options.engine, {

@@ -12,6 +12,7 @@ import {
   createDefaultQbittorrentConnectionSettings,
   createDefaultSourceSettings,
 } from '../../src/core/default-source-settings';
+import { normalizeQbittorrentConnectionSettings } from '../../src/core/project-normalize-sources';
 import type { BookDocumentRef } from '../../src/core/types';
 
 function document(provider: string): Pick<BookDocumentRef, 'provider'> {
@@ -50,6 +51,21 @@ describe('source settings policy', () => {
     expect(qbittorrentUserTorrentsEnabled(settings)).toBe(false);
     expect(qbittorrentSearchPluginsEnabled(settings)).toBe(false);
     expect(qbittorrentRuntimeEnabled(settings, connection)).toBe(false);
+  });
+
+  it('rejects non-http qBittorrent bridge URLs during normalization', () => {
+    const defaults = createDefaultQbittorrentConnectionSettings();
+
+    expect(
+      normalizeQbittorrentConnectionSettings({
+        baseUrl: 'javascript:alert(1)',
+      }).baseUrl,
+    ).toBe(defaults.baseUrl);
+    expect(
+      normalizeQbittorrentConnectionSettings({
+        baseUrl: 'https://example.test/bridge',
+      }).baseUrl,
+    ).toBe('https://example.test/bridge');
   });
 
   it('maps completed document provider reuse through the document source mask', () => {
