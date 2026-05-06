@@ -1,9 +1,6 @@
-import type {
-  BookSearchSuggestion,
-  SearchBooksRequest,
-  SearchBooksResponse,
-} from '../core/types';
+import type { SearchBooksRequest, SearchBooksResponse } from '../core/types';
 import { metadataSourceEnabled } from '../core/source-settings-policy';
+import { compactItems } from '../core/utils';
 import {
   DEFAULT_SEARCH_PAGE_SIZE,
   isCatalogQueryReady,
@@ -113,9 +110,7 @@ function searchResponseFromDocs(
   limit: number,
 ): SearchBooksResponse {
   const results = dedupeSuggestions(
-    (docs ?? [])
-      .map(searchSuggestionFromDoc)
-      .filter(Boolean) as BookSearchSuggestion[],
+    compactItems((docs ?? []).map(searchSuggestionFromDoc)),
   ).slice(0, limit);
   return {
     results,

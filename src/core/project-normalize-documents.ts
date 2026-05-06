@@ -5,7 +5,7 @@ import type {
   BookDocumentStatus,
   SourceContentKind,
 } from './types';
-import { safeNumber } from './utils';
+import { compactItems, safeNumber } from './utils';
 import {
   normalizeNumber,
   normalizeString,
@@ -61,8 +61,8 @@ function normalizeDocumentAvailability(
 export function normalizeBookDocuments(input: unknown): BookDocumentRef[] {
   if (!Array.isArray(input)) return [];
   const seen = new Set<string>();
-  return input
-    .map((entry, index): BookDocumentRef | null => {
+  return compactItems(
+    input.map((entry, index): BookDocumentRef | null => {
       const raw =
         entry && typeof entry === 'object'
           ? (entry as Record<string, unknown>)
@@ -122,6 +122,6 @@ export function normalizeBookDocuments(input: unknown): BookDocumentRef[] {
         createdAt: normalizeString(raw.createdAt) || provenance.fetchedAt,
         updatedAt: normalizeString(raw.updatedAt) || provenance.fetchedAt,
       };
-    })
-    .filter(Boolean) as BookDocumentRef[];
+    }),
+  );
 }

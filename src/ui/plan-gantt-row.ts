@@ -1,10 +1,11 @@
 import { DAYS_PER_WEEK } from '../core/date-constants';
 import type { PlannerStore, ScheduleRow } from '../core/types';
+import { compactItems } from '../core/utils';
 import { badge, el } from './dom';
 import { formatCssPercent, formatOneDecimal } from './format';
 
 function rowBadges(row: ScheduleRow): HTMLElement[] {
-  return [
+  return compactItems([
     badge(`Lane ${row.lane + 1}`),
     row.floorRelaxed
       ? badge(
@@ -17,7 +18,7 @@ function rowBadges(row: ScheduleRow): HTMLElement[] {
     row.unresolvedPages > 0
       ? badge(`${formatOneDecimal(row.unresolvedPages)} unresolved`, 'danger')
       : null,
-  ].filter(Boolean) as HTMLElement[];
+  ]);
 }
 
 export function renderGanttRow(

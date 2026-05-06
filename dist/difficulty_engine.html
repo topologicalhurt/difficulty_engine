@@ -2650,6 +2650,9 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   function compactJoin(values, separator) {
     return compactStrings(values).join(separator);
   }
+  function compactItems(values) {
+    return values.filter((value) => Boolean(value));
+  }
   function uniqueCompactStrings(values, limit) {
     const result = Array.from(new Set(compactStrings(values)));
     return limit == null ? result : result.slice(0, limit);
@@ -3353,46 +3356,48 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   function normalizeBookDocuments(input) {
     if (!Array.isArray(input)) return [];
     const seen = /* @__PURE__ */ new Set();
-    return input.map((entry, index) => {
-      const raw = entry && typeof entry === "object" ? entry : {};
-      const storagePath = normalizeString(raw.storagePath);
-      const fileName = normalizeString(raw.fileName) || storagePath.split("/").filter(Boolean).at(-1) || "";
-      if (!storagePath || !fileName) return null;
-      const id = normalizeString(raw.id) || `${normalizeString(raw.provider, "document")}:${storagePath}`;
-      if (seen.has(id)) return null;
-      seen.add(id);
-      const contentKind = normalizeContentKind(raw.contentKind);
-      const provenance = normalizeProvenance(raw.provenance) ?? {
-        provider: normalizeString(raw.provider, "document") || "document",
-        sourceUrl: normalizeString(raw.sourceUrl) || void 0,
-        fetchedAt: normalizeString(raw.updatedAt) || (/* @__PURE__ */ new Date(0)).toISOString(),
-        confidence: normalizeNumber(raw.matchScore, 0.5, 0, 1)
-      };
-      return {
-        id,
-        provider: normalizeString(raw.provider, provenance.provider) || provenance.provider,
-        sourceUrl: normalizeString(raw.sourceUrl) || void 0,
-        torrentHash: normalizeString(raw.torrentHash) || void 0,
-        fileIndex: raw.fileIndex == null ? void 0 : normalizeNumber(raw.fileIndex, index, 0, 1e5, true),
-        fileName,
-        storagePath,
-        contentKind,
-        contentType: normalizeString(raw.contentType, "application/octet-stream") || "application/octet-stream",
-        accessBasis: raw.accessBasis === "public_domain" || raw.accessBasis === "open_access" || raw.accessBasis === "user_owned" || raw.accessBasis === "user_provided" ? raw.accessBasis : "user_provided",
-        sha256: normalizeString(raw.sha256) || void 0,
-        status: normalizeDocumentStatus(raw.status, contentKind),
-        matchScore: normalizeNumber(
-          raw.matchScore,
-          provenance.confidence,
-          0,
-          1
-        ),
-        availability: normalizeDocumentAvailability(raw.availability),
-        provenance,
-        createdAt: normalizeString(raw.createdAt) || provenance.fetchedAt,
-        updatedAt: normalizeString(raw.updatedAt) || provenance.fetchedAt
-      };
-    }).filter(Boolean);
+    return compactItems(
+      input.map((entry, index) => {
+        const raw = entry && typeof entry === "object" ? entry : {};
+        const storagePath = normalizeString(raw.storagePath);
+        const fileName = normalizeString(raw.fileName) || storagePath.split("/").filter(Boolean).at(-1) || "";
+        if (!storagePath || !fileName) return null;
+        const id = normalizeString(raw.id) || `${normalizeString(raw.provider, "document")}:${storagePath}`;
+        if (seen.has(id)) return null;
+        seen.add(id);
+        const contentKind = normalizeContentKind(raw.contentKind);
+        const provenance = normalizeProvenance(raw.provenance) ?? {
+          provider: normalizeString(raw.provider, "document") || "document",
+          sourceUrl: normalizeString(raw.sourceUrl) || void 0,
+          fetchedAt: normalizeString(raw.updatedAt) || (/* @__PURE__ */ new Date(0)).toISOString(),
+          confidence: normalizeNumber(raw.matchScore, 0.5, 0, 1)
+        };
+        return {
+          id,
+          provider: normalizeString(raw.provider, provenance.provider) || provenance.provider,
+          sourceUrl: normalizeString(raw.sourceUrl) || void 0,
+          torrentHash: normalizeString(raw.torrentHash) || void 0,
+          fileIndex: raw.fileIndex == null ? void 0 : normalizeNumber(raw.fileIndex, index, 0, 1e5, true),
+          fileName,
+          storagePath,
+          contentKind,
+          contentType: normalizeString(raw.contentType, "application/octet-stream") || "application/octet-stream",
+          accessBasis: raw.accessBasis === "public_domain" || raw.accessBasis === "open_access" || raw.accessBasis === "user_owned" || raw.accessBasis === "user_provided" ? raw.accessBasis : "user_provided",
+          sha256: normalizeString(raw.sha256) || void 0,
+          status: normalizeDocumentStatus(raw.status, contentKind),
+          matchScore: normalizeNumber(
+            raw.matchScore,
+            provenance.confidence,
+            0,
+            1
+          ),
+          availability: normalizeDocumentAvailability(raw.availability),
+          provenance,
+          createdAt: normalizeString(raw.createdAt) || provenance.fetchedAt,
+          updatedAt: normalizeString(raw.updatedAt) || provenance.fetchedAt
+        };
+      })
+    );
   }
 
   // src/core/project-normalize-book.ts
@@ -3486,7 +3491,11 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       staleAt: normalizeString(raw.staleAt) || void 0,
       error: normalizeString(raw.error) || void 0,
       data: raw.data ? normalizeBookEnrichment(raw.data) : void 0,
-      provenance: Array.isArray(raw.provenance) ? raw.provenance.map((entry) => normalizeProvenance(entry)).filter(Boolean) : void 0
+      provenance: Array.isArray(raw.provenance) ? compactItems(
+        raw.provenance.map(
+          (entry) => normalizeProvenance(entry) ?? null
+        )
+      ) : void 0
     };
   }
 
@@ -14936,7 +14945,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
         owned: book.owned !== false,
         canMoveUp: index > 0 && ordered[index - 1]?.owned === book.owned,
         canMoveDown: index < ordered.length - 1 && ordered[index + 1]?.owned === book.owned,
-        badges: badges.filter(Boolean),
+        badges: compactItems(badges),
         meta: schedule ? `Order ${book.planOrder + 1} \xB7 Start ${schedule.ds + 1} \xB7 lane ${schedule.lane + 1} \xB7 ${book.pages} pages \xB7 seed ${round1(difficulty?.seed ?? book.manualSeedDifficulty)}` : `Order ${book.planOrder + 1} \xB7 ${book.pages} pages \xB7 seed ${round1(difficulty?.seed ?? book.manualSeedDifficulty)}`,
         detail: dayStats?.blockedReason || dayStats?.infeasibleReason || book.displayGroup,
         progress
@@ -14997,14 +15006,14 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       difficultySummary: difficulty ? `Display difficulty ${round1(difficulty.displayDifficulty)} \xB7 schedule difficulty ${round1(difficulty.scheduleDifficulty)}` : "No difficulty model yet.",
       dayPlanSummary: dayStats ? `Actual ${dayStats.usedDays} study day(s) \xB7 ${round1(dayStats.unfinishedPages)} unfinished pages` : "No day-plan allocation yet.",
       progress,
-      planningBadges: [
+      planningBadges: compactItems([
         schedule?.floorRelaxed ? {
           label: `floor ${round1(schedule.effectiveMinPg)}/${round1(schedule.strictMinPg)}`,
           tone: "warn"
         } : null,
         dayStats?.backfilled ? { label: "backfilled", tone: "success" } : null,
         dayStats?.prereqOverlapUsed ? { label: "prereq overlap", tone: "warn" } : null
-      ].filter(Boolean),
+      ]),
       relationSelectors: relationSummary.relationSelectors
     };
   }
@@ -16144,11 +16153,11 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     };
   }
   function calendarBadges(entry) {
-    return [
+    return compactItems([
       { label: entry.track || `Lane ${entry.lane + 1}` },
       entry.done ? { label: "Done", tone: "success" } : null,
       entry.actualOverride ? { label: "Actual", tone: "success" } : null
-    ].filter(Boolean);
+    ]);
   }
   function calendarDetailText(entry) {
     return compactJoin(
@@ -16444,7 +16453,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
 
   // src/ui/plan-gantt-row.ts
   function rowBadges(row) {
-    return [
+    return compactItems([
       badge(`Lane ${row.lane + 1}`),
       row.floorRelaxed ? badge(
         `Floor ${formatOneDecimal(row.effectiveMinPg)}/${formatOneDecimal(row.strictMinPg)} pg`,
@@ -16453,7 +16462,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       row.backfilled ? badge("Backfilled", "success") : null,
       row.prereqOverlapUsed ? badge("Prereq overlap", "warn") : null,
       row.unresolvedPages > 0 ? badge(`${formatOneDecimal(row.unresolvedPages)} unresolved`, "danger") : null
-    ].filter(Boolean);
+    ]);
   }
   function renderGanttRow(store, row, color, maxSlot, diagnostics, selectedBookId, timelineLabel) {
     const selected = selectedBookId === row.id;
@@ -18367,16 +18376,18 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
         String(right.identifier ?? "")
       )
     ).slice(0, ARCHIVE_RESULT_LIMIT);
-    return (await Promise.all(
-      ranked.map(
-        (doc) => archiveCandidateFromDoc(
-          doc,
-          options.fetchJson,
-          options.fetchImpl,
-          options.signal
+    return compactItems(
+      await Promise.all(
+        ranked.map(
+          (doc) => archiveCandidateFromDoc(
+            doc,
+            options.fetchJson,
+            options.fetchImpl,
+            options.signal
+          )
         )
       )
-    )).filter(Boolean);
+    );
   }
 
   // src/infra/source-document-candidates.ts
@@ -18475,21 +18486,25 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     }
   }
   function acquiredDocumentCandidates(context) {
-    return (context.acquiredDocuments ?? []).map((document2) => {
-      const extraction2 = extractDocumentChapters({
-        text: document2.text,
-        bytes: document2.bytes,
-        contentType: document2.contentType,
-        sourceUrl: document2.sourceUrl ?? document2.storagePath
-      });
-      if (!extraction2) return null;
-      return candidateFromExtraction(
-        document2.provider,
-        document2.sourceUrl ?? document2.storagePath ?? "local://document",
-        document2.confidence,
-        extraction2
-      );
-    }).filter(Boolean);
+    return compactItems(
+      (context.acquiredDocuments ?? []).map(
+        (document2) => {
+          const extraction2 = extractDocumentChapters({
+            text: document2.text,
+            bytes: document2.bytes,
+            contentType: document2.contentType,
+            sourceUrl: document2.sourceUrl ?? document2.storagePath
+          });
+          if (!extraction2) return null;
+          return candidateFromExtraction(
+            document2.provider,
+            document2.sourceUrl ?? document2.storagePath ?? "local://document",
+            document2.confidence,
+            extraction2
+          );
+        }
+      )
+    );
   }
 
   // src/infra/google-books.ts
@@ -18720,10 +18735,10 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     return void 0;
   }
   function mergeStrategyCandidates(book, candidates) {
-    const chapterCandidates2 = [
+    const chapterCandidates2 = compactItems([
       existingChapterCandidate(book),
       ...candidates
-    ].filter(Boolean);
+    ]);
     const selectedChapterCandidate = bestChapterCandidate(chapterCandidates2);
     const candidateChapters = sanitizeChapterTitles(
       selectedChapterCandidate?.chapters ?? [],
@@ -20088,7 +20103,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   }
   function searchResponseFromDocs(docs, offset, limit) {
     const results = dedupeSuggestions(
-      (docs ?? []).map(searchSuggestionFromDoc).filter(Boolean)
+      compactItems((docs ?? []).map(searchSuggestionFromDoc))
     ).slice(0, limit);
     return {
       results,

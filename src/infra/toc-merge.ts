@@ -4,7 +4,7 @@ import type {
   BookRecord,
   EnrichmentFieldProvenance,
 } from '../core/types';
-import { uniqueCompactStrings } from '../core/utils';
+import { compactItems, uniqueCompactStrings } from '../core/utils';
 import {
   bestChapterCandidate,
   existingChapterCandidate,
@@ -105,10 +105,10 @@ export function mergeStrategyCandidates(
   book: BookRecord,
   candidates: StrategyCandidate[],
 ): StrategyResolution {
-  const chapterCandidates = [
+  const chapterCandidates = compactItems([
     existingChapterCandidate(book),
     ...candidates,
-  ].filter(Boolean) as StrategyCandidate[];
+  ]);
   const selectedChapterCandidate = bestChapterCandidate(chapterCandidates);
   const candidateChapters = sanitizeChapterTitles(
     selectedChapterCandidate?.chapters ?? [],

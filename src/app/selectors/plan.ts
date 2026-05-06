@@ -13,7 +13,7 @@ import type {
   ScheduleRow,
   WarningItem,
 } from '../../core/types';
-import { compactJoin, round1 } from '../../core/utils';
+import { compactItems, compactJoin, round1 } from '../../core/utils';
 import { buildCalendarWeeks, type CalendarWeek } from './calendar-weeks';
 import { formatPlanFullDate, formatPlanShortDate } from './date-labels';
 import { selectPlanColors, type PlanColorMetadata } from './plan-colors';
@@ -208,14 +208,11 @@ export function selectPlanViewModel(state: AppState): PlanViewModel {
 export function calendarBadges(
   entry: CalendarEntry,
 ): Array<{ label: string; tone?: 'neutral' | 'success' | 'warn' | 'danger' }> {
-  return [
+  return compactItems([
     { label: entry.track || `Lane ${entry.lane + 1}` },
     entry.done ? { label: 'Done', tone: 'success' as const } : null,
     entry.actualOverride ? { label: 'Actual', tone: 'success' as const } : null,
-  ].filter(Boolean) as Array<{
-    label: string;
-    tone?: 'neutral' | 'success' | 'warn' | 'danger';
-  }>;
+  ]);
 }
 
 export function calendarDetailText(entry: CalendarEntry): string {

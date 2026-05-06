@@ -4,6 +4,7 @@ import type {
   EnrichmentFieldProvenance,
   SourceSettings,
 } from '../core/types';
+import { compactItems } from '../core/utils';
 import { documentSourceEnabled } from '../core/source-settings-policy';
 import { extractDocumentChapters } from './document-text-extractor';
 import type { AcquiredDocument } from './document-acquisition';
@@ -153,21 +154,23 @@ export async function sourceDocumentCandidate(
 export function acquiredDocumentCandidates(
   context: SourceDocumentContext,
 ): SourceDocumentCandidate[] {
-  return (context.acquiredDocuments ?? [])
-    .map((document): SourceDocumentCandidate | null => {
-      const extraction = extractDocumentChapters({
-        text: document.text,
-        bytes: document.bytes,
-        contentType: document.contentType,
-        sourceUrl: document.sourceUrl ?? document.storagePath,
-      });
-      if (!extraction) return null;
-      return candidateFromExtraction(
-        document.provider,
-        document.sourceUrl ?? document.storagePath ?? 'local://document',
-        document.confidence,
-        extraction,
-      );
-    })
-    .filter(Boolean) as SourceDocumentCandidate[];
+  return compactItems(
+    (context.acquiredDocuments ?? []).map(
+      (document): SourceDocumentCandidate | null => {
+        const extraction = extractDocumentChapters({
+          text: document.text,
+          bytes: document.bytes,
+          contentType: document.contentType,
+          sourceUrl: document.sourceUrl ?? document.storagePath,
+        });
+        if (!extraction) return null;
+        return candidateFromExtraction(
+          document.provider,
+          document.sourceUrl ?? document.storagePath ?? 'local://document',
+          document.confidence,
+          extraction,
+        );
+      },
+    ),
+  );
 }

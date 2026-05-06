@@ -9,7 +9,7 @@ import type {
   EnrichmentCacheEntry,
   EnrichmentFieldProvenance,
 } from './types';
-import { safeNumber } from './utils';
+import { compactItems, safeNumber } from './utils';
 import {
   normalizeBoolean,
   normalizeNumber,
@@ -152,9 +152,12 @@ export function normalizeCacheEntry(
     error: normalizeString(raw.error) || undefined,
     data: raw.data ? normalizeBookEnrichment(raw.data) : undefined,
     provenance: Array.isArray(raw.provenance)
-      ? (raw.provenance
-          .map((entry) => normalizeProvenance(entry))
-          .filter(Boolean) as EnrichmentFieldProvenance[])
+      ? compactItems(
+          raw.provenance.map(
+            (entry): EnrichmentFieldProvenance | null =>
+              normalizeProvenance(entry) ?? null,
+          ),
+        )
       : undefined,
   };
 }

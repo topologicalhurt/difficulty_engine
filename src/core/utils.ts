@@ -22,6 +22,12 @@ export function compactJoin(values: unknown[], separator: string): string {
   return compactStrings(values).join(separator);
 }
 
+export function compactItems<T>(
+  values: readonly (T | null | undefined | false)[],
+): T[] {
+  return values.filter((value): value is T => Boolean(value));
+}
+
 export function uniqueCompactStrings(
   values: unknown[],
   limit?: number,

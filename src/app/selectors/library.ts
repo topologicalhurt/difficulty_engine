@@ -1,5 +1,5 @@
 import type { AppState, BookRecord, EnrichmentStatus } from '../../core/types';
-import { round1 } from '../../core/utils';
+import { compactItems, round1 } from '../../core/utils';
 import {
   emptyRelationSelectors,
   selectBookRelationSelectorSummary,
@@ -114,7 +114,7 @@ function readingListViewModelFromProgress(
       canMoveUp: index > 0 && ordered[index - 1]?.owned === book.owned,
       canMoveDown:
         index < ordered.length - 1 && ordered[index + 1]?.owned === book.owned,
-      badges: badges.filter(Boolean) as BadgeView[],
+      badges: compactItems(badges),
       meta: schedule
         ? `Order ${book.planOrder + 1} · Start ${schedule.ds + 1} · lane ${schedule.lane + 1} · ${book.pages} pages · seed ${round1(difficulty?.seed ?? book.manualSeedDifficulty)}`
         : `Order ${book.planOrder + 1} · ${book.pages} pages · seed ${round1(difficulty?.seed ?? book.manualSeedDifficulty)}`,
@@ -207,7 +207,7 @@ function bookEditorViewModelFromProgress(
       ? `Actual ${dayStats.usedDays} study day(s) · ${round1(dayStats.unfinishedPages)} unfinished pages`
       : 'No day-plan allocation yet.',
     progress,
-    planningBadges: [
+    planningBadges: compactItems([
       schedule?.floorRelaxed
         ? {
             label: `floor ${round1(schedule.effectiveMinPg)}/${round1(schedule.strictMinPg)}`,
@@ -218,7 +218,7 @@ function bookEditorViewModelFromProgress(
       dayStats?.prereqOverlapUsed
         ? { label: 'prereq overlap', tone: 'warn' }
         : null,
-    ].filter(Boolean) as BadgeView[],
+    ]),
     relationSelectors: relationSummary.relationSelectors,
   };
 }

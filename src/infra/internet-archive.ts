@@ -10,6 +10,7 @@ import {
   creatorConflictsForGenericTitle,
   type ArchiveSearchDoc,
 } from './internet-archive-matching';
+import { compactItems } from '../core/utils';
 
 const ARCHIVE_RESULT_LIMIT = 5;
 const ARCHIVE_TEXT_FILE_LIMIT = 2;
@@ -216,7 +217,7 @@ export async function fetchInternetArchiveCandidates(options: {
         ),
     )
     .slice(0, ARCHIVE_RESULT_LIMIT);
-  return (
+  return compactItems(
     await Promise.all(
       ranked.map((doc) =>
         archiveCandidateFromDoc(
@@ -226,6 +227,6 @@ export async function fetchInternetArchiveCandidates(options: {
           options.signal,
         ),
       ),
-    )
-  ).filter(Boolean) as InternetArchiveCandidate[];
+    ),
+  );
 }
