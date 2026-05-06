@@ -1,4 +1,5 @@
 import type { AppState, AppView } from '../../core/types';
+import { memoizeSelector } from './memo';
 
 export const APP_VIEW_DEFINITIONS: Array<{
   id: AppView;
@@ -58,33 +59,47 @@ export interface ShellViewModel {
   tabs: Array<{ id: AppView; label: string; active: boolean }>;
 }
 
+const selectShellViewModelMemo = memoizeSelector(
+  'shell.viewModel',
+  (state: AppState) => [
+    state.ui.activeView,
+    state.ui.banner,
+    state.project.library.books,
+    state.snapshot.relations,
+    state.snapshot.renderModel.warnings,
+  ],
+  (state: AppState): ShellViewModel => {
+    const activeView =
+      APP_VIEW_DEFINITIONS.find((view) => view.id === state.ui.activeView) ??
+      APP_VIEW_DEFINITIONS[0];
+    const warnings = state.snapshot.renderModel.warnings;
+    return {
+      activeView: activeView.id,
+      activeDescription: activeView.description,
+      banner: state.ui.banner,
+      stats: [
+        {
+          label: 'books',
+          value: String(Object.keys(state.project.library.books).length),
+        },
+        { label: 'relations', value: String(state.snapshot.relations.length) },
+        { label: 'warnings', value: String(warnings.length) },
+        {
+          label: 'blocking',
+          value: String(
+            warnings.filter((warning) => warning.severity === 'fail').length,
+          ),
+        },
+      ],
+      tabs: APP_VIEW_DEFINITIONS.map((view) => ({
+        id: view.id,
+        label: view.label,
+        active: view.id === activeView.id,
+      })),
+    };
+  },
+);
+
 export function selectShellViewModel(state: AppState): ShellViewModel {
-  const activeView =
-    APP_VIEW_DEFINITIONS.find((view) => view.id === state.ui.activeView) ??
-    APP_VIEW_DEFINITIONS[0];
-  const warnings = state.snapshot.renderModel.warnings;
-  return {
-    activeView: activeView.id,
-    activeDescription: activeView.description,
-    banner: state.ui.banner,
-    stats: [
-      {
-        label: 'books',
-        value: String(Object.keys(state.project.library.books).length),
-      },
-      { label: 'relations', value: String(state.snapshot.relations.length) },
-      { label: 'warnings', value: String(warnings.length) },
-      {
-        label: 'blocking',
-        value: String(
-          warnings.filter((warning) => warning.severity === 'fail').length,
-        ),
-      },
-    ],
-    tabs: APP_VIEW_DEFINITIONS.map((view) => ({
-      id: view.id,
-      label: view.label,
-      active: view.id === activeView.id,
-    })),
-  };
+  return selectShellViewModelMemo(state);
 }

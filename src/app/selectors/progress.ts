@@ -1,5 +1,6 @@
 import type { AppState, BookRecord, CalendarEntry } from '../../core/types';
 import { round1 } from '../../core/utils';
+import { memoizeSelector } from './memo';
 
 export type ProgressStatus =
   | 'not_started'
@@ -147,20 +148,32 @@ function progressForBook(
   };
 }
 
+const selectProgressByBookMemo = memoizeSelector(
+  'progress.byBook',
+  (state: AppState) => [
+    state.project.library.books,
+    state.project.manualOverrides.actuals,
+    state.snapshot.dayPlan.byBook,
+  ],
+  (state: AppState): Record<string, BookProgressView> => {
+    const logged = loggedProgressByBook(state);
+    return Object.fromEntries(
+      Object.keys(state.project.library.books).map((bookId) => [
+        bookId,
+        progressForBook(
+          state.project.library.books[bookId],
+          bookId,
+          logged[bookId] ?? emptyLoggedProgress(),
+        ),
+      ]),
+    );
+  },
+);
+
 export function selectProgressByBook(
   state: AppState,
 ): Record<string, BookProgressView> {
-  const logged = loggedProgressByBook(state);
-  return Object.fromEntries(
-    Object.keys(state.project.library.books).map((bookId) => [
-      bookId,
-      progressForBook(
-        state.project.library.books[bookId],
-        bookId,
-        logged[bookId] ?? emptyLoggedProgress(),
-      ),
-    ]),
-  );
+  return selectProgressByBookMemo(state);
 }
 
 export function selectBookProgress(
@@ -207,12 +220,24 @@ function overallProgressFromMap(
   };
 }
 
+const selectProgressSummaryMemo = memoizeSelector(
+  'progress.summary',
+  (state: AppState) => [
+    state.project.library.books,
+    state.project.manualOverrides.actuals,
+    state.snapshot.dayPlan.byBook,
+  ],
+  (state: AppState): ProgressSummaryView => {
+    const byBook = selectProgressByBook(state);
+    return {
+      byBook,
+      overall: overallProgressFromMap(state, byBook),
+    };
+  },
+);
+
 export function selectProgressSummary(state: AppState): ProgressSummaryView {
-  const byBook = selectProgressByBook(state);
-  return {
-    byBook,
-    overall: overallProgressFromMap(state, byBook),
-  };
+  return selectProgressSummaryMemo(state);
 }
 
 export function selectOverallProgress(state: AppState): OverallProgressView {

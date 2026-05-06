@@ -22,6 +22,7 @@ import {
   type BookProgressView,
   type OverallProgressView,
 } from './progress';
+import { memoizeSelector } from './memo';
 
 export interface StatCardView {
   label: string;
@@ -188,21 +189,37 @@ function selectInspector(
   };
 }
 
+const selectPlanViewModelMemo = memoizeSelector(
+  'plan.viewModel',
+  (state: AppState) => [
+    state.project,
+    state.snapshot,
+    state.ui.selectedBookId,
+    state.ui.selectedCalendarEntry,
+    state.ui.ganttView,
+    state.ui.ganttZoom,
+    state.ui.planColorMode,
+  ],
+  (state: AppState): PlanViewModel => {
+    const progress = selectProgressSummary(state);
+    return {
+      selectedBookId: state.ui.selectedBookId,
+      selectedCalendarEntry: state.ui.selectedCalendarEntry,
+      emptyDayPolicy: state.project.constraints.emptyDayPolicy,
+      stats: selectPlanStats(state, progress.overall),
+      gantt: selectGantt(state),
+      calendarWeeks: buildCalendarWeeks(state),
+      colors: selectPlanColors(state),
+      progress: progress.overall,
+      warnings: state.snapshot.renderModel.warnings,
+      inspector: selectInspector(state, progress.byBook),
+      timelineLabel: selectTimelineLabel(state),
+    };
+  },
+);
+
 export function selectPlanViewModel(state: AppState): PlanViewModel {
-  const progress = selectProgressSummary(state);
-  return {
-    selectedBookId: state.ui.selectedBookId,
-    selectedCalendarEntry: state.ui.selectedCalendarEntry,
-    emptyDayPolicy: state.project.constraints.emptyDayPolicy,
-    stats: selectPlanStats(state, progress.overall),
-    gantt: selectGantt(state),
-    calendarWeeks: buildCalendarWeeks(state),
-    colors: selectPlanColors(state),
-    progress: progress.overall,
-    warnings: state.snapshot.renderModel.warnings,
-    inspector: selectInspector(state, progress.byBook),
-    timelineLabel: selectTimelineLabel(state),
-  };
+  return selectPlanViewModelMemo(state);
 }
 
 export function calendarBadges(
