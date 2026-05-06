@@ -12,7 +12,7 @@ interface BoostCandidate {
 const FIRST_BOOST_BONUS = 0.1;
 
 export interface BoostCandidateInput {
-  pending: PlanningState[];
+  entryStates: PlanningState[];
   entryMap: Record<string, CalendarEntry>;
   budgetLeft: number;
   project: PlannerProjectV1;
@@ -24,7 +24,7 @@ export function chooseBoostCandidate(
   input: BoostCandidateInput,
 ): BoostCandidate | null {
   return (
-    input.pending
+    input.entryStates
       .map<BoostCandidate | null>((state) => {
         const entry = input.entryMap[state.id];
         if (!entry) return null;

@@ -2,6 +2,7 @@ import { normalizePrereqMode } from './constraint-normalizers';
 import {
   DAY_PLAN_BACKFILL_STAGE_PENALTY,
   DAY_PLAN_BUDGET_EPSILON_MINUTES,
+  DAY_PLAN_CANDIDATE_SCAN_LIMIT,
   DAY_PLAN_COSTUDY_GROUP_BONUS_PER_MEMBER,
   DAY_PLAN_SMART_PREREQ_STAGE_PENALTY,
   DAY_PLAN_SOFT_PREREQ_STAGE_PENALTY,
@@ -62,6 +63,20 @@ function groupedCandidates(
   return grouped;
 }
 
+function candidateFrontier(input: CandidateSetInput): PlanningState[] {
+  if (input.candidates.length <= DAY_PLAN_CANDIDATE_SCAN_LIMIT) {
+    return input.candidates;
+  }
+  return [...input.candidates]
+    .sort(
+      (left, right) =>
+        input.priorityScore(right, false) -
+          input.priorityScore(left, false) ||
+        left.short.localeCompare(right.short),
+    )
+    .slice(0, DAY_PLAN_CANDIDATE_SCAN_LIMIT);
+}
+
 function isStrictSynchronizedGroup(
   key: string,
   groupStates: PlanningState[],
@@ -102,10 +117,11 @@ function compareCandidateSets(
 
 export function buildCandidateSets(input: CandidateSetInput): CandidateSet[] {
   const penalty = stagePenalty(input.project, input.stage);
-  const candidateSet = new Set(input.candidates.map((state) => state.id));
+  const candidates = candidateFrontier(input);
+  const candidateSet = new Set(candidates.map((state) => state.id));
   const sets: CandidateSet[] = [];
 
-  Object.entries(groupedCandidates(input.candidates, input.entryIds)).forEach(
+  Object.entries(groupedCandidates(candidates, input.entryIds)).forEach(
     ([key, groupStates]) => {
       if (
         isStrictSynchronizedGroup(

@@ -1,6 +1,8 @@
 import {
   WORKLOAD_CLUSTER_SIMILARITY_THRESHOLD,
   WORKLOAD_FINGERPRINT_SIMILARITY_WEIGHT,
+  MAX_EXHAUSTIVE_WORKLOAD_PROFILES,
+  MAX_WORKLOAD_INDEX_FEATURE_FREQUENCY,
   WORKLOAD_RELATION_SIMILARITY_WEIGHT,
   WORKLOAD_TOKEN_SIMILARITY_WEIGHT,
   WORKLOAD_TOPIC_SIMILARITY_WEIGHT,
@@ -53,20 +55,76 @@ export function buildWorkloadSimilarityMatrix(
   profiles: WorkloadProfile[],
   relationInfo: RelationInfo,
 ): Record<string, Record<string, number>> {
-  const similarity: Record<string, Record<string, number>> = {};
-  profiles.forEach((left) => {
-    similarity[left.id] = {};
-    profiles.forEach((right) => {
-      if (left.id !== right.id) {
-        similarity[left.id][right.id] = profileSimilarity(
-          left,
-          right,
-          relationInfo,
-        );
+  const similarity: Record<string, Record<string, number>> = Object.fromEntries(
+    profiles.map((profile) => [profile.id, {}]),
+  );
+  const byId = Object.fromEntries(
+    profiles.map((profile) => [profile.id, profile]),
+  );
+
+  workloadSimilarityPairIds(profiles, relationInfo).forEach(
+    ([leftId, rightId]) => {
+      const left = byId[leftId];
+      const right = byId[rightId];
+      if (!left || !right) return;
+      const score = profileSimilarity(left, right, relationInfo);
+      similarity[leftId][rightId] = score;
+      similarity[rightId][leftId] = score;
+    },
+  );
+  return similarity;
+}
+
+function workloadSimilarityPairIds(
+  profiles: WorkloadProfile[],
+  relationInfo: RelationInfo,
+): Array<[string, string]> {
+  if (profiles.length <= MAX_EXHAUSTIVE_WORKLOAD_PROFILES) {
+    const pairs: Array<[string, string]> = [];
+    for (let left = 0; left < profiles.length; left += 1) {
+      for (let right = left + 1; right < profiles.length; right += 1) {
+        pairs.push([profiles[left].id, profiles[right].id]);
       }
+    }
+    return pairs;
+  }
+
+  const profileIds = new Set(profiles.map((profile) => profile.id));
+  const pairKeys = new Set(
+    Object.keys(relationInfo.byPair).filter((key) => {
+      const [leftId, rightId] = key.split('|');
+      return profileIds.has(leftId) && profileIds.has(rightId);
+    }),
+  );
+  const featureToIds = new Map<string, string[]>();
+  profiles.forEach((profile) => {
+    Object.keys(profile.topicWeights).forEach((feature) => {
+      const ids = featureToIds.get(feature) ?? [];
+      ids.push(profile.id);
+      featureToIds.set(feature, ids);
     });
   });
-  return similarity;
+
+  featureToIds.forEach((ids) => {
+    const sortedIds = [...new Set(ids)].sort();
+    if (sortedIds.length > MAX_WORKLOAD_INDEX_FEATURE_FREQUENCY) return;
+    for (let left = 0; left < sortedIds.length; left += 1) {
+      for (let right = left + 1; right < sortedIds.length; right += 1) {
+        pairKeys.add([sortedIds[left], sortedIds[right]].sort().join('|'));
+      }
+    }
+  });
+
+  return [...pairKeys]
+    .map((key): [string, string] | null => {
+      const [leftId, rightId] = key.split('|');
+      return leftId && rightId && leftId !== rightId ? [leftId, rightId] : null;
+    })
+    .filter((pair): pair is [string, string] => Boolean(pair))
+    .sort(
+      ([leftA, rightA], [leftB, rightB]) =>
+        leftA.localeCompare(leftB) || rightA.localeCompare(rightB),
+    );
 }
 
 export function connectedWorkloadComponents(

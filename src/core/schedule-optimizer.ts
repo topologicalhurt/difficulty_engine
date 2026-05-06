@@ -9,6 +9,7 @@ import type {
 import { buildOverlapClusters } from './overlap-clusters';
 import { solveSchedule } from './schedule';
 import { computeScheduleStats } from './schedule-stats';
+import { MAX_FASTEST_META_SEARCH_BOOKS } from './constants';
 import type {
   Clock,
   PlannerProjectV1,
@@ -126,7 +127,11 @@ export function computeScheduleArtifacts(
   clock: Clock,
 ): Omit<ScheduleCandidate, 'algorithm'> {
   const selected = normalizeSchedAlgo(project.constraints.schedAlgo);
-  const algorithms = selected === 'fastest' ? FASTEST_CANDIDATES : [selected];
+  const activeBookCount = Object.keys(project.library.books).length;
+  const algorithms =
+    selected === 'fastest' && activeBookCount <= MAX_FASTEST_META_SEARCH_BOOKS
+      ? FASTEST_CANDIDATES
+      : [selected];
   const best = algorithms
     .map((algorithm) =>
       buildCandidate(

@@ -44,6 +44,8 @@ export const MAX_PHRASE_NGRAM = 3;
 export const MAX_TOPIC_CANDIDATES_PER_BOOK = 28;
 export const TOPIC_MATCH_SIMILARITY = 0.4;
 export const CONTAINMENT_SIMILARITY_HINT = 0.82;
+// Relation inference compares the same topic labels many times; cap caches to avoid unbounded growth.
+export const TEXT_SIMILARITY_CACHE_LIMIT = 50_000;
 
 export const GENERIC_DIFFICULTY_BASE = 4.9;
 export const GENERIC_DIFFICULTY_INTRO_SHIFT = -1.0;
@@ -80,6 +82,14 @@ export const PREREQ_SCORE_MARGIN = 0.06;
 export const CO_STUDY_SCORE_THRESHOLD = 0.66;
 export const CO_STUDY_OVERLAP_THRESHOLD = 0.24;
 export const REFERENCE_SCORE_THRESHOLD = 0.24;
+// Small libraries stay exhaustive for maximum recall; large libraries use topic-indexed candidates.
+export const MAX_EXHAUSTIVE_RELATION_BOOKS = 80;
+// Very common topics add little signal and otherwise recreate all-pairs scoring.
+export const MAX_RELATION_INDEX_TOPIC_FREQUENCY = 180;
+// Large-library relation inference keeps only the strongest indexed neighbors per book.
+export const MAX_INDEXED_RELATION_CANDIDATES_PER_BOOK = 16;
+// Strategy meta-search is useful for normal plans but too expensive for large libraries.
+export const MAX_FASTEST_META_SEARCH_BOOKS = 300;
 
 export const PREREQ_WEIGHT_COVERAGE = 0.32;
 export const PREREQ_WEIGHT_NOVELTY = 0.13;
@@ -119,6 +129,10 @@ export const WORKLOAD_TOKEN_SIMILARITY_WEIGHT = 0.25;
 export const WORKLOAD_RELATION_SIMILARITY_WEIGHT = 0.2;
 export const WORKLOAD_FINGERPRINT_SIMILARITY_WEIGHT = 0.1;
 export const WORKLOAD_LIFT_CAP = 1.6;
+// Above this size, workload clustering scores only indexed topic/relation neighbors.
+export const MAX_EXHAUSTIVE_WORKLOAD_PROFILES = 120;
+// Very common workload features are weak cluster evidence and too expensive to pair exhaustively.
+export const MAX_WORKLOAD_INDEX_FEATURE_FREQUENCY = 180;
 export const WORKLOAD_LOW_METADATA_CONFIDENCE = 0.42;
 export const WORKLOAD_SPARSE_SPECIALIZED_CONFIDENCE = 0.72;
 export const WORKLOAD_SPECIALIZED_TOPIC_COUNT = 5;
@@ -148,6 +162,8 @@ export const DAY_PLAN_BUDGET_EPSILON_MINUTES = 1e-6;
 export const DAY_PLAN_ACTIVE_BUDGET_EPSILON_MINUTES = 0.01;
 // Hard guard against accidental non-converging allocation loops.
 export const DAY_PLAN_ALLOCATION_GUARD_LIMIT = 5000;
+// Daily allocation only needs a bounded frontier because visible parallel slots are limited.
+export const DAY_PLAN_CANDIDATE_SCAN_LIMIT = 32;
 // Later-stage starts rank behind strict-ready starts unless needed to fill occupancy.
 export const DAY_PLAN_BACKFILL_STAGE_PENALTY = 0.22;
 export const DAY_PLAN_SMART_PREREQ_STAGE_PENALTY = 0.42;

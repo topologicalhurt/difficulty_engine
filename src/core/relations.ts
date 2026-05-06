@@ -100,19 +100,30 @@ export function inferRelations(
     });
   });
 
+  const requiredLearnedPairs = new Set<string>();
   const candidates: RelationEvidence[] = [];
   const seenMutual = new Set<string>();
   books.forEach((book) => {
+    book.manualPrereqs.forEach((parent) => {
+      if (corpus.byId[parent] && parent !== book.id) {
+        requiredLearnedPairs.add(relationPairKey(book.id, parent));
+      }
+    });
     book.manualCoStudy.forEach((other) => {
       if (!corpus.byId[other] || other === book.id) return;
       const key = relationPairKey(book.id, other);
+      requiredLearnedPairs.add(key);
       if (seenMutual.has(key)) return;
       seenMutual.add(key);
       candidates.push(manualCoStudyRelation(book.id, other));
     });
   });
 
-  const learned = learnedRelationCandidates(corpus, topicIndex);
+  const learned = learnedRelationCandidates(
+    corpus,
+    topicIndex,
+    requiredLearnedPairs,
+  );
   Object.assign(byPair, learned.byPair);
   candidates.push(...learned.candidates);
 

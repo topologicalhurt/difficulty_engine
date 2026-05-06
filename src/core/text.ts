@@ -6,8 +6,12 @@ import {
   MAX_PHRASE_NGRAM,
   SERIES_PATTERN,
   STOP_WORDS,
+  TEXT_SIMILARITY_CACHE_LIMIT,
 } from './constants';
 import { safeNumber } from './utils';
+
+const similarityTokenSetCache = new Map<string, Set<string>>();
+const textSimilarityCache = new Map<string, number>();
 
 export function titleShort(title: string, id: string): string {
   const raw = String(title || id || 'Untitled').trim();
@@ -71,8 +75,11 @@ export function phraseCandidates(
 
 export function textSimilarity(left: string, right: string): number {
   if (left === right) return 1;
-  const leftTokens = new Set(tokenizeWords(left));
-  const rightTokens = new Set(tokenizeWords(right));
+  const cacheKey = left < right ? `${left}\u0000${right}` : `${right}\u0000${left}`;
+  const cached = textSimilarityCache.get(cacheKey);
+  if (cached != null) return cached;
+  const leftTokens = tokenSetForSimilarity(left);
+  const rightTokens = tokenSetForSimilarity(right);
   if (!leftTokens.size || !rightTokens.size) return 0;
   let shared = 0;
   leftTokens.forEach((token) => {
@@ -85,7 +92,27 @@ export function textSimilarity(left: string, right: string): number {
     String(right || '').includes(String(left || ''))
       ? CONTAINMENT_SIMILARITY_HINT
       : 0;
-  return Math.max(containment, jaccard);
+  const similarity = Math.max(containment, jaccard);
+  rememberTextSimilarity(cacheKey, similarity);
+  return similarity;
+}
+
+function tokenSetForSimilarity(text: string): Set<string> {
+  const cached = similarityTokenSetCache.get(text);
+  if (cached) return cached;
+  const tokenSet = new Set(tokenizeWords(text));
+  if (similarityTokenSetCache.size >= TEXT_SIMILARITY_CACHE_LIMIT) {
+    similarityTokenSetCache.clear();
+  }
+  similarityTokenSetCache.set(text, tokenSet);
+  return tokenSet;
+}
+
+function rememberTextSimilarity(key: string, similarity: number): void {
+  if (textSimilarityCache.size >= TEXT_SIMILARITY_CACHE_LIMIT) {
+    textSimilarityCache.clear();
+  }
+  textSimilarityCache.set(key, similarity);
 }
 
 export function countTokens(tokens: string[]): Record<string, number> {

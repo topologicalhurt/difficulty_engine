@@ -52,6 +52,7 @@ export function allocateDayEntries(
 ): DayAllocationResult {
   const dayEntries: CalendarEntry[] = [];
   const entryMap: Record<string, CalendarEntry> = {};
+  const entryStates: PlanningState[] = [];
   const entryIds = new Set<string>();
   const actualLocked = new Set<string>();
   let dayUsedMinutes = 0;
@@ -81,6 +82,7 @@ export function allocateDayEntries(
     );
     entryMap[state.id] = entry;
     entryIds.add(state.id);
+    entryStates.push(state);
     dayEntries.push(entry);
     state.usedDays += 1;
     if (state.actualStart == null) {
@@ -209,7 +211,7 @@ export function allocateDayEntries(
     ) {
       boostGuard += 1;
       const booster = chooseBoostCandidate({
-        pending: input.pending,
+        entryStates,
         entryMap,
         budgetLeft: input.budgetMinutes - dayUsedMinutes,
         project: input.project,
