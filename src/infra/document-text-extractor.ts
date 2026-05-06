@@ -6,18 +6,20 @@ import {
 import { isPdfDocument } from './qbittorrent-file-kinds';
 import { decodePdfBytes, extractPdfOutlineTitles } from './pdf-outline-titles';
 import {
-  BARE_NUMBER_MARKER_PATTERN,
   BODY_CHAPTER_START_PATTERN,
   CONTENTS_LINE_PATTERN,
   DECIMAL_HEADER_PATTERN,
   EXPLICIT_CONTENTS_PATTERN,
   FRONT_BACK_LINE_PATTERN,
-  MARKER_ONLY_CHAPTER_PATTERN,
   NUMBERED_HEADER_PATTERN,
   PAGE_HEADER_PATTERN,
-  PDF_OBJECT_NOISE_PATTERN,
-  TOC_CONTINUATION_START_PATTERN,
 } from './toc-extraction-patterns';
+import {
+  DOCUMENT_TEXT_SCAN_CHARS,
+  joinSplitTocLines,
+  normalizeDocumentLines,
+  removeMarkerOnlyDuplicates,
+} from './toc-line-normalization';
 
 export type DocumentExtractionStrategy =
   | 'pdf_outline'
@@ -32,26 +34,15 @@ export interface DocumentChapterExtraction {
   inferred: boolean;
 }
 
-const TEXT_SCAN_CHARS = 260_000;
 const CONTENTS_REGION_MAX_LINES = 900;
 const EARLY_TEXT_LINES = 260;
 const MIN_EXPLICIT_TOC_CHAPTERS = 2;
 const MIN_PDF_OUTLINE_CHAPTERS = 2;
 const MIN_INFERRED_HEADER_COUNT = 3;
 const MAX_INFERRED_HEADER_COUNT = 80;
-const HEADER_MAX_LENGTH = 110;
 
 function decodeBytes(bytes: Uint8Array): string {
-  return decodePdfBytes(bytes).slice(0, TEXT_SCAN_CHARS);
-}
-
-function normalizeLines(text: string): string[] {
-  return text
-    .slice(0, TEXT_SCAN_CHARS)
-    .split(/\n+/)
-    .map((line) => line.replace(/\s+/g, ' ').trim())
-    .filter((line) => line.length >= 2 && line.length <= HEADER_MAX_LENGTH)
-    .filter((line) => !PDF_OBJECT_NOISE_PATTERN.test(line));
+  return decodePdfBytes(bytes).slice(0, DOCUMENT_TEXT_SCAN_CHARS);
 }
 
 function extraction(
@@ -68,28 +59,6 @@ function extraction(
     evidenceAnchors: evidenceAnchors.slice(0, 8),
     inferred: strategy === 'inferred_headers',
   };
-}
-
-function markerKey(title: string): string | null {
-  const match = title.match(MARKER_ONLY_CHAPTER_PATTERN);
-  return match ? `${match[1]?.toLowerCase()}:${match[2]?.toLowerCase()}` : null;
-}
-
-function richerMarkerKey(title: string): string | null {
-  const match = title.match(
-    /^(chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b.+/i,
-  );
-  return match ? `${match[1]?.toLowerCase()}:${match[2]?.toLowerCase()}` : null;
-}
-
-function removeMarkerOnlyDuplicates(chapters: string[]): string[] {
-  const richerKeys = new Set(
-    chapters.map(richerMarkerKey).filter((key): key is string => Boolean(key)),
-  );
-  return chapters.filter((chapter) => {
-    const key = markerKey(chapter);
-    return !key || !richerKeys.has(key);
-  });
 }
 
 function explicitTocRegion(lines: string[], contentsIndex: number): string[] {
@@ -119,40 +88,6 @@ function explicitTocRegion(lines: string[], contentsIndex: number): string[] {
   return region;
 }
 
-function joinSplitTocLines(lines: string[]): string[] {
-  const joined: string[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? '';
-    const next = lines[index + 1] ?? '';
-    if (
-      next &&
-      (MARKER_ONLY_CHAPTER_PATTERN.test(line) ||
-        BARE_NUMBER_MARKER_PATTERN.test(line)) &&
-      isLikelyChapterTitle(next, 'structured')
-    ) {
-      joined.push(`${line} ${next}`);
-      index += 1;
-      continue;
-    }
-    if (
-      next &&
-      (NUMBERED_HEADER_PATTERN.test(line) ||
-        DECIMAL_HEADER_PATTERN.test(line)) &&
-      !NUMBERED_HEADER_PATTERN.test(next) &&
-      !DECIMAL_HEADER_PATTERN.test(next) &&
-      !CONTENTS_LINE_PATTERN.test(next) &&
-      TOC_CONTINUATION_START_PATTERN.test(next) &&
-      isLikelyChapterTitle(next, 'structured')
-    ) {
-      joined.push(`${line} ${next}`);
-      index += 1;
-      continue;
-    }
-    joined.push(line);
-  }
-  return joined;
-}
-
 export function extractPdfOutlineChapters(
   bytes: Uint8Array,
 ): DocumentChapterExtraction | null {
@@ -167,7 +102,7 @@ export function extractPdfOutlineChapters(
 export function extractExplicitTocChapters(
   text: string,
 ): DocumentChapterExtraction | null {
-  const lines = normalizeLines(text);
+  const lines = normalizeDocumentLines(text);
   const contentsIndex = lines.findIndex((line) =>
     CONTENTS_LINE_PATTERN.test(line),
   );
@@ -217,7 +152,7 @@ function isInferredHeader(line: string): boolean {
 export function inferChapterHeadersFromText(
   text: string,
 ): DocumentChapterExtraction | null {
-  const lines = normalizeLines(text);
+  const lines = normalizeDocumentLines(text);
   const candidates = lines
     .filter(isInferredHeader)
     .filter((line, index, all) => all.indexOf(line) === index);
