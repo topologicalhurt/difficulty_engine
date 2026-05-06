@@ -17,6 +17,29 @@ export interface GroupColorOptions {
   lightness?: number;
 }
 
+export interface HueRange {
+  startHue: number;
+  endHue: number;
+}
+
+export const PLAN_MONO_GROUP_COLOR_OPTIONS: GroupColorOptions = {
+  fallback: 'Ungrouped',
+  hueStart: 160,
+  hueSpan: 34,
+  saturation: 42,
+  lightness: 55,
+};
+
+export const PLAN_DIFFICULTY_GRADIENT: HueRange = {
+  startHue: 145,
+  endHue: 18,
+};
+
+export const PLAN_READING_TIME_GRADIENT: HueRange = {
+  startHue: 205,
+  endHue: 42,
+};
+
 export function hashText(value: string): number {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {

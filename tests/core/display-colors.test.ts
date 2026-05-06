@@ -6,6 +6,7 @@ import {
   hashText,
   hslColor,
   normalizedRange,
+  PLAN_MONO_GROUP_COLOR_OPTIONS,
 } from '../../src/core/display-colors';
 
 describe('display color helpers', () => {
@@ -17,13 +18,7 @@ describe('display color helpers', () => {
 
   it('supports restrained group palettes without local hashing', () => {
     expect(
-      groupColor('', {
-        fallback: 'Ungrouped',
-        hueStart: 160,
-        hueSpan: 34,
-        saturation: 42,
-        lightness: 55,
-      }),
+      groupColor('', PLAN_MONO_GROUP_COLOR_OPTIONS),
     ).toMatch(/^hsl\((16\d|17\d|18\d|19[0-3]) 42% 55%\)$/);
   });
 

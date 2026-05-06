@@ -4,14 +4,10 @@ import {
   gradientColor,
   groupColor,
   normalizedRange,
+  PLAN_DIFFICULTY_GRADIENT,
+  PLAN_MONO_GROUP_COLOR_OPTIONS,
+  PLAN_READING_TIME_GRADIENT,
 } from '../../core/display-colors';
-
-const MONO_GROUP_HUE_START = 160;
-const MONO_GROUP_HUE_SPAN = 34;
-const DIFFICULTY_GRADIENT_START_HUE = 145;
-const DIFFICULTY_GRADIENT_END_HUE = 18;
-const READING_TIME_GRADIENT_START_HUE = 205;
-const READING_TIME_GRADIENT_END_HUE = 42;
 
 export interface PlanColorMetadata {
   mode: PlanColorMode;
@@ -19,13 +15,7 @@ export interface PlanColorMetadata {
 }
 
 function monoGroupColor(group: string): string {
-  return groupColor(group, {
-    fallback: 'Ungrouped',
-    hueStart: MONO_GROUP_HUE_START,
-    hueSpan: MONO_GROUP_HUE_SPAN,
-    saturation: 42,
-    lightness: 55,
-  });
+  return groupColor(group, PLAN_MONO_GROUP_COLOR_OPTIONS);
 }
 
 function detectedGenreLabel(state: AppState, bookId: string): string {
@@ -74,8 +64,8 @@ export function selectPlanColors(state: AppState): PlanColorMetadata {
             item.id,
             gradientColor(
               pct,
-              DIFFICULTY_GRADIENT_START_HUE,
-              DIFFICULTY_GRADIENT_END_HUE,
+              PLAN_DIFFICULTY_GRADIENT.startHue,
+              PLAN_DIFFICULTY_GRADIENT.endHue,
             ),
           ];
         }
@@ -85,8 +75,8 @@ export function selectPlanColors(state: AppState): PlanColorMetadata {
             item.id,
             gradientColor(
               pct,
-              READING_TIME_GRADIENT_START_HUE,
-              READING_TIME_GRADIENT_END_HUE,
+              PLAN_READING_TIME_GRADIENT.startHue,
+              PLAN_READING_TIME_GRADIENT.endHue,
             ),
           ];
         }
