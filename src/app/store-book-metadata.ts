@@ -4,12 +4,24 @@ import { normalizeOpenLibraryKey } from '../core/openlibrary-keys';
 import type { BookRecord, BookSearchSuggestion } from '../core/types';
 import { uniqueCompactStrings } from '../core/utils';
 
+const PLACEHOLDER_PAGE_COUNTS = new Set<number>([EXAMPLE_BOOK.pages, 250]);
+
 function shortLabelFromTitle(title: string): string {
   const trimmed = title.trim();
   if (trimmed.length <= 22) {
     return trimmed;
   }
   return `${trimmed.slice(0, 19).trimEnd()}...`;
+}
+
+function incomingPagesOrCurrent(
+  currentPages: number,
+  incomingPages: number | null | undefined,
+): number {
+  if (!incomingPages) return currentPages;
+  return currentPages <= 1 || PLACEHOLDER_PAGE_COUNTS.has(currentPages)
+    ? incomingPages
+    : currentPages;
 }
 
 export function bookFromSuggestion(
@@ -65,10 +77,7 @@ export function mergeSuggestionIntoBook(
   return {
     ...book,
     authors: book.authors.length ? book.authors : suggestion.authors,
-    pages:
-      suggestion.pages && (book.pages <= 1 || book.pages === 250)
-        ? suggestion.pages
-        : book.pages,
+    pages: incomingPagesOrCurrent(book.pages, suggestion.pages),
     subjects: mergedSubjects,
     publisher: book.publisher || suggestion.publisher,
     isbn: nextIsbn,
@@ -106,10 +115,7 @@ export function mergeEnrichmentIntoBook(
     ...book.subjects,
     ...(patch.subjects ?? []),
   ]).slice(0, 30);
-  const nextPages =
-    patch.pages && (book.pages <= 1 || book.pages === 250)
-      ? patch.pages
-      : book.pages;
+  const nextPages = incomingPagesOrCurrent(book.pages, patch.pages);
   return {
     ...book,
     title: patch.title ?? book.title,

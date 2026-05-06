@@ -6,7 +6,20 @@ import type {
 
 type ConstraintFrameHandle = number | ReturnType<typeof globalThis.setTimeout>;
 
-const pendingConstraintFrames = new Map<string, ConstraintFrameHandle>();
+const pendingConstraintFramesByStore = new WeakMap<
+  PlannerStore,
+  Map<string, ConstraintFrameHandle>
+>();
+
+function pendingFramesForStore(
+  store: PlannerStore,
+): Map<string, ConstraintFrameHandle> {
+  const pendingFrames = pendingConstraintFramesByStore.get(store);
+  if (pendingFrames) return pendingFrames;
+  const nextPendingFrames = new Map<string, ConstraintFrameHandle>();
+  pendingConstraintFramesByStore.set(store, nextPendingFrames);
+  return nextPendingFrames;
+}
 
 function scheduleFrame(callback: () => void): ConstraintFrameHandle {
   return globalThis.requestAnimationFrame
@@ -38,6 +51,7 @@ export function deferConstraintUpdate<K extends keyof ConstraintSet>(
   key: K,
   value: ConstraintSet[K],
 ): void {
+  const pendingConstraintFrames = pendingFramesForStore(store);
   const frameKey = String(key);
   const pending = pendingConstraintFrames.get(frameKey);
   if (pending != null) cancelFrame(pending);
@@ -55,6 +69,7 @@ export function deferConstraintsUpdate(
   patch: Partial<ConstraintSet>,
   frameKey: string,
 ): void {
+  const pendingConstraintFrames = pendingFramesForStore(store);
   const pending = pendingConstraintFrames.get(frameKey);
   if (pending != null) cancelFrame(pending);
   pendingConstraintFrames.set(

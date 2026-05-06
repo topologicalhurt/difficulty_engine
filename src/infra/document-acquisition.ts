@@ -112,15 +112,20 @@ export function choosePreferredDocumentCandidate(
   candidates: DocumentCandidate[],
   policy: DocumentAcquisitionPolicy,
 ): DocumentCandidate | null {
+  return rankDocumentCandidates(candidates, policy)[0] ?? null;
+}
+
+export function rankDocumentCandidates(
+  candidates: DocumentCandidate[],
+  policy: DocumentAcquisitionPolicy,
+): DocumentCandidate[] {
   const priorityFor = contentKindPriorityForPreference(
     policy.contentPreference,
   );
-  return (
-    [...candidates]
-      .filter((candidate) => isLawfulDocumentCandidate(candidate, policy))
-      .sort((left, right) =>
-        compareDocumentCandidateQuality(left, right, priorityFor),
-      )[0] ?? null
+  return [...candidates]
+    .filter((candidate) => isLawfulDocumentCandidate(candidate, policy))
+    .sort((left, right) =>
+      compareDocumentCandidateQuality(left, right, priorityFor),
   );
 }
 

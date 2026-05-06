@@ -168,7 +168,8 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
       if (
         recompute &&
         options.computeAdapter &&
-        options.computeAdapter.mode === 'worker'
+        options.computeAdapter.mode === 'worker' &&
+        (options.computeAdapter.shouldDefer?.(canonicalProject) ?? true)
       ) {
         const computeRevision = ++pendingComputeRevision;
         const startedAt = readPerformanceNowMs();

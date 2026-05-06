@@ -106,18 +106,16 @@ export async function mountPlannerApp(
     logger: options.logger,
   });
   const workerThresholdBooks = options.performance?.workerThresholdBooks ?? 200;
-  const initialBookCount = Object.keys(initialProject.library.books).length;
-  const useWorkerCompute =
-    options.computeMode === 'worker' ||
-    ((options.computeMode ?? 'auto') === 'auto' &&
-      initialBookCount >= workerThresholdBooks);
-  const computeAdapter = useWorkerCompute
-    ? createWorkerComputeAdapter({
-        engine,
-        clock: options.clock,
-        logger: options.logger,
-      })
-    : createSyncComputeAdapter(engine);
+  const computeAdapter =
+    options.computeMode === 'sync'
+      ? createSyncComputeAdapter(engine)
+      : createWorkerComputeAdapter({
+          engine,
+          clock: options.clock,
+          logger: options.logger,
+          forceWorker: options.computeMode === 'worker',
+          workerThresholdBooks,
+        });
   const store = createPlannerStore({
     initialProject,
     engine,

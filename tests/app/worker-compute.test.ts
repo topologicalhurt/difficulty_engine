@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { createWorkerComputeAdapter } from '../../src/app/compute-adapter';
 import { createPlannerStore } from '../../src/app/store';
 import {
   buildWorkerComputeMessage,
   clockFromWorkerMessage,
+  type WorkerComputeMessage,
 } from '../../src/app/worker-compute-protocol';
 import { createPlannerEngine } from '../../src/core/engine';
 import { plannerClock } from '../../src/core/time';
@@ -14,6 +16,7 @@ import type {
   PlannerProjectV1,
 } from '../../src/core/types';
 import {
+  makeBook,
   makeProject,
   makeTestEnrichmentProvider,
   silentLogger,
@@ -23,7 +26,20 @@ function flushMicrotasks(): Promise<void> {
   return Promise.resolve().then(() => undefined);
 }
 
+interface WorkerTestResultEvent {
+  data: {
+    type: 'result';
+    requestId: number;
+    snapshot: EngineSnapshot;
+  };
+}
+
 describe('worker compute integration', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it('serializes the normalized timeline start instead of deriving it from UTC now', () => {
     const project = makeProject({ constraints: { sd: '' } });
     const clock: Clock = {
@@ -53,6 +69,7 @@ describe('worker compute integration', () => {
     }> = [];
     const computeAdapter: PlannerComputeAdapter = {
       mode: 'worker',
+      shouldDefer: () => true,
       compute: vi.fn(
         (project) =>
           new Promise<EngineSnapshot>((resolve) => {
@@ -91,6 +108,7 @@ describe('worker compute integration', () => {
     }> = [];
     const computeAdapter: PlannerComputeAdapter = {
       mode: 'worker',
+      shouldDefer: () => true,
       compute: vi.fn(
         (project) =>
           new Promise<EngineSnapshot>((resolve) => {
@@ -132,6 +150,7 @@ describe('worker compute integration', () => {
     }> = [];
     const computeAdapter: PlannerComputeAdapter = {
       mode: 'worker',
+      shouldDefer: () => true,
       compute: vi.fn(
         (project) =>
           new Promise<EngineSnapshot>((resolve) => {
@@ -155,5 +174,143 @@ describe('worker compute integration', () => {
     await flushMicrotasks();
 
     expect(store.selectors.getState().ui.activeView).toBe('graphs');
+  });
+
+  it('falls back to sync compute when blob workers are blocked', async () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    vi.stubGlobal('window', {
+      __DIFFICULTY_ENGINE_WORKER_SCRIPT__: 'self.onmessage = () => {};',
+    });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:blocked-worker');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.stubGlobal(
+      'Worker',
+      class {
+        constructor() {
+          throw new Error('Refused to create worker');
+        }
+      },
+    );
+
+    const adapter = createWorkerComputeAdapter({
+      engine,
+      clock: plannerClock,
+      logger: silentLogger,
+      forceWorker: true,
+    });
+    const snapshot = await adapter.compute(makeProject());
+
+    expect(adapter.mode).toBe('sync');
+    expect(snapshot.schedulePlan.items).toHaveLength(1);
+  });
+
+  it('selects worker compute after project size crosses the auto threshold', async () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    const postedMessages: WorkerComputeMessage[] = [];
+    vi.stubGlobal('window', {
+      __DIFFICULTY_ENGINE_WORKER_SCRIPT__: 'self.onmessage = () => {};',
+    });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:planner-worker');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.stubGlobal(
+      'Worker',
+      class {
+        onmessage: ((event: WorkerTestResultEvent) => void) | null = null;
+        onerror: ((event: ErrorEvent) => void) | null = null;
+
+        postMessage(message: WorkerComputeMessage): void {
+          postedMessages.push(message);
+          queueMicrotask(() => {
+            this.onmessage?.({
+              data: {
+                type: 'result',
+                requestId: message.requestId,
+                snapshot: engine.computeSnapshot(message.project),
+              },
+            });
+          });
+        }
+
+        terminate(): void {}
+      },
+    );
+    const adapter = createWorkerComputeAdapter({
+      engine,
+      clock: plannerClock,
+      logger: silentLogger,
+      workerThresholdBooks: 2,
+    });
+
+    await adapter.compute(makeProject());
+    expect(postedMessages).toHaveLength(0);
+
+    await adapter.compute(
+      makeProject({
+        books: {
+          'book-1': makeBook({ id: 'book-1', planOrder: 0 }),
+          'book-2': makeBook({
+            id: 'book-2',
+            title: 'Second Book',
+            short: 'Second',
+            planOrder: 1,
+          }),
+        },
+      }),
+    );
+
+    expect(postedMessages).toHaveLength(1);
+    adapter.destroy?.();
+  });
+
+  it('keeps below-threshold auto-mode store recomputes synchronous', () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    const postedMessages: WorkerComputeMessage[] = [];
+    vi.stubGlobal('window', {
+      __DIFFICULTY_ENGINE_WORKER_SCRIPT__: 'self.onmessage = () => {};',
+    });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:planner-worker');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.stubGlobal(
+      'Worker',
+      class {
+        postMessage(message: WorkerComputeMessage): void {
+          postedMessages.push(message);
+        }
+
+        terminate(): void {}
+      },
+    );
+    const adapter = createWorkerComputeAdapter({
+      engine,
+      clock: plannerClock,
+      logger: silentLogger,
+      workerThresholdBooks: 2,
+    });
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine,
+      computeAdapter: adapter,
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+    const events: string[] = [];
+    store.subscriptions.subscribeEvents((event) => events.push(event.type));
+
+    store.commands.updateConstraint('hpd', 3);
+
+    expect(postedMessages).toHaveLength(0);
+    expect(events).toEqual(['project-changed', 'snapshot-updated']);
+    expect(store.selectors.getProject().constraints.hpd).toBe(3);
+    adapter.destroy?.();
   });
 });

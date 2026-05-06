@@ -6,9 +6,9 @@ import type {
 } from '../core/types';
 import { qbittorrentRuntimeEnabled } from '../core/source-settings-policy';
 import {
-  choosePreferredDocumentCandidate,
   defaultDocumentAcquisitionPolicy,
   mergeDocumentRefs,
+  rankDocumentCandidates,
 } from './document-acquisition';
 import type {
   AcquiredDocument,
@@ -101,16 +101,23 @@ async function acquireCandidateDocuments(
       policy,
       signal: request.signal,
     });
-    const candidate = choosePreferredDocumentCandidate(candidates, policy);
-    if (!candidate) {
-      return [];
+    for (const candidate of rankDocumentCandidates(candidates, policy)) {
+      try {
+        const acquired = await provider.acquire(candidate, {
+          book: request.book,
+          policy,
+          signal: request.signal,
+        });
+        if (acquired) return [acquired];
+      } catch (error) {
+        logger.warn('enrichment.document_acquisition.candidate_failed', {
+          bookId: request.book.id,
+          candidateId: candidate.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
-    const acquired = await provider.acquire(candidate, {
-      book: request.book,
-      policy,
-      signal: request.signal,
-    });
-    return acquired ? [acquired] : [];
+    return [];
   } catch (error) {
     logger.warn('enrichment.document_acquisition.failed', {
       bookId: request.book.id,

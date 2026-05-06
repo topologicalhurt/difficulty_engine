@@ -96,6 +96,7 @@ export interface PlannerEngine {
 
 export interface PlannerComputeAdapter {
   readonly mode: 'sync' | 'worker';
+  shouldDefer?(project: PlannerProjectV1): boolean;
   compute(project: PlannerProjectV1): Promise<EngineSnapshot>;
   cancelCurrent(): void;
   destroy?(): void;

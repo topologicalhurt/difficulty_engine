@@ -32,6 +32,9 @@ export function createSyncComputeAdapter(
 ): PlannerComputeAdapter {
   return {
     mode: 'sync',
+    shouldDefer(): boolean {
+      return false;
+    },
     async compute(project: PlannerProjectV1): Promise<EngineSnapshot> {
       return engine.computeSnapshot(project);
     },
@@ -44,18 +47,39 @@ export function createWorkerComputeAdapter(options: {
   engine: PlannerEngine;
   clock: Clock;
   logger: Logger;
+  forceWorker?: boolean;
+  workerThresholdBooks?: number;
 }): PlannerComputeAdapter {
-  const script = window.__DIFFICULTY_ENGINE_WORKER_SCRIPT__;
+  const syncAdapter = createSyncComputeAdapter(options.engine);
+  const script = globalThis.window?.__DIFFICULTY_ENGINE_WORKER_SCRIPT__;
   if (!script || typeof Worker !== 'function') {
-    return createSyncComputeAdapter(options.engine);
+    return syncAdapter;
   }
 
-  const workerUrl = URL.createObjectURL(
-    new Blob([script], { type: 'text/javascript' }),
-  );
-  const worker = new Worker(workerUrl);
+  let workerUrl = '';
+  let worker: Worker;
+  try {
+    workerUrl = URL.createObjectURL(
+      new Blob([script], { type: 'text/javascript' }),
+    );
+    worker = new Worker(workerUrl);
+  } catch (error) {
+    if (workerUrl) URL.revokeObjectURL(workerUrl);
+    options.logger.warn('planner.worker.unavailable', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return syncAdapter;
+  }
   let activeRequestId = 0;
   let activeReject: ((reason?: unknown) => void) | null = null;
+  const workerThresholdBooks = options.workerThresholdBooks ?? 0;
+
+  function shouldUseWorker(project: PlannerProjectV1): boolean {
+    return (
+      options.forceWorker === true ||
+      Object.keys(project.library.books).length >= workerThresholdBooks
+    );
+  }
 
   function cancelCurrent(): void {
     activeRequestId += 1;
@@ -65,7 +89,11 @@ export function createWorkerComputeAdapter(options: {
 
   return {
     mode: 'worker',
+    shouldDefer: shouldUseWorker,
     compute(project: PlannerProjectV1): Promise<EngineSnapshot> {
+      if (!shouldUseWorker(project)) {
+        return syncAdapter.compute(project);
+      }
       cancelCurrent();
       const requestId = activeRequestId;
       const message = buildWorkerComputeMessage(

@@ -116,6 +116,108 @@ describe('enrichment client degradation', () => {
     expect(response.provenance[0]?.provider).toBe('manual');
   });
 
+  it('tries lower-ranked document candidates when the preferred acquisition fails', async () => {
+    const sourceSettings = createDefaultSourceSettings();
+    sourceSettings.metadataSources.openlibrary = false;
+    sourceSettings.metadataSources.googleBooks = false;
+    sourceSettings.metadataSources.internetArchive = false;
+    sourceSettings.documentSources.directUrl = false;
+    sourceSettings.documentSources.internetArchiveText = false;
+    sourceSettings.documentSources.qbittorrent = true;
+    const acquire = vi.fn(async (candidate: { id: string }) =>
+      candidate.id === 'preferred'
+        ? null
+        : {
+            candidateId: 'fallback',
+            provider: 'qbittorrent',
+            sourceUrl: 'magnet:?xt=urn:btih:fallback',
+            storagePath: '/tmp/Fallback Book.txt',
+            contentType: 'text/plain',
+            accessBasis: 'user_provided' as const,
+            confidence: 0.8,
+            text: 'Contents\nChapter 1 Signals\nChapter 2 Systems',
+            acquiredAt: '2026-01-05T00:00:00.000Z',
+            documentRef: {
+              id: 'qbittorrent:fallback:0',
+              provider: 'qbittorrent',
+              sourceUrl: 'magnet:?xt=urn:btih:fallback',
+              torrentHash: 'fallback',
+              fileIndex: 0,
+              fileName: 'Fallback Book.txt',
+              storagePath: '/tmp/Fallback Book.txt',
+              contentKind: 'text' as const,
+              contentType: 'text/plain',
+              accessBasis: 'user_provided' as const,
+              status: 'complete' as const,
+              matchScore: 0.86,
+              availability: {
+                seeders: 4,
+                peers: 1,
+                progress: 1,
+                state: 'complete',
+              },
+              provenance: {
+                provider: 'qbittorrent',
+                sourceUrl: 'magnet:?xt=urn:btih:fallback',
+                fetchedAt: '2026-01-05T00:00:00.000Z',
+                confidence: 0.8,
+              },
+              createdAt: '2026-01-05T00:00:00.000Z',
+              updatedAt: '2026-01-05T00:00:00.000Z',
+            },
+          },
+    );
+    const client = createEnrichmentClient({
+      logger: silentLogger,
+      documentAcquisitionPolicy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+      },
+      documentAcquisitionProvider: {
+        id: 'fallback-doc-provider',
+        enabled: true,
+        findCandidates: vi.fn(async () => [
+          {
+            id: 'preferred',
+            provider: 'qbittorrent',
+            title: 'Fallback Book preferred',
+            sourceUrl: 'magnet:?xt=urn:btih:preferred',
+            contentKind: 'text' as const,
+            accessBasis: 'user_provided' as const,
+            confidence: 0.95,
+            matchScore: 0.95,
+            seeders: 8,
+          },
+          {
+            id: 'fallback',
+            provider: 'qbittorrent',
+            title: 'Fallback Book',
+            sourceUrl: 'magnet:?xt=urn:btih:fallback',
+            contentKind: 'text' as const,
+            accessBasis: 'user_provided' as const,
+            confidence: 0.8,
+            matchScore: 0.86,
+            seeders: 4,
+          },
+        ]),
+        acquire,
+      },
+    });
+
+    const response = await client.fetchBook({
+      book: { ...EXAMPLE_BOOK, id: 'book-1', title: 'Fallback Book' },
+      sourceSettings,
+    });
+
+    expect(acquire).toHaveBeenCalledTimes(2);
+    expect(response.bookPatch.selectedDocumentId).toBe(
+      'qbittorrent:fallback:0',
+    );
+    expect(response.enrichment.chapters).toEqual(
+      expect.arrayContaining(['Chapter 1 Signals', 'Chapter 2 Systems']),
+    );
+  });
+
   it('merges completed acquired document refs and uses readable text for TOC extraction', async () => {
     const sourceSettings = createDefaultSourceSettings();
     sourceSettings.metadataSources.openlibrary = false;

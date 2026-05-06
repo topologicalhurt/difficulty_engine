@@ -31,6 +31,17 @@ export function createEnrichmentCommands(
   'refreshBookEnrichment' | 'refreshAllEnrichment'
 > {
   const { context, services, emitEvent } = options;
+  const activeRefreshSequenceByBook = new Map<string, number>();
+
+  function nextRefreshSequence(bookId: string): number {
+    const next = (activeRefreshSequenceByBook.get(bookId) ?? 0) + 1;
+    activeRefreshSequenceByBook.set(bookId, next);
+    return next;
+  }
+
+  function requestIsCurrent(bookId: string, sequence: number): boolean {
+    return activeRefreshSequenceByBook.get(bookId) === sequence;
+  }
 
   function fallbackStatusForPrevious(
     previousCacheEntry: EnrichmentCacheEntry | undefined,
@@ -67,6 +78,7 @@ export function createEnrichmentCommands(
     if (!book) return;
 
     const previousCacheEntry = state.project.enrichmentCache[bookId];
+    const requestSequence = nextRefreshSequence(bookId);
     const requestCacheKey = stableEnrichmentCacheKey({
       book,
       sourceSettings: state.project.sourceSettings,
@@ -96,6 +108,7 @@ export function createEnrichmentCommands(
       });
       const fetchedAt = services.clock.now().toISOString();
       const latestState = context.getState();
+      if (!requestIsCurrent(bookId, requestSequence)) return;
       const currentBook = latestState.project.library.books[bookId] ?? book;
       const latestCacheKey = stableEnrichmentCacheKey({
         book: currentBook,
@@ -166,6 +179,7 @@ export function createEnrichmentCommands(
         error: error instanceof Error ? error.message : String(error),
       });
       const latestState = context.getState();
+      if (!requestIsCurrent(bookId, requestSequence)) return;
       const currentBook = latestState.project.library.books[bookId] ?? book;
       const latestCacheKey = stableEnrichmentCacheKey({
         book: currentBook,

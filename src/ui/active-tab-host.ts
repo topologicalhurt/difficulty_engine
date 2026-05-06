@@ -1,4 +1,5 @@
 import type { AppState, PlannerStore } from '../core/types';
+import { selectActiveTabRenderKeys } from '../app/selectors/active-tab-render-keys';
 import { renderAiView } from './ai-view';
 import { renderConstraintsView } from './constraints-view';
 import { renderDiagnosticsView } from './diagnostics-view';
@@ -8,6 +9,12 @@ import { renderLibraryView } from './library-view';
 import { renderPlanView } from './plan-view';
 import { renderProjectView } from './project-view';
 import { captureFocus, restoreFocus } from './focus-preservation';
+
+interface ActiveTabRenderCache {
+  keys: readonly unknown[];
+}
+
+const renderCacheByRoot = new WeakMap<HTMLElement, ActiveTabRenderCache>();
 
 function renderBody(state: AppState, store: PlannerStore): HTMLElement {
   switch (state.ui.activeView) {
@@ -31,11 +38,25 @@ function renderBody(state: AppState, store: PlannerStore): HTMLElement {
   }
 }
 
+function equalKeys(
+  left: readonly unknown[],
+  right: readonly unknown[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => Object.is(value, right[index]))
+  );
+}
+
 export function renderActiveTabBody(
   root: HTMLElement,
   state: AppState,
   store: PlannerStore,
 ): void {
+  const nextKeys = selectActiveTabRenderKeys(state);
+  const previousCache = renderCacheByRoot.get(root);
+  if (previousCache && equalKeys(previousCache.keys, nextKeys)) return;
+
   const focusSnapshot = captureFocus(root);
   const previousView = root.dataset.activeView;
   const scrollSnapshot =
@@ -45,6 +66,7 @@ export function renderActiveTabBody(
 
   root.replaceChildren(renderBody(state, store));
   root.dataset.activeView = state.ui.activeView;
+  renderCacheByRoot.set(root, { keys: nextKeys });
 
   if (scrollSnapshot) {
     root.scrollTop = scrollSnapshot.top;
