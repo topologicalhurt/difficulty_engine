@@ -3,6 +3,7 @@ import {
   formatWholeNumber,
   formatWholePercent,
 } from '../../core/number-format';
+import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 import type {
   AppState,
   CalendarEntry,
@@ -124,11 +125,12 @@ function selectPlanStats(
 function selectGantt(state: AppState): GanttViewModel {
   const rows = state.snapshot.renderModel.gantt.rows
     .slice()
-    .sort(
-      (left, right) =>
-        left.lane - right.lane ||
-        left.targetStart - right.targetStart ||
-        left.short.localeCompare(right.short),
+    .sort((left, right) =>
+      compareChain(
+        compareNumberAsc(left.lane, right.lane),
+        compareNumberAsc(left.targetStart, right.targetStart),
+        compareText(left.short, right.short),
+      ),
     );
   const maxSlot = Math.max(
     state.snapshot.renderModel.gantt.totalSlots,

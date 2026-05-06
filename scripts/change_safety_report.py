@@ -21,6 +21,11 @@ CANONICAL_PATTERNS = [
         "Use shared number/percent formatters instead of local finite-number helpers.",
     ),
     (
+        "Stable sorting",
+        "src/core/sort.ts",
+        "Use shared comparator helpers for deterministic multi-field sort chains.",
+    ),
+    (
         "String compaction and deduplication",
         "src/core/utils.ts",
         "Use compactString, compactStrings, and uniqueCompactStrings instead of local trim/filter/Set helpers.",

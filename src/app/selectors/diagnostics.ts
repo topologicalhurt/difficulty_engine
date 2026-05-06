@@ -3,6 +3,7 @@ import type {
   DifficultyBreakdown,
   RelationEvidence,
 } from '../../core/types';
+import { compareChain, compareNumberDesc, compareText } from '../../core/sort';
 
 export interface OverlapDiffView {
   anchorLabel: string;
@@ -59,12 +60,13 @@ export function selectDiagnosticsViewModel(
     failures: state.snapshot.diagnostics.fails,
     relations: state.snapshot.relations
       .slice()
-      .sort(
-        (left, right) =>
-          right.score - left.score ||
-          left.from.localeCompare(right.from) ||
-          left.to.localeCompare(right.to) ||
-          left.type.localeCompare(right.type),
+      .sort((left, right) =>
+        compareChain(
+          compareNumberDesc(left.score, right.score),
+          compareText(left.from, right.from),
+          compareText(left.to, right.to),
+          compareText(left.type, right.type),
+        ),
       ),
     workloadClusters: state.snapshot.workloadClusters
       .map((cluster) => ({
@@ -86,10 +88,11 @@ export function selectDiagnosticsViewModel(
           explanation: assignment.explanation,
         })),
       }))
-      .sort(
-        (left, right) =>
-          right.confidence - left.confidence ||
-          left.label.localeCompare(right.label),
+      .sort((left, right) =>
+        compareChain(
+          compareNumberDesc(left.confidence, right.confidence),
+          compareText(left.label, right.label),
+        ),
       ),
     difficultyRows: Object.entries(state.snapshot.difficultyModel)
       .map(([bookId, difficulty]) => ({
@@ -97,12 +100,15 @@ export function selectDiagnosticsViewModel(
         bookLabel: state.project.library.books[bookId]?.short || bookId,
         difficulty,
       }))
-      .sort(
-        (left, right) =>
-          right.difficulty.scheduleDifficulty -
-            left.difficulty.scheduleDifficulty ||
-          left.bookLabel.localeCompare(right.bookLabel) ||
-          left.bookId.localeCompare(right.bookId),
+      .sort((left, right) =>
+        compareChain(
+          compareNumberDesc(
+            left.difficulty.scheduleDifficulty,
+            right.difficulty.scheduleDifficulty,
+          ),
+          compareText(left.bookLabel, right.bookLabel),
+          compareText(left.bookId, right.bookId),
+        ),
       ),
     overlapDiffs: state.snapshot.overlapClusters.flatMap((cluster) =>
       cluster.pruning.map((pruning) => {

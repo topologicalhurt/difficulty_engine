@@ -4,6 +4,7 @@ import type {
   OverlapClusterSummary,
   RelationEvidence,
 } from '../../core/types';
+import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 
 type GraphState = Pick<AppState, 'project' | 'snapshot'>;
 
@@ -41,7 +42,7 @@ export interface GraphRenderModel {
 export function visibleGraphBookIds(state: GraphState): string[] {
   return Object.values(state.project.library.books)
     .filter((book) => !(state.project.constraints.excComp && book.completed))
-    .sort((left, right) => left.short.localeCompare(right.short))
+    .sort((left, right) => compareText(left.short, right.short))
     .map((book) => book.id);
 }
 
@@ -83,9 +84,11 @@ export function visiblePrerequisiteEdges(
       (relation) =>
         visibleIds.has(relation.from) && visibleIds.has(relation.to),
     )
-    .sort(
-      (left, right) =>
-        left.from.localeCompare(right.from) || left.to.localeCompare(right.to),
+    .sort((left, right) =>
+      compareChain(
+        compareText(left.from, right.from),
+        compareText(left.to, right.to),
+      ),
     );
   return state.project.constraints.tr ? transitiveReduction(edges) : edges;
 }
@@ -150,7 +153,7 @@ export function visibleDisplayGroupPartitions(
   });
   return Object.entries(groups)
     .map(([label, ids]) => ({ label, ids }))
-    .sort((left, right) => left.label.localeCompare(right.label));
+    .sort((left, right) => compareText(left.label, right.label));
 }
 
 export function selectGraphRenderModel(state: AppState): GraphRenderModel {
@@ -159,9 +162,11 @@ export function selectGraphRenderModel(state: AppState): GraphRenderModel {
   const nodes = state.snapshot.sortedBooks
     .slice()
     .filter((book) => visibleSet.has(book.id))
-    .sort(
-      (left, right) =>
-        left.dep - right.dep || left.short.localeCompare(right.short),
+    .sort((left, right) =>
+      compareChain(
+        compareNumberAsc(left.dep, right.dep),
+        compareText(left.short, right.short),
+      ),
     )
     .map((book) => ({
       id: book.id,

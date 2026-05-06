@@ -1,6 +1,7 @@
 import type { AppState, CalendarEntry } from '../../core/types';
 import { DAYS_PER_WEEK } from '../../core/date-constants';
 import { formatWholeNumber } from '../../core/number-format';
+import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 import {
   addLocalDays,
   dateKeyFromDate,
@@ -100,9 +101,11 @@ export function buildCalendarWeeks(state: AppState): CalendarWeek[] {
       const entries = byDate[key] ?? [];
       const sortedEntries = entries
         .slice()
-        .sort(
-          (left, right) =>
-            left.lane - right.lane || left.short.localeCompare(right.short),
+        .sort((left, right) =>
+          compareChain(
+            compareNumberAsc(left.lane, right.lane),
+            compareText(left.short, right.short),
+          ),
         );
       const plannedMinutes = entries.reduce(
         (sum, entry) => sum + entry.mins,
