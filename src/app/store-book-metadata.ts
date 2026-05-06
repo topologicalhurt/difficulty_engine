@@ -2,6 +2,7 @@ import { normalizedIsbn } from '../core/book-identity';
 import { EXAMPLE_BOOK } from '../core/defaults';
 import { normalizeOpenLibraryKey } from '../core/openlibrary-keys';
 import type { BookRecord, BookSearchSuggestion } from '../core/types';
+import { uniqueCompactStrings } from '../core/utils';
 
 function shortLabelFromTitle(title: string): string {
   const trimmed = title.trim();
@@ -9,12 +10,6 @@ function shortLabelFromTitle(title: string): string {
     return trimmed;
   }
   return `${trimmed.slice(0, 19).trimEnd()}...`;
-}
-
-function uniqueStrings(values: string[]): string[] {
-  return Array.from(
-    new Set(values.map((value) => value.trim()).filter(Boolean)),
-  );
 }
 
 export function bookFromSuggestion(
@@ -57,11 +52,11 @@ export function mergeSuggestionIntoBook(
   book: BookRecord,
   suggestion: BookSearchSuggestion,
 ): BookRecord {
-  const mergedSubjects = uniqueStrings([
+  const mergedSubjects = uniqueCompactStrings([
     ...book.subjects,
     ...suggestion.subjects,
   ]).slice(0, 20);
-  const mergedOlSubjects = uniqueStrings([
+  const mergedOlSubjects = uniqueCompactStrings([
     ...book.enrichment.olSubjects,
     ...suggestion.subjects,
   ]).slice(0, 30);
@@ -107,7 +102,7 @@ export function mergeEnrichmentIntoBook(
   book: BookRecord,
   patch: Partial<BookRecord>,
 ): BookRecord {
-  const mergedSubjects = uniqueStrings([
+  const mergedSubjects = uniqueCompactStrings([
     ...book.subjects,
     ...(patch.subjects ?? []),
   ]).slice(0, 30);
@@ -145,7 +140,7 @@ export function mergeEnrichmentIntoBook(
     enrichment: {
       ...book.enrichment,
       ...(patch.enrichment ?? {}),
-      olSubjects: uniqueStrings([
+      olSubjects: uniqueCompactStrings([
         ...book.enrichment.olSubjects,
         ...(patch.enrichment?.olSubjects ?? []),
       ]).slice(0, 40),

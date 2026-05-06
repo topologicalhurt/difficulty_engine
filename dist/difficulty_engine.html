@@ -2641,6 +2641,16 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   function unique(values) {
     return [...new Set(values.filter(Boolean))];
   }
+  function compactString(value) {
+    return String(value ?? "").trim();
+  }
+  function compactStrings(values) {
+    return values.map(compactString).filter(Boolean);
+  }
+  function uniqueCompactStrings(values, limit) {
+    const result = Array.from(new Set(compactStrings(values)));
+    return limit == null ? result : result.slice(0, limit);
+  }
   function safeNumber(value, fallback) {
     const parsed = Number.parseFloat(String(value ?? ""));
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -2669,13 +2679,13 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
 
   // src/core/project-normalize-primitives.ts
   function normalizeString(value, fallback = "") {
-    return String(value ?? fallback).trim();
+    return compactString(value ?? fallback);
   }
   function normalizeStringArray(values) {
     if (!Array.isArray(values)) {
       return [];
     }
-    return values.map((value) => String(value ?? "").trim()).filter(Boolean);
+    return compactStrings(values);
   }
   function normalizeBoolean(value) {
     return value === true;
@@ -4045,11 +4055,6 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     }
     return `${trimmed.slice(0, 19).trimEnd()}...`;
   }
-  function uniqueStrings(values) {
-    return Array.from(
-      new Set(values.map((value) => value.trim()).filter(Boolean))
-    );
-  }
   function bookFromSuggestion(id, suggestion) {
     return {
       ...EXAMPLE_BOOK,
@@ -4081,11 +4086,11 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     };
   }
   function mergeSuggestionIntoBook(book, suggestion) {
-    const mergedSubjects = uniqueStrings([
+    const mergedSubjects = uniqueCompactStrings([
       ...book.subjects,
       ...suggestion.subjects
     ]).slice(0, 20);
-    const mergedOlSubjects = uniqueStrings([
+    const mergedOlSubjects = uniqueCompactStrings([
       ...book.enrichment.olSubjects,
       ...suggestion.subjects
     ]).slice(0, 30);
@@ -4120,7 +4125,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     };
   }
   function mergeEnrichmentIntoBook(book, patch) {
-    const mergedSubjects = uniqueStrings([
+    const mergedSubjects = uniqueCompactStrings([
       ...book.subjects,
       ...patch.subjects ?? []
     ]).slice(0, 30);
@@ -4154,7 +4159,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       enrichment: {
         ...book.enrichment,
         ...patch.enrichment ?? {},
-        olSubjects: uniqueStrings([
+        olSubjects: uniqueCompactStrings([
           ...book.enrichment.olSubjects,
           ...patch.enrichment?.olSubjects ?? []
         ]).slice(0, 40),
@@ -18509,11 +18514,6 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   }
 
   // src/infra/toc-merge.ts
-  function uniqueNonEmptyStrings(values, limit = 40) {
-    return Array.from(
-      new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))
-    ).slice(0, limit);
-  }
   function preferredTocSource(current, candidates) {
     const winner = bestChapterCandidate(candidates);
     return winner?.tocSource ?? current;
@@ -18568,7 +18568,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     };
   }
   function buildProvenance(candidates) {
-    return uniqueNonEmptyStrings(
+    return uniqueCompactStrings(
       candidates.map(
         (candidate) => `${candidate.provider}::${candidate.sourceUrl}`
       ),
@@ -18610,11 +18610,14 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     );
     const chapters = candidateChapters.length ? candidateChapters : sanitizeChapterTitles(book.enrichment.chapters, { source: "imported" });
     const description = candidates.find((candidate) => candidate.description)?.description ?? book.enrichment.description;
-    const subjects = uniqueNonEmptyStrings([
-      ...book.subjects,
-      ...book.enrichment.olSubjects,
-      ...candidates.flatMap((candidate) => candidate.subjects ?? [])
-    ]);
+    const subjects = uniqueCompactStrings(
+      [
+        ...book.subjects,
+        ...book.enrichment.olSubjects,
+        ...candidates.flatMap((candidate) => candidate.subjects ?? [])
+      ],
+      40
+    );
     const preferredPages = candidates.find(
       (candidate) => candidate.provider !== "manual" && (candidate.pages ?? 0) > 0
     )?.pages ?? candidates.find((candidate) => (candidate.pages ?? 0) > 0)?.pages;
@@ -19480,13 +19483,6 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       value.replace(SEARCH_NOISE_WORD_PATTERN, " ").replace(/[,:;]+/g, " ").replace(/[()[\]{}]/g, " ")
     );
   }
-  function uniqueNonEmpty(values) {
-    return Array.from(
-      new Set(
-        values.map((value) => compactSearchText(value ?? "")).filter(Boolean)
-      )
-    );
-  }
   function sharesSearchToken(left, right) {
     return left.length >= MIN_SEARCH_TOKEN_LENGTH && sharesAnyMatchToken(left, right);
   }
@@ -19495,19 +19491,21 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     const titleWithoutTrailingDetail = compactSearchText(
       title.replace(TITLE_TRAILING_DETAIL_PATTERN, "")
     );
-    return uniqueNonEmpty([
-      compactTitle,
-      titleWithoutTrailingDetail,
-      sharesSearchToken(compactTitle, shortTitle) ? shortTitle : ""
-    ]);
+    return uniqueCompactStrings(
+      [
+        compactTitle,
+        titleWithoutTrailingDetail,
+        sharesSearchToken(compactTitle, shortTitle) ? shortTitle : ""
+      ].map(compactSearchText)
+    );
   }
   function authorSearchVariants(authors) {
     const firstAuthor = compactSearchText(authors[0] ?? "");
     const authorParts = firstAuthor.split(/\s+/).filter(Boolean);
     const lastName = authorParts.length ? authorParts[authorParts.length - 1] : "";
-    return uniqueNonEmpty([firstAuthor, lastName]).filter(
-      (author) => author.length > 2
-    );
+    return uniqueCompactStrings(
+      [firstAuthor, lastName].map(compactSearchText)
+    ).filter((author) => author.length > 2);
   }
   function qbittorrentSearchPatterns(request) {
     const isbn = normalizedBookIsbn(request.book.isbn);
@@ -19516,8 +19514,8 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     const titleAuthorPatterns = titles.flatMap(
       (title) => authors.map((author) => `${title} ${author}`)
     );
-    return uniqueNonEmpty([isbn, ...titleAuthorPatterns, ...titles]).slice(
-      0,
+    return uniqueCompactStrings(
+      [isbn, ...titleAuthorPatterns, ...titles].map(compactSearchText),
       MAX_QBITTORRENT_SEARCH_PATTERNS
     );
   }

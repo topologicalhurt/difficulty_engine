@@ -50,6 +50,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Owner: `src/infra/` provider modules and source/document helpers.
 - Source masks: source settings decide whether a provider is called.
 - Document priority: content-kind ranking must come from the shared document/qBittorrent helpers.
+- Matching: title/author/ISBN relevance and source queries must reuse `src/core/matchers.ts`; do not add provider-local fuzzy scoring.
 - Provenance: every enrichment/document result must include provider, strategy, confidence, and source details when available.
 - Tests: provider unit tests plus an enrichment integration test for fallback/failure behavior.
 - Avoid: provider-specific logic in core, implicit downloads, or storing local credentials in project JSON.
@@ -66,6 +67,8 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 - UI controls: `src/ui/dom.ts`
 - UI formatting: `src/ui/format.ts`
+- String compaction/deduplication: `src/core/utils.ts`
+- External-source matching: `src/core/matchers.ts`
 - Progress display/math: `src/app/selectors/progress.ts` and `src/ui/progress.ts`
 - Date constants and weekday math: `src/core/date-constants.ts`, `src/core/time.ts`, `src/core/weekdays.ts`
 - Planner constraints and pacing math: `src/core/constraints.ts`

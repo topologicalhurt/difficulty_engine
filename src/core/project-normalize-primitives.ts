@@ -1,14 +1,14 @@
-import { clamp, safeNumber } from './utils';
+import { clamp, compactString, compactStrings, safeNumber } from './utils';
 
 export function normalizeString(value: unknown, fallback = ''): string {
-  return String(value ?? fallback).trim();
+  return compactString(value ?? fallback);
 }
 
 export function normalizeStringArray(values: unknown): string[] {
   if (!Array.isArray(values)) {
     return [];
   }
-  return values.map((value) => String(value ?? '').trim()).filter(Boolean);
+  return compactStrings(values);
 }
 
 export function normalizeBoolean(value: unknown): boolean {

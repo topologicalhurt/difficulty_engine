@@ -4,6 +4,7 @@ import type {
 } from './document-acquisition';
 import { normalizeMatcherText, sharesAnyMatchToken } from '../core/matchers';
 import type { QbittorrentPluginInfo } from '../core/types';
+import { uniqueCompactStrings } from '../core/utils';
 import {
   bookMatchScore,
   compareDocumentCandidateQuality,
@@ -37,14 +38,6 @@ function compactSearchText(value: string): string {
   );
 }
 
-function uniqueNonEmpty(values: Array<string | null | undefined>): string[] {
-  return Array.from(
-    new Set(
-      values.map((value) => compactSearchText(value ?? '')).filter(Boolean),
-    ),
-  );
-}
-
 function sharesSearchToken(left: string, right: string): boolean {
   return (
     left.length >= MIN_SEARCH_TOKEN_LENGTH && sharesAnyMatchToken(left, right)
@@ -56,11 +49,13 @@ function titleSearchVariants(title: string, shortTitle: string): string[] {
   const titleWithoutTrailingDetail = compactSearchText(
     title.replace(TITLE_TRAILING_DETAIL_PATTERN, ''),
   );
-  return uniqueNonEmpty([
-    compactTitle,
-    titleWithoutTrailingDetail,
-    sharesSearchToken(compactTitle, shortTitle) ? shortTitle : '',
-  ]);
+  return uniqueCompactStrings(
+    [
+      compactTitle,
+      titleWithoutTrailingDetail,
+      sharesSearchToken(compactTitle, shortTitle) ? shortTitle : '',
+    ].map(compactSearchText),
+  );
 }
 
 function authorSearchVariants(authors: string[]): string[] {
@@ -69,9 +64,9 @@ function authorSearchVariants(authors: string[]): string[] {
   const lastName = authorParts.length
     ? authorParts[authorParts.length - 1]
     : '';
-  return uniqueNonEmpty([firstAuthor, lastName]).filter(
-    (author) => author.length > 2,
-  );
+  return uniqueCompactStrings(
+    [firstAuthor, lastName].map(compactSearchText),
+  ).filter((author) => author.length > 2);
 }
 
 export function qbittorrentSearchPatterns(
@@ -83,8 +78,8 @@ export function qbittorrentSearchPatterns(
   const titleAuthorPatterns = titles.flatMap((title) =>
     authors.map((author) => `${title} ${author}`),
   );
-  return uniqueNonEmpty([isbn, ...titleAuthorPatterns, ...titles]).slice(
-    0,
+  return uniqueCompactStrings(
+    [isbn, ...titleAuthorPatterns, ...titles].map(compactSearchText),
     MAX_QBITTORRENT_SEARCH_PATTERNS,
   );
 }

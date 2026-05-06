@@ -43,6 +43,8 @@ python3 scripts/audit_source.py
 
 The production artifact is written to `dist/difficulty_engine.html`.
 
+For AI-assisted or large maintenance edits, follow `CHANGE_GUIDE.md` first. It lists the canonical owners for controls, formatting, matching, document ranking, source masks, and wiring so new code does not reimplement local copies of existing patterns.
+
 ## Local AI keys
 
 For local development, place AI credentials in `.env`:

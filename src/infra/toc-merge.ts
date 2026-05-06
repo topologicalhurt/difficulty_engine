@@ -4,6 +4,7 @@ import type {
   BookRecord,
   EnrichmentFieldProvenance,
 } from '../core/types';
+import { uniqueCompactStrings } from '../core/utils';
 
 export interface StrategyCandidate {
   provider: EnrichmentFieldProvenance['provider'];
@@ -31,15 +32,6 @@ export interface StrategyResolution {
   bookPatch: Partial<BookRecord>;
   enrichment: BookEnrichment;
   provenance: EnrichmentFieldProvenance[];
-}
-
-function uniqueNonEmptyStrings(
-  values: Array<string | null | undefined>,
-  limit = 40,
-): string[] {
-  return Array.from(
-    new Set(values.map((value) => String(value ?? '').trim()).filter(Boolean)),
-  ).slice(0, limit);
 }
 
 function preferredTocSource(
@@ -124,7 +116,7 @@ function existingChapterCandidate(book: BookRecord): StrategyCandidate | null {
 function buildProvenance(
   candidates: StrategyCandidate[],
 ): EnrichmentFieldProvenance[] {
-  return uniqueNonEmptyStrings(
+  return uniqueCompactStrings(
     candidates.map(
       (candidate) => `${candidate.provider}::${candidate.sourceUrl}`,
     ),
@@ -185,11 +177,14 @@ export function mergeStrategyCandidates(
   const description =
     candidates.find((candidate) => candidate.description)?.description ??
     book.enrichment.description;
-  const subjects = uniqueNonEmptyStrings([
-    ...book.subjects,
-    ...book.enrichment.olSubjects,
-    ...candidates.flatMap((candidate) => candidate.subjects ?? []),
-  ]);
+  const subjects = uniqueCompactStrings(
+    [
+      ...book.subjects,
+      ...book.enrichment.olSubjects,
+      ...candidates.flatMap((candidate) => candidate.subjects ?? []),
+    ],
+    40,
+  );
   const preferredPages =
     candidates.find(
       (candidate) =>
