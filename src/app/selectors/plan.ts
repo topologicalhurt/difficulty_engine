@@ -1,4 +1,8 @@
 import { plannerClock, studyDateFromSlot } from '../../core/time';
+import {
+  formatWholeNumber,
+  formatWholePercent,
+} from '../../core/number-format';
 import type {
   AppState,
   CalendarEntry,
@@ -11,7 +15,6 @@ import type {
 import { round1 } from '../../core/utils';
 import { buildCalendarWeeks, type CalendarWeek } from './calendar-weeks';
 import { formatPlanFullDate, formatPlanShortDate } from './date-labels';
-import { formatWholeNumber, formatWholePercent } from './number-labels';
 import { selectPlanColors, type PlanColorMetadata } from './plan-colors';
 import {
   selectProgressSummary,

@@ -22,6 +22,7 @@ AD_HOC_TEXT_CONTROL_RE = re.compile(
     r"(?:document\.createElement\(['\"](?:input|textarea)['\"]\)|\bel\(['\"](?:input|textarea)['\"])",
 )
 LOCAL_UI_PERCENT_RE = re.compile(r"\$\{\s*Math\.round\([^}]*\*\s*100\)\s*\}%")
+LOCAL_FINITE_NUMBER_RE = re.compile(r"\bfunction\s+finiteNumber\b")
 STORE_COMMAND_RE = re.compile(r"^\s{2}([a-zA-Z][a-zA-Z0-9_]*)\([^;]*\):", re.MULTILINE)
 CONSTRAINT_FIELD_RE = re.compile(r"\{\s*key:\s*'([^']+)'(?P<body>.*?)\}", re.DOTALL)
 FORBIDDEN_INTERNAL_TERM_RE = re.compile(
@@ -188,6 +189,10 @@ def main() -> int:
         if LOCAL_STRING_DEDUPE_RE.search(text):
             failures.append(
                 f"Local string dedupe helper should use src/core/utils.ts: {path.relative_to(ROOT)}"
+            )
+        if relative_path != "src/core/number-format.ts" and LOCAL_FINITE_NUMBER_RE.search(text):
+            failures.append(
+                f"Local finite-number formatter should use src/core/number-format.ts: {path.relative_to(ROOT)}"
             )
         if (
             relative_path.startswith("src/infra/")

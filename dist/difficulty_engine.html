@@ -13264,23 +13264,30 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     );
   }
 
-  // src/ui/format.ts
+  // src/core/number-format.ts
+  function finiteNumber(value) {
+    return Number.isFinite(value) ? Number(value) : 0;
+  }
   function formatOneDecimal(value) {
-    const safe = Number.isFinite(value) ? Number(value) : 0;
+    const safe = finiteNumber(value);
     return (Math.round((safe + Number.EPSILON) * 10) / 10).toFixed(1);
   }
-  function round0(value) {
-    const safe = Number.isFinite(value) ? Number(value) : 0;
-    return String(Math.round(safe));
+  function formatWholeNumber(value) {
+    return String(Math.round(finiteNumber(value)));
   }
-  function formatPercent(value) {
-    const safe = Number.isFinite(value) ? Number(value) : 0;
-    return `${Math.round(safe * 100)}%`;
+  function formatWholePercent(value) {
+    return `${formatWholeNumber(value)}%`;
   }
-  function formatCssPercent(ratio) {
-    const safe = Number.isFinite(ratio) ? Number(ratio) : 0;
-    return `${safe * 100}%`;
+  function formatRatioPercent(value) {
+    return `${formatWholeNumber(finiteNumber(value) * 100)}%`;
   }
+  function formatCssPercent(value) {
+    return `${finiteNumber(value) * 100}%`;
+  }
+
+  // src/ui/format.ts
+  var round0 = formatWholeNumber;
+  var formatPercent = formatRatioPercent;
   function colorForGroup(group) {
     let hash = 0;
     for (const char of group) {
@@ -15780,17 +15787,6 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       ),
       viewModel.selectedBook ? renderBookEditorPanel(state, viewModel.editor, store) : null
     );
-  }
-
-  // src/app/selectors/number-labels.ts
-  function finiteNumber(value) {
-    return Number.isFinite(value) ? Number(value) : 0;
-  }
-  function formatWholeNumber(value) {
-    return String(Math.round(finiteNumber(value)));
-  }
-  function formatWholePercent(value) {
-    return `${formatWholeNumber(value)}%`;
   }
 
   // src/app/selectors/calendar-weeks.ts

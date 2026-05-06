@@ -1,5 +1,6 @@
 import type { AppState, CalendarEntry } from '../../core/types';
 import { DAYS_PER_WEEK } from '../../core/date-constants';
+import { formatWholeNumber } from '../../core/number-format';
 import {
   addLocalDays,
   dateKeyFromDate,
@@ -12,7 +13,6 @@ import {
   formatPlanShortDate,
   formatPlanWeekday,
 } from './date-labels';
-import { formatWholeNumber } from './number-labels';
 
 export interface CalendarDayCell {
   key: string;

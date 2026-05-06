@@ -1,22 +1,14 @@
-export function formatOneDecimal(value: number | undefined | null): string {
-  const safe = Number.isFinite(value) ? Number(value) : 0;
-  return (Math.round((safe + Number.EPSILON) * 10) / 10).toFixed(1);
-}
+import {
+  formatCssPercent,
+  formatOneDecimal,
+  formatRatioPercent,
+  formatWholeNumber,
+} from '../core/number-format';
 
-export function round0(value: number | undefined | null): string {
-  const safe = Number.isFinite(value) ? Number(value) : 0;
-  return String(Math.round(safe));
-}
+export { formatCssPercent, formatOneDecimal };
 
-export function formatPercent(value: number | undefined | null): string {
-  const safe = Number.isFinite(value) ? Number(value) : 0;
-  return `${Math.round(safe * 100)}%`;
-}
-
-export function formatCssPercent(ratio: number | undefined | null): string {
-  const safe = Number.isFinite(ratio) ? Number(ratio) : 0;
-  return `${safe * 100}%`;
-}
+export const round0 = formatWholeNumber;
+export const formatPercent = formatRatioPercent;
 
 export function colorForGroup(group: string): string {
   let hash = 0;

@@ -16,6 +16,11 @@ CANONICAL_PATTERNS = [
         "Use formatPercent, formatOneDecimal, round0, formatDate, parseCsv, and joinCsv for display strings.",
     ),
     (
+        "Number formatting",
+        "src/core/number-format.ts",
+        "Use shared number/percent formatters instead of local finite-number helpers.",
+    ),
+    (
         "String compaction and deduplication",
         "src/core/utils.ts",
         "Use compactString, compactStrings, and uniqueCompactStrings instead of local trim/filter/Set helpers.",

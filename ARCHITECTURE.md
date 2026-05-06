@@ -46,6 +46,6 @@ The application now has one canonical runtime path:
 - The UI is framework-light and DOM-driven.
 - Core never imports UI.
 - UI never computes domain truth directly.
-- Repeated primitive operations should use canonical helpers: string compaction/deduplication in `src/core/utils.ts`, external-source matching in `src/core/matchers.ts`, provider metadata cleanup in `src/infra/source-metadata.ts`, display formatting in `src/ui/format.ts`, and document content ranking in `src/infra/qbittorrent-file-kinds.ts`.
+- Repeated primitive operations should use canonical helpers: string compaction/deduplication in `src/core/utils.ts`, number formatting in `src/core/number-format.ts`, external-source matching in `src/core/matchers.ts`, provider metadata cleanup in `src/infra/source-metadata.ts`, display formatting in `src/ui/format.ts`, and document content ranking in `src/infra/qbittorrent-file-kinds.ts`.
 - No inline event handlers, runtime monkey-patching, or retired adapter branches remain in the production path.
 - Source audits enforce file-size caps, default-export bans, and stale-runtime removal.
