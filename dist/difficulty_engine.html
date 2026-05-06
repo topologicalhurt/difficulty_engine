@@ -18606,6 +18606,19 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       )
     );
   }
+  function candidateValueIsPresent(value) {
+    if (Array.isArray(value)) return value.length > 0;
+    return value != null && value !== "";
+  }
+  function firstCandidateValue(candidates, select, accept) {
+    for (const candidate of candidates) {
+      const value = select(candidate);
+      if (candidateValueIsPresent(value) && (!accept || accept(candidate, value))) {
+        return value;
+      }
+    }
+    return void 0;
+  }
   function mergeStrategyCandidates(book, candidates) {
     const chapterCandidates2 = [
       existingChapterCandidate(book),
@@ -18619,7 +18632,8 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       }
     );
     const chapters = candidateChapters.length ? candidateChapters : sanitizeChapterTitles(book.enrichment.chapters, { source: "imported" });
-    const description = candidates.find((candidate) => candidate.description)?.description ?? book.enrichment.description;
+    const pickCandidateValue = (select, accept) => firstCandidateValue(candidates, select, accept);
+    const description = pickCandidateValue((candidate) => candidate.description) ?? book.enrichment.description;
     const subjects = uniqueCompactStrings(
       [
         ...book.subjects,
@@ -18628,22 +18642,32 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       ],
       40
     );
-    const preferredPages = candidates.find(
-      (candidate) => candidate.provider !== "manual" && (candidate.pages ?? 0) > 0
-    )?.pages ?? candidates.find((candidate) => (candidate.pages ?? 0) > 0)?.pages;
+    const preferredPages = pickCandidateValue(
+      (candidate) => candidate.pages,
+      (candidate, pages) => candidate.provider !== "manual" && pages > 0
+    ) ?? pickCandidateValue(
+      (candidate) => candidate.pages,
+      (_candidate, pages) => pages > 0
+    );
     const provenance = buildProvenance(candidates);
     return {
       bookPatch: {
-        authors: candidates.find((candidate) => candidate.authors?.length)?.authors ?? void 0,
+        authors: pickCandidateValue((candidate) => candidate.authors),
         pages: preferredPages ?? void 0,
         subjects,
-        publisher: candidates.find((candidate) => candidate.publisher)?.publisher ?? void 0,
-        isbn: candidates.find((candidate) => candidate.isbn)?.isbn ?? void 0,
-        year: candidates.find((candidate) => candidate.year != null)?.year ?? void 0,
-        openLibraryKey: candidates.find((candidate) => candidate.openLibraryKey)?.openLibraryKey ?? void 0,
-        openLibraryEditionKey: candidates.find((candidate) => candidate.openLibraryEditionKey)?.openLibraryEditionKey ?? void 0,
-        openLibraryWorkKey: candidates.find((candidate) => candidate.openLibraryWorkKey)?.openLibraryWorkKey ?? void 0,
-        googleBooksId: candidates.find((candidate) => candidate.googleBooksId)?.googleBooksId ?? void 0
+        publisher: pickCandidateValue((candidate) => candidate.publisher),
+        isbn: pickCandidateValue((candidate) => candidate.isbn),
+        year: pickCandidateValue((candidate) => candidate.year),
+        openLibraryKey: pickCandidateValue(
+          (candidate) => candidate.openLibraryKey
+        ),
+        openLibraryEditionKey: pickCandidateValue(
+          (candidate) => candidate.openLibraryEditionKey
+        ),
+        openLibraryWorkKey: pickCandidateValue(
+          (candidate) => candidate.openLibraryWorkKey
+        ),
+        googleBooksId: pickCandidateValue((candidate) => candidate.googleBooksId)
       },
       enrichment: {
         chapters,

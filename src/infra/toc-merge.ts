@@ -153,6 +153,28 @@ function provenanceFor(
   );
 }
 
+function candidateValueIsPresent(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  return value != null && value !== '';
+}
+
+function firstCandidateValue<T>(
+  candidates: StrategyCandidate[],
+  select: (candidate: StrategyCandidate) => T | null | undefined,
+  accept?: (candidate: StrategyCandidate, value: T) => boolean,
+): T | undefined {
+  for (const candidate of candidates) {
+    const value = select(candidate);
+    if (
+      candidateValueIsPresent(value) &&
+      (!accept || accept(candidate, value as T))
+    ) {
+      return value as T;
+    }
+  }
+  return undefined;
+}
+
 export function mergeStrategyCandidates(
   book: BookRecord,
   candidates: StrategyCandidate[],
@@ -174,8 +196,12 @@ export function mergeStrategyCandidates(
   const chapters = candidateChapters.length
     ? candidateChapters
     : sanitizeChapterTitles(book.enrichment.chapters, { source: 'imported' });
+  const pickCandidateValue = <T>(
+    select: (candidate: StrategyCandidate) => T | null | undefined,
+    accept?: (candidate: StrategyCandidate, value: T) => boolean,
+  ): T | undefined => firstCandidateValue(candidates, select, accept);
   const description =
-    candidates.find((candidate) => candidate.description)?.description ??
+    pickCandidateValue((candidate) => candidate.description) ??
     book.enrichment.description;
   const subjects = uniqueCompactStrings(
     [
@@ -186,39 +212,34 @@ export function mergeStrategyCandidates(
     40,
   );
   const preferredPages =
-    candidates.find(
-      (candidate) =>
-        candidate.provider !== 'manual' && (candidate.pages ?? 0) > 0,
-    )?.pages ??
-    candidates.find((candidate) => (candidate.pages ?? 0) > 0)?.pages;
+    pickCandidateValue(
+      (candidate) => candidate.pages,
+      (candidate, pages) => candidate.provider !== 'manual' && pages > 0,
+    ) ??
+    pickCandidateValue(
+      (candidate) => candidate.pages,
+      (_candidate, pages) => pages > 0,
+    );
   const provenance = buildProvenance(candidates);
 
   return {
     bookPatch: {
-      authors:
-        candidates.find((candidate) => candidate.authors?.length)?.authors ??
-        undefined,
+      authors: pickCandidateValue((candidate) => candidate.authors),
       pages: preferredPages ?? undefined,
       subjects,
-      publisher:
-        candidates.find((candidate) => candidate.publisher)?.publisher ??
-        undefined,
-      isbn: candidates.find((candidate) => candidate.isbn)?.isbn ?? undefined,
-      year:
-        candidates.find((candidate) => candidate.year != null)?.year ??
-        undefined,
-      openLibraryKey:
-        candidates.find((candidate) => candidate.openLibraryKey)
-          ?.openLibraryKey ?? undefined,
-      openLibraryEditionKey:
-        candidates.find((candidate) => candidate.openLibraryEditionKey)
-          ?.openLibraryEditionKey ?? undefined,
-      openLibraryWorkKey:
-        candidates.find((candidate) => candidate.openLibraryWorkKey)
-          ?.openLibraryWorkKey ?? undefined,
-      googleBooksId:
-        candidates.find((candidate) => candidate.googleBooksId)
-          ?.googleBooksId ?? undefined,
+      publisher: pickCandidateValue((candidate) => candidate.publisher),
+      isbn: pickCandidateValue((candidate) => candidate.isbn),
+      year: pickCandidateValue((candidate) => candidate.year),
+      openLibraryKey: pickCandidateValue(
+        (candidate) => candidate.openLibraryKey,
+      ),
+      openLibraryEditionKey: pickCandidateValue(
+        (candidate) => candidate.openLibraryEditionKey,
+      ),
+      openLibraryWorkKey: pickCandidateValue(
+        (candidate) => candidate.openLibraryWorkKey,
+      ),
+      googleBooksId: pickCandidateValue((candidate) => candidate.googleBooksId),
     },
     enrichment: {
       chapters,
