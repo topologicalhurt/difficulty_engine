@@ -1,4 +1,4 @@
-import { studyDateFromSlot } from '../../core/time';
+import { plannerClock, studyDateFromSlot } from '../../core/time';
 import type {
   AppState,
   CalendarEntry,
@@ -69,7 +69,7 @@ export function selectTimelineLabel(state: AppState): (slot: number) => string {
       studyDateFromSlot(
         state.project,
         slot,
-        new Date(`${state.project.constraints.sd}T12:00:00Z`),
+        plannerClock.timelineStart(state.project),
       ),
     );
 }

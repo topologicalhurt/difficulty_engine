@@ -15827,8 +15827,8 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       ])
     );
     const weeks = [];
-    for (let cursor = new Date(firstDay); cursor <= lastDay; cursor = addLocalDays(cursor, DAYS_PER_WEEK)) {
-      const weekStart = new Date(cursor);
+    for (let cursor = firstDay; cursor <= lastDay; cursor = addLocalDays(cursor, DAYS_PER_WEEK)) {
+      const weekStart = cursor;
       const label = `${formatPlanShortDate(weekStart)} - ${formatPlanShortDate(addLocalDays(weekStart, DAYS_PER_WEEK - 1))}`;
       const days = [];
       for (let dayOffset = 0; dayOffset < DAYS_PER_WEEK; dayOffset += 1) {
@@ -15955,7 +15955,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       studyDateFromSlot(
         state.project,
         slot,
-        /* @__PURE__ */ new Date(`${state.project.constraints.sd}T12:00:00Z`)
+        plannerClock.timelineStart(state.project)
       )
     );
   }

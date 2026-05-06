@@ -86,11 +86,11 @@ export function buildCalendarWeeks(state: AppState): CalendarWeek[] {
   const weeks: CalendarWeek[] = [];
 
   for (
-    let cursor = new Date(firstDay);
+    let cursor = firstDay;
     cursor <= lastDay;
     cursor = addLocalDays(cursor, DAYS_PER_WEEK)
   ) {
-    const weekStart = new Date(cursor);
+    const weekStart = cursor;
     const label = `${formatPlanShortDate(weekStart)} - ${formatPlanShortDate(addLocalDays(weekStart, DAYS_PER_WEEK - 1))}`;
     const days: CalendarDayCell[] = [];
 
