@@ -89,6 +89,7 @@ export function applyAiProposalToProject(
   const candidateIds = nextIds(project, proposal.books.length);
   const books = { ...project.library.books };
   const addedIds: string[] = [];
+  const addedIdSet = new Set<string>();
   const skippedTitles: string[] = [];
 
   proposal.books.forEach((bookProposal) => {
@@ -105,11 +106,12 @@ export function applyAiProposalToProject(
     });
     books[id] = bookFromProposal(id, bookProposal, Object.keys(books).length);
     addedIds.push(id);
+    addedIdSet.add(id);
   });
 
   proposal.books.forEach((bookProposal) => {
     const id = refLookup.get(bookProposal.proposalId);
-    if (!id || !books[id]) return;
+    if (!id || !books[id] || !addedIdSet.has(id)) return;
     books[id] = {
       ...books[id],
       manualPrereqs: resolveRelationRefs(

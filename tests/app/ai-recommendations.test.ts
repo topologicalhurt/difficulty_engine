@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type {
   AiRecommendationProvider,
+  AiRecommendationProposal,
   AiRecommendationProviderResponse,
 } from '../../src/core/types';
+import { applyAiProposalToProject } from '../../src/app/store-ai-apply';
 import { makeBook, makeProject, makeStore } from './store-test-utils';
 
 function aiProvider(): AiRecommendationProvider {
@@ -108,6 +110,77 @@ describe('AI recommendations store flow', () => {
     expect(lab?.manualPrereqs).toEqual([foundations?.id]);
     expect(lab?.manualCoStudy).toContain('book-2');
     expect(store.exportProject()).not.toContain('local-secret');
+  });
+
+  it('does not rewrite manual relations on skipped matching books', () => {
+    const project = makeProject({
+      books: {
+        'book-1': makeBook({
+          id: 'book-1',
+          title: 'Existing Foundations',
+          manualPrereqs: ['book-0'],
+          manualCoStudy: ['book-2'],
+          planOrder: 0,
+        }),
+        'book-0': makeBook({
+          id: 'book-0',
+          title: 'Prior Foundations',
+          planOrder: 1,
+        }),
+        'book-2': makeBook({
+          id: 'book-2',
+          title: 'Current Companion',
+          planOrder: 2,
+        }),
+      },
+    });
+    const proposal: AiRecommendationProposal = {
+      id: 'proposal-existing-relation-regression',
+      provider: 'openai',
+      model: 'test-model',
+      prompt: 'recommend follow-on books',
+      summary: 'Existing book plus one follow-on recommendation.',
+      books: [
+        {
+          proposalId: 'existing-match',
+          title: 'Existing Foundations',
+          authors: ['Test Author'],
+          isbn: null,
+          pages: 180,
+          subjects: ['testing'],
+          displayGroup: 'Core',
+          manualSeedDifficulty: 4,
+          rationale: 'Already present.',
+          prerequisiteIds: [],
+          coStudyIds: [],
+        },
+        {
+          proposalId: 'new-follow-on',
+          title: 'New Follow On',
+          authors: ['Test Author'],
+          isbn: null,
+          pages: 120,
+          subjects: ['testing'],
+          displayGroup: 'Core',
+          manualSeedDifficulty: 5,
+          rationale: 'Uses the existing book.',
+          prerequisiteIds: ['existing-match'],
+          coStudyIds: [],
+        },
+      ],
+      warnings: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      contextDigest: 'test-digest',
+    };
+
+    const result = applyAiProposalToProject(project, proposal);
+    const existing = result.project.library.books['book-1'];
+    const added = result.addedIds.map((id) => result.project.library.books[id]);
+
+    expect(existing?.manualPrereqs).toEqual(['book-0']);
+    expect(existing?.manualCoStudy).toEqual(['book-2']);
+    expect(added[0]?.manualPrereqs).toEqual(['book-1']);
+    expect(result.skippedTitles).toEqual(['Existing Foundations']);
   });
 
   it('fails closed when provider settings are incomplete', async () => {
