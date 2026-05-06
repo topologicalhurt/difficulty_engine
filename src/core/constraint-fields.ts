@@ -6,17 +6,19 @@ import {
 } from './constraint-fields-difficulty';
 import { GRAPH_CONTROL_FIELDS } from './constraint-fields-graph';
 import {
-  DAILY_WORKLOAD_PACING_FIELDS,
-  DAILY_WORKLOAD_TIME_FIELDS,
-  PLAN_WINDOW_FIELDS,
   PRACTICAL_FEASIBILITY_CORE_FIELDS,
   PRACTICAL_FEASIBILITY_COSTUDY_FIELDS,
-} from './constraint-fields-planning';
+} from './constraint-fields-feasibility';
+import { PLAN_WINDOW_FIELDS } from './constraint-fields-plan-window';
 import {
   SCHEDULING_STRATEGY_BACKGROUND_FIELDS,
   SCHEDULING_STRATEGY_CORE_FIELDS,
   SCHEDULING_STRATEGY_EXCLUSION_FIELDS,
 } from './constraint-fields-scheduling';
+import {
+  DAILY_WORKLOAD_PACING_FIELDS,
+  DAILY_WORKLOAD_TIME_FIELDS,
+} from './constraint-fields-workload';
 
 export const CONSTRAINT_FIELDS: ConstraintField[] = [
   ...PLAN_WINDOW_FIELDS,
