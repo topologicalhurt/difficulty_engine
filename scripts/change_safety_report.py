@@ -16,6 +16,21 @@ CANONICAL_PATTERNS = [
         "Use formatPercent, formatOneDecimal, round0, formatDate, parseCsv, and joinCsv for display strings.",
     ),
     (
+        "String compaction and deduplication",
+        "src/core/utils.ts",
+        "Use compactString, compactStrings, and uniqueCompactStrings instead of local trim/filter/Set helpers.",
+    ),
+    (
+        "External-source matching",
+        "src/core/matchers.ts",
+        "Use shared title/author/ISBN matching decisions instead of provider-local fuzzy scoring.",
+    ),
+    (
+        "Provider metadata cleanup",
+        "src/infra/source-metadata.ts",
+        "Use normalizeProviderText, extractPublishedYear, and firstValidIsbn for provider metadata parsing.",
+    ),
+    (
         "Progress",
         "src/app/selectors/progress.ts",
         "Progress truth is selected in app selectors and rendered by src/ui/progress.ts.",

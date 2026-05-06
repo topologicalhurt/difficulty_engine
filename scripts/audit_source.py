@@ -46,6 +46,10 @@ JUNK_ARTIFACT_RE = re.compile(
 INFRA_DUPLICATE_MATCHER_RE = re.compile(
     r"\bfunction\s+(?:tokenSet|jaccardTokenSimilarity)\b"
 )
+LOCAL_STRING_DEDUPE_RE = re.compile(
+    r"\bfunction\s+(?:uniqueNonEmpty|uniqueNonEmptyStrings|uniqueStrings)\b"
+)
+INFRA_PROVIDER_YEAR_RE = re.compile(r"\\b\(1\[5-9\]\\d\{2\}\|20\\d\{2\}\|21\\d\{2\}\)")
 
 MAX_TS_LINES = 500
 WARN_TS_LINES = 250
@@ -180,6 +184,18 @@ def main() -> int:
         if relative_path.startswith("src/infra/") and INFRA_DUPLICATE_MATCHER_RE.search(text):
             failures.append(
                 f"Ad hoc infra fuzzy matcher should use src/core/matchers.ts: {path.relative_to(ROOT)}"
+            )
+        if LOCAL_STRING_DEDUPE_RE.search(text):
+            failures.append(
+                f"Local string dedupe helper should use src/core/utils.ts: {path.relative_to(ROOT)}"
+            )
+        if (
+            relative_path.startswith("src/infra/")
+            and relative_path != "src/infra/source-metadata.ts"
+            and INFRA_PROVIDER_YEAR_RE.search(text)
+        ):
+            failures.append(
+                f"Provider year parsing should use src/infra/source-metadata.ts: {path.relative_to(ROOT)}"
             )
         if (
             "src/ui/" in str(path.relative_to(ROOT))
