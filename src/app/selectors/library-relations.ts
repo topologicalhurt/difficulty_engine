@@ -1,4 +1,5 @@
 import type { AppState, BookRecord } from '../../core/types';
+import { unique } from '../../core/utils';
 
 export interface RelationSelectorView {
   title: string;
@@ -74,7 +75,7 @@ export function selectBookRelationSelectorSummary(
       prereqs: {
         title: 'Prerequisites',
         detail: 'Select books that must come before this book.',
-        selectedIds: [...new Set([...book.manualPrereqs, ...graphPrereqs])],
+        selectedIds: unique([...book.manualPrereqs, ...graphPrereqs]),
         graphIds: graphPrereqs,
         manualIds: book.manualPrereqs,
       },
@@ -82,14 +83,14 @@ export function selectBookRelationSelectorSummary(
         title: 'Required by',
         detail:
           'Select books that should come after this book. This is the outgoing graph view of prerequisites.',
-        selectedIds: [...new Set([...manualDependents, ...graphDependents])],
+        selectedIds: unique([...manualDependents, ...graphDependents]),
         graphIds: graphDependents,
         manualIds: manualDependents,
       },
       coStudy: {
         title: 'Co-study links',
         detail: 'Select books that should be planned together when feasible.',
-        selectedIds: [...new Set([...book.manualCoStudy, ...graphCoStudy])],
+        selectedIds: unique([...book.manualCoStudy, ...graphCoStudy]),
         graphIds: graphCoStudy,
         manualIds: book.manualCoStudy,
       },

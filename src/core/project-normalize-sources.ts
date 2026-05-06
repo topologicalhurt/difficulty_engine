@@ -15,6 +15,7 @@ import {
   normalizeString,
   normalizeStringArray,
 } from './project-normalize-primitives';
+import { unique } from './utils';
 
 const METADATA_KEYS: MetadataSourceKey[] = [
   'openlibrary',
@@ -51,7 +52,7 @@ function normalizeContentPreference(value: unknown): SourceContentKind[] {
     (entry): entry is SourceContentKind =>
       CONTENT_KINDS.includes(entry as SourceContentKind),
   );
-  const ordered = [...new Set(normalized)];
+  const ordered = unique(normalized);
   CONTENT_KINDS.forEach((kind) => {
     if (!ordered.includes(kind)) ordered.push(kind);
   });

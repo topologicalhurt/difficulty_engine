@@ -4,6 +4,7 @@ import {
   jaccardTokenSimilarity,
 } from '../core/matchers';
 import { firstValidIsbn } from './source-metadata';
+import { unique } from '../core/utils';
 
 export interface ArchiveSearchDoc {
   identifier?: string;
@@ -66,5 +67,5 @@ export function archiveSearchUrls(book: BookRecord): string[] {
   if (isbn) urls.push(buildUrl(`isbn:(${isbn})`));
   if (book.title.trim())
     urls.push(buildUrl(`title:("${book.title.replace(/"/g, ' ')}")`));
-  return Array.from(new Set(urls));
+  return unique(urls);
 }

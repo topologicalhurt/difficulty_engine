@@ -1,11 +1,12 @@
 import type { BookRecord } from './types';
+import { unique } from './utils';
 
 function validRelationIds(
   ids: string[],
   sourceId: string,
   validIds: Set<string>,
 ): string[] {
-  return Array.from(new Set(ids))
+  return unique(ids)
     .filter((id) => id !== sourceId && validIds.has(id))
     .sort();
 }

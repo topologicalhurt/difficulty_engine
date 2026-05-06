@@ -3567,7 +3567,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
 
   // src/core/project-normalize-relations.ts
   function validRelationIds(ids, sourceId, validIds) {
-    return Array.from(new Set(ids)).filter((id) => id !== sourceId && validIds.has(id)).sort();
+    return unique(ids).filter((id) => id !== sourceId && validIds.has(id)).sort();
   }
   function normalizeBookRelations(books, validIds) {
     const normalized = Object.fromEntries(
@@ -3620,7 +3620,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     const normalized = normalizeStringArray(value).filter(
       (entry) => CONTENT_KINDS.includes(entry)
     );
-    const ordered = [...new Set(normalized)];
+    const ordered = unique(normalized);
     CONTENT_KINDS.forEach((kind) => {
       if (!ordered.includes(kind)) ordered.push(kind);
     });
@@ -12631,7 +12631,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   var GRAPH_CONSTRAINT_GROUP = "Graph Controls";
   var DIFFICULTY_MAPPING_GROUP = "Difficulty Mapping";
   function groupFields(fields, openGroups) {
-    const groups = [...new Set(fields.map((field) => field.group))];
+    const groups = unique(fields.map((field) => field.group));
     return groups.map((group) => ({
       group,
       fields: fields.filter(
@@ -14760,21 +14760,21 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
         prereqs: {
           title: "Prerequisites",
           detail: "Select books that must come before this book.",
-          selectedIds: [.../* @__PURE__ */ new Set([...book.manualPrereqs, ...graphPrereqs])],
+          selectedIds: unique([...book.manualPrereqs, ...graphPrereqs]),
           graphIds: graphPrereqs,
           manualIds: book.manualPrereqs
         },
         dependents: {
           title: "Required by",
           detail: "Select books that should come after this book. This is the outgoing graph view of prerequisites.",
-          selectedIds: [.../* @__PURE__ */ new Set([...manualDependents, ...graphDependents])],
+          selectedIds: unique([...manualDependents, ...graphDependents]),
           graphIds: graphDependents,
           manualIds: manualDependents
         },
         coStudy: {
           title: "Co-study links",
           detail: "Select books that should be planned together when feasible.",
-          selectedIds: [.../* @__PURE__ */ new Set([...book.manualCoStudy, ...graphCoStudy])],
+          selectedIds: unique([...book.manualCoStudy, ...graphCoStudy]),
           graphIds: graphCoStudy,
           manualIds: book.manualCoStudy
         }
@@ -18245,7 +18245,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     if (isbn) urls.push(buildUrl(`isbn:(${isbn})`));
     if (book.title.trim())
       urls.push(buildUrl(`title:("${book.title.replace(/"/g, " ")}")`));
-    return Array.from(new Set(urls));
+    return unique(urls);
   }
 
   // src/infra/internet-archive.ts

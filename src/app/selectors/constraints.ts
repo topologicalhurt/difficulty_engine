@@ -1,5 +1,6 @@
 import { CONSTRAINT_FIELDS } from '../../core/defaults';
 import type { AppState, ConstraintSet } from '../../core/types';
+import { unique } from '../../core/utils';
 import {
   constraintFieldView,
   type ConstraintFieldView,
@@ -39,7 +40,7 @@ function groupFields(
   fields: ConstraintFieldView[],
   openGroups: string[],
 ): ConstraintGroupViewModel[] {
-  const groups = [...new Set(fields.map((field) => field.group))];
+  const groups = unique(fields.map((field) => field.group));
   return groups.map((group) => ({
     group,
     fields: fields.filter(
