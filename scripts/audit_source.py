@@ -7,6 +7,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 DIST_FILE = ROOT / "dist" / "difficulty_engine.html"
+DOC_FILES = [
+    ROOT / "ARCHITECTURE.md",
+    ROOT / "CHANGE_GUIDE.md",
+    ROOT / "README.md",
+]
 
 INLINE_HANDLER_RE = re.compile(r"<[^>]+\son[a-z]+\s*=", re.IGNORECASE)
 INNER_HTML_RE = re.compile(r"\.innerHTML\s*=")
@@ -39,6 +44,10 @@ FORBIDDEN_INTERNAL_TERM_RE = re.compile(
             r"\btransitional\b",
         ]
     ),
+    re.IGNORECASE,
+)
+STALE_ARCHITECTURE_DOC_RE = re.compile(
+    r"\b(?:DOM-driven|typed DOM views|framework-light and DOM)\b",
     re.IGNORECASE,
 )
 JUNK_ARTIFACT_RE = re.compile(
@@ -154,6 +163,30 @@ def main() -> int:
 
     if (SRC / "infra" / "token-similarity.ts").exists():
         failures.append("Duplicate infra matcher helper still present: src/infra/token-similarity.ts")
+
+    for path in DOC_FILES:
+        if not path.exists():
+            failures.append(f"Required architecture/change document missing: {path.relative_to(ROOT)}")
+            continue
+        text = read_text(path)
+        if STALE_ARCHITECTURE_DOC_RE.search(text):
+            failures.append(f"Stale pre-Svelte architecture wording in {path.relative_to(ROOT)}")
+    architecture_doc = ROOT / "ARCHITECTURE.md"
+    if architecture_doc.exists():
+        architecture_text = read_text(architecture_doc)
+        if "PlannerComputeAdapter" not in architecture_text or "Svelte" not in architecture_text:
+            failures.append("ARCHITECTURE.md must document the Svelte shell and PlannerComputeAdapter.")
+    change_guide = ROOT / "CHANGE_GUIDE.md"
+    if change_guide.exists():
+        change_text = read_text(change_guide)
+        required_patterns = [
+            "Document content priority: `src/infra/document-content-priority.ts`",
+            "Add Or Change Worker Compute Or Persistence",
+            "If the change creates a new helper",
+        ]
+        for pattern in required_patterns:
+            if pattern not in change_text:
+                failures.append(f"CHANGE_GUIDE.md missing canonical guidance: {pattern}")
 
     oversized = [path for path in source_files if len(read_text(path).splitlines()) > MAX_TS_LINES]
     if oversized:

@@ -126,6 +126,23 @@ describe('source architecture guardrails', () => {
     expect(violations).toEqual([]);
   });
 
+  it('keeps architecture documents aligned with the current runtime contracts', () => {
+    const docs = ['ARCHITECTURE.md', 'CHANGE_GUIDE.md', 'README.md'];
+    const stalePattern =
+      /\b(?:DOM-driven|typed DOM views|framework-light and DOM)\b/i;
+    const staleDocs = docs.filter((path) =>
+      stalePattern.test(readFileSync(join(ROOT, path), 'utf8')),
+    );
+    const architecture = readFileSync(join(ROOT, 'ARCHITECTURE.md'), 'utf8');
+    const changeGuide = readFileSync(join(ROOT, 'CHANGE_GUIDE.md'), 'utf8');
+
+    expect(staleDocs).toEqual([]);
+    expect(architecture).toContain('PlannerComputeAdapter');
+    expect(architecture).toContain('Svelte');
+    expect(changeGuide).toContain('Document content priority');
+    expect(changeGuide).toContain('Add Or Change Worker Compute Or Persistence');
+  });
+
   it('keeps core, infra, and app layer imports one-directional', () => {
     const importPattern =
       /^\s*import(?:\s+type)?[^'"]*from\s+['"](?<specifier>\.{1,2}\/[^'"]+)['"]/gm;

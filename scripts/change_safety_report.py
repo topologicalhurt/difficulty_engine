@@ -91,9 +91,19 @@ CANONICAL_PATTERNS = [
         "Infra cache expiry uses injected time helpers instead of raw Date.now calls.",
     ),
     (
-        "Document content ranking",
+        "Document content priority",
+        "src/infra/document-content-priority.ts",
+        "Content preference ordering is shared by document acquisition and qBittorrent ranking.",
+    ),
+    (
+        "Document content kind and paths",
         "src/infra/qbittorrent-file-kinds.ts",
-        "Content kind, MIME, and path helpers are shared by document and qBittorrent flows.",
+        "Content kind, MIME, and safe path helpers are shared by document and qBittorrent flows.",
+    ),
+    (
+        "Worker compute and persistence",
+        "src/app/store-runtime.ts",
+        "Project changes commit synchronously; worker results only replace snapshots.",
     ),
     (
         "Source enablement policy",
