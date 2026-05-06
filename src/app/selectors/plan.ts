@@ -7,9 +7,6 @@ import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 import type {
   AppState,
   CalendarEntry,
-  DifficultyBreakdown,
-  RelationEvidence,
-  SchedulePlanItem,
   ScheduleRow,
   WarningItem,
 } from '../../core/types';
@@ -19,10 +16,13 @@ import { formatPlanFullDate, formatPlanShortDate } from './date-labels';
 import { selectPlanColors, type PlanColorMetadata } from './plan-colors';
 import {
   selectProgressSummary,
-  type BookProgressView,
   type OverallProgressView,
 } from './progress';
 import { memoizeSelector } from './memo';
+import {
+  selectBookInspector,
+  type BookInspectorViewModel,
+} from './plan-inspector';
 
 export interface StatCardView {
   label: string;
@@ -38,20 +38,6 @@ export interface GanttViewModel {
   maxSlot: number;
   boardMinWidth: number;
   weekCount: number;
-}
-
-export interface BookInspectorViewModel {
-  fallbackId: string | null;
-  bookTitle: string;
-  displayGroup: string;
-  pages: number;
-  schedule: SchedulePlanItem | null;
-  dayStats: AppState['snapshot']['dayPlan']['byBookStats'][string] | null;
-  difficulty: DifficultyBreakdown | null;
-  progress: BookProgressView | null;
-  incoming: RelationEvidence[];
-  outgoing: RelationEvidence[];
-  explanation: string[];
 }
 
 export interface PlanViewModel {
@@ -149,46 +135,6 @@ function selectGantt(state: AppState): GanttViewModel {
   };
 }
 
-function selectInspector(
-  state: AppState,
-  progressByBook: Record<string, BookProgressView>,
-): BookInspectorViewModel {
-  const fallbackId =
-    state.ui.selectedBookId ||
-    state.snapshot.renderModel.gantt.rows[0]?.id ||
-    Object.keys(state.project.library.books)[0] ||
-    null;
-  const book = fallbackId ? state.project.library.books[fallbackId] : undefined;
-  const difficulty = fallbackId
-    ? state.snapshot.difficultyModel[fallbackId]
-    : undefined;
-  return {
-    fallbackId,
-    bookTitle: book?.title ?? '',
-    displayGroup: book?.displayGroup || 'Ungrouped',
-    pages: book?.pages ?? 0,
-    schedule: fallbackId
-      ? (state.snapshot.schedulePlan.byId[fallbackId] ?? null)
-      : null,
-    dayStats: fallbackId
-      ? (state.snapshot.dayPlan.byBookStats[fallbackId] ?? null)
-      : null,
-    difficulty: difficulty ?? null,
-    progress: fallbackId ? (progressByBook[fallbackId] ?? null) : null,
-    incoming: fallbackId
-      ? state.snapshot.relations.filter(
-          (relation) => relation.to === fallbackId,
-        )
-      : [],
-    outgoing: fallbackId
-      ? state.snapshot.relations.filter(
-          (relation) => relation.from === fallbackId,
-        )
-      : [],
-    explanation: difficulty?.explanation.slice(0, 4) ?? [],
-  };
-}
-
 const selectPlanViewModelMemo = memoizeSelector(
   'plan.viewModel',
   (state: AppState) => [
@@ -212,7 +158,7 @@ const selectPlanViewModelMemo = memoizeSelector(
       colors: selectPlanColors(state),
       progress: progress.overall,
       warnings: state.snapshot.renderModel.warnings,
-      inspector: selectInspector(state, progress.byBook),
+      inspector: selectBookInspector(state, progress.byBook),
       timelineLabel: selectTimelineLabel(state),
     };
   },
