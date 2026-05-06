@@ -28,6 +28,7 @@ import type {
   PlanningState,
 } from './internal-types';
 import { descendantMap } from './schedule-graph';
+import { compareChain, compareNumberAsc, compareText } from './sort';
 import type { Clock, PlannerProjectV1, SchedulePlan } from './types';
 import { unique } from './utils';
 
@@ -61,11 +62,12 @@ export function buildDayPlan(
     normalizeFeasibilityMode(project.constraints.feasibilityMode) ===
     'practical';
   const overlapMap = buildOverlapMap(project, clusters);
-  const ordered = [...schedulePlan.items].sort(
-    (left, right) =>
-      left.ds - right.ds ||
-      left.lane - right.lane ||
-      left.short.localeCompare(right.short),
+  const ordered = [...schedulePlan.items].sort((left, right) =>
+    compareChain(
+      compareNumberAsc(left.ds, right.ds),
+      compareNumberAsc(left.lane, right.lane),
+      compareText(left.short, right.short),
+    ),
   );
   const graphPrereqs = schedulePlan.prereqById;
   const descendants = descendantMap(

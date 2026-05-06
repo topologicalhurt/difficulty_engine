@@ -1,4 +1,5 @@
 import { normalizeBookOrderPolicy } from './constraint-normalizers';
+import { compareChain, compareNumberAsc, compareText } from './sort';
 import type { BookOrderPolicy, PlannerProjectV1 } from './types';
 
 export function compareBookPlanOrder(
@@ -10,14 +11,17 @@ export function compareBookPlanOrder(
   const right = project.library.books[rightId];
   const leftOwned = left?.owned === false ? 1 : 0;
   const rightOwned = right?.owned === false ? 1 : 0;
-  return (
-    leftOwned - rightOwned ||
-    (left?.planOrder ?? Number.MAX_SAFE_INTEGER) -
-      (right?.planOrder ?? Number.MAX_SAFE_INTEGER) ||
-    (left?.short || left?.title || leftId).localeCompare(
+  return compareChain(
+    compareNumberAsc(leftOwned, rightOwned),
+    compareNumberAsc(
+      left?.planOrder ?? Number.MAX_SAFE_INTEGER,
+      right?.planOrder ?? Number.MAX_SAFE_INTEGER,
+    ),
+    compareText(
+      left?.short || left?.title || leftId,
       right?.short || right?.title || rightId,
-    ) ||
-    leftId.localeCompare(rightId)
+    ),
+    compareText(leftId, rightId),
   );
 }
 

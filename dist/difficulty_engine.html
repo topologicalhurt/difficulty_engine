@@ -9664,6 +9664,20 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     return output;
   }
 
+  // src/core/sort.ts
+  function compareText(left, right) {
+    return String(left ?? "").localeCompare(String(right ?? ""));
+  }
+  function compareNumberAsc(left, right) {
+    return (left ?? 0) - (right ?? 0);
+  }
+  function compareNumberDesc(left, right) {
+    return compareNumberAsc(right, left);
+  }
+  function compareChain(...comparisons) {
+    return comparisons.find((comparison) => comparison !== 0) ?? 0;
+  }
+
   // src/core/day-plan.ts
   function pendingStates(states) {
     return states.filter(
@@ -9684,7 +9698,11 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     const isPracticalMode = normalizeFeasibilityMode(project.constraints.feasibilityMode) === "practical";
     const overlapMap = buildOverlapMap(project, clusters);
     const ordered = [...schedulePlan.items].sort(
-      (left, right) => left.ds - right.ds || left.lane - right.lane || left.short.localeCompare(right.short)
+      (left, right) => compareChain(
+        compareNumberAsc(left.ds, right.ds),
+        compareNumberAsc(left.lane, right.lane),
+        compareText(left.short, right.short)
+      )
     );
     const graphPrereqs = schedulePlan.prereqById;
     const descendants = descendantMap(
@@ -10009,9 +10027,18 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     const right = project.library.books[rightId];
     const leftOwned = left?.owned === false ? 1 : 0;
     const rightOwned = right?.owned === false ? 1 : 0;
-    return leftOwned - rightOwned || (left?.planOrder ?? Number.MAX_SAFE_INTEGER) - (right?.planOrder ?? Number.MAX_SAFE_INTEGER) || (left?.short || left?.title || leftId).localeCompare(
-      right?.short || right?.title || rightId
-    ) || leftId.localeCompare(rightId);
+    return compareChain(
+      compareNumberAsc(leftOwned, rightOwned),
+      compareNumberAsc(
+        left?.planOrder ?? Number.MAX_SAFE_INTEGER,
+        right?.planOrder ?? Number.MAX_SAFE_INTEGER
+      ),
+      compareText(
+        left?.short || left?.title || leftId,
+        right?.short || right?.title || rightId
+      ),
+      compareText(leftId, rightId)
+    );
   }
   function bookOrderPolicy(project) {
     return normalizeBookOrderPolicy(project.constraints.bookOrderPolicy);
@@ -10466,7 +10493,12 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   function packVisualLanes(entries) {
     const laneEnds = [];
     [...entries].sort(
-      (left, right) => left.ds - right.ds || left.de - right.de || left.depth - right.depth || left.short.localeCompare(right.short)
+      (left, right) => compareChain(
+        compareNumberAsc(left.ds, right.ds),
+        compareNumberAsc(left.de, right.de),
+        compareNumberAsc(left.depth, right.depth),
+        compareText(left.short, right.short)
+      )
     ).forEach((entry) => {
       let lane = laneEnds.findIndex(
         (end) => end <= entry.ds + VISUAL_LANE_REUSE_EPSILON
@@ -10647,7 +10679,11 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     });
     Object.values(grouped).forEach((group) => {
       group.sort(
-        (left, right) => left.ds - right.ds || left.scheduleDifficulty - right.scheduleDifficulty || left.short.localeCompare(right.short)
+        (left, right) => compareChain(
+          compareNumberAsc(left.ds, right.ds),
+          compareNumberAsc(left.scheduleDifficulty, right.scheduleDifficulty),
+          compareText(left.short, right.short)
+        )
       );
     });
     return grouped;
@@ -13177,20 +13213,6 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
         )
       )
     );
-  }
-
-  // src/core/sort.ts
-  function compareText(left, right) {
-    return String(left ?? "").localeCompare(String(right ?? ""));
-  }
-  function compareNumberAsc(left, right) {
-    return (left ?? 0) - (right ?? 0);
-  }
-  function compareNumberDesc(left, right) {
-    return compareNumberAsc(right, left);
-  }
-  function compareChain(...comparisons) {
-    return comparisons.find((comparison) => comparison !== 0) ?? 0;
   }
 
   // src/app/selectors/diagnostics.ts
