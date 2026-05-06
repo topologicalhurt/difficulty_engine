@@ -6,18 +6,12 @@ import type {
   PlannerEngine,
   PlannerProjectV1,
 } from '../core/types';
+import { buildWorkerComputeMessage } from './worker-compute-protocol';
 
 declare global {
   interface Window {
     __DIFFICULTY_ENGINE_WORKER_SCRIPT__?: string;
   }
-}
-
-interface WorkerComputeMessage {
-  type: 'compute';
-  requestId: number;
-  project: PlannerProjectV1;
-  nowIso: string;
 }
 
 interface WorkerResultMessage {
@@ -74,12 +68,11 @@ export function createWorkerComputeAdapter(options: {
     compute(project: PlannerProjectV1): Promise<EngineSnapshot> {
       cancelCurrent();
       const requestId = activeRequestId;
-      const message: WorkerComputeMessage = {
-        type: 'compute',
+      const message = buildWorkerComputeMessage(
         requestId,
         project,
-        nowIso: options.clock.now().toISOString(),
-      };
+        options.clock,
+      );
 
       return new Promise<EngineSnapshot>((resolve, reject) => {
         activeReject = reject;

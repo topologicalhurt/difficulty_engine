@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createPlannerStore } from '../../src/app/store';
+import {
+  buildWorkerComputeMessage,
+  clockFromWorkerMessage,
+} from '../../src/app/worker-compute-protocol';
 import { createPlannerEngine } from '../../src/core/engine';
 import { plannerClock } from '../../src/core/time';
 import type {
+  Clock,
   EngineSnapshot,
   PlannerComputeAdapter,
   PlannerProjectV1,
@@ -19,6 +24,24 @@ function flushMicrotasks(): Promise<void> {
 }
 
 describe('worker compute integration', () => {
+  it('serializes the normalized timeline start instead of deriving it from UTC now', () => {
+    const project = makeProject({ constraints: { sd: '' } });
+    const clock: Clock = {
+      ...plannerClock,
+      now: () => new Date('2026-05-06T16:30:00.000Z'),
+      timelineStart: () => new Date('2026-05-07T12:00:00.000Z'),
+    };
+
+    const message = buildWorkerComputeMessage(3, project, clock);
+    const workerSideClock = clockFromWorkerMessage(message);
+
+    expect(message.nowIso).toBe('2026-05-06T16:30:00.000Z');
+    expect(message.timelineStartIso).toBe('2026-05-07T12:00:00.000Z');
+    expect(workerSideClock.timelineStart(project).toISOString()).toBe(
+      '2026-05-07T12:00:00.000Z',
+    );
+  });
+
   it('commits and emits project changes before worker snapshots resolve', () => {
     const engine = createPlannerEngine({
       clock: plannerClock,
