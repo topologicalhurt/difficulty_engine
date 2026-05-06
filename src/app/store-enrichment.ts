@@ -21,6 +21,9 @@ interface CreateEnrichmentCommandsOptions {
   ): void;
 }
 
+type EnrichmentCacheEntry = PlannerProjectV1['enrichmentCache'][string];
+type StoreState = ReturnType<StoreCommandContext['getState']>;
+
 export function createEnrichmentCommands(
   options: CreateEnrichmentCommandsOptions,
 ): Pick<
@@ -28,6 +31,35 @@ export function createEnrichmentCommands(
   'refreshBookEnrichment' | 'refreshAllEnrichment'
 > {
   const { context, services, emitEvent } = options;
+
+  function fallbackStatusForPrevious(
+    previousCacheEntry: EnrichmentCacheEntry | undefined,
+  ): 'stale' | 'idle' {
+    return previousCacheEntry?.status === 'success' || previousCacheEntry?.data
+      ? 'stale'
+      : 'idle';
+  }
+
+  function commitIgnoredStaleRefresh(
+    bookId: string,
+    latestState: StoreState,
+    previousCacheEntry: EnrichmentCacheEntry | undefined,
+    latestCacheKey: string,
+    error: string,
+  ): void {
+    const fallbackStatus = fallbackStatusForPrevious(previousCacheEntry);
+    const staleProject = updateEnrichmentCache(latestState.project, bookId, {
+      ...(previousCacheEntry ?? {}),
+      status: fallbackStatus,
+      cacheKey: latestCacheKey,
+      error,
+    });
+    context.commitProject('enrichment.refreshBook', staleProject);
+    emitEvent('enrichment-status-changed', {
+      bookId,
+      status: fallbackStatus,
+    });
+  }
 
   async function refreshBookEnrichment(bookId: string): Promise<void> {
     const state = context.getState();
@@ -71,26 +103,13 @@ export function createEnrichmentCommands(
         qbittorrentConnection: latestState.ui.qbittorrentConnection,
       });
       if (latestCacheKey !== requestCacheKey) {
-        const fallbackStatus =
-          previousCacheEntry?.status === 'success' || previousCacheEntry?.data
-            ? 'stale'
-            : 'idle';
-        const staleProject = updateEnrichmentCache(
-          latestState.project,
+        commitIgnoredStaleRefresh(
           bookId,
-          {
-            ...(previousCacheEntry ?? {}),
-            status: fallbackStatus,
-            cacheKey: latestCacheKey,
-            error:
-              'Ignored stale enrichment result because the book or source settings changed during refresh.',
-          },
+          latestState,
+          previousCacheEntry,
+          latestCacheKey,
+          'Ignored stale enrichment result because the book or source settings changed during refresh.',
         );
-        context.commitProject('enrichment.refreshBook', staleProject);
-        emitEvent('enrichment-status-changed', {
-          bookId,
-          status: fallbackStatus,
-        });
         return;
       }
       const mergedBook = mergeEnrichmentIntoBook(currentBook, {
@@ -154,26 +173,13 @@ export function createEnrichmentCommands(
         qbittorrentConnection: latestState.ui.qbittorrentConnection,
       });
       if (latestCacheKey !== requestCacheKey) {
-        const fallbackStatus =
-          previousCacheEntry?.status === 'success' || previousCacheEntry?.data
-            ? 'stale'
-            : 'idle';
-        const staleProject = updateEnrichmentCache(
-          latestState.project,
+        commitIgnoredStaleRefresh(
           bookId,
-          {
-            ...(previousCacheEntry ?? {}),
-            status: fallbackStatus,
-            cacheKey: latestCacheKey,
-            error:
-              'Ignored stale enrichment failure because the book or source settings changed during refresh.',
-          },
+          latestState,
+          previousCacheEntry,
+          latestCacheKey,
+          'Ignored stale enrichment failure because the book or source settings changed during refresh.',
         );
-        context.commitProject('enrichment.refreshBook', staleProject);
-        emitEvent('enrichment-status-changed', {
-          bookId,
-          status: fallbackStatus,
-        });
         return;
       }
       const currentEntry = latestState.project.enrichmentCache[bookId];

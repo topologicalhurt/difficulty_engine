@@ -4300,6 +4300,23 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   var ENRICHMENT_REFRESH_CONCURRENCY = 4;
   function createEnrichmentCommands(options) {
     const { context, services, emitEvent } = options;
+    function fallbackStatusForPrevious(previousCacheEntry) {
+      return previousCacheEntry?.status === "success" || previousCacheEntry?.data ? "stale" : "idle";
+    }
+    function commitIgnoredStaleRefresh(bookId, latestState, previousCacheEntry, latestCacheKey, error) {
+      const fallbackStatus = fallbackStatusForPrevious(previousCacheEntry);
+      const staleProject = updateEnrichmentCache(latestState.project, bookId, {
+        ...previousCacheEntry ?? {},
+        status: fallbackStatus,
+        cacheKey: latestCacheKey,
+        error
+      });
+      context.commitProject("enrichment.refreshBook", staleProject);
+      emitEvent("enrichment-status-changed", {
+        bookId,
+        status: fallbackStatus
+      });
+    }
     async function refreshBookEnrichment(bookId) {
       const state = context.getState();
       const book = state.project.library.books[bookId];
@@ -4340,22 +4357,13 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
           qbittorrentConnection: latestState.ui.qbittorrentConnection
         });
         if (latestCacheKey !== requestCacheKey) {
-          const fallbackStatus = previousCacheEntry?.status === "success" || previousCacheEntry?.data ? "stale" : "idle";
-          const staleProject = updateEnrichmentCache(
-            latestState.project,
+          commitIgnoredStaleRefresh(
             bookId,
-            {
-              ...previousCacheEntry ?? {},
-              status: fallbackStatus,
-              cacheKey: latestCacheKey,
-              error: "Ignored stale enrichment result because the book or source settings changed during refresh."
-            }
+            latestState,
+            previousCacheEntry,
+            latestCacheKey,
+            "Ignored stale enrichment result because the book or source settings changed during refresh."
           );
-          context.commitProject("enrichment.refreshBook", staleProject);
-          emitEvent("enrichment-status-changed", {
-            bookId,
-            status: fallbackStatus
-          });
           return;
         }
         const mergedBook = mergeEnrichmentIntoBook(currentBook, {
@@ -4410,22 +4418,13 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
           qbittorrentConnection: latestState.ui.qbittorrentConnection
         });
         if (latestCacheKey !== requestCacheKey) {
-          const fallbackStatus = previousCacheEntry?.status === "success" || previousCacheEntry?.data ? "stale" : "idle";
-          const staleProject = updateEnrichmentCache(
-            latestState.project,
+          commitIgnoredStaleRefresh(
             bookId,
-            {
-              ...previousCacheEntry ?? {},
-              status: fallbackStatus,
-              cacheKey: latestCacheKey,
-              error: "Ignored stale enrichment failure because the book or source settings changed during refresh."
-            }
+            latestState,
+            previousCacheEntry,
+            latestCacheKey,
+            "Ignored stale enrichment failure because the book or source settings changed during refresh."
           );
-          context.commitProject("enrichment.refreshBook", staleProject);
-          emitEvent("enrichment-status-changed", {
-            bookId,
-            status: fallbackStatus
-          });
           return;
         }
         const currentEntry = latestState.project.enrichmentCache[bookId];
