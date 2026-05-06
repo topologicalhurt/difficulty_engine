@@ -18621,11 +18621,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     };
   }
 
-  // src/infra/toc-merge.ts
-  function preferredTocSource(current, candidates) {
-    const winner = bestChapterCandidate(candidates);
-    return winner?.tocSource ?? current;
-  }
+  // src/infra/toc-candidate-ranking.ts
   function chapterSourcePriority(candidate) {
     const source = candidate.tocSource;
     if (source === "manual") return 100;
@@ -18659,6 +18655,10 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       return left.provider.localeCompare(right.provider) || left.sourceUrl.localeCompare(right.sourceUrl);
     })[0];
   }
+  function preferredTocSource(current, candidates) {
+    const winner = bestChapterCandidate(candidates);
+    return winner?.tocSource ?? current;
+  }
   function existingChapterCandidate(book) {
     const chapters = sanitizeChapterTitles(book.enrichment.chapters, {
       source: book.enrichment.tocSource === "manual" ? "manual" : "imported"
@@ -18675,6 +18675,8 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       evidenceAnchors: book.enrichment.provenance?.chapters?.evidenceAnchors
     };
   }
+
+  // src/infra/toc-merge.ts
   function buildProvenance(candidates) {
     return uniqueCompactStrings(
       candidates.map(
