@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { learnedRelationCandidates } from '../../src/core/relation-candidates';
 import { relationPairKey } from '../../src/core/relation-graph-utils';
+import { relationPairIndexes } from '../../src/core/relation-pair-index';
 import type {
   CorpusBook,
   CorpusSnapshot,
@@ -116,6 +117,20 @@ function fixture(): { corpus: CorpusSnapshot; topicIndex: TopicIndex } {
 }
 
 describe('learnedRelationCandidates', () => {
+  it('indexes large-library fuzzy topic neighbors deterministically', () => {
+    const { corpus, topicIndex } = fixture();
+
+    const pairs = relationPairIndexes(corpus.books, topicIndex, new Set());
+    const pairIds = pairs.map(
+      ([left, right]) => `${corpus.books[left].id}|${corpus.books[right].id}`,
+    );
+
+    expect(pairIds).toContain('linear-basic|linear-methods');
+    expect(relationPairIndexes(corpus.books, topicIndex, new Set())).toEqual(
+      pairs,
+    );
+  });
+
   it('keeps fuzzy topic-neighbor pairs in the indexed large-library path', () => {
     const { corpus, topicIndex } = fixture();
 
