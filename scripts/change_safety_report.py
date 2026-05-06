@@ -31,9 +31,9 @@ CANONICAL_PATTERNS = [
         "Use shared comparator helpers for deterministic multi-field sort chains.",
     ),
     (
-        "String compaction and deduplication",
+        "String compaction, joining, and deduplication",
         "src/core/utils.ts",
-        "Use compactString, compactStrings, and uniqueCompactStrings instead of local trim/filter/Set helpers.",
+        "Use compactString, compactStrings, compactJoin, and uniqueCompactStrings instead of local trim/filter/join/Set helpers.",
     ),
     (
         "External-source matching",

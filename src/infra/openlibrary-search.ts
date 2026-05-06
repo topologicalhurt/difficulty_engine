@@ -5,7 +5,7 @@ import {
   normalizeMatcherText,
 } from '../core/matchers';
 import { normalizeOpenLibraryKey } from '../core/openlibrary-keys';
-import { uniqueCompactStrings } from '../core/utils';
+import { compactJoin, uniqueCompactStrings } from '../core/utils';
 import type {
   EditionResponse,
   OpenLibraryJsonFetcher,
@@ -124,16 +124,18 @@ export function searchSuggestionFromDoc(
     [...(doc.subject ?? []), ...(doc.subject_facet ?? [])],
     10,
   );
-  const subtitleParts = [
-    authors.slice(0, 2).join(', '),
-    doc.first_publish_year ? String(doc.first_publish_year) : '',
-    publisher,
-  ].filter(Boolean);
   return {
     key: doc.key || isbn || title.toLowerCase(),
     title,
     authors,
-    subtitle: subtitleParts.join(' · '),
+    subtitle: compactJoin(
+      [
+        authors.slice(0, 2).join(', '),
+        doc.first_publish_year ? String(doc.first_publish_year) : '',
+        publisher,
+      ],
+      ' · ',
+    ),
     isbn,
     year: doc.first_publish_year ?? null,
     publisher,
@@ -217,13 +219,14 @@ export async function isbnSuggestion(
       key: edition.key || isbn,
       title: normalizeProviderText(edition.title) || isbn,
       authors,
-      subtitle: [
-        authors.slice(0, 2).join(', '),
-        year ? String(year) : '',
-        (edition.publishers ?? [])[0] ?? '',
-      ]
-        .filter(Boolean)
-        .join(' · '),
+      subtitle: compactJoin(
+        [
+          authors.slice(0, 2).join(', '),
+          year ? String(year) : '',
+          (edition.publishers ?? [])[0] ?? '',
+        ],
+        ' · ',
+      ),
       isbn,
       year,
       publisher: (edition.publishers ?? [])[0] ?? '',

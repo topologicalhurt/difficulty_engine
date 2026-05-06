@@ -2647,6 +2647,9 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   function compactStrings(values) {
     return values.map(compactString).filter(Boolean);
   }
+  function compactJoin(values, separator) {
+    return compactStrings(values).join(separator);
+  }
   function uniqueCompactStrings(values, limit) {
     const result = Array.from(new Set(compactStrings(values)));
     return limit == null ? result : result.slice(0, limit);
@@ -12153,11 +12156,14 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
           el("strong", { text: book.title }),
           el("span", {
             className: "muted-copy",
-            text: [
-              book.authors.join(", ") || "Unknown author",
-              book.pages ? `${book.pages} pages` : "pages unknown",
-              `difficulty seed ${book.manualSeedDifficulty.toFixed(1)}`
-            ].join(" \xB7 ")
+            text: compactJoin(
+              [
+                book.authors.join(", ") || "Unknown author",
+                book.pages ? `${book.pages} pages` : "pages unknown",
+                `difficulty seed ${book.manualSeedDifficulty.toFixed(1)}`
+              ],
+              " \xB7 "
+            )
           })
         ),
         badge(book.displayGroup)
@@ -13365,7 +13371,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     return groupColor(group);
   }
   function parseCsv(value) {
-    return value.split(",").map((part) => part.trim()).filter(Boolean);
+    return compactStrings(value.split(","));
   }
   function joinCsv(values) {
     return values.join(", ");
@@ -16146,16 +16152,19 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     ].filter(Boolean);
   }
   function calendarDetailText(entry) {
-    return [
-      `${entry.short}: ${formatWholeNumber(entry.mins)} planned minute(s), ${round1(entry.readPages)} page(s)`,
-      entry.skimPages ? `${round1(entry.skimPages)} skim page(s)` : null,
-      entry.boosted ? "Boost day: unused time was reassigned here" : null,
-      entry.floorRelaxed ? `Floor relaxed ${round1(entry.effectiveMinPg)}/${round1(entry.strictMinPg)} pg` : null,
-      entry.backfilled ? "Backfilled into an otherwise empty slot" : null,
-      entry.prereqOverlap ? "Started using prerequisite-overlap policy" : null,
-      entry.actualOverride ? `Actual override: ${formatWholeNumber(entry.actualMinutes ?? entry.mins)} minute(s), ${round1(entry.actualPages ?? entry.readPages + entry.skimPages)} page(s)` : null,
-      entry.done ? "Marked done" : null
-    ].filter(Boolean).join(" \xB7 ");
+    return compactJoin(
+      [
+        `${entry.short}: ${formatWholeNumber(entry.mins)} planned minute(s), ${round1(entry.readPages)} page(s)`,
+        entry.skimPages ? `${round1(entry.skimPages)} skim page(s)` : null,
+        entry.boosted ? "Boost day: unused time was reassigned here" : null,
+        entry.floorRelaxed ? `Floor relaxed ${round1(entry.effectiveMinPg)}/${round1(entry.strictMinPg)} pg` : null,
+        entry.backfilled ? "Backfilled into an otherwise empty slot" : null,
+        entry.prereqOverlap ? "Started using prerequisite-overlap policy" : null,
+        entry.actualOverride ? `Actual override: ${formatWholeNumber(entry.actualMinutes ?? entry.mins)} minute(s), ${round1(entry.actualPages ?? entry.readPages + entry.skimPages)} page(s)` : null,
+        entry.done ? "Marked done" : null
+      ],
+      " \xB7 "
+    );
   }
 
   // src/ui/calendar-log-panel.ts
@@ -18491,7 +18500,10 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
     }
     const title = book.title.trim();
     const author = book.authors[0]?.trim() ?? "";
-    return [title ? `intitle:${title}` : "", author ? `inauthor:${author}` : ""].filter(Boolean).join("+");
+    return compactJoin(
+      [title ? `intitle:${title}` : "", author ? `inauthor:${author}` : ""],
+      "+"
+    );
   }
   function extractGoogleIsbn(volume) {
     const identifiers = volume.volumeInfo?.industryIdentifiers ?? [];
@@ -18849,16 +18861,18 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
       [...doc.subject ?? [], ...doc.subject_facet ?? []],
       10
     );
-    const subtitleParts = [
-      authors.slice(0, 2).join(", "),
-      doc.first_publish_year ? String(doc.first_publish_year) : "",
-      publisher
-    ].filter(Boolean);
     return {
       key: doc.key || isbn || title.toLowerCase(),
       title,
       authors,
-      subtitle: subtitleParts.join(" \xB7 "),
+      subtitle: compactJoin(
+        [
+          authors.slice(0, 2).join(", "),
+          doc.first_publish_year ? String(doc.first_publish_year) : "",
+          publisher
+        ],
+        " \xB7 "
+      ),
       isbn,
       year: doc.first_publish_year ?? null,
       publisher,
@@ -18929,11 +18943,14 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
         key: edition.key || isbn,
         title: normalizeProviderText(edition.title) || isbn,
         authors,
-        subtitle: [
-          authors.slice(0, 2).join(", "),
-          year ? String(year) : "",
-          (edition.publishers ?? [])[0] ?? ""
-        ].filter(Boolean).join(" \xB7 "),
+        subtitle: compactJoin(
+          [
+            authors.slice(0, 2).join(", "),
+            year ? String(year) : "",
+            (edition.publishers ?? [])[0] ?? ""
+          ],
+          " \xB7 "
+        ),
         isbn,
         year,
         publisher: (edition.publishers ?? [])[0] ?? "",
@@ -19569,7 +19586,7 @@ globalThis.__DIFFICULTY_ENGINE_ENV__ = {};
   function accessBasisFromResultMetadata(result) {
     const explicit = normalizedExplicitAccessBasis(result.accessBasis);
     if (explicit) return explicit;
-    const metadata = [result.license, result.rights].filter(Boolean).join(" ");
+    const metadata = compactJoin([result.license, result.rights], " ");
     if (USER_OWNED_PATTERN.test(metadata)) return "user_owned";
     if (USER_PROVIDED_PATTERN.test(metadata)) return "user_provided";
     if (OPEN_ACCESS_PATTERN.test(metadata)) return "open_access";

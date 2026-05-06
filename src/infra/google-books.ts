@@ -1,4 +1,5 @@
 import type { BookRecord } from '../core/types';
+import { compactJoin } from '../core/utils';
 import { extractExplicitTocChapters } from './document-text-extractor';
 import {
   extractPublishedYear,
@@ -48,9 +49,10 @@ function googleQuery(book: BookRecord): string {
   }
   const title = book.title.trim();
   const author = book.authors[0]?.trim() ?? '';
-  return [title ? `intitle:${title}` : '', author ? `inauthor:${author}` : '']
-    .filter(Boolean)
-    .join('+');
+  return compactJoin(
+    [title ? `intitle:${title}` : '', author ? `inauthor:${author}` : ''],
+    '+',
+  );
 }
 
 function extractGoogleIsbn(volume: GoogleVolume): string | null {

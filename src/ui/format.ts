@@ -5,6 +5,7 @@ import {
   formatWholeNumber,
 } from '../core/number-format';
 import { groupColor } from '../core/display-colors';
+import { compactStrings } from '../core/utils';
 
 export { formatCssPercent, formatOneDecimal };
 
@@ -27,10 +28,7 @@ export function formatDate(value?: Date): string {
 }
 
 export function parseCsv(value: string): string[] {
-  return value
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
+  return compactStrings(value.split(','));
 }
 
 export function joinCsv(values: string[]): string {

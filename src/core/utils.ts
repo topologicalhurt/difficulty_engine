@@ -18,6 +18,10 @@ export function compactStrings(values: unknown[]): string[] {
   return values.map(compactString).filter(Boolean);
 }
 
+export function compactJoin(values: unknown[], separator: string): string {
+  return compactStrings(values).join(separator);
+}
+
 export function uniqueCompactStrings(
   values: unknown[],
   limit?: number,

@@ -70,7 +70,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Number formatting: `src/core/number-format.ts`
 - Display colors: `src/core/display-colors.ts`
 - Stable sorting: `src/core/sort.ts`
-- String compaction/deduplication: `src/core/utils.ts`
+- String compaction/joining/deduplication: `src/core/utils.ts`
 - External-source matching: `src/core/matchers.ts`
 - Provider metadata cleanup: `src/infra/source-metadata.ts`
 - Progress display/math: `src/app/selectors/progress.ts` and `src/ui/progress.ts`

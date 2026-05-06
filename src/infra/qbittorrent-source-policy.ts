@@ -1,4 +1,5 @@
 import type { QbittorrentPluginInfo } from '../core/types';
+import { compactJoin } from '../core/utils';
 import type {
   DocumentAcquisitionRequest,
   DocumentCandidate,
@@ -58,7 +59,7 @@ function accessBasisFromResultMetadata(
 ): DocumentCandidate['accessBasis'] {
   const explicit = normalizedExplicitAccessBasis(result.accessBasis);
   if (explicit) return explicit;
-  const metadata = [result.license, result.rights].filter(Boolean).join(' ');
+  const metadata = compactJoin([result.license, result.rights], ' ');
   if (USER_OWNED_PATTERN.test(metadata)) return 'user_owned';
   if (USER_PROVIDED_PATTERN.test(metadata)) return 'user_provided';
   if (OPEN_ACCESS_PATTERN.test(metadata)) return 'open_access';

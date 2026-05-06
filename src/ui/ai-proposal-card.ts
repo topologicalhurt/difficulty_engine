@@ -1,5 +1,6 @@
 import { selectAiRecommendationViewModel } from '../app/selectors/ai-recommendations';
 import type { AiRecommendedBook, AppState, PlannerStore } from '../core/types';
+import { compactJoin } from '../core/utils';
 import { badge, button, card, el } from './dom';
 
 function relationBadges(book: AiRecommendedBook): HTMLElement {
@@ -30,11 +31,14 @@ function proposalBookCard(book: AiRecommendedBook): HTMLElement {
         el('strong', { text: book.title }),
         el('span', {
           className: 'muted-copy',
-          text: [
-            book.authors.join(', ') || 'Unknown author',
-            book.pages ? `${book.pages} pages` : 'pages unknown',
-            `difficulty seed ${book.manualSeedDifficulty.toFixed(1)}`,
-          ].join(' · '),
+          text: compactJoin(
+            [
+              book.authors.join(', ') || 'Unknown author',
+              book.pages ? `${book.pages} pages` : 'pages unknown',
+              `difficulty seed ${book.manualSeedDifficulty.toFixed(1)}`,
+            ],
+            ' · ',
+          ),
         }),
       ),
       badge(book.displayGroup),

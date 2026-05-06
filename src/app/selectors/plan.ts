@@ -13,7 +13,7 @@ import type {
   ScheduleRow,
   WarningItem,
 } from '../../core/types';
-import { round1 } from '../../core/utils';
+import { compactJoin, round1 } from '../../core/utils';
 import { buildCalendarWeeks, type CalendarWeek } from './calendar-weeks';
 import { formatPlanFullDate, formatPlanShortDate } from './date-labels';
 import { selectPlanColors, type PlanColorMetadata } from './plan-colors';
@@ -219,20 +219,21 @@ export function calendarBadges(
 }
 
 export function calendarDetailText(entry: CalendarEntry): string {
-  return [
-    `${entry.short}: ${formatWholeNumber(entry.mins)} planned minute(s), ${round1(entry.readPages)} page(s)`,
-    entry.skimPages ? `${round1(entry.skimPages)} skim page(s)` : null,
-    entry.boosted ? 'Boost day: unused time was reassigned here' : null,
-    entry.floorRelaxed
-      ? `Floor relaxed ${round1(entry.effectiveMinPg)}/${round1(entry.strictMinPg)} pg`
-      : null,
-    entry.backfilled ? 'Backfilled into an otherwise empty slot' : null,
-    entry.prereqOverlap ? 'Started using prerequisite-overlap policy' : null,
-    entry.actualOverride
-      ? `Actual override: ${formatWholeNumber(entry.actualMinutes ?? entry.mins)} minute(s), ${round1(entry.actualPages ?? entry.readPages + entry.skimPages)} page(s)`
-      : null,
-    entry.done ? 'Marked done' : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  return compactJoin(
+    [
+      `${entry.short}: ${formatWholeNumber(entry.mins)} planned minute(s), ${round1(entry.readPages)} page(s)`,
+      entry.skimPages ? `${round1(entry.skimPages)} skim page(s)` : null,
+      entry.boosted ? 'Boost day: unused time was reassigned here' : null,
+      entry.floorRelaxed
+        ? `Floor relaxed ${round1(entry.effectiveMinPg)}/${round1(entry.strictMinPg)} pg`
+        : null,
+      entry.backfilled ? 'Backfilled into an otherwise empty slot' : null,
+      entry.prereqOverlap ? 'Started using prerequisite-overlap policy' : null,
+      entry.actualOverride
+        ? `Actual override: ${formatWholeNumber(entry.actualMinutes ?? entry.mins)} minute(s), ${round1(entry.actualPages ?? entry.readPages + entry.skimPages)} page(s)`
+        : null,
+      entry.done ? 'Marked done' : null,
+    ],
+    ' · ',
+  );
 }

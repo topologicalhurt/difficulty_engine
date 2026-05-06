@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  compactJoin,
   compactString,
   compactStrings,
   uniqueCompactStrings,
@@ -13,6 +14,9 @@ describe('shared utility helpers', () => {
       'DSP',
       'circuits',
     ]);
+    expect(compactJoin(['  DSP ', null, ' circuits '], ' · ')).toBe(
+      'DSP · circuits',
+    );
     expect(
       uniqueCompactStrings(['  DSP ', 'DSP', 'circuits', undefined], 1),
     ).toEqual(['DSP']);
