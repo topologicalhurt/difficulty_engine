@@ -17,6 +17,7 @@ import {
   hostFromUrl,
   sourceIsAllowed,
 } from './qbittorrent-source-policy';
+import { contentKindPriorityForPreference } from './document-content-priority';
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import type { SearchResult } from './qbittorrent-types';
 
@@ -140,11 +141,9 @@ export function sortSearchCandidates(
   candidates: DocumentCandidate[],
   request: DocumentAcquisitionRequest,
 ): DocumentCandidate[] {
-  const contentOrder = [...request.policy.contentPreference, 'unknown'];
-  const contentPriority = (kind: DocumentCandidate['contentKind']): number => {
-    const index = contentOrder.indexOf(kind);
-    return index >= 0 ? index : contentOrder.length;
-  };
+  const contentPriority = contentKindPriorityForPreference(
+    request.policy.contentPreference,
+  );
   return [...candidates].sort((left, right) =>
     compareDocumentCandidateQuality(left, right, contentPriority),
   );
