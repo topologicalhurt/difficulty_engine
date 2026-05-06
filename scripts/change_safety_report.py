@@ -6,6 +6,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CANONICAL_PATTERNS = [
     (
+        "UI shell",
+        "src/ui/svelte/AppShell.svelte",
+        "The mounted app shell is Svelte; tab bodies consume selectors and commands through the active tab host.",
+    ),
+    (
         "UI controls",
         "src/ui/dom.ts",
         "Use button, selectInput, inputField, badge, card, and emptyState instead of local control factories.",

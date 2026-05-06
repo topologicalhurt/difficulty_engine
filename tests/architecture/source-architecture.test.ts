@@ -12,7 +12,7 @@ function sourceFiles(dir = SRC): string[] {
       const path = join(dir, entry);
       const stat = statSync(path);
       if (stat.isDirectory()) return sourceFiles(path);
-      return path.endsWith('.ts') ? [path] : [];
+      return path.endsWith('.ts') || path.endsWith('.svelte') ? [path] : [];
     })
     .sort();
 }
@@ -108,9 +108,30 @@ describe('source architecture guardrails', () => {
     expect(violations).toEqual([]);
   });
 
+  it('keeps dropped migration terminology out of shipped source paths and text', () => {
+    const forbiddenPattern =
+      /\b(deprecated|dropped|legacy|obsolete|transitional)\b|\bbackwards?\s+compatibility\b|\bprototype[-\s]+(?:era|state|implementation|wip)\b/i;
+    const violations = sourceFiles()
+      .map((path) => ({
+        path: relativeSourcePath(path),
+        text: readFileSync(path, 'utf8'),
+      }))
+      .filter(
+        (source) =>
+          forbiddenPattern.test(source.path) ||
+          forbiddenPattern.test(source.text),
+      )
+      .map((source) => source.path);
+
+    expect(violations).toEqual([]);
+  });
+
   it('keeps core, infra, and app layer imports one-directional', () => {
     const importPattern =
       /^\s*import(?:\s+type)?[^'"]*from\s+['"](?<specifier>\.{1,2}\/[^'"]+)['"]/gm;
+    const appUiImportAllowlist = new Set([
+      'src/app/mount.ts -> src/ui/svelte/AppShell.svelte',
+    ]);
     const violations: string[] = [];
     for (const path of sourceFiles()) {
       const relativePath = relativeSourcePath(path);
@@ -120,7 +141,11 @@ describe('source architecture guardrails', () => {
         if (!specifier) continue;
         const target = join(dirname(path), specifier).replace(/\\/g, '/');
         const resolved = sourceFiles().find(
-          (file) => file === `${target}.ts` || file === `${target}/index.ts`,
+          (file) =>
+            file === target ||
+            file === `${target}.ts` ||
+            file === `${target}.svelte` ||
+            file === `${target}/index.ts`,
         );
         if (!resolved) continue;
         const relativeTarget = relativeSourcePath(resolved);
@@ -139,10 +164,7 @@ describe('source architecture guardrails', () => {
         if (
           relativePath.startsWith('src/app/') &&
           relativeTarget.startsWith('src/ui/') &&
-          !(
-            relativePath === 'src/app/mount.ts' &&
-            relativeTarget === 'src/ui/app-shell.ts'
-          )
+          !appUiImportAllowlist.has(`${relativePath} -> ${relativeTarget}`)
         ) {
           violations.push(`${relativePath} -> ${relativeTarget}`);
         }

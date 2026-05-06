@@ -31,7 +31,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 ### Add Or Change UI Display
 
-- Owner: selectors first, then `src/ui/` renderers.
+- Owner: selectors first, then Svelte shell/components under `src/ui/svelte/` or focused tab renderers under `src/ui/`.
 - Data flow: UI receives view models and callbacks; UI must not read raw project/snapshot state.
 - Shared primitives: use `button`, `selectInput`, `inputField`, `badge`, `renderProgressBar`, and formatter helpers from `src/ui/format.ts`, including `formatCssPercent` for style percentages.
 - Tests: update selector tests for data shape and browser smoke only when interaction or mount behavior changes.
@@ -65,6 +65,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 ## Canonical Patterns
 
+- UI shell: `src/ui/svelte/AppShell.svelte`
 - UI controls: `src/ui/dom.ts`
 - UI formatting: `src/ui/format.ts`
 - Number formatting: `src/core/number-format.ts`

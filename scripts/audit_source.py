@@ -76,7 +76,10 @@ APPROVED_REEXPORT_FILES = {
     "src/core/types/snapshot.ts",
 }
 APP_UI_IMPORT_ALLOWLIST = {
-    "src/app/mount.ts": {"src/ui/app-shell.ts"},
+    "src/app/mount.ts": {"src/ui/svelte/AppShell.svelte"},
+}
+DEFAULT_EXPORT_ALLOWLIST = {
+    "src/svelte.d.ts",
 }
 
 TOP_LEVEL_HELPER_RE = re.compile(
@@ -96,13 +99,23 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def ts_files() -> list[Path]:
-    return sorted(path for path in SRC.rglob("*.ts") if path.is_file())
+def project_source_files() -> list[Path]:
+    return sorted(
+        path
+        for pattern in ("*.ts", "*.svelte")
+        for path in SRC.rglob(pattern)
+        if path.is_file()
+    )
 
 
 def resolve_relative_import(source: Path, specifier: str) -> str | None:
     base = (source.parent / specifier).resolve()
-    candidates = [base.with_suffix(".ts"), base / "index.ts"]
+    candidates = [
+        base,
+        base.with_suffix(".ts"),
+        base.with_suffix(".svelte"),
+        base / "index.ts",
+    ]
     for candidate in candidates:
         if candidate.exists():
             return str(candidate.relative_to(ROOT))
@@ -112,7 +125,7 @@ def resolve_relative_import(source: Path, specifier: str) -> str | None:
 def main() -> int:
     failures: list[str] = []
     warnings: list[str] = []
-    source_files = ts_files()
+    source_files = project_source_files()
 
     ignored_artifact_roots = {
         ".git",
@@ -177,9 +190,9 @@ def main() -> int:
         relative_path = str(path.relative_to(ROOT))
         if REMOVED_FRAGMENT_IMPORT_RE.search(text):
             failures.append(f"Unexpected removed-fragment import path: {path.relative_to(ROOT)}")
-        if FORBIDDEN_INTERNAL_TERM_RE.search(text):
+        if FORBIDDEN_INTERNAL_TERM_RE.search(text) or FORBIDDEN_INTERNAL_TERM_RE.search(relative_path):
             failures.append(f"Forbidden internal/WIP wording in shipped source: {path.relative_to(ROOT)}")
-        if DEFAULT_EXPORT_RE.search(text):
+        if DEFAULT_EXPORT_RE.search(text) and relative_path not in DEFAULT_EXPORT_ALLOWLIST:
             failures.append(f"Default export in library source: {path.relative_to(ROOT)}")
         if "src/core/" in str(path.relative_to(ROOT)) and BROWSER_GLOBAL_RE.search(text):
             failures.append(f"Browser global used inside core module: {path.relative_to(ROOT)}")
@@ -362,7 +375,7 @@ def main() -> int:
     if not (ROOT / "scripts" / "change_safety_report.py").exists():
         failures.append("Missing change safety report script: scripts/change_safety_report.py")
 
-    print("TypeScript source files:", len(source_files))
+    print("Source files:", len(source_files))
     print("Built HTML:", DIST_FILE.relative_to(ROOT) if DIST_FILE.exists() else "missing")
 
     if warnings:

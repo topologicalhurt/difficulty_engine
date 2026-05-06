@@ -39,8 +39,13 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def ts_files() -> list[Path]:
-    return sorted(path for path in SRC.rglob("*.ts") if path.is_file())
+def source_files() -> list[Path]:
+    return sorted(
+        path
+        for pattern in ("*.ts", "*.svelte")
+        for path in SRC.rglob(pattern)
+        if path.is_file()
+    )
 
 
 def module_report(path: Path) -> ModuleReport:
@@ -75,13 +80,13 @@ def print_section(title: str) -> None:
 
 
 def main() -> int:
-    files = ts_files()
+    files = source_files()
     reports = [module_report(path) for path in files]
 
     print("Architecture Report")
     print("===================")
     print(f"Source files: {len(reports)}")
-    print(f"Total TypeScript lines: {sum(report.lines for report in reports)}")
+    print(f"Total source lines: {sum(report.lines for report in reports)}")
     print(f"Files over {WARN_TS_LINES} lines: {sum(report.lines > WARN_TS_LINES for report in reports)}")
     print(f"Files over {MAX_TS_LINES} lines: {sum(report.lines > MAX_TS_LINES for report in reports)}")
 
