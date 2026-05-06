@@ -1,6 +1,7 @@
 import type { BookDocumentRef, EnrichmentRequest, Logger } from '../core/types';
 import { sourceEnabledForDocumentProvider } from '../core/source-settings-policy';
 import type { AcquiredDocument } from './document-acquisition';
+import { isoTimestamp } from './cache-time';
 import { bridgeDocumentEndpoint } from './document-bridge-url';
 
 const DOCUMENT_TEXT_ENDPOINT = '/documents/read-text';
@@ -105,7 +106,7 @@ export async function loadCompletedDocumentRefs(
           document.status === 'unreadable' && document.contentKind === 'pdf'
             ? { ...document, status: 'complete' }
             : document,
-        acquiredAt: new Date().toISOString(),
+        acquiredAt: isoTimestamp(),
       });
     } catch (error) {
       logger.warn('enrichment.completed_document.read_failed', {

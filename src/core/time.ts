@@ -3,6 +3,8 @@ import { DAYS_PER_WEEK, WEEK_START_DAY } from './date-constants';
 import type { Clock, PlannerProjectV1 } from './types';
 import { weekdaysForCount } from './weekdays';
 
+export const EPOCH_ISO_TIMESTAMP = '1970-01-01T00:00:00.000Z';
+
 export function localDateKey(date: Date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

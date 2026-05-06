@@ -10,6 +10,7 @@ import {
   existingChapterCandidate,
   preferredTocSource,
 } from './toc-candidate-ranking';
+import { isoTimestamp } from './cache-time';
 
 export interface StrategyCandidate {
   provider: EnrichmentFieldProvenance['provider'];
@@ -55,7 +56,7 @@ function buildProvenance(
     return {
       provider,
       sourceUrl,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: isoTimestamp(),
       confidence: candidate?.confidence ?? 0.5,
       strategy: candidate?.strategy,
       inferred: candidate?.inferred,

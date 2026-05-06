@@ -301,6 +301,20 @@ describe('source architecture guardrails', () => {
     expect(violations).toEqual([]);
   });
 
+  it('keeps infra ISO timestamps behind cache-time helpers', () => {
+    const allowed = new Set(['src/infra/cache-time.ts']);
+    const violations = sourceFiles()
+      .map(relativeSourcePath)
+      .filter((path) => path.startsWith('src/infra/') && !allowed.has(path))
+      .filter((path) =>
+        /new Date\s*\([^)]*\)\.toISOString\s*\(/.test(
+          readFileSync(join(ROOT, path), 'utf8'),
+        ),
+      );
+
+    expect(violations).toEqual([]);
+  });
+
   it('ships a manual change guide and change safety report', () => {
     const guide = join(ROOT, 'CHANGE_GUIDE.md');
     expect(existsSync(guide)).toBe(true);

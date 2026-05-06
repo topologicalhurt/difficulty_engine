@@ -21,6 +21,7 @@ import {
   sourceContentKindFromPath,
   TEXT_MIME,
 } from './qbittorrent-file-kinds';
+import { isoTimestamp } from './cache-time';
 
 async function selectedTorrentFile(
   client: QBittorrentClient,
@@ -109,7 +110,7 @@ export async function acquireTorrentDocument(
     contentType,
     status,
   );
-  const now = new Date().toISOString();
+  const now = isoTimestamp();
   const fileName = basename(storagePath);
   const progress = selected?.progress ?? info?.progress ?? 0;
   const contentKind = sourceContentKindFromPath(

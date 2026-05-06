@@ -10,6 +10,7 @@ import {
   normalizeNumber,
   normalizeString,
 } from './project-normalize-primitives';
+import { EPOCH_ISO_TIMESTAMP } from './time';
 
 function normalizeDocumentStatus(
   value: unknown,
@@ -82,7 +83,7 @@ export function normalizeBookDocuments(input: unknown): BookDocumentRef[] {
       const provenance = normalizeProvenance(raw.provenance) ?? {
         provider: normalizeString(raw.provider, 'document') || 'document',
         sourceUrl: normalizeString(raw.sourceUrl) || undefined,
-        fetchedAt: normalizeString(raw.updatedAt) || new Date(0).toISOString(),
+        fetchedAt: normalizeString(raw.updatedAt) || EPOCH_ISO_TIMESTAMP,
         confidence: normalizeNumber(raw.matchScore, 0.5, 0, 1),
       };
       return {

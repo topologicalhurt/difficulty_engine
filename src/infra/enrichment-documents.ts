@@ -21,6 +21,7 @@ import {
   dedupeAcquiredDocuments,
   loadCompletedDocumentRefs,
 } from './completed-document-loader';
+import { isoTimestamp } from './cache-time';
 
 type JsonFetcher = <T>(url: string, signal?: AbortSignal) => Promise<T>;
 
@@ -193,7 +194,7 @@ export function createBookEnrichmentLoader(
               {
                 provider: 'manual',
                 sourceUrl: 'local://project',
-                fetchedAt: new Date().toISOString(),
+                fetchedAt: isoTimestamp(),
                 confidence: MANUAL_PROVENANCE_CONFIDENCE,
               },
             ],
