@@ -7,18 +7,17 @@ import type {
 } from '../core/types';
 import { bridgeEndpoint } from '../infra/document-bridge-url';
 import type { StoreCommandContext } from './store-command-context';
-import {
-  documentGreylistKey,
-  documentRefGreylistKey,
-  documentRefIsGreylistable,
-} from '../core/document-acquisition-state';
+import { documentGreylistKey } from '../core/document-acquisition-state';
 import {
   bookCandidateContextKey,
   deleteDocumentContent,
+  deleteQbittorrentHashes,
   postDocumentAction,
   projectWithCandidateQueue,
   projectWithDocumentAdded,
   projectWithDocumentRemoved,
+  replacedQbittorrentDocuments,
+  staleQbittorrentCandidateHashes,
 } from './store-document-state';
 
 function isSafeTorrentSource(value: string): boolean {
@@ -123,22 +122,23 @@ export function createDocumentCommands(
     }
     const beforeProject = context.getState().project;
     const beforeBook = beforeProject.library.books[bookId];
-    const newKey = documentRefGreylistKey(document);
-    const replacedDocuments =
-      document.provider === 'qbittorrent' &&
-      document.status !== 'failed' &&
-      document.status !== 'stalled'
-        ? (beforeBook?.documents ?? []).filter((existing) => {
-            const existingKey = documentRefGreylistKey(existing);
-            return (
-              existing.provider === 'qbittorrent' &&
-              existingKey !== newKey &&
-              (documentRefIsGreylistable(existing) ||
-                beforeBook?.documentAcquisition?.greylist[existingKey])
-            );
-          })
-        : [];
     const nextProject = projectWithDocumentAdded(beforeProject, bookId, document);
+    const afterBook = nextProject.library.books[bookId];
+    const replacedDocuments =
+      beforeBook && afterBook
+        ? replacedQbittorrentDocuments(beforeBook, afterBook)
+        : [];
+    const replacedDocumentHashes = new Set(
+      replacedDocuments
+        .map((document) => document.torrentHash?.toLowerCase())
+        .filter((hash): hash is string => Boolean(hash)),
+    );
+    const replacedHashes =
+      beforeBook && afterBook
+        ? staleQbittorrentCandidateHashes(afterBook).filter(
+            (hash) => !replacedDocumentHashes.has(hash),
+          )
+        : [];
     context.commitProject(
       'document.selectCandidate',
       nextProject,
@@ -172,6 +172,23 @@ export function createDocumentCommands(
           banner: {
             tone: 'warn',
             message: `Started ${document.fileName}, but old content cleanup failed: ${deleteErrors[0]}`,
+          },
+        });
+      }
+    }
+    if (replacedHashes.length) {
+      const deleteErrors = await deleteQbittorrentHashes(
+        beforeProject,
+        new Set([bookId]),
+        services.qbittorrentService,
+        state.ui.qbittorrentConnection,
+        replacedHashes,
+      );
+      if (deleteErrors.length) {
+        context.commitUi('document.selectCandidate', {
+          banner: {
+            tone: 'warn',
+            message: `Started ${document.fileName}, but old torrent cleanup failed: ${deleteErrors[0]}`,
           },
         });
       }

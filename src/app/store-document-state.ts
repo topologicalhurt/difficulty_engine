@@ -1,7 +1,9 @@
 import {
   clearDocumentAcquisitionState,
+  documentGreylistHash,
   documentRefGreylistKey,
-  documentRefIsGreylistable,
+  documentRefIsTrackedQbittorrentReplacement,
+  documentRefShouldBeReplaced,
   mergeDocumentCandidateQueue,
   observeDocumentGreylist,
 } from '../core/document-acquisition-state';
@@ -57,9 +59,7 @@ export function projectWithDocumentAdded(
   const book = project.library.books[bookId];
   if (!book) return project;
   const replacementStarted =
-    document.provider === 'qbittorrent' &&
-    document.status !== 'failed' &&
-    document.status !== 'stalled';
+    documentRefIsTrackedQbittorrentReplacement(document);
   const newKey = documentRefGreylistKey(document);
   const documentsBeforeMerge = replacementStarted
     ? (book.documents ?? []).filter((existing) => {
@@ -67,8 +67,7 @@ export function projectWithDocumentAdded(
         return !(
           existing.provider === 'qbittorrent' &&
           existingKey !== newKey &&
-          (documentRefIsGreylistable(existing) ||
-            book.documentAcquisition?.greylist[existingKey])
+          documentRefShouldBeReplaced(existing, book.documentAcquisition)
         );
       })
     : (book.documents ?? []);
@@ -95,6 +94,55 @@ export function projectWithDocumentAdded(
       },
     },
   };
+}
+
+export function replacedQbittorrentDocuments(
+  beforeBook: PlannerProjectV1['library']['books'][string],
+  afterBook: PlannerProjectV1['library']['books'][string],
+): BookDocumentRef[] {
+  const afterReplacement = (afterBook.documents ?? []).some(
+    documentRefIsTrackedQbittorrentReplacement,
+  );
+  if (!afterReplacement) return [];
+  const afterKeys = new Set(
+    (afterBook.documents ?? [])
+      .filter((document) => document.provider === 'qbittorrent')
+      .map(documentRefGreylistKey),
+  );
+  return (beforeBook.documents ?? []).filter(
+    (document) =>
+      document.provider === 'qbittorrent' &&
+      !afterKeys.has(documentRefGreylistKey(document)) &&
+      documentRefShouldBeReplaced(document, beforeBook.documentAcquisition),
+  );
+}
+
+export function staleQbittorrentCandidateHashes(
+  afterBook: PlannerProjectV1['library']['books'][string],
+): string[] {
+  const activeReplacement = (afterBook.documents ?? []).some(
+    documentRefIsTrackedQbittorrentReplacement,
+  );
+  if (!activeReplacement) return [];
+  const keptHashes = new Set(
+    (afterBook.documents ?? [])
+      .map((document) => document.torrentHash?.toLowerCase())
+      .filter((hash): hash is string => Boolean(hash)),
+  );
+  const hashes = new Set<string>();
+  for (const candidate of afterBook.documentAcquisition?.candidateQueue ?? []) {
+    const key = candidate.greylistKey ?? '';
+    const entry = afterBook.documentAcquisition?.greylist[key];
+    const hash = documentGreylistHash(candidate);
+    if (
+      hash &&
+      !keptHashes.has(hash) &&
+      ((candidate.greylistPenalty ?? 0) > 0 || (entry?.penalty ?? 0) > 0)
+    ) {
+      hashes.add(hash);
+    }
+  }
+  return [...hashes].sort();
 }
 
 export function projectWithCandidateQueue(
@@ -158,12 +206,64 @@ function documentSharedOutsideBooks(
   const path = document.storagePath.toLowerCase();
   return Object.values(project.library.books).some((book) => {
     if (affectedBookIds.has(book.id)) return false;
-    return (book.documents ?? []).some((other) => {
+    const documentRefsShared = (book.documents ?? []).some((other) => {
       const sameHash = hash && other.torrentHash?.toLowerCase() === hash;
       const samePath = other.storagePath.toLowerCase() === path;
       return sameHash || samePath;
     });
+    const candidateRefsShared =
+      hash &&
+      (book.documentAcquisition?.candidateQueue ?? []).some(
+        (candidate) => documentGreylistHash(candidate) === hash,
+      );
+    return documentRefsShared || candidateRefsShared;
   });
+}
+
+function torrentHashSharedOutsideBooks(
+  project: PlannerProjectV1,
+  affectedBookIds: Set<string>,
+  hash: string,
+): boolean {
+  const normalizedHash = hash.toLowerCase();
+  return Object.values(project.library.books).some((book) => {
+    if (affectedBookIds.has(book.id)) return false;
+    const documentRefsHash = (book.documents ?? []).some(
+      (document) => document.torrentHash?.toLowerCase() === normalizedHash,
+    );
+    const candidateRefsHash = (
+      book.documentAcquisition?.candidateQueue ?? []
+    ).some((candidate) => documentGreylistHash(candidate) === normalizedHash);
+    return documentRefsHash || candidateRefsHash;
+  });
+}
+
+export async function deleteQbittorrentHashes(
+  project: PlannerProjectV1,
+  affectedBookIds: Set<string>,
+  qbittorrentService: QbittorrentIntegrationService | undefined,
+  qbittorrentConnection: Parameters<
+    QbittorrentIntegrationService['deleteTorrent']
+  >[0],
+  hashes: string[],
+): Promise<string[]> {
+  if (!qbittorrentService) return [];
+  const errors: string[] = [];
+  for (const hash of [...new Set(hashes.map((item) => item.toLowerCase()))]) {
+    if (torrentHashSharedOutsideBooks(project, affectedBookIds, hash)) {
+      continue;
+    }
+    try {
+      await qbittorrentService.deleteTorrent(qbittorrentConnection, hash, true);
+    } catch (error) {
+      errors.push(
+        error instanceof Error
+          ? error.message
+          : `Could not delete torrent ${hash}.`,
+      );
+    }
+  }
+  return errors;
 }
 
 export async function deleteDocumentContent(
