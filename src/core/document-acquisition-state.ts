@@ -9,6 +9,7 @@ import type {
 import { currentIsoTimestamp } from './time';
 
 export const DOCUMENT_CANDIDATE_QUEUE_LIMIT = 10;
+export const GREYLIST_REQUIRED_STALL_OBSERVATIONS = 2;
 const GREYLIST_PENALTY_STEP = 0.18;
 const GREYLIST_PENALTY_DECAY = 0.09;
 const GREYLIST_MAX_PENALTY = 0.72;
@@ -51,8 +52,31 @@ export function documentGreylistKey(
   return `path:${normalizedSourceKey(source.storagePath)}`;
 }
 
+export function documentGreylistHash(
+  source: {
+    sourceUrl?: string;
+    greylistKey?: string;
+    torrentHash?: string;
+  },
+): string | null {
+  const key = documentGreylistKey(source);
+  return key.startsWith('hash:') ? key.slice('hash:'.length) : null;
+}
+
 export function documentRefGreylistKey(docRef: BookDocumentRef): string {
   return documentGreylistKey(docRef);
+}
+
+export function documentRefIsTrackedQbittorrentReplacement(
+  docRef: BookDocumentRef,
+): boolean {
+  return Boolean(
+    docRef.provider === 'qbittorrent' &&
+      docRef.status !== 'failed' &&
+      docRef.status !== 'stalled' &&
+      docRef.torrentHash?.trim() &&
+      docRef.fileIndex != null,
+  );
 }
 
 function isUnavailable(
@@ -113,6 +137,46 @@ function greylistReason(
   return fallback || `Greylisted after repeated ${status} download evidence.`;
 }
 
+function nextGreylistEntry(
+  previous: BookDocumentGreylistEntry | undefined,
+  source: {
+    key: string;
+    status: BookDocumentStatus | 'candidate';
+    reason?: string;
+    sourceUrl?: string;
+    torrentHash?: string;
+    title?: string;
+    progress?: number;
+  },
+  now: string,
+): BookDocumentGreylistEntry {
+  const observations = (previous?.observations ?? 0) + 1;
+  const shouldPenalize = observations >= GREYLIST_REQUIRED_STALL_OBSERVATIONS;
+  const progress = Math.max(0, Math.min(1, source.progress ?? 0));
+  const lastProgress =
+    previous?.lastProgress == null
+      ? progress
+      : Math.max(previous.lastProgress, progress);
+  return {
+    key: source.key,
+    penalty: shouldPenalize
+      ? boundedPenalty((previous?.penalty ?? 0) + GREYLIST_PENALTY_STEP)
+      : (previous?.penalty ?? 0),
+    observations,
+    lastStatus: source.status,
+    lastReason: greylistReason(source.status, source.reason),
+    lastProgress,
+    lastProgressAt:
+      progress > (previous?.lastProgress ?? -1)
+        ? now
+        : (previous?.lastProgressAt ?? now),
+    sourceUrl: source.sourceUrl,
+    torrentHash: source.torrentHash,
+    title: source.title,
+    updatedAt: now,
+  };
+}
+
 function fallbackCandidateQuality(candidate: BookDocumentCandidateOption): number {
   const seeders = candidate.seeders ?? candidate.availability?.seeders ?? 0;
   const seederScore = Math.min(
@@ -145,23 +209,46 @@ export function observeDocumentGreylist(
     const key = documentRefGreylistKey(docRef);
     if (!key) return;
     if (!documentRefIsGreylistable(docRef)) return;
-    const previous = next.greylist[key];
-    next.greylist[key] = {
-      key,
-      penalty: boundedPenalty(
-        (previous?.penalty ?? 0) + GREYLIST_PENALTY_STEP,
-      ),
-      observations: (previous?.observations ?? 0) + 1,
-      lastStatus: docRef.status,
-      lastReason: greylistReason(docRef.status, docRef.availability.reason),
-      sourceUrl: docRef.sourceUrl,
-      torrentHash: docRef.torrentHash,
-      title: docRef.fileName,
-      updatedAt: now,
-    };
+    next.greylist[key] = nextGreylistEntry(
+      next.greylist[key],
+      {
+        key,
+        status: docRef.status,
+        reason: docRef.availability.reason,
+        sourceUrl: docRef.sourceUrl,
+        torrentHash: docRef.torrentHash,
+        title: docRef.fileName,
+        progress: docRef.availability.progress,
+      },
+      now,
+    );
     changed = true;
   });
   return changed ? { ...next, updatedAt: now } : next;
+}
+
+export function documentRefHasActiveGreylist(
+  state: BookDocumentAcquisitionState | undefined,
+  docRef: BookDocumentRef,
+): boolean {
+  const entry = normalizeDocumentAcquisitionState(state).greylist[
+    documentRefGreylistKey(docRef)
+  ];
+  return Boolean(
+    entry &&
+      (entry.penalty > 0 ||
+        entry.observations >= GREYLIST_REQUIRED_STALL_OBSERVATIONS),
+  );
+}
+
+export function documentRefShouldBeReplaced(
+  docRef: BookDocumentRef,
+  state: BookDocumentAcquisitionState | undefined,
+): boolean {
+  return (
+    documentRefIsGreylistable(docRef) ||
+    documentRefHasActiveGreylist(state, docRef)
+  );
 }
 
 function decayEntry(
@@ -182,23 +269,38 @@ export function mergeDocumentCandidateQueue(
   const greylist = { ...next.greylist };
   candidates.forEach((candidate) => {
     const key = documentGreylistKey(candidate);
-    if (!key || !greylist[key] || !candidateIsCleanObservation(candidate)) {
+    if (!key) return;
+    if (isUnavailable(candidate.availability)) {
+      greylist[key] = nextGreylistEntry(
+        greylist[key],
+        {
+          key,
+          status: 'candidate',
+          reason: candidate.availability?.reason,
+          sourceUrl: candidate.sourceUrl,
+          title: candidate.title,
+          progress: candidate.availability?.progress,
+        },
+        now,
+      );
       return;
     }
+    if (!greylist[key] || !candidateIsCleanObservation(candidate)) return;
     const decayed = decayEntry(greylist[key], now);
     if (decayed) greylist[key] = decayed;
     else delete greylist[key];
   });
 
+  const freshCandidates = new Set(candidates);
   const byKey = new Map<string, BookDocumentCandidateOption>();
+  const freshByKey = new Map<string, boolean>();
   [...next.candidateQueue, ...candidates].forEach((candidate) => {
     const key = documentGreylistKey(candidate);
     if (!key) return;
+    const isFresh = freshCandidates.has(candidate);
     const entry = greylist[key];
     const queuedAt = candidate.queuedAt ?? now;
-    const lastSeenAt = candidates.some((item) => item.id === candidate.id)
-      ? now
-      : (candidate.lastSeenAt ?? queuedAt);
+    const lastSeenAt = isFresh ? now : (candidate.lastSeenAt ?? queuedAt);
     const penalty = entry?.penalty ?? 0;
     const baseQuality =
       candidate.qualityScore == null
@@ -215,8 +317,15 @@ export function mergeDocumentCandidateQueue(
       lastSeenAt,
     };
     const previous = byKey.get(key);
-    if (!previous || compareQueuedCandidates(queued, previous) < 0) {
+    const previousIsFresh = freshByKey.get(key) ?? false;
+    if (
+      !previous ||
+      (isFresh && !previousIsFresh) ||
+      (isFresh === previousIsFresh &&
+        compareQueuedCandidates(queued, previous) < 0)
+    ) {
       byKey.set(key, queued);
+      freshByKey.set(key, isFresh);
     }
   });
 
@@ -253,6 +362,11 @@ export function normalizeDocumentAcquisitionState(
           key: entry.key || key,
           penalty: boundedPenalty(Number(entry.penalty) || 0),
           observations: Math.max(0, Math.round(Number(entry.observations) || 0)),
+          lastProgress:
+            entry.lastProgress == null
+              ? undefined
+              : Math.max(0, Math.min(1, Number(entry.lastProgress) || 0)),
+          lastProgressAt: entry.lastProgressAt,
           updatedAt: entry.updatedAt || currentIsoTimestamp(),
         },
       ]),
