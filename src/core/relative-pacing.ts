@@ -1,18 +1,29 @@
 import {
-  dailyPagesTarget,
   effectiveFloorPg,
   minutesPerPage,
   pageBounds,
   slotBudgetMinutes,
+  totalBudgetMinutes,
 } from './constraints';
+import { challengeMultiplier, learnerProfile } from './difficulty-profiles';
 import type { ConstraintSet } from './types';
 import { clamp, round1, safeNumber } from './utils';
+
+export type PacingBindingReason =
+  | 'none'
+  | 'floor_bound'
+  | 'time_bound'
+  | 'max_bound'
+  | 'manual_window'
+  | 'parallel_slot'
+  | 'insufficient_evidence';
 
 export interface PacingBookInput {
   id: string;
   title: string;
   pages: number;
   difficulty: number;
+  evidenceConfidence?: number;
 }
 
 export interface PacingBookTarget {
@@ -20,12 +31,11 @@ export interface PacingBookTarget {
   relativePageTarget: number;
   relativePacingPercentile: number;
   pacingPageTarget: number;
-}
-
-function pacingStrength(constraints: ConstraintSet): number {
-  return (
-    clamp(safeNumber(constraints.relativePacingStrength, 50), 0, 100) / 100
-  );
+  desiredPagesPerDay: number;
+  feasibleMinPagesPerDay: number;
+  feasibleMaxPagesPerDay: number;
+  finalPagesPerDay: number;
+  pacingBindingReason: PacingBindingReason;
 }
 
 function percentileByRank(index: number, count: number): number {
@@ -47,12 +57,50 @@ function curvedPercentile(value: number, constraints: ConstraintSet): number {
   }
 }
 
+function pageTargetBindingReason(input: {
+  desired: number;
+  final: number;
+  floor: number;
+  maxFeasible: number;
+  maxPg: number;
+  slotTimeBound: number;
+  evidenceConfidence: number;
+}): PacingBindingReason {
+  if (input.evidenceConfidence < 0.35) return 'insufficient_evidence';
+  if (input.maxFeasible < input.floor) {
+    return input.slotTimeBound < input.floor ? 'parallel_slot' : 'time_bound';
+  }
+  if (input.desired < input.floor && input.final >= input.floor) {
+    return 'floor_bound';
+  }
+  if (input.desired > input.maxFeasible) {
+    return input.maxFeasible < input.maxPg ? 'time_bound' : 'max_bound';
+  }
+  return 'none';
+}
+
+function wholePagePlanningTarget(input: {
+  target: number;
+  floor: number;
+  maxFeasible: number;
+}): number {
+  const minWhole = Math.max(1, Math.ceil(input.floor));
+  const maxWhole = Math.floor(input.maxFeasible);
+  if (maxWhole < minWhole) {
+    return round1(
+      clamp(input.target, input.floor, Math.max(input.floor, input.maxFeasible)),
+    );
+  }
+  return clamp(Math.round(input.target), minWhole, maxWhole);
+}
+
 export function computeRelativePacingTargets(
   books: PacingBookInput[],
   constraints: ConstraintSet,
 ): Record<string, PacingBookTarget> {
   const bounds = pageBounds(constraints);
-  const strength = pacingStrength(constraints);
+  const profile = learnerProfile(constraints);
+  const challenge = challengeMultiplier(profile);
   const ranked = [...books].sort(
     (left, right) =>
       left.difficulty - right.difficulty ||
@@ -68,30 +116,50 @@ export function computeRelativePacingTargets(
 
   return Object.fromEntries(
     books.map((book) => {
-      const absoluteTarget = dailyPagesTarget(
-        book.pages,
-        book.difficulty,
-        constraints,
-      );
       const percentile = percentileById[book.id] ?? 0.5;
       const curved = curvedPercentile(percentile, constraints);
+      const evidenceConfidence = clamp(safeNumber(book.evidenceConfidence, 0.7), 0, 1);
+      const spreadStrength =
+        (clamp(profile.pacingSpread, 0, 100) / 100) *
+        clamp(evidenceConfidence / Math.max(0.1, profile.uncertaintyTolerance), 0.15, 1);
       const floor = effectiveFloorPg(book.difficulty, constraints);
-      const timeBoundMax =
-        slotBudgetMinutes(constraints) /
-        Math.max(0.1, minutesPerPage(book.difficulty, constraints));
-      const maxTarget = Math.max(floor, Math.min(bounds.maxPg, timeBoundMax));
-      const recommendationFloor = Math.min(bounds.minPg, maxTarget);
+      const mpp = Math.max(0.1, minutesPerPage(book.difficulty, constraints));
+      const slotTimeBound = slotBudgetMinutes(constraints) / mpp;
+      const dayTimeBound = totalBudgetMinutes(constraints) / mpp;
+      const absoluteTarget = clamp(slotTimeBound * challenge, 0.1, bounds.maxPg);
       const relativeTarget =
-        maxTarget - curved * (maxTarget - recommendationFloor);
-      const blendedTarget =
-        absoluteTarget * (1 - strength) + relativeTarget * strength;
+        bounds.maxPg - curved * Math.max(0, bounds.maxPg - bounds.minPg);
+      const rawDesired =
+        absoluteTarget * (1 - spreadStrength) + relativeTarget * spreadStrength;
+      const desired =
+        evidenceConfidence < 0.6 ? Math.min(rawDesired, absoluteTarget) : rawDesired;
+      const maxFeasible = Math.min(bounds.maxPg, dayTimeBound);
+      const unclippedFinal = clamp(desired, floor, Math.max(floor, maxFeasible));
+      const final = wholePagePlanningTarget({
+        target: unclippedFinal,
+        floor,
+        maxFeasible,
+      });
       return [
         book.id,
         {
           absolutePageTarget: round1(absoluteTarget),
           relativePageTarget: round1(relativeTarget),
           relativePacingPercentile: round1(percentile * 100),
-          pacingPageTarget: round1(clamp(blendedTarget, floor, maxTarget)),
+          pacingPageTarget: final,
+          desiredPagesPerDay: round1(desired),
+          feasibleMinPagesPerDay: round1(floor),
+          feasibleMaxPagesPerDay: round1(maxFeasible),
+          finalPagesPerDay: final,
+          pacingBindingReason: pageTargetBindingReason({
+            desired,
+            final,
+            floor,
+            maxFeasible,
+            maxPg: bounds.maxPg,
+            slotTimeBound,
+            evidenceConfidence,
+          }),
         },
       ];
     }),

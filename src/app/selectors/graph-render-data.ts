@@ -26,6 +26,16 @@ export interface ResearchChainView {
   label: string;
 }
 
+export interface OverlapExplorerCluster {
+  id: string;
+  label: string;
+  topicLabels: string[];
+  bookIds: string[];
+  overlapScore: number;
+  timeSaved: number;
+  confidence: number;
+}
+
 export interface GraphRenderModel {
   visibleIds: string[];
   nodes: GraphBookNode[];
@@ -36,13 +46,23 @@ export interface GraphRenderModel {
   coStudyGroups: Array<{ id: string; ids: string[] }>;
   displayGroupPartitions: DisplayGroupPartition[];
   overlapClusters: OverlapClusterSummary[];
+  overlapExplorer: {
+    clusters: OverlapExplorerCluster[];
+    bookRows: GraphBookNode[];
+    emptyStateReason: string | null;
+  };
   researchChains: ResearchChainView[];
 }
 
 export function visibleGraphBookIds(state: GraphState): string[] {
   return Object.values(state.project.library.books)
     .filter((book) => !(state.project.constraints.excComp && book.completed))
-    .sort((left, right) => compareText(left.short, right.short))
+    .sort((left, right) =>
+      compareChain(
+        compareText(left.short, right.short),
+        compareText(left.id, right.id),
+      ),
+    )
     .map((book) => book.id);
 }
 
@@ -140,6 +160,42 @@ export function visibleOverlapClusters(
     .filter((cluster) => cluster.bookIds.length > 1);
 }
 
+function overlapExplorerClusters(
+  state: GraphState,
+  clusters: OverlapClusterSummary[],
+): OverlapExplorerCluster[] {
+  return clusters
+    .map((cluster) => {
+      const topicLabels = cluster.topicIds
+        .map((id) => state.snapshot.topicsById[id]?.label ?? id)
+        .slice(0, 6);
+      const timeSaved = cluster.pruning.reduce(
+        (sum, entry) => sum + entry.timeSaved,
+        0,
+      );
+      const confidence = cluster.pruning.length
+        ? cluster.pruning.reduce((sum, entry) => sum + entry.confidence, 0) /
+          cluster.pruning.length
+        : 0;
+      return {
+        id: cluster.id,
+        label: topicLabels.slice(0, 3).join(', ') || cluster.id,
+        topicLabels,
+        bookIds: cluster.bookIds,
+        overlapScore: cluster.bookIds.length * Math.max(1, cluster.topicIds.length),
+        timeSaved,
+        confidence,
+      };
+    })
+    .sort((left, right) =>
+      compareChain(
+        compareNumberAsc(right.bookIds.length, left.bookIds.length),
+        compareNumberAsc(right.topicLabels.length, left.topicLabels.length),
+        compareText(left.label, right.label),
+      ),
+    );
+}
+
 export function visibleDisplayGroupPartitions(
   state: GraphState,
 ): DisplayGroupPartition[] {
@@ -163,10 +219,11 @@ export function selectGraphRenderModel(state: AppState): GraphRenderModel {
     .slice()
     .filter((book) => visibleSet.has(book.id))
     .sort((left, right) =>
-      compareChain(
-        compareNumberAsc(left.dep, right.dep),
-        compareText(left.short, right.short),
-      ),
+        compareChain(
+          compareNumberAsc(left.dep, right.dep),
+          compareText(left.short, right.short),
+          compareText(left.id, right.id),
+        ),
     )
     .map((book) => ({
       id: book.id,
@@ -175,6 +232,14 @@ export function selectGraphRenderModel(state: AppState): GraphRenderModel {
       displayGroup: book.displayGroup,
       dep: book.dep,
     }));
+  const overlapClusters = visibleOverlapClusters(state);
+  const overlapExplorer = {
+    clusters: overlapExplorerClusters(state, overlapClusters),
+    bookRows: nodes,
+    emptyStateReason: overlapClusters.length
+      ? null
+      : 'No strong shared-topic intersections are available for the current graph filters.',
+  };
   return {
     visibleIds,
     nodes,
@@ -186,7 +251,8 @@ export function selectGraphRenderModel(state: AppState): GraphRenderModel {
     referenceEdges: visibleReferenceEdges(state),
     coStudyGroups: visibleCoStudyGroups(state),
     displayGroupPartitions: visibleDisplayGroupPartitions(state),
-    overlapClusters: visibleOverlapClusters(state),
+    overlapClusters,
+    overlapExplorer,
     researchChains: state.snapshot.schedulePlan.exclusionState.rdChains.map(
       (chain) => ({
         ids: chain.ids,

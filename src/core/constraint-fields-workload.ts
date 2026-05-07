@@ -2,6 +2,46 @@ import type { ConstraintField } from './types';
 
 export const DAILY_WORKLOAD_PACING_FIELDS: ConstraintField[] = [
   {
+    key: 'learnerProfileMode',
+    group: 'Pacing Model',
+    label: 'Learner profile',
+    description:
+      'Adaptive defaults for challenge, pacing spread, and feedback learning.',
+    effect: 'schedule_policy',
+    kind: 'select',
+    options: [
+      { value: 'balanced_adaptive', label: 'Balanced adaptive' },
+      { value: 'confidence_builder', label: 'Confidence builder' },
+      { value: 'fast_track', label: 'Fast track' },
+      { value: 'deep_mastery', label: 'Deep mastery' },
+      { value: 'manual', label: 'Manual tuning' },
+    ],
+  },
+  {
+    key: 'targetChallenge',
+    group: 'Pacing Model',
+    label: 'Target challenge',
+    description:
+      'How ambitious the desired daily workload should be before hard constraints are applied.',
+    effect: 'schedule_policy',
+    kind: 'number',
+    min: 0,
+    max: 100,
+    step: 5,
+  },
+  {
+    key: 'learnerAdaptivityStrength',
+    group: 'Pacing Model',
+    label: 'Learning from actuals',
+    description:
+      'How strongly logged minutes/pages recalibrate future workload estimates.',
+    effect: 'difficulty_model',
+    kind: 'number',
+    min: 0,
+    max: 100,
+    step: 5,
+  },
+  {
     key: 'minPg',
     group: 'Daily Workload',
     label: 'Minimum pages/day',

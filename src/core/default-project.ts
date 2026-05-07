@@ -1,4 +1,10 @@
-import { RELATIVE_PACING_DEFAULT, SUBJECT_WORKLOAD_DEFAULT } from './constants';
+import {
+  LEARNER_ADAPTIVITY_DEFAULT,
+  RELATIVE_PACING_DEFAULT,
+  SUBJECT_WORKLOAD_DEFAULT,
+  TARGET_CHALLENGE_DEFAULT,
+} from './constants';
+import { defaultAiModel } from './ai-provider-registry';
 import {
   createDefaultQbittorrentConnectionSettings,
   createDefaultQbittorrentStatus,
@@ -11,6 +17,7 @@ import type {
   ConstraintSet,
   PlannerProjectV1,
   UiState,
+  UiPreferences,
 } from './types';
 import { localDateKey } from './time';
 
@@ -37,6 +44,9 @@ export function createDefaultConstraints(): ConstraintSet {
     maxPg: 24,
     relativePacingStrength: RELATIVE_PACING_DEFAULT,
     relativePacingCurve: 'smoothstep',
+    learnerProfileMode: 'balanced_adaptive',
+    learnerAdaptivityStrength: LEARNER_ADAPTIVITY_DEFAULT,
+    targetChallenge: TARGET_CHALLENGE_DEFAULT,
     subjectWorkloadStrength: SUBJECT_WORKLOAD_DEFAULT,
     dailyBookMode: 'interspersed',
     emptyDayPolicy: 'fill_when_possible',
@@ -93,7 +103,7 @@ export function createDefaultAiConnectionSettings(): AiConnectionSettings {
   return {
     enabled: false,
     provider: 'openai',
-    model: 'gpt-5-mini',
+    model: defaultAiModel('openai'),
     endpointUrl: '',
     apiKey: '',
     timeoutMs: 60000,
@@ -101,15 +111,38 @@ export function createDefaultAiConnectionSettings(): AiConnectionSettings {
   };
 }
 
+const DEFAULT_UI_PREFERENCES: UiPreferences = {
+  ganttView: 'plan',
+  ganttZoom: 1,
+  planColorMode: 'category_mono',
+  planSections: {
+    gantt: true,
+    calendar: true,
+  },
+  libraryListWidthPx: 460,
+  dismissedWarningCodes: [],
+};
+
+export function createDefaultUiPreferences(): UiPreferences {
+  return {
+    ...DEFAULT_UI_PREFERENCES,
+    planSections: { ...DEFAULT_UI_PREFERENCES.planSections },
+    dismissedWarningCodes: [...DEFAULT_UI_PREFERENCES.dismissedWarningCodes],
+  };
+}
+
 export const DEFAULT_UI_STATE: UiState = {
   activeView: 'plan',
   selectedBookId: null,
   selectedCalendarEntry: null,
-  ganttView: 'plan',
-  ganttZoom: 1,
-  planColorMode: 'category_mono',
+  ganttView: DEFAULT_UI_PREFERENCES.ganttView,
+  ganttZoom: DEFAULT_UI_PREFERENCES.ganttZoom,
+  planColorMode: DEFAULT_UI_PREFERENCES.planColorMode,
+  planSections: { ...DEFAULT_UI_PREFERENCES.planSections },
+  libraryListWidthPx: DEFAULT_UI_PREFERENCES.libraryListWidthPx,
   openConstraintGroups: [],
   selectedConstraintKey: null,
+  graphOptionsOpen: false,
   bookSearchQuery: '',
   bookSearchStatus: 'idle',
   bookSearchResults: [],
@@ -135,6 +168,7 @@ export const DEFAULT_UI_STATE: UiState = {
     message: 'Enter a goal, then ask the recommender for a proposed addition.',
   },
   aiProposal: null,
+  debugUi: false,
   banner: null,
 };
 
@@ -146,11 +180,7 @@ export const EMPTY_PROJECT: PlannerProjectV1 = {
   constraints: DEFAULT_CONSTRAINTS,
   aiRecommendationSettings: createDefaultAiRecommendationSettings(),
   sourceSettings: createDefaultSourceSettings(),
-  uiPreferences: {
-    ganttView: 'plan',
-    ganttZoom: 1,
-    planColorMode: 'category_mono',
-  },
+  uiPreferences: createDefaultUiPreferences(),
 };
 
 export const EXAMPLE_BOOK: BookRecord = {

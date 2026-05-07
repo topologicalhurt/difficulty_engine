@@ -6,6 +6,7 @@ import {
   EXAMPLE_BOOK,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import type { PlannerProjectV1 } from '../../src/core/types';
 
@@ -93,11 +94,7 @@ function characterizationProject(): PlannerProjectV1 {
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: createDefaultSourceSettings(),
     enrichmentCache: {},
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 

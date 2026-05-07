@@ -53,6 +53,8 @@ export function renderPlanView(
           viewModel.gantt,
           viewModel.colors,
           viewModel.emptyDayPolicy,
+          viewModel.bookJumpOptions,
+          viewModel.planSections.gantt,
           viewModel.selectedBookId,
           viewModel.timelineLabel,
           store,
@@ -62,9 +64,13 @@ export function renderPlanView(
       el(
         'div',
         { className: 'planner-side-column' },
-        renderWarningCenter(viewModel.warnings),
         renderSelectedCalendarLogPanel(viewModel, store),
-        renderBookInspector(viewModel.inspector, viewModel.timelineLabel),
+        renderWarningCenter(
+          viewModel.warnings,
+          viewModel.hiddenWarningCount,
+          store,
+        ),
+        renderBookInspector(viewModel.inspector, viewModel.timelineLabel, store),
       ),
     ),
   );

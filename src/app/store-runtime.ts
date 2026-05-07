@@ -211,7 +211,7 @@ export function createStoreRuntime(options: StoreRuntimeOptions): StoreRuntime {
           });
         return;
       }
-      if (options.computeAdapter?.mode === 'worker') {
+      if (recompute && options.computeAdapter?.mode === 'worker') {
         pendingComputeRevision += 1;
       }
       state = recompute

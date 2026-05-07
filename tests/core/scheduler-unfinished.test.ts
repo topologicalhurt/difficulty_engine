@@ -4,6 +4,7 @@ import {
   DEFAULT_CONSTRAINTS,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import type { BookRecord, PlannerProjectV1 } from '../../src/core/types';
 import { computeSnapshot } from './engine-test-utils';
@@ -77,11 +78,7 @@ function projectWithSynchronizedGroup(): PlannerProjectV1 {
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 

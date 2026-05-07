@@ -5,6 +5,8 @@ import type { BookRecord, BookSearchSuggestion } from '../core/types';
 import { uniqueCompactStrings } from '../core/utils';
 
 const PLACEHOLDER_PAGE_COUNTS = new Set<number>([EXAMPLE_BOOK.pages, 250]);
+const PLACEHOLDER_AUTHORS = new Set(EXAMPLE_BOOK.authors);
+const PLACEHOLDER_SUBJECTS = new Set(EXAMPLE_BOOK.subjects);
 
 function shortLabelFromTitle(title: string): string {
   const trimmed = title.trim();
@@ -24,6 +26,35 @@ function incomingPagesOrCurrent(
     : currentPages;
 }
 
+function incomingAuthorsOrCurrent(
+  currentAuthors: string[],
+  incomingAuthors: string[] | null | undefined,
+): string[] {
+  if (!incomingAuthors?.length) return currentAuthors;
+  return !currentAuthors.length ||
+    currentAuthors.every((author) => PLACEHOLDER_AUTHORS.has(author))
+    ? incomingAuthors
+    : currentAuthors;
+}
+
+function incomingSubjectsOrMerged(
+  currentSubjects: string[],
+  incomingSubjects: string[] | null | undefined,
+  limit: number,
+): string[] {
+  if (!incomingSubjects?.length) return currentSubjects;
+  if (
+    !currentSubjects.length ||
+    currentSubjects.every((subject) => PLACEHOLDER_SUBJECTS.has(subject))
+  ) {
+    return incomingSubjects.slice(0, limit);
+  }
+  return uniqueCompactStrings([...currentSubjects, ...incomingSubjects]).slice(
+    0,
+    limit,
+  );
+}
+
 export function bookFromSuggestion(
   id: string,
   suggestion: BookSearchSuggestion,
@@ -33,9 +64,7 @@ export function bookFromSuggestion(
     id,
     title: suggestion.title,
     short: shortLabelFromTitle(suggestion.title),
-    authors: suggestion.authors.length
-      ? suggestion.authors
-      : EXAMPLE_BOOK.authors,
+    authors: suggestion.authors,
     pages: suggestion.pages ?? 250,
     subjects: suggestion.subjects.slice(0, 12),
     publisher: suggestion.publisher,
@@ -64,10 +93,11 @@ export function mergeSuggestionIntoBook(
   book: BookRecord,
   suggestion: BookSearchSuggestion,
 ): BookRecord {
-  const mergedSubjects = uniqueCompactStrings([
-    ...book.subjects,
-    ...suggestion.subjects,
-  ]).slice(0, 20);
+  const mergedSubjects = incomingSubjectsOrMerged(
+    book.subjects,
+    suggestion.subjects,
+    20,
+  );
   const mergedOlSubjects = uniqueCompactStrings([
     ...book.enrichment.olSubjects,
     ...suggestion.subjects,
@@ -76,7 +106,7 @@ export function mergeSuggestionIntoBook(
     normalizedIsbn(book.isbn) || normalizedIsbn(suggestion.isbn) || null;
   return {
     ...book,
-    authors: book.authors.length ? book.authors : suggestion.authors,
+    authors: incomingAuthorsOrCurrent(book.authors, suggestion.authors),
     pages: incomingPagesOrCurrent(book.pages, suggestion.pages),
     subjects: mergedSubjects,
     publisher: book.publisher || suggestion.publisher,
@@ -111,16 +141,17 @@ export function mergeEnrichmentIntoBook(
   book: BookRecord,
   patch: Partial<BookRecord>,
 ): BookRecord {
-  const mergedSubjects = uniqueCompactStrings([
-    ...book.subjects,
-    ...(patch.subjects ?? []),
-  ]).slice(0, 30);
+  const mergedSubjects = incomingSubjectsOrMerged(
+    book.subjects,
+    patch.subjects,
+    30,
+  );
   const nextPages = incomingPagesOrCurrent(book.pages, patch.pages);
   return {
     ...book,
     title: patch.title ?? book.title,
     short: patch.short ?? book.short,
-    authors: patch.authors?.length ? patch.authors : book.authors,
+    authors: incomingAuthorsOrCurrent(book.authors, patch.authors),
     pages: nextPages,
     subjects: mergedSubjects,
     publisher: book.publisher || patch.publisher || '',

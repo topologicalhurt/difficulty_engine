@@ -5,6 +5,7 @@ import {
   DEFAULT_CONSTRAINTS,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import type { PlanningState } from '../../src/core/internal-types';
 import type { PlannerProjectV1 } from '../../src/core/types';
@@ -23,11 +24,7 @@ function project(): PlannerProjectV1 {
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: createDefaultSourceSettings(),
     enrichmentCache: {},
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 
@@ -73,6 +70,11 @@ function planningState(
     skimRatio: 0.35,
     targetHrs: 0,
     targetDayPages: 5,
+    desiredPagesPerDay: 5,
+    feasibleMinPagesPerDay: 5,
+    feasibleMaxPagesPerDay: 5,
+    finalPagesPerDay: 5,
+    pacingBindingReason: 'none',
     overlapReasons: [],
     usedMinutes: 0,
     usedTenths: 0,

@@ -424,7 +424,7 @@ describe('qBittorrent search precision', () => {
                 ]
               : [
                   {
-                    fileName: 'Precise Systems.pdf',
+                    fileName: 'Precise Systems A Author.pdf',
                     fileUrl: 'magnet:?xt=urn:btih:lawfultitle',
                     siteUrl: 'https://archive.org/details/lawful-title',
                     accessBasis: 'open_access',

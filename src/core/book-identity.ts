@@ -4,23 +4,17 @@ import type {
   PlannerProjectV1,
 } from './types';
 import { normalizedIsbn } from './isbn';
-
-function normalizedText(value: string | null | undefined): string {
-  return String(value ?? '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
+import { matchTokens } from './matchers';
 
 export { normalizedIsbn };
 
 function normalizedTitle(value: string): string {
-  return normalizedText(value);
+  return matchTokens(value).join(' ');
 }
 
 function normalizedAuthors(authors: string[]): string {
   return authors
-    .map((author) => normalizedText(author))
+    .map((author) => matchTokens(author).join(' '))
     .filter(Boolean)
     .join('|');
 }

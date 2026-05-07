@@ -1,12 +1,20 @@
 export interface DifficultyBreakdown {
   seed: number;
   corpusComplexity: number;
+  latentWorkload: number;
+  workloadUncertainty: number;
+  evidenceConfidence: number;
   subjectWorkloadPrior: number;
   subjectWorkloadLift: number;
   subjectClusterId: string | null;
   subjectClusterConfidence: number;
   metadataConfidence: number;
   graphBurden: number;
+  graphWorkloadLift: number;
+  learnerCalibrationLift: number;
+  profileAdjustedDifficulty: number;
+  difficultyBindingReason: string | null;
+  difficultyEvidence: string[];
   novelty: number;
   breadth: number;
   retention: number;

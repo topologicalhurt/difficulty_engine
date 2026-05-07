@@ -3,6 +3,8 @@ import type { AppState, PlannerStore } from '../core/types';
 import { card, el } from './dom';
 import {
   checkboxControl,
+  datalistControl,
+  draftNumberInputControl,
   inputField,
   selectInput,
   textInputControl,
@@ -14,8 +16,10 @@ export function renderAiProviderCard(
 ): HTMLElement {
   const viewModel = selectAiRecommendationViewModel(state);
   const connection = viewModel.connection;
+  const modelListId = 'ai-model-options';
   return card(
     'AI provider',
+    datalistControl(modelListId, viewModel.modelOptions),
     el(
       'div',
       { className: 'form-grid' },
@@ -47,12 +51,16 @@ export function renderAiProviderCard(
         textInputControl({
           value: connection.model,
           focusKey: 'ai:model',
+          listId: modelListId,
           placeholder:
             connection.provider === 'anthropic'
-              ? 'claude-sonnet-4-5'
+              ? 'claude-sonnet-4-6'
               : 'gpt-5-mini',
           onInput: (model) => store.commands.updateAiLocalSettings({ model }),
         }),
+        viewModel.modelSuggestion
+          ? `Nearest maintained model: ${viewModel.modelSuggestion}`
+          : 'Use a maintained model id or provider alias.',
       ),
       inputField(
         'Endpoint override',
@@ -75,18 +83,20 @@ export function renderAiProviderCard(
           placeholder: 'Stored only for this app session',
           onInput: (apiKey) => store.commands.updateAiLocalSettings({ apiKey }),
         }),
-        viewModel.secretStorageNote,
+        `${viewModel.apiKeyIndicator} ${viewModel.secretStorageNote}`,
       ),
       inputField(
         'Output token cap',
-        textInputControl({
-          type: 'number',
-          value: String(connection.maxOutputTokens),
+        draftNumberInputControl({
+          value: connection.maxOutputTokens,
           focusKey: 'ai:maxOutputTokens',
-          onInput: (value) =>
+          onCommit: (maxOutputTokens) =>
             store.commands.updateAiLocalSettings({
-              maxOutputTokens: Number(value),
+              maxOutputTokens,
             }),
+          min: 256,
+          max: 8000,
+          step: 128,
         }),
         'Caps response size so requests stay bounded.',
       ),

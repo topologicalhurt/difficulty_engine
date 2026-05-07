@@ -2,6 +2,7 @@ import {
   createDefaultAiConnectionSettings,
   createDefaultAiRecommendationSettings,
 } from './defaults';
+import { defaultAiModel } from './ai-provider-registry';
 import type {
   AiConnectionSettings,
   AiRecommendationProviderKey,
@@ -25,11 +26,13 @@ export function normalizeAiConnectionSettings(
     value && typeof value === 'object'
       ? (value as Record<string, unknown>)
       : {};
+  const provider = normalizeProvider(raw.provider);
+  const modelDefault = defaultAiModel(provider);
   return {
     enabled:
       raw.enabled == null ? defaults.enabled : normalizeBoolean(raw.enabled),
-    provider: normalizeProvider(raw.provider),
-    model: normalizeString(raw.model, defaults.model) || defaults.model,
+    provider,
+    model: normalizeString(raw.model, modelDefault) || modelDefault,
     endpointUrl: normalizeString(raw.endpointUrl),
     apiKey: normalizeString(raw.apiKey),
     timeoutMs: normalizeNumber(

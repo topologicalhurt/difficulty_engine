@@ -8,10 +8,11 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_URL = 'http://127.0.0.1:8080';
 const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:8787';
-const DEFAULT_DATA_ROOT = resolve(process.cwd(), 'output', 'data', 'documents');
 const DEFAULT_TIMEOUT_MS = 30_000;
 const POLL_INTERVAL_MS = 900;
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = resolve(SCRIPT_DIR, '..');
+const DEFAULT_DATA_ROOT = resolve(REPO_ROOT, 'output', 'data', 'documents');
 const CONFIG_PATHS = [
   join(homedir(), '.config', 'qBittorrent', 'qBittorrent.ini'),
   join(homedir(), '.config', 'qBittorrent', 'qBittorrent.conf'),

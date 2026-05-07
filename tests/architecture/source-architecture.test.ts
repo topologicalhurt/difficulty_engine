@@ -331,6 +331,30 @@ describe('source architecture guardrails', () => {
     );
   });
 
+  it('inserts bundled assets literally in the single-file build', () => {
+    const buildScript = readFileSync(
+      join(ROOT, 'scripts', 'build.mjs'),
+      'utf8',
+    );
+
+    expect(buildScript).toContain(
+      ".replace('<!-- APP_STYLE -->', () =>",
+    );
+    expect(buildScript).toContain(
+      ".replace(\n      '<!-- APP_SCRIPT -->',\n      () =>",
+    );
+  });
+
+  it('allows the standalone planner worker under CSP', () => {
+    const template = readFileSync(
+      join(ROOT, 'src', 'template', 'index.html'),
+      'utf8',
+    );
+
+    expect(template).toContain('worker-src blob:');
+    expect(template).not.toContain('http://[::1]:*');
+  });
+
   it('ships matcher audit tooling and keeps infra fuzzy helpers centralized', () => {
     expect(existsSync(join(ROOT, 'scripts', 'matcher_audit.py'))).toBe(true);
     expect(existsSync(join(ROOT, 'src', 'infra', 'token-similarity.ts'))).toBe(

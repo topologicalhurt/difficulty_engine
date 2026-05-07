@@ -52,6 +52,9 @@ export interface UiState {
   planColorMode: PlanColorMode;
   openConstraintGroups: string[];
   selectedConstraintKey: keyof ConstraintSet | null;
+  graphOptionsOpen: boolean;
+  planSections: PlannerProjectV1['uiPreferences']['planSections'];
+  libraryListWidthPx: number;
   bookSearchQuery: string;
   bookSearchStatus: BookSearchStatus;
   bookSearchResults: BookSearchSuggestion[];
@@ -67,6 +70,7 @@ export interface UiState {
   aiConnection: AiConnectionSettings;
   aiStatus: AiRecommendationStatus;
   aiProposal: AiRecommendationProposal | null;
+  debugUi: boolean;
   banner: {
     tone: 'info' | 'success' | 'warn' | 'error';
     message: string;

@@ -55,6 +55,18 @@ export interface DayBookStat {
   minutes: number;
   remainingMinutes: number;
   dayPages: number;
+  desiredPagesPerDay: number;
+  feasibleMinPagesPerDay: number;
+  feasibleMaxPagesPerDay: number;
+  finalPagesPerDay: number;
+  pacingBindingReason:
+    | 'none'
+    | 'floor_bound'
+    | 'time_bound'
+    | 'max_bound'
+    | 'manual_window'
+    | 'parallel_slot'
+    | 'insufficient_evidence';
   peakDayPages: number;
   boostedDays: number;
   unfinishedPages: number;
@@ -127,6 +139,18 @@ export interface SchedulePlanItem {
   relativePageTarget: number;
   relativePacingPercentile: number;
   pacingPageTarget: number;
+  desiredPagesPerDay: number;
+  feasibleMinPagesPerDay: number;
+  feasibleMaxPagesPerDay: number;
+  finalPagesPerDay: number;
+  pacingBindingReason:
+    | 'none'
+    | 'floor_bound'
+    | 'time_bound'
+    | 'max_bound'
+    | 'manual_window'
+    | 'parallel_slot'
+    | 'insufficient_evidence';
   floorPolicy: 'strict' | 'relaxed';
   manual: ManualScheduleOverride;
   manualOverride: boolean;

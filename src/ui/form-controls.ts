@@ -12,6 +12,7 @@ export interface TextControlOptions {
   placeholder?: string;
   className?: string;
   type?: string;
+  listId?: string;
 }
 
 export interface CheckboxControlOptions {
@@ -37,6 +38,12 @@ export interface NumberControlOptions {
   onFocus?: (event: FocusEvent) => void;
 }
 
+export interface DraftNumberControlOptions
+  extends Omit<NumberControlOptions, 'value' | 'onChange'> {
+  value: number;
+  onCommit: (value: number) => void;
+}
+
 export interface FileControlOptions {
   className?: string;
   accept?: string;
@@ -59,6 +66,17 @@ export function selectInput(
   return select;
 }
 
+export function datalistControl(
+  id: string,
+  options: string[],
+): HTMLDataListElement {
+  return el(
+    'datalist',
+    { id },
+    ...options.map((option) => el('option', { value: option })),
+  );
+}
+
 export function textInputControl(
   options: TextControlOptions,
 ): HTMLInputElement {
@@ -67,6 +85,7 @@ export function textInputControl(
     type: options.type ?? 'text',
     value: options.value,
     focusKey: options.focusKey,
+    list: options.listId,
     placeholder: options.placeholder ?? '',
     onInput: (event) => {
       if (event.target instanceof HTMLInputElement) {
@@ -74,6 +93,45 @@ export function textInputControl(
       }
     },
   });
+}
+
+export function draftNumberInputControl(
+  options: DraftNumberControlOptions,
+): HTMLInputElement {
+  const input = el('input', {
+    className: options.className ?? 'text-input',
+    type: 'number',
+    value: String(options.value),
+    focusKey: options.focusKey,
+    title: options.title,
+    ariaLabel: options.ariaLabel,
+    onClick: options.onClick,
+    onFocus: options.onFocus,
+    onBlur: () => commitDraft(),
+    onKeyDown: (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      commitDraft();
+    },
+    onChange: () => commitDraft(),
+  });
+  function commitDraft(): void {
+    const raw = input.value.trim();
+    if (!raw) {
+      input.value = String(options.value);
+      return;
+    }
+    const next = Number(raw);
+    if (!Number.isFinite(next)) {
+      input.value = String(options.value);
+      return;
+    }
+    options.onCommit(next);
+  }
+  if (options.min != null) input.min = String(options.min);
+  if (options.max != null) input.max = String(options.max);
+  if (options.step != null) input.step = String(options.step);
+  return input;
 }
 
 export function checkboxControl(

@@ -47,6 +47,22 @@ export const SHELL_CONTRACTS: WiringContract[] = [
     notes: 'Banner writes are non-semantic UI feedback.',
   },
   {
+    id: 'ui.graphOptionsOpen',
+    surface: 'graphs',
+    control: 'Graph settings disclosure',
+    command: 'setGraphOptionsOpen',
+    projectReads: [],
+    projectWrites: [],
+    uiReads: ['graphOptionsOpen'],
+    uiWrites: ['graphOptionsOpen'],
+    snapshotEffects: [],
+    renderEffects: ['graph settings panel'],
+    recomputePolicy: 'ui_only',
+    testIds: ['tests/app/wiring-contracts.test.ts'],
+    notes:
+      'The graph settings dropdown open state is display-only and must not recompute planner truth.',
+  },
+  {
     id: 'ephemeral.focusRestore',
     surface: 'shell',
     control: 'Focus and scroll restoration',

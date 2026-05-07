@@ -13,6 +13,9 @@ describe('TOC line normalization helpers', () => {
         '  Chapter   1   Signals  ',
         'x',
         'endobj',
+        '1 0 obj',
+        '/Width 1041',
+        'stream',
         'Chapter 2 Systems',
       ].join('\n')),
     ).toEqual(['Chapter 1 Signals', 'Chapter 2 Systems']);

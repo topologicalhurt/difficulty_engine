@@ -80,7 +80,6 @@ describe('Internet Archive TOC candidates', () => {
       'https://archive.org/metadata/no-creator-same-title',
     ]);
     expect(candidates[0]?.chapters).toEqual([
-      'Contents',
       'Chapter 1 Foundations',
       'Chapter 2 Contours',
     ]);

@@ -322,14 +322,24 @@ describe('enrichment client degradation', () => {
     sourceSettings.documentSources.qbittorrent = true;
     const fetchImpl = vi.fn(async (url: string | URL | Request) => {
       const href = String(url);
-      if (href.includes('/documents/read-text?')) {
+      if (href.includes('/documents/read-bytes?')) {
+        return new Response('%PDF-1.4\n1 0 obj\n/Title (Front Matter)', {
+          status: 200,
+          headers: { 'content-type': 'application/pdf' },
+        });
+      }
+      if (href.includes('/documents/extract-text?')) {
         return new Response(
-          [
-            'CONTENTS',
-            'CHAPTER 1 Introduction to Electronics 1',
-            'CHAPTER 2 Theory 5',
-            'CHAPTER 3 Basic Electronic Circuit Components 253',
-          ].join('\n'),
+          JSON.stringify({
+            ok: true,
+            status: 'complete',
+            text: [
+              'CONTENTS',
+              'CHAPTER 1 Introduction to Electronics 1',
+              'CHAPTER 2 Theory 5',
+              'CHAPTER 3 Basic Electronic Circuit Components 253',
+            ].join('\n'),
+          }),
           { status: 200, headers: { 'content-type': 'text/plain' } },
         );
       }
@@ -423,8 +433,9 @@ describe('enrichment client degradation', () => {
       'qbittorrent',
     );
     expect(fetchImpl).toHaveBeenCalledWith(
-      expect.stringContaining('/documents/read-text?'),
+      expect.stringContaining('/documents/extract-text?'),
       expect.any(Object),
     );
   });
+
 });

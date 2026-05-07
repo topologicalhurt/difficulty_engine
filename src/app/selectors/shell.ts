@@ -1,10 +1,12 @@
 import type { AppState, AppView } from '../../core/types';
 import { memoizeSelector } from './memo';
+import { selectVisibleWarnings } from './warnings';
 
 export const APP_VIEW_DEFINITIONS: Array<{
   id: AppView;
   label: string;
   description: string;
+  debugOnly?: boolean;
 }> = [
   {
     id: 'plan',
@@ -19,30 +21,31 @@ export const APP_VIEW_DEFINITIONS: Array<{
   },
   {
     id: 'constraints',
-    label: 'Constraints',
-    description: 'Advanced scheduling, pacing, and inference settings.',
+    label: 'Planner Settings',
+    description: 'Choose how the planner paces, orders, and explains work.',
   },
   {
     id: 'ai',
-    label: 'AI',
+    label: 'AI Suggestions',
     description:
-      'Request and review AI-suggested additions before applying them.',
+      'Describe what you need next and review suggested books before adding them.',
   },
   {
     id: 'graphs',
     label: 'Graphs',
     description:
-      'DAG, network, hypergraph, weekly load, occupancy, and difficulty ladder.',
+      'See prerequisites, co-study links, topic overlap, and workload charts.',
   },
   {
     id: 'diagnostics',
     label: 'Diagnostics',
     description: 'Warnings, evidence, difficulty breakdowns, and skim diffs.',
+    debugOnly: true,
   },
   {
     id: 'info',
-    label: 'Info',
-    description: 'Glossary, workflow notes, and how to read the planner.',
+    label: 'Guide',
+    description: 'A tutorial walkthrough for building and reading your plan.',
   },
   {
     id: 'project',
@@ -59,20 +62,36 @@ export interface ShellViewModel {
   tabs: Array<{ id: AppView; label: string; active: boolean }>;
 }
 
+export function visibleAppViews(state: AppState): typeof APP_VIEW_DEFINITIONS {
+  return APP_VIEW_DEFINITIONS.filter((view) => !view.debugOnly || state.ui.debugUi);
+}
+
+export function selectRenderableActiveView(state: AppState): AppView {
+  const visibleViews = visibleAppViews(state);
+  return visibleViews.some((view) => view.id === state.ui.activeView)
+    ? state.ui.activeView
+    : 'plan';
+}
+
 const selectShellViewModelMemo = memoizeSelector(
   'shell.viewModel',
   (state: AppState) => [
     state.ui.activeView,
+    state.ui.debugUi,
     state.ui.banner,
     state.project.library.books,
     state.snapshot.relations,
     state.snapshot.renderModel.warnings,
+    state.project.uiPreferences.dismissedWarningCodes,
   ],
   (state: AppState): ShellViewModel => {
+    const visibleViews = visibleAppViews(state);
+    const renderableActiveView = selectRenderableActiveView(state);
     const activeView =
-      APP_VIEW_DEFINITIONS.find((view) => view.id === state.ui.activeView) ??
+      visibleViews.find((view) => view.id === renderableActiveView) ??
+      visibleViews[0] ??
       APP_VIEW_DEFINITIONS[0];
-    const warnings = state.snapshot.renderModel.warnings;
+    const warnings = selectVisibleWarnings(state);
     return {
       activeView: activeView.id,
       activeDescription: activeView.description,
@@ -91,7 +110,7 @@ const selectShellViewModelMemo = memoizeSelector(
           ),
         },
       ],
-      tabs: APP_VIEW_DEFINITIONS.map((view) => ({
+      tabs: visibleViews.map((view) => ({
         id: view.id,
         label: view.label,
         active: view.id === activeView.id,

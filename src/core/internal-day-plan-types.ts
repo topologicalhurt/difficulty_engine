@@ -37,6 +37,18 @@ export interface PlanningState {
   skimRatio: number;
   targetHrs: number;
   targetDayPages: number;
+  desiredPagesPerDay: number;
+  feasibleMinPagesPerDay: number;
+  feasibleMaxPagesPerDay: number;
+  finalPagesPerDay: number;
+  pacingBindingReason:
+    | 'none'
+    | 'floor_bound'
+    | 'time_bound'
+    | 'max_bound'
+    | 'manual_window'
+    | 'parallel_slot'
+    | 'insufficient_evidence';
   overlapReasons: string[];
   usedMinutes: number;
   usedTenths: number;

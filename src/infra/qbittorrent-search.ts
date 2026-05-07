@@ -2,16 +2,21 @@ import type {
   DocumentAcquisitionRequest,
   DocumentCandidate,
 } from './document-acquisition';
-import { normalizeMatcherText, sharesAnyMatchToken } from '../core/matchers';
+import {
+  authorAppearsInText,
+  isbnAppearsInText,
+  normalizeMatcherText,
+  sharesAnyMatchToken,
+} from '../core/matchers';
 import type { QbittorrentPluginInfo } from '../core/types';
 import { uniqueCompactStrings } from '../core/utils';
 import {
   bookMatchScore,
-  compareDocumentCandidateQuality,
   MIN_PLUGIN_SEEDERS,
   MIN_TORRENT_MATCH_SCORE,
   normalizedBookIsbn,
 } from './qbittorrent-selection';
+import { compareDocumentCandidateQuality } from './document-candidate-quality';
 import {
   accessBasisForSearchResult,
   hostFromUrl,
@@ -42,6 +47,27 @@ function compactSearchText(value: string): string {
 function sharesSearchToken(left: string, right: string): boolean {
   return (
     left.length >= MIN_SEARCH_TOKEN_LENGTH && sharesAnyMatchToken(left, right)
+  );
+}
+
+function searchResultEvidenceText(result: SearchResult): string {
+  return [
+    result.fileName,
+    result.fileUrl,
+    result.descrLink,
+    result.siteUrl,
+  ].join(' ');
+}
+
+function hasRequiredAuthorEvidence(
+  result: SearchResult,
+  request: DocumentAcquisitionRequest,
+): boolean {
+  if (!request.book.authors.length) return true;
+  const evidenceText = searchResultEvidenceText(result);
+  return (
+    isbnAppearsInText(request.book.isbn, evidenceText) ||
+    authorAppearsInText(request.book.authors, evidenceText)
   );
 }
 
@@ -98,6 +124,7 @@ export function candidatesFromSearchResults(
       const title = result.fileName || request.book.title;
       const matchScore = bookMatchScore(title, request);
       if (matchScore < MIN_TORRENT_MATCH_SCORE) return null;
+      if (!hasRequiredAuthorEvidence(result, request)) return null;
       const pluginName =
         allowedPlugins.find((plugin) =>
           result.siteUrl

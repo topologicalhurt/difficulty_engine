@@ -246,13 +246,13 @@ async function main() {
     );
     await page
       .getByRole('navigation')
-      .getByRole('button', { name: 'Constraints' })
+      .getByRole('button', { name: 'Planner Settings' })
       .click();
     await page.getByRole('heading', { name: 'Plan Window' }).waitFor();
     await page.getByText('Target end date').waitFor();
     await page
       .getByRole('navigation')
-      .getByRole('button', { name: 'Plan' })
+      .getByRole('button', { name: 'Plan', exact: true })
       .click();
     await page.getByRole('heading', { name: 'Gantt timeline' }).waitFor();
     await page.getByLabel('Plan color mode').selectOption('detected_genre');
@@ -278,7 +278,7 @@ async function main() {
     await page
       .locator('#embed-root')
       .getByRole('navigation')
-      .getByRole('button', { name: 'Plan' })
+      .getByRole('button', { name: 'Plan', exact: true })
       .click();
     const quickAddCard = page
       .locator('#embed-root .card')
@@ -298,7 +298,7 @@ async function main() {
     await page
       .locator('#embed-root')
       .getByRole('navigation')
-      .getByRole('button', { name: 'Plan' })
+      .getByRole('button', { name: 'Plan', exact: true })
       .click();
     await quickAddCard.getByText('Smoke Search Result').waitFor();
     await quickAddCard.getByRole('button', { name: 'Select' }).first().click();
@@ -341,11 +341,11 @@ async function main() {
     await page
       .locator('#embed-root')
       .getByRole('navigation')
-      .getByRole('button', { name: 'Info' })
+      .getByRole('button', { name: 'Guide' })
       .click();
     await page
       .locator('#embed-root')
-      .getByRole('heading', { name: 'How to use the planner' })
+      .getByRole('heading', { name: 'Difficulty Engine Guide' })
       .waitFor();
     await page
       .locator('#embed-root')
@@ -383,7 +383,7 @@ async function main() {
     await page
       .locator('#embed-root')
       .getByRole('navigation')
-      .getByRole('button', { name: 'Plan' })
+      .getByRole('button', { name: 'Plan', exact: true })
       .click();
     await page
       .locator('#embed-root')

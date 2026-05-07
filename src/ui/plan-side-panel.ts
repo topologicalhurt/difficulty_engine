@@ -1,19 +1,40 @@
 import type { BookInspectorViewModel } from '../app/selectors/plan-inspector';
-import type { WarningItem } from '../core/types';
-import { badge, card, el, emptyState } from './dom';
-import { formatOneDecimal, round0 } from './format';
+import type { PlannerStore, WarningItem } from '../core/types';
+import { badge, button, card, el, emptyState } from './dom';
+import { formatOneDecimal, formatPages, round0 } from './format';
 import { renderProgressBar } from './progress';
 
-export function renderWarningCenter(warnings: WarningItem[]): HTMLElement {
+export function renderWarningCenter(
+  warnings: WarningItem[],
+  hiddenWarningCount: number,
+  store: PlannerStore,
+): HTMLElement {
   if (!warnings.length) {
     return card(
       'Plan health',
-      emptyState('No warnings', 'The current plan is internally consistent.'),
+      emptyState(
+        'No visible warnings',
+        hiddenWarningCount
+          ? `${hiddenWarningCount} warning type(s) are dismissed for this project.`
+          : 'The current plan is internally consistent.',
+      ),
+      hiddenWarningCount
+        ? button('Restore dismissed warnings', {
+            className: 'ghost-button',
+            onClick: () => store.commands.restoreDismissedWarnings(),
+          })
+        : null,
     );
   }
 
   return card(
     'Plan health',
+    hiddenWarningCount
+      ? el('div', {
+          className: 'muted-copy',
+          text: `${hiddenWarningCount} non-blocking warning(s) hidden.`,
+        })
+      : null,
     el(
       'div',
       { className: 'warning-list planner-warning-list' },
@@ -40,6 +61,12 @@ export function renderWarningCenter(warnings: WarningItem[]): HTMLElement {
                 })
               : null,
           ),
+          warning.severity === 'fail'
+            ? null
+            : button('Dismiss type', {
+                className: 'ghost-button compact-button',
+                onClick: () => store.commands.dismissWarningCode(warning.code),
+              }),
         ),
       ),
     ),
@@ -49,6 +76,7 @@ export function renderWarningCenter(warnings: WarningItem[]): HTMLElement {
 export function renderBookInspector(
   model: BookInspectorViewModel,
   timelineLabel: (slot: number) => string,
+  store: PlannerStore,
 ): HTMLElement {
   if (!model.fallbackId) {
     return card(
@@ -75,11 +103,19 @@ export function renderBookInspector(
     el(
       'div',
       { className: 'stack-layout compact-stack' },
+      el(
+        'div',
+        { className: 'toolbar-row inspector-toolbar' },
+        button('Close details', {
+          className: 'ghost-button compact-button',
+          onClick: () => store.commands.selectBook(null),
+        }),
+      ),
       el('div', { className: 'eyebrow', text: model.displayGroup }),
       el('h3', { className: 'inspector-title', text: model.bookTitle }),
       el('div', {
         className: 'muted-copy',
-        text: `${model.pages} pages · ${formatOneDecimal(model.difficulty.scheduleDifficulty)} schedule difficulty`,
+        text: `${formatPages(model.pages)} pages · ${formatOneDecimal(model.difficulty.scheduleDifficulty)} schedule difficulty · ${formatOneDecimal(model.difficulty.latentWorkload)} latent workload`,
       }),
       model.progress ? renderProgressBar(model.progress) : null,
       el(
@@ -124,9 +160,9 @@ export function renderBookInspector(
           'div',
           { className: 'inspector-metric' },
           el('strong', {
-            text: formatOneDecimal(model.schedule.pacingPageTarget),
+            text: formatOneDecimal(model.schedule.desiredPagesPerDay),
           }),
-          el('span', { className: 'muted-copy', text: 'Pacing target' }),
+          el('span', { className: 'muted-copy', text: 'Desired pages/day' }),
         ),
         el(
           'div',
@@ -139,7 +175,7 @@ export function renderBookInspector(
       ),
       el('div', {
         className: 'muted-copy',
-        text: `Absolute target ${formatOneDecimal(model.schedule.absolutePageTarget)} pg/day · relative target ${formatOneDecimal(model.schedule.relativePageTarget)} pg/day · percentile ${formatOneDecimal(model.schedule.relativePacingPercentile)}%`,
+        text: `Final ${formatOneDecimal(model.schedule.finalPagesPerDay)} pg/day · feasible ${formatOneDecimal(model.schedule.feasibleMinPagesPerDay)}-${formatOneDecimal(model.schedule.feasibleMaxPagesPerDay)} · binding ${model.schedule.pacingBindingReason}`,
       }),
       el(
         'div',

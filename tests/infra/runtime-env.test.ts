@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { loadRuntimeAiConnectionPatch } from '../../src/infra/runtime-env';
-import { publicRuntimeEnvAssignment } from '../../scripts/runtime-env.mjs';
+import {
+  loadRuntimeAiConnectionPatch,
+  loadRuntimeDebugUi,
+} from '../../src/infra/runtime-env';
+import {
+  buildRuntimeEnv,
+  publicRuntimeEnvAssignment,
+} from '../../scripts/runtime-env.mjs';
 
 describe('runtime env config', () => {
   afterEach(() => {
@@ -53,5 +59,20 @@ describe('runtime env config', () => {
     expect(assignment).not.toContain('apiKey');
     expect(assignment).not.toContain('enabled');
     expect(assignment).toContain('gpt-5-mini');
+  });
+
+  it('loads debug UI from runtime config', () => {
+    globalThis.__DIFFICULTY_ENGINE_ENV__ = { debugUi: true };
+
+    expect(loadRuntimeDebugUi()).toBe(true);
+  });
+
+  it('maps debug UI environment flags into runtime config', () => {
+    const config = buildRuntimeEnv(
+      {},
+      { DIFFICULTY_ENGINE_DEBUG_UI: '1' },
+    ) as { debugUi?: boolean };
+
+    expect(config.debugUi).toBe(true);
   });
 });

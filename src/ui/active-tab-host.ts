@@ -1,5 +1,6 @@
 import type { AppState, PlannerStore } from '../core/types';
 import { selectActiveTabRenderKeys } from '../app/selectors/active-tab-render-keys';
+import { selectRenderableActiveView } from '../app/selectors/shell';
 import { renderAiView } from './ai-view';
 import { renderConstraintsView } from './constraints-view';
 import { renderDiagnosticsView } from './diagnostics-view';
@@ -17,7 +18,7 @@ interface ActiveTabRenderCache {
 const renderCacheByRoot = new WeakMap<HTMLElement, ActiveTabRenderCache>();
 
 function renderBody(state: AppState, store: PlannerStore): HTMLElement {
-  switch (state.ui.activeView) {
+  switch (selectRenderableActiveView(state)) {
     case 'library':
       return renderLibraryView(state, store);
     case 'constraints':
@@ -59,13 +60,14 @@ export function renderActiveTabBody(
 
   const focusSnapshot = captureFocus(root);
   const previousView = root.dataset.activeView;
+  const activeView = selectRenderableActiveView(state);
   const scrollSnapshot =
-    previousView === state.ui.activeView
+    previousView === activeView
       ? { top: root.scrollTop, left: root.scrollLeft }
       : null;
 
   root.replaceChildren(renderBody(state, store));
-  root.dataset.activeView = state.ui.activeView;
+  root.dataset.activeView = activeView;
   renderCacheByRoot.set(root, { keys: nextKeys });
 
   if (scrollSnapshot) {

@@ -131,6 +131,9 @@ describe('planner parameter wiring matrix', () => {
       ['par', 3],
       ['minPg', 3],
       ['maxPg', 30],
+      ['learnerProfileMode', 'fast_track'],
+      ['learnerAdaptivityStrength', 90],
+      ['targetChallenge', 75],
       ['relativePacingStrength', 90],
       ['relativePacingCurve', 'power'],
       ['subjectWorkloadStrength', 90],
@@ -211,11 +214,66 @@ describe('planner parameter wiring matrix', () => {
 
   it('allows compact overview Gantt zoom values below the previous floor', () => {
     const store = matrixStore();
-    store.commands.setGanttZoom(0.2);
+    store.commands.setGanttZoom(0.04);
     const viewModel = selectPlanViewModel(store.selectors.getState());
 
-    expect(store.selectors.getProject().uiPreferences.ganttZoom).toBe(0.2);
-    expect(viewModel.gantt.zoom).toBe(0.2);
+    expect(store.selectors.getProject().uiPreferences.ganttZoom).toBe(0.04);
+    expect(viewModel.gantt.zoom).toBe(0.04);
+  });
+
+  it('keeps Plan display preferences persistent without recomputing snapshots', () => {
+    const store = matrixStore();
+    const beforeSnapshot = store.selectors.getSnapshot();
+
+    store.commands.setPlanSectionOpen('gantt', false);
+    store.commands.setPlanSectionOpen('calendar', false);
+    store.commands.setLibraryListWidth(612);
+
+    expect(store.selectors.getSnapshot()).toBe(beforeSnapshot);
+    expect(store.selectors.getProject().uiPreferences.planSections).toEqual({
+      gantt: false,
+      calendar: false,
+    });
+    expect(store.selectors.getProject().uiPreferences.libraryListWidthPx).toBe(
+      612,
+    );
+    expect(selectPlanViewModel(store.selectors.getState()).planSections).toEqual(
+      {
+        gantt: false,
+        calendar: false,
+      },
+    );
+  });
+
+  it('persists dismissals by non-blocking warning code but keeps failures visible', () => {
+    const store = matrixStore();
+    store.commands.updateConstraints({
+      feasibilityMode: 'strict_floor',
+      hpd: 0.25,
+      minPg: 40,
+      maxPg: 40,
+      bmp: 20,
+    });
+    const warning = store
+      .selectors.getSnapshot()
+      .renderModel.warnings.find((item) => item.severity === 'warn');
+    expect(warning).toBeTruthy();
+
+    store.commands.dismissWarningCode(warning?.code ?? '');
+
+    expect(
+      store.selectors.getProject().uiPreferences.dismissedWarningCodes,
+    ).toContain(warning?.code);
+    expect(
+      selectPlanViewModel(store.selectors.getState()).warnings.some(
+        (item) => item.code === warning?.code,
+      ),
+    ).toBe(false);
+
+    store.commands.restoreDismissedWarnings();
+    expect(
+      store.selectors.getProject().uiPreferences.dismissedWarningCodes,
+    ).toEqual([]);
   });
 
   it('keeps calendar log selection UI-only while selecting the inspected book', () => {

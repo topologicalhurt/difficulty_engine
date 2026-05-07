@@ -5,7 +5,10 @@ import { createLocalIntegrationSettings } from './infra/local-integration-settin
 import { consoleLogger } from './infra/logger';
 import { createLocalStoragePersistence } from './infra/persistence';
 import { createQBittorrentIntegrationService } from './infra/qbittorrent-provider';
-import { loadRuntimeAiConnectionPatch } from './infra/runtime-env';
+import {
+  loadRuntimeAiConnectionPatch,
+  loadRuntimeDebugUi,
+} from './infra/runtime-env';
 import { createDefaultAiConnectionSettings } from './core/defaults';
 import { normalizeAiConnectionSettings } from './core/project-normalize-ai';
 import type { LocalIntegrationSettingsAdapter } from './core/types';
@@ -55,6 +58,7 @@ async function boot(): Promise<void> {
     qbittorrentService: createQBittorrentIntegrationService(),
     logger: consoleLogger,
     clock: plannerClock,
+    debugUi: loadRuntimeDebugUi(),
   });
 }
 

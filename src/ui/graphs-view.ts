@@ -17,7 +17,15 @@ function renderGraphOptions(state: AppState, store: PlannerStore): HTMLElement {
     'Graph options',
     el(
       'details',
-      { className: 'graph-options-dropdown' },
+      {
+        className: 'graph-options-dropdown',
+        open: state.ui.graphOptionsOpen,
+        onToggle: (event) => {
+          if (event.target instanceof HTMLDetailsElement) {
+            store.commands.setGraphOptionsOpen(event.target.open);
+          }
+        },
+      },
       el('summary', {
         className: 'graph-options-summary',
         text: 'Graph behavior settings',

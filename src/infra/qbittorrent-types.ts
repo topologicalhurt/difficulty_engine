@@ -1,7 +1,11 @@
 export interface TorrentInfo {
+  category?: string;
   hash?: string;
   name?: string;
   content_path?: string;
+  magnet_uri?: string;
+  num_leechs?: number;
+  num_seeds?: number;
   amount_left?: number;
   progress?: number;
   save_path?: string;

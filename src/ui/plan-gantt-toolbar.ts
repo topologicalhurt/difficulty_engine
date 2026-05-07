@@ -7,6 +7,7 @@ import type {
 import { button, el } from './dom';
 import { selectInput } from './form-controls';
 import { formatPercent } from './format';
+import { renderPlanBookJump } from './plan-book-jump';
 
 function renderPlanColorSelect(
   mode: PlanColorMode,
@@ -59,6 +60,8 @@ export function renderGanttToolbar(
   gantt: GanttViewModel,
   colors: PlanViewModel['colors'],
   emptyDayPolicy: PlanViewModel['emptyDayPolicy'],
+  bookJumpOptions: PlanViewModel['bookJumpOptions'],
+  selectedBookId: string | null,
   store: PlannerStore,
 ): HTMLElement {
   const zoomLabel = formatPercent(gantt.zoom);
@@ -99,6 +102,7 @@ export function renderGanttToolbar(
       el('span', { text: 'Empty days' }),
       renderEmptyDayPolicySelect(emptyDayPolicy, store),
     ),
+    renderPlanBookJump(bookJumpOptions, selectedBookId, 'gantt', store),
     el('div', {
       className: 'muted-copy',
       text: `${gantt.rows.length} scheduled books · ${gantt.weekCount} visible weeks · scroll horizontally`,

@@ -1,7 +1,7 @@
 import { calendarDetailText, type PlanViewModel } from '../app/selectors/plan';
 import type { CalendarEntry, PlannerStore } from '../core/types';
 import { button, el } from './dom';
-import { formatOneDecimal, round0 } from './format';
+import { formatOneDecimal, formatPages, round0 } from './format';
 import { numberInputControl } from './form-controls';
 
 const MAX_ACTUAL_PAGES_INPUT = '10000';
@@ -122,7 +122,11 @@ export function renderSelectedCalendarLogPanel(
       ),
       el('div', {
         className: 'muted-copy',
-        text: `${round0(entry.mins)}m planned · ${formatOneDecimal(entry.readPages + entry.skimPages)} pages planned`,
+        text: `${round0(entry.mins)}m planned · ${formatPages(entry.readPages + entry.skimPages)} pages planned`,
+      }),
+      button('Close', {
+        className: 'ghost-button compact-button',
+        onClick: () => store.commands.selectBook(null),
       }),
     ),
     el('div', {

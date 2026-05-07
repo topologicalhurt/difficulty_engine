@@ -7,6 +7,7 @@ import {
   EXAMPLE_BOOK,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import { createPlannerEngine } from '../../src/core/engine';
 import { parseProject } from '../../src/core/project-file';
@@ -133,11 +134,7 @@ function parallelConflictFixture(): PlannerProjectV1 {
         applyOverlapSkim: false,
       },
       enrichmentCache: {},
-      uiPreferences: {
-        ganttView: 'plan',
-        ganttZoom: 1,
-        planColorMode: 'category_mono',
-      },
+      uiPreferences: createDefaultUiPreferences(),
     }),
   );
 }
@@ -189,8 +186,14 @@ describe('plan empty-day and parallel-fill projection', () => {
   });
 
   it('projects calendar cell ordering and summaries in the selector', () => {
+    const project = parallelConflictFixture();
+    project.constraints = {
+      ...project.constraints,
+      bmp: 5,
+      minPg: 3,
+    };
     const store = createPlannerStore({
-      initialProject: parallelConflictFixture(),
+      initialProject: project,
       engine: engine(),
       enrichmentProvider,
       logger: silentLogger,
@@ -241,11 +244,7 @@ describe('plan empty-day and parallel-fill projection', () => {
       aiRecommendationSettings: createDefaultAiRecommendationSettings(),
       enrichmentCache: {},
       sourceSettings: createDefaultSourceSettings(),
-      uiPreferences: {
-        ganttView: 'plan',
-        ganttZoom: 1,
-        planColorMode: 'category_mono',
-      },
+      uiPreferences: createDefaultUiPreferences(),
     };
 
     const snapshot = engine().computeSnapshot(project);

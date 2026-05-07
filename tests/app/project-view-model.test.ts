@@ -32,6 +32,7 @@ describe('project view model', () => {
       'document:localFile',
       'document:internetArchiveText',
       'document:qbittorrent',
+      'document:localOcr',
     ]);
     expect(
       viewModel.sourceProviders.find((row) => row.key === 'openlibrary')

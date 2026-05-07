@@ -7,12 +7,14 @@ import {
   mkdtemp,
   readdir,
   readFile,
+  rm,
   stat,
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import {
   basename,
+  dirname,
   extname,
   isAbsolute,
   join,
@@ -20,10 +22,13 @@ import {
   resolve,
   sep,
 } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const DEFAULT_LISTEN_URL = 'http://127.0.0.1:8787';
 const DEFAULT_TARGET_URL = 'http://127.0.0.1:8080';
-const DEFAULT_DATA_ROOT = resolve(process.cwd(), 'output', 'data', 'documents');
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = resolve(SCRIPT_DIR, '..');
+const DEFAULT_DATA_ROOT = resolve(REPO_ROOT, 'output', 'data', 'documents');
 const DEFAULT_TIMEOUT_MS = 30_000;
 const PROXY_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
 const DOCUMENT_JSON_BODY_LIMIT_BYTES = 16 * 1024;
@@ -37,6 +42,10 @@ const DEFAULT_ALLOWED_ORIGINS = [
 ];
 const PDF_TEXT_PAGE_LIMIT = 80;
 const PDF_TEXT_TIMEOUT_MS = 20_000;
+const OCR_TOC_PAGE_LIMIT = 24;
+const OCR_RENDER_DPI = 220;
+const OCR_TIMEOUT_MS = 90_000;
+const OCR_SIDE_DIR = '.difficulty-engine-ocr';
 const TEXT_EXTENSIONS = new Set(['.txt', '.text']);
 const OCR_TEXT_PATTERN = /(?:_djvu\.txt|ocr\.txt)$/i;
 const PDF_EXTENSIONS = new Set(['.pdf']);
@@ -429,6 +438,24 @@ async function pdfKitHelperPath(dataRoot) {
 }
 
 async function extractPdfText(dataRoot, filePath) {
+  if (await commandAvailable('pdftotext')) {
+    const output = await runProcess(
+      'pdftotext',
+      [
+        '-layout',
+        '-nopgbrk',
+        '-f',
+        '1',
+        '-l',
+        String(PDF_TEXT_PAGE_LIMIT),
+        filePath,
+        '-',
+      ],
+      PDF_TEXT_TIMEOUT_MS,
+    ).catch(() => Buffer.alloc(0));
+    const text = output.toString('utf8').trim();
+    if (text) return text;
+  }
   const helperPath = await pdfKitHelperPath(dataRoot);
   const output = await runProcess(
     helperPath,
@@ -442,6 +469,110 @@ async function extractPdfText(dataRoot, filePath) {
     );
   }
   return text;
+}
+
+async function commandAvailable(command) {
+  try {
+    await runProcess('/usr/bin/env', ['which', command], 5_000);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ocrSidecarPath(dataRoot, filePath) {
+  const digest = await sha256(filePath);
+  const sidecarDir = resolve(dataRoot, OCR_SIDE_DIR);
+  await mkdir(sidecarDir, { recursive: true });
+  return join(sidecarDir, `${digest}.toc.txt`);
+}
+
+async function ocrStatus(dataRoot, requestPath) {
+  const filePath = await assertSupportedDocumentFile(dataRoot, requestPath);
+  if (!PDF_EXTENSIONS.has(extname(filePath.toLowerCase()))) {
+    throw new Error('OCR is only available for PDF documents.');
+  }
+  const sidecarPath = await ocrSidecarPath(dataRoot, filePath);
+  const existing = await readFile(sidecarPath, 'utf8').catch(() => '');
+  if (existing.trim()) {
+    return {
+      ok: true,
+      status: 'complete',
+      sidecarPath,
+      text: existing,
+    };
+  }
+  const [hasRenderer, hasOcr] = await Promise.all([
+    commandAvailable('pdftoppm'),
+    commandAvailable('tesseract'),
+  ]);
+  if (!hasRenderer || !hasOcr) {
+    return {
+      ok: true,
+      status: 'unavailable',
+      sidecarPath,
+      reason: 'Install Poppler pdftoppm and Tesseract to enable OCR.',
+    };
+  }
+  return { ok: true, status: 'pending', sidecarPath };
+}
+
+async function runOcrForPdf(dataRoot, requestPath) {
+  const status = await ocrStatus(dataRoot, requestPath);
+  if (status.status === 'complete' || status.status === 'unavailable') {
+    return status;
+  }
+  const filePath = await assertSupportedDocumentFile(dataRoot, requestPath);
+  const workDir = await mkdtemp(join(tmpdir(), 'difficulty-engine-ocr-'));
+  try {
+    const prefix = join(workDir, 'toc-page');
+    await runProcess(
+      'pdftoppm',
+      [
+        '-f',
+        '1',
+        '-l',
+        String(OCR_TOC_PAGE_LIMIT),
+        '-r',
+        String(OCR_RENDER_DPI),
+        '-png',
+        filePath,
+        prefix,
+      ],
+      OCR_TIMEOUT_MS,
+    );
+    const images = (await readdir(workDir))
+      .filter((entry) => entry.endsWith('.png'))
+      .sort((left, right) => left.localeCompare(right));
+    const texts = [];
+    for (const image of images) {
+      const output = await runProcess(
+        'tesseract',
+        [join(workDir, image), 'stdout', '-l', 'eng', '--psm', '6'],
+        OCR_TIMEOUT_MS,
+      ).catch(() => Buffer.alloc(0));
+      const text = output.toString('utf8').trim();
+      if (text) texts.push(text);
+    }
+    const combined = texts.join('\n\n').trim();
+    if (!combined) {
+      return {
+        ok: true,
+        status: 'failed',
+        sidecarPath: status.sidecarPath,
+        reason: 'OCR completed but produced no readable text.',
+      };
+    }
+    await writeFile(status.sidecarPath, combined, 'utf8');
+    return {
+      ok: true,
+      status: 'complete',
+      sidecarPath: status.sidecarPath,
+      text: combined,
+    };
+  } finally {
+    await rm(workDir, { recursive: true, force: true }).catch(() => undefined);
+  }
 }
 
 async function handleDocumentRequest(
@@ -493,6 +624,36 @@ async function handleDocumentRequest(
       );
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.end(await readFile(filePath, 'utf8'));
+      return true;
+    }
+    if (pathname === '/documents/extract-text' && req.method === 'GET') {
+      const filePath = await assertSupportedDocumentFile(
+        dataRoot,
+        documentUrlPath(req),
+      );
+      if (!PDF_EXTENSIONS.has(extname(filePath.toLowerCase()))) {
+        throw new Error('Embedded text extraction is only available for PDFs.');
+      }
+      await assertDocumentSize(
+        filePath,
+        DOCUMENT_PDF_TEXT_FILE_LIMIT_BYTES,
+        'PDF document',
+      );
+      const text = await extractPdfText(dataRoot, filePath);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ ok: true, status: 'complete', text }));
+      return true;
+    }
+    if (pathname === '/documents/ocr-status' && req.method === 'GET') {
+      const payload = await ocrStatus(dataRoot, documentUrlPath(req));
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(payload));
+      return true;
+    }
+    if (pathname === '/documents/ocr-toc' && req.method === 'POST') {
+      const payload = await runOcrForPdf(dataRoot, documentUrlPath(req));
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(payload));
       return true;
     }
     if (pathname === '/documents/read-bytes' && req.method === 'GET') {

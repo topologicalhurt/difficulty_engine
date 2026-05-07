@@ -46,6 +46,16 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Tests: add a core fixture or invariant test before changing UI.
 - Avoid: changing render models to hide a solver issue, or adding scheduling logic in selectors/UI.
 
+### Add Or Change Difficulty Or Pacing Logic
+
+- Owner: `src/core/difficulty-evidence.ts`, `src/core/difficulty-latent.ts`, `src/core/difficulty-graph.ts`, `src/core/difficulty-learner.ts`, `src/core/difficulty.ts`, and `src/core/relative-pacing.ts`.
+- Contract: `scheduleDifficulty` is planner truth; `displayDifficulty` is visual-only.
+- Evidence: new signals must include confidence, a reason, deterministic ordering, and tests for sparse and well-evidenced books.
+- Adaptivity: logged actuals may recalibrate only through shrinkage and only after enough pages exist.
+- Pacing: compute desired pages/day first, then feasible bounds, then final allocation with `pacingBindingReason`.
+- Tests: update `tests/core/difficulty-pipeline.test.ts`, relevant page-floor/pacing tests, and display-mapping tests.
+- Avoid: making display compression affect hours, recomputing schedule from UI selectors, rounding early, or silently clipping away desired pacing variation.
+
 ### Add Or Change Worker Compute Or Persistence
 
 - Owner: `src/app/store-runtime.ts`, `src/app/compute-adapter.ts`, and `src/app/mount.ts`.
@@ -61,7 +71,9 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Document priority: content-kind ranking must come from the shared document content-priority helpers.
 - Matching: title/author/ISBN relevance and source queries must reuse `src/core/matchers.ts`; do not add provider-local fuzzy scoring.
 - Provenance: every enrichment/document result must include provider, strategy, confidence, and source details when available.
-- Tests: provider unit tests plus an enrichment integration test for fallback/failure behavior.
+- TOC order: manual chapters, completed text/EPUB/OCR text, local PDF raw/embedded extraction, optional local OCR, then online/provider fallback.
+- TOC quality: “Contents” / “Table of Contents” rows are anchors only and must not be persisted as chapters; weak OCR/provider chapters must stay quarantined unless confidence and source priority justify promotion.
+- Tests: provider unit tests plus an enrichment integration test for fallback/failure behavior. Run `npm run toc:audit` whenever chapter sourcing, PDF extraction, OCR, or provider snippet logic changes.
 - Avoid: provider-specific logic in core, implicit downloads, or storing local credentials in project JSON.
 
 ### Add Or Change Graphs
@@ -77,6 +89,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - UI shell: `src/ui/svelte/AppShell.svelte`
 - UI controls: `src/ui/dom.ts`
 - UI formatting: `src/ui/format.ts`
+- Guide content: `src/content/info/readme.ts`
 - Number formatting: `src/core/number-format.ts`
 - Display colors: `src/core/display-colors.ts`
 - Stable sorting: `src/core/sort.ts`
@@ -86,9 +99,15 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Progress display/math: `src/app/selectors/progress.ts` and `src/ui/progress.ts`
 - Date constants and weekday math: `src/core/date-constants.ts`, `src/core/time.ts`, `src/core/weekdays.ts`
 - Planner constraints and pacing math: `src/core/constraints.ts`
+- Difficulty evidence/model stages: `src/core/difficulty-evidence.ts`, `src/core/difficulty-latent.ts`, `src/core/difficulty-graph.ts`, `src/core/difficulty-learner.ts`, `src/core/difficulty.ts`
+- Desired/feasible/final pacing projection: `src/core/relative-pacing.ts`
 - Infra cache time: `src/infra/cache-time.ts`
 - Document content priority: `src/infra/document-content-priority.ts`
+- Document candidate quality: `src/infra/document-candidate-quality.ts`
 - Document content kind and path helpers: `src/infra/qbittorrent-file-kinds.ts`
+- Document text/TOC extraction: `src/infra/document-text-extractor.ts`
+- PDF outline/raw-byte extraction: `src/infra/pdf-outline-titles.ts`
+- TOC line normalization and registered patterns: `src/infra/toc-line-normalization.ts`, `src/infra/toc-extraction-patterns.ts`
 - Source/provider enablement policy: `src/core/source-settings-policy.ts`
 - Source settings patching: `src/app/store-source-settings-helpers.ts`
 - Wiring contracts: `src/app/wiring/`

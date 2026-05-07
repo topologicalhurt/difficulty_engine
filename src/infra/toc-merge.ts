@@ -32,6 +32,8 @@ export interface StrategyCandidate {
   strategy?: string;
   inferred?: boolean;
   evidenceAnchors?: string[];
+  rejectedReasons?: string[];
+  pageRange?: { start: number; end: number };
 }
 
 export interface StrategyResolution {
@@ -61,6 +63,8 @@ function buildProvenance(
       strategy: candidate?.strategy,
       inferred: candidate?.inferred,
       evidenceAnchors: candidate?.evidenceAnchors,
+      rejectedReasons: candidate?.rejectedReasons,
+      pageRange: candidate?.pageRange,
     };
   });
 }

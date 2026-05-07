@@ -23,6 +23,10 @@ import {
   selectBookInspector,
   type BookInspectorViewModel,
 } from './plan-inspector';
+import {
+  selectDismissedWarningCount,
+  selectVisibleWarnings,
+} from './warnings';
 
 export interface StatCardView {
   label: string;
@@ -50,7 +54,10 @@ export interface PlanViewModel {
   colors: PlanColorMetadata;
   progress: OverallProgressView;
   warnings: WarningItem[];
+  hiddenWarningCount: number;
   inspector: BookInspectorViewModel;
+  planSections: AppState['ui']['planSections'];
+  bookJumpOptions: Array<{ id: string; label: string }>;
   timelineLabel(slot: number): string;
 }
 
@@ -135,6 +142,20 @@ function selectGantt(state: AppState): GanttViewModel {
   };
 }
 
+function selectPlanBookJumpOptions(state: AppState): Array<{
+  id: string;
+  label: string;
+}> {
+  return state.snapshot.renderModel.gantt.rows
+    .map((row) => ({ id: row.id, label: row.short || row.id }))
+    .sort((left, right) =>
+      compareChain(
+        compareText(left.label, right.label),
+        compareText(left.id, right.id),
+      ),
+    );
+}
+
 const selectPlanViewModelMemo = memoizeSelector(
   'plan.viewModel',
   (state: AppState) => [
@@ -145,6 +166,8 @@ const selectPlanViewModelMemo = memoizeSelector(
     state.ui.ganttView,
     state.ui.ganttZoom,
     state.ui.planColorMode,
+    state.ui.planSections,
+    state.project.uiPreferences.dismissedWarningCodes,
   ],
   (state: AppState): PlanViewModel => {
     const progress = selectProgressSummary(state);
@@ -157,8 +180,11 @@ const selectPlanViewModelMemo = memoizeSelector(
       calendarWeeks: buildCalendarWeeks(state),
       colors: selectPlanColors(state),
       progress: progress.overall,
-      warnings: state.snapshot.renderModel.warnings,
+      warnings: selectVisibleWarnings(state),
+      hiddenWarningCount: selectDismissedWarningCount(state),
       inspector: selectBookInspector(state, progress.byBook),
+      planSections: state.ui.planSections,
+      bookJumpOptions: selectPlanBookJumpOptions(state),
       timelineLabel: selectTimelineLabel(state),
     };
   },

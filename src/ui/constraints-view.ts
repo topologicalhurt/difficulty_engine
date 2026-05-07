@@ -6,7 +6,7 @@ import {
 import type { AppState, PlannerStore } from '../core/types';
 import { renderConstraintField } from './constraint-field';
 import { renderDifficultyMappingChart } from './difficulty-mapping-chart';
-import { card, el } from './dom';
+import { button, card, el } from './dom';
 
 function renderExplanation(viewModel: ConstraintsViewModel): HTMLElement {
   const showDetail =
@@ -50,9 +50,8 @@ function renderConstraintGroup(
             className: 'muted-copy',
             text: `${group.hiddenAdvancedCount} advanced setting(s)`,
           }),
-          el('button', {
+          button(group.advancedOpen ? 'Hide advanced' : 'Show advanced', {
             className: 'ghost-button compact-button',
-            text: group.advancedOpen ? 'Hide advanced' : 'Show advanced',
             onClick: () =>
               store.commands.toggleConstraintAdvancedGroup(group.group),
           }),

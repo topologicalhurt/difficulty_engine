@@ -1,14 +1,8 @@
-import {
-  BREADTH_LOAD_MULTIPLIER,
-  GRAPH_BURDEN_DEPTH_WEIGHT,
-  GRAPH_BURDEN_PARENT_WEIGHT,
-  NOVELTY_LOAD_MULTIPLIER,
-  RETENTION_LOAD_MULTIPLIER,
-  SCHEDULE_DIFFICULTY_CORPUS_WEIGHT,
-  SCHEDULE_DIFFICULTY_SEED_WEIGHT,
-  SUBJECT_WORKLOAD_DEFAULT,
-  WORKLOAD_LIFT_CAP,
-} from './constants';
+import { DIFFICULTY_HIGH_UNCERTAINTY, SUBJECT_WORKLOAD_DEFAULT, WORKLOAD_LIFT_CAP } from './constants';
+import { buildDifficultyEvidence } from './difficulty-evidence';
+import { applyGraphWorkloadPropagation } from './difficulty-graph';
+import { applyLearnerCalibration } from './difficulty-learner';
+import { estimateLatentWorkload } from './difficulty-latent';
 import {
   difficultyDistributionStats,
   mapDisplayDifficulty,
@@ -20,55 +14,9 @@ import type {
   TopicIndex,
   WorkloadClusterSnapshot,
 } from './internal-types';
-import type { PlannerProjectV1 } from './types';
 import { topologicalDepth } from './relation-graph-utils';
-import { clamp, mean, round1, round2, safeNumber } from './utils';
-
-const NEUTRAL_MANUAL_SEED = 5;
-const MANUAL_SEED_BLEND_WEIGHT = 0.65;
-const CORPUS_SEED_BLEND_WEIGHT = 1 - MANUAL_SEED_BLEND_WEIGHT;
-const NEUTRAL_SEED_EPSILON = 0.05;
-
-function effectiveSeed(book: {
-  lockDiff: boolean;
-  manualSeedDifficulty: number;
-  seedEstimate: number;
-}): number {
-  const manualSeed = clamp(
-    safeNumber(book.manualSeedDifficulty, NEUTRAL_MANUAL_SEED),
-    1,
-    10,
-  );
-  const corpusSeed = clamp(safeNumber(book.seedEstimate, manualSeed), 1, 10);
-  if (book.lockDiff) {
-    return manualSeed;
-  }
-  if (Math.abs(manualSeed - NEUTRAL_MANUAL_SEED) <= NEUTRAL_SEED_EPSILON) {
-    return corpusSeed;
-  }
-  return clamp(
-    manualSeed * MANUAL_SEED_BLEND_WEIGHT +
-      corpusSeed * CORPUS_SEED_BLEND_WEIGHT,
-    1,
-    10,
-  );
-}
-
-function prerequisiteCoverage(
-  relationInfo: RelationInfo,
-  prerequisiteId: string,
-  childId: string,
-): number {
-  const pair = relationInfo.byPair[[prerequisiteId, childId].sort().join('|')];
-  if (!pair) return 0;
-  if (pair.leftId === prerequisiteId && pair.rightId === childId) {
-    return pair.coverageAB || 0;
-  }
-  if (pair.leftId === childId && pair.rightId === prerequisiteId) {
-    return pair.coverageBA || 0;
-  }
-  return 0;
-}
+import type { PlannerProjectV1 } from './types';
+import { clamp, round1, round2, safeNumber } from './utils';
 
 function workloadStrength(project: PlannerProjectV1): number {
   return (
@@ -87,6 +35,7 @@ function subjectWorkloadLift(
   baseDifficulty: number,
   clusterPrior: number,
   clusterConfidence: number,
+  evidenceConfidence: number,
   project: PlannerProjectV1,
 ): number {
   const strength = workloadStrength(project);
@@ -95,11 +44,25 @@ function subjectWorkloadLift(
     clamp(
       (clusterPrior - baseDifficulty) *
         strength *
-        clamp(clusterConfidence, 0, 1),
+        clamp(clusterConfidence, 0, 1) *
+        clamp(1 - evidenceConfidence, 0.2, 1),
       -WORKLOAD_LIFT_CAP,
       WORKLOAD_LIFT_CAP,
     ),
   );
+}
+
+function difficultyBindingReason(input: {
+  locked: boolean;
+  uncertainty: number;
+  learnerLift: number;
+}): string | null {
+  if (input.locked) return 'manual_lock';
+  if (Math.abs(input.learnerLift) > 0.01) return 'learner_calibrated';
+  if (input.uncertainty >= DIFFICULTY_HIGH_UNCERTAINTY) {
+    return 'high_uncertainty';
+  }
+  return null;
 }
 
 export function computeDifficultyModel(
@@ -111,6 +74,7 @@ export function computeDifficultyModel(
 ): DifficultyModelSnapshot {
   const ids = corpus.books.map((book) => book.id);
   const depths = topologicalDepth(ids, relationInfo.prereqById);
+  const evidenceById = buildDifficultyEvidence(corpus, topicIndex, project);
   const model: DifficultyModelSnapshot['byId'] = {};
   const order = [...ids].sort(
     (left, right) => depths[left] - depths[right] || left.localeCompare(right),
@@ -118,119 +82,110 @@ export function computeDifficultyModel(
 
   order.forEach((id) => {
     const book = corpus.byId[id];
-    const bookStats = topicIndex.bookStats[id] || { baseComplexity: 5 };
-    const seed = effectiveSeed(book);
-    const corpusComplexity = clamp(bookStats.baseComplexity || seed, 1, 10);
-    const prereqs = (relationInfo.prereqById[id] || []).filter(
-      (parent) => model[parent] && !corpus.byId[parent]?.noPropOut,
-    );
-    const parentScores = prereqs.map(
-      (parent) => model[parent]?.scheduleDifficulty || 0,
-    );
-    const graphBurden = round2(
-      prereqs.length
-        ? (mean(parentScores) - seed) * GRAPH_BURDEN_PARENT_WEIGHT +
-            (depths[id] || 0) * GRAPH_BURDEN_DEPTH_WEIGHT
-        : 0,
-    );
-    const transferSignals = prereqs.map((parent) => {
-      return prerequisiteCoverage(relationInfo, parent, id);
-    });
-    const novelty = round2(clamp(1 - mean(transferSignals), 0, 1.2));
-    const breadth = round2(clamp(Math.log2(prereqs.length + 1) / 2.8, 0, 1.5));
-    const retention = round2(
-      clamp(
-        (mean(parentScores) *
-          safeNumber(project.constraints.prereqRetention, 0.45)) /
-          10,
-        0,
-        1.5,
-      ),
-    );
-    const noveltyLoad = round2(
-      novelty *
-        safeNumber(project.constraints.propNovelty, 0.18) *
-        NOVELTY_LOAD_MULTIPLIER,
-    );
-    const breadthLoad = round2(
-      breadth *
-        safeNumber(project.constraints.propBreadth, 0.12) *
-        BREADTH_LOAD_MULTIPLIER,
-    );
-    const retentionLoad = round2(retention * RETENTION_LOAD_MULTIPLIER);
-    const baseDifficulty =
-      seed * SCHEDULE_DIFFICULTY_SEED_WEIGHT +
-      corpusComplexity * SCHEDULE_DIFFICULTY_CORPUS_WEIGHT;
+    const evidence = evidenceById[id];
+    const latent = estimateLatentWorkload(evidence);
     const workload = workloadClusters?.byBookId[id];
     const subjectWorkloadPrior =
-      workload?.subjectWorkloadPrior ?? round1(baseDifficulty);
+      workload?.subjectWorkloadPrior ?? round1(latent.latentWorkload);
     const subjectLift = book.lockDiff
       ? 0
       : subjectWorkloadLift(
-          baseDifficulty,
+          latent.latentWorkload,
           subjectWorkloadPrior,
           workload?.clusterConfidence ?? 0,
+          latent.evidenceConfidence,
           project,
         );
-    const workloadBaseDifficulty = clamp(baseDifficulty + subjectLift, 1, 10);
-    const rawGraphLift =
-      graphBurden + noveltyLoad + breadthLoad + retentionLoad;
-    const graphLift =
-      rawGraphLift *
-      clamp(safeNumber(project.constraints.propMix, 0.65), 0, 1) *
-      (1 - clamp(safeNumber(project.constraints.damp, 0.35), 0, 1));
-    const graphCap = Math.max(
-      safeNumber(project.constraints.absFloor, 0.55),
-      Math.abs(workloadBaseDifficulty) *
-        clamp(safeNumber(project.constraints.alphaCap, 0.5), 0, 1),
+    const workloadBaseDifficulty = book.lockDiff
+      ? evidence.seed
+      : clamp(latent.latentWorkload + subjectLift, 1, 10);
+    const prereqs = (relationInfo.prereqById[id] || []).filter(
+      (parent) => model[parent] && !corpus.byId[parent]?.noPropOut,
     );
-    const absoluteLiftCap = Math.max(
-      0,
-      safeNumber(project.constraints.propLiftCap, graphCap),
-    );
-    const cappedLift = clamp(
-      graphLift,
-      -Math.min(graphCap, absoluteLiftCap),
-      Math.min(graphCap, absoluteLiftCap),
-    );
+    const graph = applyGraphWorkloadPropagation({
+      id,
+      seed: evidence.seed,
+      baseDifficulty: workloadBaseDifficulty,
+      prereqs,
+      parentModel: model,
+      depths,
+      relationInfo,
+      project,
+      evidenceConfidence: latent.evidenceConfidence,
+    });
+    const graphWorkloadLift = book.lockDiff ? 0 : graph.graphWorkloadLift;
     const propagatedDifficulty = clamp(
-      workloadBaseDifficulty + cappedLift,
+      workloadBaseDifficulty + graphWorkloadLift,
       1,
       10,
     );
-    const blendedDifficulty =
-      project.constraints.blendMode === 'linear'
+    const profileAdjustedDifficulty = book.lockDiff
+      ? workloadBaseDifficulty
+      : project.constraints.blendMode === 'linear'
         ? propagatedDifficulty
         : Math.sqrt(
             Math.max(0.1, workloadBaseDifficulty) *
               Math.max(0.1, propagatedDifficulty),
           );
-    const scheduleDifficulty = round1(clamp(blendedDifficulty, 1, 10));
+    const learner = applyLearnerCalibration({
+      project,
+      bookId: id,
+      baseDifficulty: profileAdjustedDifficulty,
+      lockDiff: book.lockDiff,
+    });
+    const scheduleDifficulty = book.lockDiff
+      ? round1(evidence.seed)
+      : round1(
+          clamp(
+            profileAdjustedDifficulty + learner.learnerCalibrationLift,
+            1,
+            10,
+          ),
+        );
+    const difficultyEvidence = [
+      ...latent.reasons,
+      subjectLift
+        ? `Adaptive workload prior ${round1(subjectWorkloadPrior)} contributes ${round2(subjectLift)} from ${Math.round((workload?.clusterConfidence ?? 0) * 100)}% cluster confidence.`
+        : 'No adaptive workload lift contributes to this score.',
+      ...(book.lockDiff
+        ? ['Manual difficulty lock disables graph and learner difficulty lifts.']
+        : graph.reasons),
+      learner.reason,
+    ];
 
     model[id] = {
-      seed: round1(seed),
-      corpusComplexity: round1(corpusComplexity),
+      seed: evidence.seed,
+      corpusComplexity: evidence.corpusComplexity,
+      latentWorkload: latent.latentWorkload,
+      workloadUncertainty: latent.workloadUncertainty,
+      evidenceConfidence: latent.evidenceConfidence,
       subjectWorkloadPrior: round1(subjectWorkloadPrior),
       subjectWorkloadLift: round2(subjectLift),
       subjectClusterId: workload?.clusterId ?? null,
       subjectClusterConfidence: round2(workload?.clusterConfidence ?? 0),
-      metadataConfidence: round2(workload?.metadataConfidence ?? 0),
-      graphBurden,
-      noveltyLoad,
-      breadthLoad,
-      retentionLoad,
+      metadataConfidence: round2(
+        Math.max(evidence.metadataConfidence, workload?.metadataConfidence ?? 0),
+      ),
+      graphBurden: graph.graphBurden,
+      graphWorkloadLift,
+      learnerCalibrationLift: learner.learnerCalibrationLift,
+      profileAdjustedDifficulty: round1(profileAdjustedDifficulty),
+      difficultyBindingReason: difficultyBindingReason({
+        locked: book.lockDiff,
+        uncertainty: latent.workloadUncertainty,
+        learnerLift: learner.learnerCalibrationLift,
+      }),
+      difficultyEvidence,
+      noveltyLoad: graph.noveltyLoad,
+      breadthLoad: graph.breadthLoad,
+      retentionLoad: graph.retentionLoad,
       scheduleDifficulty,
       displayDifficulty: scheduleDifficulty,
       topologicalDepth: depths[id] || 0,
       explanation: [
-        `Seed difficulty ${round1(seed)} and corpus complexity ${round1(corpusComplexity)} anchor the score.`,
-        subjectLift
-          ? `Adaptive workload prior ${round1(subjectWorkloadPrior)} contributes ${round2(subjectLift)} from ${Math.round((workload?.clusterConfidence ?? 0) * 100)}% confidence cluster evidence.`
-          : 'No adaptive workload lift contributes to this score.',
-        prereqs.length
-          ? `${prereqs.length} prerequisite(s) contribute graph burden ${round2(graphBurden)}.`
-          : 'No prerequisite burden contributes to this score.',
-        `Novelty load ${round2(noveltyLoad)}, breadth load ${round2(breadthLoad)}, and retention load ${round2(retentionLoad)} complete the schedule difficulty.`,
+        `Latent workload ${latent.latentWorkload} with ${Math.round(latent.evidenceConfidence * 100)}% evidence confidence anchors the score.`,
+        ...difficultyEvidence.slice(0, 4),
+        `Schedule difficulty ${scheduleDifficulty} is planner truth; display difficulty is mapped separately.`,
       ],
     };
   });

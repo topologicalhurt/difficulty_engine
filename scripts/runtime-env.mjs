@@ -9,6 +9,7 @@ const ENV_KEY_MAP = {
   DIFFICULTY_ENGINE_AI_PROVIDER: ['ai', 'provider'],
   DIFFICULTY_ENGINE_AI_MODEL: ['ai', 'model'],
   DIFFICULTY_ENGINE_AI_ENDPOINT_URL: ['ai', 'endpointUrl'],
+  DIFFICULTY_ENGINE_DEBUG_UI: ['debugUi'],
 };
 
 function parseDotEnvLine(line) {
@@ -40,13 +41,18 @@ export async function readDotEnv(rootDir) {
 
 export function buildRuntimeEnv(dotEnv, processEnv = process.env) {
   const config = {};
-  for (const [envKey, [section, key]] of Object.entries(ENV_KEY_MAP)) {
+  for (const [envKey, path] of Object.entries(ENV_KEY_MAP)) {
     const value = processEnv[envKey] ?? dotEnv[envKey];
     if (!value) continue;
-    config[section] = {
-      ...(config[section] ?? {}),
-      [key]: value,
-    };
+    if (path.length === 1) {
+      config[path[0]] = value === '1' || value === 'true';
+    } else {
+      const [section, key] = path;
+      config[section] = {
+        ...(config[section] ?? {}),
+        [key]: value,
+      };
+    }
   }
   if (config.ai?.apiKey) {
     config.ai.enabled = true;

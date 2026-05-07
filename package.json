@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node ./scripts/build.mjs",
+    "build:debug": "DIFFICULTY_ENGINE_BUNDLE_ENV=1 DIFFICULTY_ENGINE_DEBUG_UI=1 node ./scripts/build.mjs",
     "dev": "node ./scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -15,6 +16,7 @@
     "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
     "perf": "node ./scripts/perf.mjs",
     "perf:ci": "node ./scripts/perf.mjs --ci",
+    "toc:audit": "vite-node scripts/toc-audit.ts",
     "stabilize": "python3 scripts/change_safety_report.py && npm run check && npm run build && python3 scripts/audit_source.py && python3 scripts/architecture_report.py && npm run test:e2e",
     "qbittorrent:launch": "node ./scripts/qbittorrent-launch.mjs",
     "qbittorrent:bridge": "node ./scripts/qbittorrent-bridge.mjs",

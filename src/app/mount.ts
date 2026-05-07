@@ -130,6 +130,7 @@ export async function mountPlannerApp(
     qbittorrentService: options.qbittorrentService,
     logger: options.logger,
     clock: options.clock,
+    debugUi: options.debugUi ?? false,
   });
 
   const host = document.createElement('div');

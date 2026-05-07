@@ -6,6 +6,7 @@ import {
   EXAMPLE_BOOK,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import { computeDifficultyModel } from '../../src/core/difficulty';
 import { inferRelations } from '../../src/core/relations';
@@ -80,11 +81,7 @@ function makeProject(
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 

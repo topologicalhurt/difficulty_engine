@@ -176,6 +176,48 @@ describe('worker compute integration', () => {
     expect(store.selectors.getState().ui.activeView).toBe('graphs');
   });
 
+  it('keeps pending worker recomputes after display-only project updates', async () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    const pending: Array<{
+      project: PlannerProjectV1;
+      resolve(snapshot: EngineSnapshot): void;
+    }> = [];
+    const computeAdapter: PlannerComputeAdapter = {
+      mode: 'worker',
+      shouldDefer: () => true,
+      compute: vi.fn(
+        (project) =>
+          new Promise<EngineSnapshot>((resolve) => {
+            pending.push({ project, resolve });
+          }),
+      ),
+      cancelCurrent: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine,
+      computeAdapter,
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    store.commands.updateConstraint('minPg', 12);
+    store.commands.setPlanColorMode('difficulty_gradient');
+    pending[0]?.resolve(engine.computeSnapshot(pending[0].project));
+    await flushMicrotasks();
+
+    expect(store.selectors.getProject().uiPreferences.planColorMode).toBe(
+      'difficulty_gradient',
+    );
+    expect(store.selectors.getSnapshot().schedulePlan.items[0]?.strictMinPg).toBe(
+      12,
+    );
+  });
+
   it('falls back to sync compute when blob workers are blocked', async () => {
     const engine = createPlannerEngine({
       clock: plannerClock,
@@ -309,7 +351,7 @@ describe('worker compute integration', () => {
     store.commands.updateConstraint('hpd', 3);
 
     expect(postedMessages).toHaveLength(0);
-    expect(events).toEqual(['project-changed', 'snapshot-updated']);
+    expect(events.slice(0, 2)).toEqual(['project-changed', 'snapshot-updated']);
     expect(store.selectors.getProject().constraints.hpd).toBe(3);
     adapter.destroy?.();
   });

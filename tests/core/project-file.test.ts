@@ -34,6 +34,7 @@ describe('project-file boundary', () => {
       'pdf',
     ]);
     expect(parsed.sourceSettings.documentSources.qbittorrent).toBe(true);
+    expect(parsed.sourceSettings.documentSources.localOcr).toBe(false);
     expect(parsed.sourceSettings.qbittorrent.searchPlugins).toBe(true);
     expect(parsed.sourceSettings.qbittorrent.maxResults).toBe(50);
     expect(parsed.sourceSettings.qbittorrent.allowedSites).toEqual(
@@ -43,6 +44,12 @@ describe('project-file boundary', () => {
         'standardebooks.org',
       ]),
     );
+    expect(parsed.uiPreferences.planSections).toEqual({
+      gantt: true,
+      calendar: true,
+    });
+    expect(parsed.uiPreferences.libraryListWidthPx).toBe(460);
+    expect(parsed.uiPreferences.dismissedWarningCodes).toEqual([]);
   });
 
   it('normalizes source masks and excludes local integration credentials from exports', () => {
@@ -58,8 +65,9 @@ describe('project-file boundary', () => {
         documentSources: { qbittorrent: true },
         qbittorrent: {
           searchPlugins: true,
-          allowedPlugins: ['open-plugin', ''],
-          allowedSites: ['archive.org', ''],
+          allowedPlugins: ['z-plugin', 'open-plugin', 'open-plugin', ''],
+          allowedSites: ['StandardEBooks.org', 'archive.org', 'archive.org', ''],
+          categories: ['zines', 'books', 'books', ''],
           maxResults: 500,
         },
         qbittorrentConnection: {
@@ -76,9 +84,15 @@ describe('project-file boundary', () => {
     expect(project.sourceSettings.qbittorrent.searchPlugins).toBe(true);
     expect(project.sourceSettings.qbittorrent.allowedPlugins).toEqual([
       'open-plugin',
+      'z-plugin',
     ]);
     expect(project.sourceSettings.qbittorrent.allowedSites).toEqual([
       'archive.org',
+      'standardebooks.org',
+    ]);
+    expect(project.sourceSettings.qbittorrent.categories).toEqual([
+      'books',
+      'zines',
     ]);
     expect(project.sourceSettings.qbittorrent.maxResults).toBe(50);
     expect(exported).not.toContain('must-not-export');
@@ -269,6 +283,9 @@ describe('project-file boundary', () => {
         par: 'x',
         schedAlgo: 'not-real',
         feasibilityMode: 'oops',
+        learnerProfileMode: 'oops',
+        learnerAdaptivityStrength: 500,
+        targetChallenge: -20,
         relativePacingCurve: 'oops',
         dailyBookMode: 'oops',
         emptyDayPolicy: 'oops',
@@ -312,6 +329,9 @@ describe('project-file boundary', () => {
     expect(project.constraints.par).toBe(3);
     expect(project.constraints.schedAlgo).toBe('balanced');
     expect(project.constraints.feasibilityMode).toBe('strict_floor');
+    expect(project.constraints.learnerProfileMode).toBe('balanced_adaptive');
+    expect(project.constraints.learnerAdaptivityStrength).toBe(100);
+    expect(project.constraints.targetChallenge).toBe(0);
     expect(project.constraints.relativePacingStrength).toBe(50);
     expect(project.constraints.relativePacingCurve).toBe('smoothstep');
     expect(project.constraints.dailyBookMode).toBe('interspersed');
@@ -329,6 +349,12 @@ describe('project-file boundary', () => {
     expect(project.uiPreferences.ganttView).toBe('plan');
     expect(project.uiPreferences.ganttZoom).toBe(3);
     expect(project.uiPreferences.planColorMode).toBe('category_mono');
+    expect(project.uiPreferences.planSections).toEqual({
+      gantt: true,
+      calendar: true,
+    });
+    expect(project.uiPreferences.libraryListWidthPx).toBe(460);
+    expect(project.uiPreferences.dismissedWarningCodes).toEqual([]);
   });
 
   it('creates fresh project defaults instead of reusing a shared constraint object', () => {

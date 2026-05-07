@@ -53,6 +53,10 @@ export function qbittorrentRuntimeEnabled(
   );
 }
 
+export function localOcrEnabled(settings: SourceSettings | undefined): boolean {
+  return settings?.documentSources.localOcr === true;
+}
+
 export function sourceEnabledForDocumentProvider(
   docRef: Pick<BookDocumentRef, 'provider'>,
   settings: SourceSettings,

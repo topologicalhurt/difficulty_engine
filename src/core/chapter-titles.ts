@@ -1,5 +1,7 @@
 import {
+  CONTROL_HEAVY_TEXT_PATTERN,
   DESCRIPTION_WORD_PATTERN,
+  DOCUMENT_OBJECT_NOISE_PATTERN,
   DOT_LEADER_PAGE_PATTERN,
   FRONT_BACK_MATTER_PATTERN,
   LEADING_MARKER_PATTERN,
@@ -14,6 +16,7 @@ import {
   STRUCTURAL_PREFIX_ONLY_PATTERN,
   STRUCTURAL_PREFIX_PATTERN,
   STRUCTURAL_SENTENCE_PATTERN,
+  TOC_HEADING_ONLY_PATTERN,
   UNSTRUCTURED_SPLIT_PATTERN,
   URL_OR_ISBN_PATTERN,
   WORD_NUMBER_TITLE_PATTERN,
@@ -74,6 +77,9 @@ function matcherSourceMode(source: ChapterTitleSource): MatcherSourceMode {
 }
 
 function isNarrativeText(title: string): boolean {
+  if (TOC_HEADING_ONLY_PATTERN.test(title)) return true;
+  if (DOCUMENT_OBJECT_NOISE_PATTERN.test(title)) return true;
+  if (CONTROL_HEAVY_TEXT_PATTERN.test(title)) return true;
   if (URL_OR_ISBN_PATTERN.test(title)) return true;
   if (DESCRIPTION_WORD_PATTERN.test(title)) return true;
   if (MARKETING_TOC_FRAGMENT_PATTERN.test(title)) return true;

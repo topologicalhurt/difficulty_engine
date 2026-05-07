@@ -6,6 +6,7 @@ import type {
 } from '../core/types';
 import { qbittorrentRuntimeEnabled } from '../core/source-settings-policy';
 import {
+  chooseSelectedDocumentId,
   defaultDocumentAcquisitionPolicy,
   mergeDocumentRefs,
   rankDocumentCandidates,
@@ -101,6 +102,7 @@ async function acquireCandidateDocuments(
       policy,
       signal: request.signal,
     });
+    let latestRejected: AcquiredDocument | null = null;
     for (const candidate of rankDocumentCandidates(candidates, policy)) {
       try {
         const acquired = await provider.acquire(candidate, {
@@ -108,7 +110,14 @@ async function acquireCandidateDocuments(
           policy,
           signal: request.signal,
         });
-        if (acquired) return [acquired];
+        if (acquired) latestRejected = acquired;
+        if (
+          acquired &&
+          acquired.documentRef?.status !== 'failed' &&
+          acquired.documentRef?.status !== 'stalled'
+        ) {
+          return [acquired];
+        }
       } catch (error) {
         logger.warn('enrichment.document_acquisition.candidate_failed', {
           bookId: request.book.id,
@@ -117,7 +126,7 @@ async function acquireCandidateDocuments(
         });
       }
     }
-    return [];
+    return latestRejected ? [latestRejected] : [];
   } catch (error) {
     logger.warn('enrichment.document_acquisition.failed', {
       bookId: request.book.id,
@@ -137,17 +146,13 @@ function mergeResolvedDocumentRefs(
   const mergedDocuments = documentRefs.length
     ? mergeDocumentRefs(request.book.documents ?? [], documentRefs)
     : undefined;
-  const existingSelection =
-    request.book.selectedDocumentId &&
-    mergedDocuments?.some(
-      (document) => document.id === request.book.selectedDocumentId,
-    )
-      ? request.book.selectedDocumentId
-      : null;
   const selectedDocumentId =
-    existingSelection ??
-    mergedDocuments?.find((document) => document.status === 'complete')?.id ??
-    mergedDocuments?.[0]?.id;
+    mergedDocuments &&
+    chooseSelectedDocumentId(
+      mergedDocuments,
+      request.book.selectedDocumentId,
+      request.sourceSettings.contentPreference,
+    );
   return mergedDocuments
     ? { documents: mergedDocuments, selectedDocumentId }
     : {};

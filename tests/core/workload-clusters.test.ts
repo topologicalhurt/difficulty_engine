@@ -8,6 +8,7 @@ import {
   EXAMPLE_BOOK,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import type {
   BookRecord,
@@ -98,11 +99,7 @@ function project(patch: Partial<ConstraintSet> = {}): PlannerProjectV1 {
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 

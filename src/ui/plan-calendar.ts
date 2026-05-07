@@ -4,8 +4,10 @@ import {
   type PlanViewModel,
 } from '../app/selectors/plan';
 import type { CalendarEntry, PlannerStore } from '../core/types';
-import { badge, button, card, el, emptyState } from './dom';
-import { formatOneDecimal, round0 } from './format';
+import { badge, button, el, emptyState } from './dom';
+import { collapsibleCard } from './collapsible-card';
+import { formatPages, round0 } from './format';
+import { renderPlanBookJump } from './plan-book-jump';
 
 function activateCalendarEntry(
   dayKey: string,
@@ -29,6 +31,7 @@ function renderCalendarChip(
     'div',
     {
       className: `calendar-chip${entry.boosted ? ' boosted' : ''}${active ? ' selected' : ''}`,
+      dataset: { planCalendarBookId: entry.bookId },
       role: 'button',
       tabIndex: 0,
       title: detail,
@@ -63,7 +66,7 @@ function renderCalendarChip(
     ),
     el('div', {
       className: 'muted-copy',
-      text: `${formatOneDecimal(entry.readPages + entry.skimPages)} pages`,
+      text: `${formatPages(entry.readPages + entry.skimPages)} pages`,
     }),
     el(
       'div',
@@ -85,8 +88,10 @@ export function renderCalendar(
 ): HTMLElement {
   const weeks = viewModel.calendarWeeks;
   if (!weeks.length) {
-    return card(
+    return collapsibleCard(
       'Study calendar',
+      viewModel.planSections.calendar,
+      (open) => store.commands.setPlanSectionOpen('calendar', open),
       emptyState(
         'No study days yet',
         'Once the schedule solves, the calendar appears here.',
@@ -94,12 +99,23 @@ export function renderCalendar(
     );
   }
 
-  return card(
+  return collapsibleCard(
     'Study calendar',
+    viewModel.planSections.calendar,
+    (open) => store.commands.setPlanSectionOpen('calendar', open),
     el(
       'div',
-      { className: 'muted-copy' },
-      'Dense week-grid view of the solved day plan. Click a study day or item to log progress in the side panel.',
+      { className: 'toolbar-row calendar-toolbar' },
+      renderPlanBookJump(
+        viewModel.bookJumpOptions,
+        viewModel.selectedBookId,
+        'calendar',
+        store,
+      ),
+      el('div', {
+        className: 'muted-copy',
+        text: 'Click a study item to log minutes, pages, completion, or a skipped day in the side panel.',
+      }),
     ),
     el(
       'div',

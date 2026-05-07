@@ -20,11 +20,14 @@ describe('document text extraction', () => {
 
     expect(extraction?.strategy).toBe('pdf_outline');
     expect(extraction?.chapters).toEqual([
-      'Contents',
       'Chapter 1 Signals',
       'Chapter 2 Systems',
     ]);
     expect(extraction?.inferred).toBe(false);
+    expect(extraction?.attempts?.[0]).toMatchObject({
+      strategy: 'pdf_outline',
+      accepted: true,
+    });
   });
 
   it('does not let a single PDF metadata title suppress an explicit TOC', () => {
@@ -45,7 +48,6 @@ describe('document text extraction', () => {
 
     expect(extraction?.strategy).toBe('explicit_toc_region');
     expect(extraction?.chapters).toEqual([
-      'Contents',
       'Chapter 1 Direct Current',
       'Chapter 2 Alternating Current',
       'Chapter 3 Semiconductors',
@@ -66,7 +68,6 @@ describe('document text extraction', () => {
 
     expect(extraction?.strategy).toBe('explicit_toc_region');
     expect(extraction?.chapters).toEqual([
-      'Contents',
       'Chapter 1 Foundations',
       'Chapter 2 Methods',
       'Chapter 3 Applications',
@@ -87,11 +88,78 @@ describe('document text extraction', () => {
     );
 
     expect(extraction?.chapters).toEqual([
-      'Contents',
       'Chapter 1 Direct Current',
       'Chapter Two Alternating Current',
       'Appendix A Reference Tables',
     ]);
+  });
+
+  it('pairs split PDF outline chapter markers with adjacent title siblings', () => {
+    const bytes = new TextEncoder().encode(
+      [
+        '/Title (Contents)',
+        '/Title (Index)',
+        '/Title (CHAPTER 3)',
+        '/Title (Linear Maps)',
+        '/Title (CHAPTER 2)',
+        '/Title (Finite-Dimensional Vector Spaces)',
+        '/Title (CHAPTER 1)',
+        '/Title (Vector Spaces)',
+      ].join(' '),
+    );
+    const extraction = extractDocumentChapters({
+      bytes,
+      contentType: 'application/pdf',
+      sourceUrl: 'https://example.test/book.pdf',
+    });
+
+    expect(extraction?.strategy).toBe('pdf_outline');
+    expect(extraction?.chapters).toEqual([
+      'CHAPTER 1 Vector Spaces',
+      'CHAPTER 2 Finite-Dimensional Vector Spaces',
+      'CHAPTER 3 Linear Maps',
+    ]);
+  });
+
+  it('does not accept PDF object or binary stream noise as inferred chapters', () => {
+    const extraction = extractDocumentChapters({
+      bytes: new TextEncoder().encode(
+        [
+          '%PDF-1.4',
+          '1 0 obj',
+          '/Width 1041',
+          '/Height 177',
+          'stream',
+          '2 0 obj',
+          '3 0 obj',
+          'endstream',
+        ].join('\n'),
+      ),
+      contentType: 'application/pdf',
+      sourceUrl: 'https://example.test/book.pdf',
+    });
+
+    expect(extraction).toBeNull();
+  });
+
+  it('rejects front matter dominated outlines without real chapter evidence', () => {
+    const bytes = new TextEncoder().encode(
+      [
+        '/Title (Quantum Calculus and Functional Analysis with Applications)',
+        '/Title (Cover)',
+        '/Title (Index)',
+        '/Title (Half Title)',
+        '/Title (A Proofs of Theorems, Lemmas, and Conjectures)',
+      ].join(' '),
+    );
+
+    expect(
+      extractDocumentChapters({
+        bytes,
+        contentType: 'application/pdf',
+        sourceUrl: 'https://example.test/book.pdf',
+      }),
+    ).toBeNull();
   });
 
   it('joins wrapped table-of-contents title continuations', () => {
@@ -106,7 +174,6 @@ describe('document text extraction', () => {
     );
 
     expect(extraction?.chapters).toEqual([
-      'Contents',
       'Chapter 1 Introduction to Electronics',
       'Chapter 2 Basic Electronic Circuit Components',
       'Chapter 3 Semiconductors',
@@ -129,7 +196,6 @@ describe('document text extraction', () => {
 
     expect(extraction?.strategy).toBe('pdf_outline');
     expect(extraction?.chapters).toEqual([
-      'Contents',
       'Chapter 1 Filters',
       'Chapter 2 Oscillators',
     ]);
@@ -183,6 +249,18 @@ describe('document text extraction', () => {
       'Chapter 2 Operators',
       'Chapter 3 Spectra',
     ]);
+  });
+
+  it('requires inferred structural headers to form a coherent sequence', () => {
+    const extraction = inferChapterHeadersFromText(
+      [
+        'Chapter 9 Later Material',
+        'Chapter 2 Earlier Material',
+        'Chapter 7 Middle Material',
+      ].join('\n'),
+    );
+
+    expect(extraction).toBeNull();
   });
 
   it('rejects descriptive summaries and one-off headings as inferred TOCs', () => {

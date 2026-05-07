@@ -1,171 +1,238 @@
 import type { GraphRenderModel } from '../app/selectors/graph-render-data';
-import { colorForGroup } from './format';
-import { GRAPH_HYPERGRAPH_LAYOUT } from './graph-layout';
+import { colorForGroup, formatPercent, round0 } from './format';
 import { svgEl } from './graph-svg';
+
+const MATRIX_WIDTH = 920;
+const MATRIX_MIN_HEIGHT = 320;
+const LEFT_LABEL_WIDTH = 220;
+const TOP_LABEL_HEIGHT = 116;
+const ROW_HEIGHT = 28;
+const COLUMN_WIDTH = 68;
+const MAX_VISIBLE_CLUSTERS = 10;
+const MAX_VISIBLE_BOOKS = 16;
 
 export function renderHypergraphSvg(
   model: GraphRenderModel,
 ): SVGSVGElement | null {
-  const clusters = model.overlapClusters;
-  const books = model.books;
-  if (!clusters.length && books.length < 2) return null;
+  const clusters = model.overlapExplorer.clusters.slice(0, MAX_VISIBLE_CLUSTERS);
+  const books = model.overlapExplorer.bookRows.slice(0, MAX_VISIBLE_BOOKS);
+  if (!clusters.length) return renderOverlapEmptyState(model);
 
-  const width = GRAPH_HYPERGRAPH_LAYOUT.width;
-  const height = clusters.length
-    ? Math.max(
-        GRAPH_HYPERGRAPH_LAYOUT.minHeight,
-        clusters.length * GRAPH_HYPERGRAPH_LAYOUT.clusterHeight + 40,
-      )
-    : GRAPH_HYPERGRAPH_LAYOUT.minHeight;
+  const width = Math.max(
+    MATRIX_WIDTH,
+    LEFT_LABEL_WIDTH + clusters.length * COLUMN_WIDTH + 48,
+  );
+  const height = Math.max(
+    MATRIX_MIN_HEIGHT,
+    TOP_LABEL_HEIGHT + books.length * ROW_HEIGHT + 72,
+  );
   const svg = svgEl('svg', {
     viewBox: `0 0 ${width} ${height}`,
     class: 'graph-svg',
     role: 'img',
-    'aria-label': 'Shared-topic hypergraph',
+    'aria-label': 'Topic overlap explorer matrix',
   });
 
-  if (!clusters.length) {
-    renderNoOverlapIslands(svg, books, width, height);
-    return svg;
-  }
-  clusters.forEach((cluster, index) =>
-    renderOverlapCluster(svg, model, cluster, index),
-  );
+  renderMatrixHeader(svg, clusters);
+  books.forEach((book, rowIndex) => {
+    renderBookRow(svg, book, rowIndex, clusters);
+  });
+  renderMatrixLegend(svg, height, clusters.length, model);
   return svg;
 }
 
-function renderNoOverlapIslands(
-  svg: SVGSVGElement,
-  books: GraphRenderModel['books'],
-  width: number,
-  height: number,
-): void {
-  const center = { x: width / 2, y: height / 2 };
-  svg.append(
-    svgEl('circle', {
-      cx: String(center.x),
-      cy: String(center.y),
-      r: '42',
-      fill: 'rgba(249, 204, 99, 0.08)',
-      stroke: 'rgba(249, 204, 99, 0.7)',
-      'stroke-width': '1.5',
-      'stroke-dasharray': '6 5',
-    }),
-  );
+function renderOverlapEmptyState(model: GraphRenderModel): SVGSVGElement | null {
+  if (model.books.length < 2) return null;
+  const svg = svgEl('svg', {
+    viewBox: `0 0 ${MATRIX_WIDTH} ${MATRIX_MIN_HEIGHT}`,
+    class: 'graph-svg',
+    role: 'img',
+    'aria-label': 'Topic overlap explorer empty state',
+  });
   const title = svgEl('text', {
-    x: String(center.x),
-    y: String(center.y - 4),
+    x: '36',
+    y: '118',
     fill: '#eef4ff',
-    'font-size': '12',
-    'text-anchor': 'middle',
+    'font-size': '18',
+    'font-weight': '700',
   });
-  title.textContent = 'No strong overlap hubs';
+  title.textContent = 'No strong topic intersections yet';
   const detail = svgEl('text', {
-    x: String(center.x),
-    y: String(center.y + 14),
+    x: '36',
+    y: '146',
     fill: 'rgba(151, 169, 202, 0.95)',
-    'font-size': '10',
-    'text-anchor': 'middle',
+    'font-size': '12',
   });
-  detail.textContent = 'Books are shown as separate topic islands.';
+  detail.textContent =
+    model.overlapExplorer.emptyStateReason ??
+    'Add subjects, descriptions, or table-of-contents data to improve overlap detection.';
   svg.append(title, detail);
-  books.slice(0, 12).forEach((book, index, visibleBooks) => {
-    const angle =
-      (Math.PI * 2 * index) / Math.max(visibleBooks.length, 1) - Math.PI / 2;
-    const x = center.x + Math.cos(angle) * 230;
-    const y = center.y + Math.sin(angle) * 110;
-    renderBookBox(svg, book.short, book.displayGroup, x - 48, y - 15, 96, 30);
+  model.books.slice(0, 10).forEach((book, index) => {
+    const x = 42 + (index % 5) * 166;
+    const y = 188 + Math.floor(index / 5) * 54;
+    renderBookPill(svg, book.short, book.displayGroup, x, y);
   });
+  return svg;
 }
 
-function renderOverlapCluster(
+function renderMatrixHeader(
   svg: SVGSVGElement,
-  model: GraphRenderModel,
-  cluster: GraphRenderModel['overlapClusters'][number],
-  index: number,
+  clusters: GraphRenderModel['overlapExplorer']['clusters'],
 ): void {
-  const centerY = 95 + index * GRAPH_HYPERGRAPH_LAYOUT.clusterHeight;
-  const hubX = GRAPH_HYPERGRAPH_LAYOUT.hubX;
-  const hub = svgEl('circle', {
-    cx: String(hubX),
-    cy: String(centerY),
-    r: '16',
-    fill: 'rgba(111, 211, 163, 0.16)',
-    stroke: 'rgba(111, 211, 163, 0.82)',
-    'stroke-width': '2',
-  });
-  const hubLabel = svgEl('text', {
-    x: String(hubX),
-    y: String(centerY + 4),
+  const title = svgEl('text', {
+    x: '24',
+    y: '30',
     fill: '#eef4ff',
-    'font-size': '10',
-    'text-anchor': 'middle',
+    'font-size': '16',
+    'font-weight': '700',
   });
-  hubLabel.textContent = `O${index + 1}`;
-  svg.append(hub, hubLabel);
-
-  const clusterText = svgEl('text', {
-    x: '28',
-    y: String(centerY + 4),
-    fill: 'rgba(151, 169, 202, 0.92)',
+  title.textContent = 'Topic overlap explorer';
+  const subtitle = svgEl('text', {
+    x: '24',
+    y: '52',
+    fill: 'rgba(151, 169, 202, 0.95)',
     'font-size': '11',
   });
-  clusterText.textContent =
-    cluster.topicIds.slice(0, 3).join(', ') || 'shared topics';
-  svg.append(clusterText);
+  subtitle.textContent =
+    'Columns are shared topic intersections; dots show which books participate.';
+  svg.append(title, subtitle);
 
-  cluster.bookIds.forEach((bookId, bookIndex) => {
-    const book = model.books.find((candidate) => candidate.id === bookId);
-    if (!book) return;
-    const total = Math.max(1, cluster.bookIds.length);
-    const angle =
-      total === 1
-        ? 0
-        : -Math.PI * 0.62 +
-          (Math.PI * 1.24 * bookIndex) / Math.max(1, total - 1);
-    const x = hubX + 235 + Math.cos(angle) * 78;
-    const y = centerY + Math.sin(angle) * 62 - 18;
+  clusters.forEach((cluster, index) => {
+    const x = LEFT_LABEL_WIDTH + index * COLUMN_WIDTH + COLUMN_WIDTH / 2;
+    const barHeight = Math.min(42, 12 + cluster.bookIds.length * 7);
     svg.append(
-      svgEl('path', {
-        d: `M ${hubX + 16} ${centerY} Q ${hubX + 125} ${centerY + Math.sin(angle) * 48}, ${x} ${y + 18}`,
-        fill: 'none',
-        stroke: 'rgba(96, 165, 250, 0.52)',
-        'stroke-width': '1.5',
+      svgEl('rect', {
+        x: String(x - 14),
+        y: String(TOP_LABEL_HEIGHT - 50 - barHeight),
+        width: '28',
+        height: String(barHeight),
+        rx: '4',
+        fill: 'rgba(96, 165, 250, 0.5)',
       }),
     );
-    renderBookBox(svg, book.short, book.displayGroup, x, y, 108, 36);
+    const label = svgEl('text', {
+      x: String(x),
+      y: String(TOP_LABEL_HEIGHT - 42),
+      fill: '#eef4ff',
+      'font-size': '9',
+      'text-anchor': 'middle',
+      transform: `rotate(-35 ${x} ${TOP_LABEL_HEIGHT - 42})`,
+    });
+    label.textContent = cluster.label.slice(0, 24);
+    label.append(titleNode(clusterTitle(cluster)));
+    svg.append(label);
   });
 }
 
-function renderBookBox(
+function renderBookRow(
   svg: SVGSVGElement,
-  labelText: string,
+  book: GraphRenderModel['overlapExplorer']['bookRows'][number],
+  rowIndex: number,
+  clusters: GraphRenderModel['overlapExplorer']['clusters'],
+): void {
+  const y = TOP_LABEL_HEIGHT + rowIndex * ROW_HEIGHT;
+  svg.append(
+    svgEl('line', {
+      x1: '20',
+      y1: String(y + ROW_HEIGHT / 2),
+      x2: String(LEFT_LABEL_WIDTH + clusters.length * COLUMN_WIDTH),
+      y2: String(y + ROW_HEIGHT / 2),
+      stroke: 'rgba(148, 163, 184, 0.1)',
+      'stroke-width': '1',
+    }),
+  );
+  renderBookPill(svg, book.short, book.displayGroup, 24, y + 4);
+
+  clusters.forEach((cluster, index) => {
+    const x = LEFT_LABEL_WIDTH + index * COLUMN_WIDTH + COLUMN_WIDTH / 2;
+    const participates = cluster.bookIds.includes(book.id);
+    if (participates) {
+      const dot = svgEl('circle', {
+        cx: String(x),
+        cy: String(y + ROW_HEIGHT / 2),
+        r: '6',
+        fill: colorForGroup(book.displayGroup),
+        stroke: '#0f172a',
+        'stroke-width': '1.5',
+      });
+      dot.append(titleNode(`${book.title} participates in ${cluster.label}`));
+      svg.append(dot);
+      return;
+    }
+    svg.append(
+      svgEl('circle', {
+        cx: String(x),
+        cy: String(y + ROW_HEIGHT / 2),
+        r: '2',
+        fill: 'rgba(148, 163, 184, 0.28)',
+      }),
+    );
+  });
+}
+
+function renderBookPill(
+  svg: SVGSVGElement,
+  label: string,
   displayGroup: string,
   x: number,
   y: number,
-  width: number,
-  height: number,
 ): void {
   svg.append(
     svgEl('rect', {
       x: String(x),
       y: String(y),
       rx: '4',
-      ry: '4',
-      width: String(width),
-      height: String(height),
-      fill: 'rgba(15, 23, 42, 0.96)',
+      width: '168',
+      height: '20',
+      fill: 'rgba(15, 23, 42, 0.95)',
       stroke: colorForGroup(displayGroup),
-      'stroke-width': '1.5',
+      'stroke-width': '1',
     }),
   );
-  const label = svgEl('text', {
-    x: String(x + (width === 96 ? width / 2 : 8)),
-    y: String(y + (height === 30 ? 19 : 22)),
+  const text = svgEl('text', {
+    x: String(x + 8),
+    y: String(y + 14),
     fill: '#eef4ff',
     'font-size': '10',
-    ...(width === 96 ? { 'text-anchor': 'middle' } : {}),
   });
-  label.textContent = labelText;
-  svg.append(label);
+  text.textContent = label.slice(0, 28);
+  svg.append(text);
+}
+
+function renderMatrixLegend(
+  svg: SVGSVGElement,
+  height: number,
+  visibleClusterCount: number,
+  model: GraphRenderModel,
+): void {
+  const moreClusters =
+    model.overlapExplorer.clusters.length > visibleClusterCount
+      ? ` · ${model.overlapExplorer.clusters.length - visibleClusterCount} more hidden`
+      : '';
+  const legend = svgEl('text', {
+    x: '24',
+    y: String(height - 28),
+    fill: 'rgba(151, 169, 202, 0.95)',
+    'font-size': '11',
+  });
+  legend.textContent = `Bar height = books in overlap · colored dot = participating book${moreClusters}`;
+  svg.append(legend);
+}
+
+function clusterTitle(
+  cluster: GraphRenderModel['overlapExplorer']['clusters'][number],
+): string {
+  return [
+    cluster.label,
+    `${cluster.bookIds.length} book(s)`,
+    `${cluster.topicLabels.length} topic(s)`,
+    `${round0(cluster.timeSaved)} min saved`,
+    `${formatPercent(cluster.confidence)} confidence`,
+  ].join(' · ');
+}
+
+function titleNode(text: string): SVGTitleElement {
+  const node = svgEl('title', {});
+  node.textContent = text;
+  return node;
 }

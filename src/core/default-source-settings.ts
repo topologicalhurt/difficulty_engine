@@ -32,6 +32,7 @@ export function createDefaultSourceSettings(): SourceSettings {
       localFile: true,
       internetArchiveText: true,
       qbittorrent: true,
+      localOcr: false,
     },
     qbittorrent: {
       userProvidedTorrents: true,

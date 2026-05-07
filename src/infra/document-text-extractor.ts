@@ -32,6 +32,19 @@ export interface DocumentChapterExtraction {
   confidence: number;
   evidenceAnchors: string[];
   inferred: boolean;
+  attempts?: TocExtractionAttempt[];
+}
+
+export interface TocExtractionAttempt {
+  strategy: DocumentExtractionStrategy;
+  sourceKind: 'pdf_raw_outline' | 'pdf_raw_text' | 'document_text';
+  confidence: number;
+  chapters: string[];
+  accepted: boolean;
+  rejectedReasons: string[];
+  evidenceAnchors: string[];
+  pageRange?: { start: number; end: number };
+  durationMs: number;
 }
 
 const CONTENTS_REGION_MAX_LINES = 900;
@@ -50,6 +63,7 @@ function extraction(
   strategy: DocumentExtractionStrategy,
   confidence: number,
   evidenceAnchors: string[],
+  attempts: TocExtractionAttempt[] = [],
 ): DocumentChapterExtraction | null {
   if (!chapters.length) return null;
   return {
@@ -58,6 +72,30 @@ function extraction(
     confidence,
     evidenceAnchors: evidenceAnchors.slice(0, 8),
     inferred: strategy === 'inferred_headers',
+    attempts,
+  };
+}
+
+function elapsedMs(start: number): number {
+  return Math.max(0, Math.round(performance.now() - start));
+}
+
+function attempt(
+  strategy: DocumentExtractionStrategy,
+  sourceKind: TocExtractionAttempt['sourceKind'],
+  start: number,
+  result: DocumentChapterExtraction | null,
+  rejectedReasons: string[],
+): TocExtractionAttempt {
+  return {
+    strategy,
+    sourceKind,
+    confidence: result?.confidence ?? 0,
+    chapters: result?.chapters ?? [],
+    accepted: Boolean(result),
+    rejectedReasons,
+    evidenceAnchors: result?.evidenceAnchors ?? [],
+    durationMs: elapsedMs(start),
   };
 }
 
@@ -172,7 +210,94 @@ export function inferChapterHeadersFromText(
   if (markerCount < Math.min(MIN_INFERRED_HEADER_COUNT, chapters.length)) {
     return null;
   }
+  if (!hasConsistentChapterSequence(chapters)) {
+    return null;
+  }
   return extraction(chapters, 'inferred_headers', 0.42, candidates);
+}
+
+function chapterSequenceValue(title: string): number | null {
+  const chapter = title.match(
+    /^(?:chapter|ch\.?)\s+(\d+|[ivxlcdm]+)\b/i,
+  );
+  if (chapter) {
+    const raw = (chapter[1] ?? '').toLowerCase();
+    if (/^\d+$/.test(raw)) return Number(raw);
+    const romanValues: Record<string, number> = {
+      i: 1,
+      v: 5,
+      x: 10,
+      l: 50,
+      c: 100,
+      d: 500,
+      m: 1000,
+    };
+    return Array.from(raw).reduce((total, char, index, chars) => {
+      const current = romanValues[char] ?? 0;
+      const next = romanValues[chars[index + 1] ?? ''] ?? 0;
+      return total + (current < next ? -current : current);
+    }, 0);
+  }
+  const decimal = title.match(/^(\d{1,3})(?:\.\d+)*[.)]?\s+/);
+  return decimal ? Number(decimal[1]) : null;
+}
+
+function hasConsistentChapterSequence(chapters: string[]): boolean {
+  const values = chapters
+    .map(chapterSequenceValue)
+    .filter((value): value is number => value != null && value > 0);
+  if (values.length < MIN_INFERRED_HEADER_COUNT) return false;
+  let orderedPairs = 0;
+  for (let index = 1; index < values.length; index += 1) {
+    if ((values[index] ?? 0) >= (values[index - 1] ?? 0)) orderedPairs += 1;
+  }
+  return orderedPairs >= Math.max(2, values.length - 2);
+}
+
+export function extractDocumentChapterAttempts(input: {
+  bytes?: Uint8Array;
+  text?: string;
+  contentType?: string;
+  sourceUrl?: string;
+}): TocExtractionAttempt[] {
+  const attempts: TocExtractionAttempt[] = [];
+  const isPdf = Boolean(
+    input.bytes && isPdfDocument(input.sourceUrl, input.contentType),
+  );
+  const text = input.text ?? (input.bytes ? decodeBytes(input.bytes) : '');
+  if (isPdf && input.bytes) {
+    const start = performance.now();
+    attempts.push(
+      attempt(
+        'pdf_outline',
+        'pdf_raw_outline',
+        start,
+        extractPdfOutlineChapters(input.bytes),
+        ['no_usable_pdf_outline'],
+      ),
+    );
+  }
+  const explicitStart = performance.now();
+  attempts.push(
+    attempt(
+      'explicit_toc_region',
+      isPdf ? 'pdf_raw_text' : 'document_text',
+      explicitStart,
+      extractExplicitTocChapters(text),
+      ['no_explicit_toc_region'],
+    ),
+  );
+  const inferredStart = performance.now();
+  attempts.push(
+    attempt(
+      'inferred_headers',
+      isPdf ? 'pdf_raw_text' : 'document_text',
+      inferredStart,
+      inferChapterHeadersFromText(text),
+      ['insufficient_repeated_structural_headers'],
+    ),
+  );
+  return attempts;
 }
 
 export function extractDocumentChapters(input: {
@@ -187,7 +312,15 @@ export function extractDocumentChapters(input: {
   const text = input.text ?? (input.bytes ? decodeBytes(input.bytes) : '');
   if (isPdf && input.bytes) {
     const outline = extractPdfOutlineChapters(input.bytes);
-    if (outline) return outline;
+    if (outline) {
+      outline.attempts = extractDocumentChapterAttempts(input);
+      return outline;
+    }
   }
-  return extractExplicitTocChapters(text) ?? inferChapterHeadersFromText(text);
+  const extractionResult =
+    extractExplicitTocChapters(text) ?? inferChapterHeadersFromText(text);
+  if (extractionResult) {
+    extractionResult.attempts = extractDocumentChapterAttempts(input);
+  }
+  return extractionResult;
 }

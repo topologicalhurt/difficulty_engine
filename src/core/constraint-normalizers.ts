@@ -6,6 +6,7 @@ import type {
   DailyBookMode,
   EmptyDayPolicy,
   FeasibilityMode,
+  LearnerProfileMode,
   PlanColorMode,
   PrerequisiteMode,
   RelativePacingCurve,
@@ -45,6 +46,19 @@ export function normalizeRelativePacingCurve(
 ): RelativePacingCurve {
   if (value === 'linear' || value === 'sqrt' || value === 'power') return value;
   return 'smoothstep';
+}
+
+export function normalizeLearnerProfileMode(
+  value: string | undefined,
+): LearnerProfileMode {
+  if (
+    value === 'confidence_builder' ||
+    value === 'fast_track' ||
+    value === 'deep_mastery' ||
+    value === 'manual'
+  )
+    return value;
+  return 'balanced_adaptive';
 }
 
 export function normalizeCompressCurve(

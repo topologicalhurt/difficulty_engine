@@ -26,6 +26,18 @@ export interface ManualOverrides {
   actuals: Record<string, Record<string, CalendarActualOverride>>;
 }
 
+export interface UiPreferences {
+  ganttView: GanttView;
+  ganttZoom: number;
+  planColorMode: PlanColorMode;
+  planSections: {
+    gantt: boolean;
+    calendar: boolean;
+  };
+  libraryListWidthPx: number;
+  dismissedWarningCodes: string[];
+}
+
 export interface PlannerProjectV1 {
   version: 1;
   library: {
@@ -36,9 +48,5 @@ export interface PlannerProjectV1 {
   aiRecommendationSettings: AiRecommendationSettings;
   sourceSettings: SourceSettings;
   enrichmentCache: Record<string, EnrichmentCacheEntry>;
-  uiPreferences: {
-    ganttView: GanttView;
-    ganttZoom: number;
-    planColorMode: PlanColorMode;
-  };
+  uiPreferences: UiPreferences;
 }

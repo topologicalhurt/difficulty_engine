@@ -11,6 +11,7 @@ export { formatCssPercent, formatOneDecimal };
 
 export const round0 = formatWholeNumber;
 export const formatPercent = formatRatioPercent;
+export const formatPages = formatWholeNumber;
 
 export function colorForGroup(group: string): string {
   return groupColor(group);

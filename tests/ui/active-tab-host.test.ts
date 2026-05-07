@@ -29,4 +29,15 @@ describe('active tab rendering', () => {
 
     expect(root.firstElementChild).not.toBe(initialBody);
   });
+
+  it('does not render diagnostics when debug UI is disabled', () => {
+    const store = makeStore();
+    const root = document.createElement('section');
+
+    store.commands.setActiveView('diagnostics');
+    renderActiveTabBody(root, store.selectors.getState(), store);
+
+    expect(root.dataset.activeView).toBe('plan');
+    expect(root.textContent).toContain('Quick add');
+  });
 });

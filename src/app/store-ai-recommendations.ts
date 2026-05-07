@@ -1,4 +1,9 @@
 import {
+  aiModelBelongsToProvider,
+  defaultAiModel,
+  resolveAiModelInput,
+} from '../core/ai-provider-registry';
+import {
   normalizeAiRecommendationProposal,
   normalizeAiPromptDraft,
   sanitizeAiPrompt,
@@ -8,6 +13,7 @@ import type {
   CreatePlannerStoreOptions,
   PlannerStoreCommands,
 } from '../core/types';
+import { isoTimestamp } from '../infra/cache-time';
 import {
   buildAiRecommendationContext,
   contextDigest,
@@ -37,10 +43,31 @@ export function createAiRecommendationCommands(
       const state = context.getState();
       const requestWasLoading = state.ui.aiStatus.state === 'loading';
       if (requestWasLoading) activeRequestSequence += 1;
-      const nextConnection = normalizeAiConnectionSettings({
+      const patchedConnection = {
         ...state.ui.aiConnection,
         ...patch,
-      });
+      };
+      if (patch.provider && patch.model == null) {
+        patchedConnection.model = defaultAiModel(patch.provider);
+      }
+      if (typeof patch.model === 'string') {
+        const resolution = resolveAiModelInput(
+          patch.model,
+          patchedConnection.provider,
+        );
+        if (resolution.confidence !== 'none') {
+          patchedConnection.provider = resolution.provider;
+          patchedConnection.model = resolution.model;
+        }
+      }
+      if (
+        patch.provider &&
+        patch.model == null &&
+        !aiModelBelongsToProvider(patch.provider, patchedConnection.model)
+      ) {
+        patchedConnection.model = defaultAiModel(patch.provider);
+      }
+      const nextConnection = normalizeAiConnectionSettings(patchedConnection);
       services.localSettings?.saveAiConnection(nextConnection);
       context.commitUi('ai.localSettings', {
         aiConnection: nextConnection,
@@ -115,6 +142,7 @@ export function createAiRecommendationCommands(
       }
       const requestSequence = (activeRequestSequence += 1);
       const recommendationContext = buildAiRecommendationContext(state);
+      const requestContextDigest = contextDigest(recommendationContext);
       context.commitUi('ai.request', {
         aiStatus: {
           state: 'loading',
@@ -132,13 +160,27 @@ export function createAiRecommendationCommands(
           context: recommendationContext,
         });
         if (!isActiveRequest(requestSequence)) return;
-        const createdAt = services.clock.now().toISOString();
+        const currentContextDigest = contextDigest(
+          buildAiRecommendationContext(context.getState()),
+        );
+        if (currentContextDigest !== requestContextDigest) {
+          context.commitUi('ai.request', {
+            aiProposal: null,
+            aiStatus: {
+              state: 'idle',
+              message:
+                'Planner context changed. Request recommendations again.',
+            },
+          });
+          return;
+        }
+        const createdAt = isoTimestamp(() => services.clock.now().getTime());
         const proposal = normalizeAiRecommendationProposal(response, {
           provider: state.ui.aiConnection.provider,
           model: state.ui.aiConnection.model,
           prompt,
           createdAt,
-          contextDigest: contextDigest(recommendationContext),
+          contextDigest: requestContextDigest,
           maxSuggestions: state.project.aiRecommendationSettings.maxSuggestions,
         });
         context.commitUi('ai.request', {
@@ -181,6 +223,19 @@ export function createAiRecommendationCommands(
       const state = context.getState();
       const proposal = state.ui.aiProposal;
       if (!proposal || !proposal.books.length) {
+        return;
+      }
+      if (
+        proposal.contextDigest !==
+        contextDigest(buildAiRecommendationContext(state))
+      ) {
+        context.commitUi('ai.apply', {
+          aiProposal: null,
+          aiStatus: {
+            state: 'idle',
+            message: 'Planner context changed. Request recommendations again.',
+          },
+        });
         return;
       }
       const result = applyAiProposalToProject(state.project, proposal);

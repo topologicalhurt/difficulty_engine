@@ -7,10 +7,12 @@ export interface ElementProps {
   title?: string;
   id?: string;
   value?: string;
+  list?: string;
   type?: string;
   checked?: boolean;
   placeholder?: string;
   disabled?: boolean;
+  open?: boolean;
   focusKey?: string;
   dataset?: Record<string, string>;
   role?: string;
@@ -22,6 +24,7 @@ export interface ElementProps {
   onInput?: (event: Event) => void;
   onChange?: (event: Event) => void;
   onBlur?: (event: FocusEvent) => void;
+  onToggle?: (event: Event) => void;
 }
 
 function append(parent: HTMLElement, child: Child): void {
@@ -48,6 +51,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   if (props.id) node.id = props.id;
   if (props.value != null)
     (node as HTMLInputElement | HTMLTextAreaElement).value = props.value;
+  if (props.list) node.setAttribute('list', props.list);
   if (props.type) (node as HTMLInputElement).type = props.type;
   if (props.checked != null) (node as HTMLInputElement).checked = props.checked;
   if (props.placeholder != null)
@@ -55,6 +59,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
       props.placeholder;
   if (props.disabled != null)
     (node as HTMLButtonElement | HTMLInputElement).disabled = props.disabled;
+  if (props.open != null) (node as HTMLDetailsElement).open = props.open;
   if (props.focusKey) node.dataset.focusKey = props.focusKey;
   if (props.role) node.setAttribute('role', props.role);
   if (props.tabIndex != null) node.tabIndex = props.tabIndex;
@@ -74,6 +79,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   if (props.onChange) node.addEventListener('change', props.onChange);
   if (props.onBlur)
     node.addEventListener('blur', props.onBlur as EventListener);
+  if (props.onToggle) node.addEventListener('toggle', props.onToggle);
   children.forEach((child) => append(node, child));
   return node;
 }

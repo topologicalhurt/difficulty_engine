@@ -1,4 +1,5 @@
 import type { AppState, BookRecord, EnrichmentStatus } from '../../core/types';
+import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 import { compactItems, round1 } from '../../core/utils';
 import {
   emptyRelationSelectors,
@@ -53,6 +54,7 @@ export interface LibraryViewModel {
   readingList: ReadingListItemView[];
   editor: BookEditorViewModel;
   orderPolicy: string;
+  listWidthPx: number;
 }
 
 export function enrichmentBadgeView(
@@ -65,6 +67,37 @@ export function enrichmentBadgeView(
   if (entry.status === 'loading') return { label: 'loading' };
   if (entry.status === 'stale') return { label: 'stale', tone: 'warn' };
   return { label: 'failed', tone: 'danger' };
+}
+
+function documentBadgeViews(book: BookRecord): BadgeView[] {
+  const documents = book.documents ?? [];
+  const hasQbittorrentPdf = documents.some(
+    (document) =>
+      document.provider === 'qbittorrent' &&
+      document.contentKind === 'pdf' &&
+      document.status === 'complete',
+  );
+  const hasReadableText = documents.some(
+    (document) =>
+      (document.contentKind === 'text' ||
+        document.contentKind === 'ocr_text') &&
+      document.status === 'complete',
+  );
+  const hasDocumentToc =
+    book.enrichment.tocSource === 'pdf' &&
+    book.enrichment.chapters.length >= 3;
+  const hasOcrToc =
+    hasDocumentToc &&
+    documents.some(
+      (document) =>
+        document.contentKind === 'ocr_text' && document.status === 'complete',
+    );
+  return compactItems([
+    hasQbittorrentPdf ? { label: 'pdf sourced', tone: 'success' } : null,
+    hasReadableText ? { label: 'text sourced', tone: 'success' } : null,
+    hasDocumentToc ? { label: 'toc sourced', tone: 'success' } : null,
+    hasOcrToc ? { label: 'ocr toc', tone: 'success' } : null,
+  ]);
 }
 
 export function selectReadingListViewModel(
@@ -82,11 +115,15 @@ function readingListViewModelFromProgress(
     (left, right) => {
       const leftDone = left.completed ? 1 : 0;
       const rightDone = right.completed ? 1 : 0;
-      return (
-        leftDone - rightDone ||
-        (left.owned === false ? 1 : 0) - (right.owned === false ? 1 : 0) ||
-        left.planOrder - right.planOrder ||
-        left.title.localeCompare(right.title)
+      return compareChain(
+        compareNumberAsc(leftDone, rightDone),
+        compareNumberAsc(
+          left.owned === false ? 1 : 0,
+          right.owned === false ? 1 : 0,
+        ),
+        compareNumberAsc(left.planOrder, right.planOrder),
+        compareText(left.title, right.title),
+        compareText(left.id, right.id),
       );
     },
   );
@@ -104,6 +141,7 @@ function readingListViewModelFromProgress(
       schedule?.floorRelaxed ? { label: 'relaxed floor', tone: 'warn' } : null,
       dayStats?.backfilled ? { label: 'backfilled', tone: 'success' } : null,
       enrichment,
+      ...documentBadgeViews(book),
     ];
     return {
       id: book.id,
@@ -141,6 +179,7 @@ export function selectLibraryViewModel(state: AppState): LibraryViewModel {
       progressByBook,
     ),
     orderPolicy: state.project.constraints.bookOrderPolicy,
+    listWidthPx: state.ui.libraryListWidthPx,
   };
 }
 

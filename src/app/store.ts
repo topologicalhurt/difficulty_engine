@@ -34,6 +34,7 @@ export function createPlannerStore(
   const runtime = createStoreRuntime({
     initialProject: project,
     initialUiPatch: {
+      debugUi: options.debugUi ?? false,
       ...(initialQbittorrentConnection
         ? { qbittorrentConnection: initialQbittorrentConnection }
         : {}),

@@ -1,6 +1,6 @@
 import type { BookEditorViewModel } from '../app/selectors/library';
 import type { AppState, BookRecord, PlannerStore } from '../core/types';
-import { card, emptyState } from './dom';
+import { button, card, el, emptyState } from './dom';
 import {
   renderBookEvidenceFields,
   renderBookFlagFields,
@@ -38,6 +38,14 @@ export function renderBookEditorPanel(
 
   return card(
     'Book details',
+    el(
+      'div',
+      { className: 'toolbar-row book-details-toolbar' },
+      button('Close details', {
+        className: 'ghost-button compact-button',
+        onClick: () => store.commands.selectBook(null),
+      }),
+    ),
     renderBookDetailToolbar(state, book, store),
     renderBookMetadataFields(book, update),
     card(

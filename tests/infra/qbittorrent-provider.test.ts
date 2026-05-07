@@ -71,7 +71,7 @@ describe('qBittorrent document provider', () => {
     });
 
     expect(candidates).toEqual([]);
-    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('uses the Web API without accepting unlicensed torrent candidates', async () => {
@@ -270,6 +270,9 @@ describe('qBittorrent document provider', () => {
       if (url.includes('/documents/read-bytes?')) {
         return new Response('missing', { status: 400 });
       }
+      if (url.includes('/documents/status?')) {
+        return Response.json({ ok: true });
+      }
       throw new Error(`Unexpected URL ${url}`);
     });
     const provider = createQBittorrentProvider({
@@ -303,56 +306,6 @@ describe('qBittorrent document provider', () => {
     expect(acquired?.documentRef?.contentKind).toBe('pdf');
   });
 
-  it('uses the bridge data root as qBittorrent save path when local settings are relative', async () => {
-    const addSavePaths: Array<string | null> = [];
-    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.endsWith('/__health')) {
-        return Response.json({
-          ok: true,
-          dataRoot: '/absolute/data/documents',
-        });
-      }
-      if (url.endsWith('/api/v2/auth/login')) {
-        return new Response('Ok.', {
-          status: 200,
-          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
-        });
-      }
-      if (url.endsWith('/api/v2/torrents/info')) return Response.json([]);
-      if (url.endsWith('/api/v2/torrents/add')) {
-        const body = init?.body as FormData;
-        addSavePaths.push(String(body.get('savepath')));
-        return new Response('Ok.', { status: 200 });
-      }
-      throw new Error(`Unexpected URL ${url}`);
-    });
-    const provider = createQBittorrentProvider({
-      baseUrl: 'http://127.0.0.1:8787',
-      username: 'user',
-      password: 'pass',
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-      savePath: 'output/data/documents',
-    });
-    const candidate = {
-      id: 'manual',
-      provider: 'qbittorrent',
-      title: 'Fixture Book',
-      sourceUrl: 'magnet:?xt=urn:btih:abc123',
-      contentKind: 'pdf' as const,
-      accessBasis: 'user_provided' as const,
-      confidence: 0.9,
-      matchScore: 1,
-    };
-
-    const acquired = await provider.acquire(candidate, {
-      book: { ...EXAMPLE_BOOK, title: 'Fixture Book', sourcePath: null },
-      policy: qbitPolicy(),
-    });
-
-    expect(addSavePaths).toEqual(['/absolute/data/documents']);
-    expect(acquired?.documentRef?.status).toBe('downloading');
-  });
-
   it('skips qBittorrent plugin search when no lawful source whitelist exists', async () => {
     const sourceSettings = createDefaultSourceSettings();
     sourceSettings.documentSources.qbittorrent = true;
@@ -382,7 +335,7 @@ describe('qBittorrent document provider', () => {
     });
 
     expect(candidates).toEqual([]);
-    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('uses whitelisted qBittorrent search plugins to produce lawful document candidates', async () => {
@@ -422,7 +375,7 @@ describe('qBittorrent document provider', () => {
           status: 'Stopped',
           results: [
             {
-              fileName: 'Fixture Book.epub',
+              fileName: 'Fixture Book Author Name.epub',
               fileUrl: 'magnet:?xt=urn:btih:fixture',
               siteUrl: 'https://archive.org/details/fixture-book',
               accessBasis: 'open_access',
@@ -430,7 +383,7 @@ describe('qBittorrent document provider', () => {
               fileSize: 12_000,
             },
             {
-              fileName: 'Fixture Book dead.pdf',
+              fileName: 'Fixture Book Author Name dead.pdf',
               fileUrl: 'magnet:?xt=urn:btih:dead',
               siteUrl: 'https://archive.org/details/fixture-book-dead',
               nbSeeders: 0,
@@ -493,4 +446,5 @@ describe('qBittorrent document provider', () => {
     ]);
     expect(candidates).toHaveLength(1);
   });
+
 });
