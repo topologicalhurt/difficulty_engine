@@ -72,6 +72,8 @@ export interface BookDocumentGreylistEntry {
   observations: number;
   lastStatus: BookDocumentStatus | 'candidate';
   lastReason?: string;
+  lastProgress?: number;
+  lastProgressAt?: string;
   sourceUrl?: string;
   torrentHash?: string;
   title?: string;

@@ -213,6 +213,11 @@ describe('enrichment client degradation', () => {
     expect(response.bookPatch.selectedDocumentId).toBe(
       'qbittorrent:fallback:0',
     );
+    expect(
+      response.bookPatch.documentAcquisition?.candidateQueue.map(
+        (candidate) => candidate.id,
+      ),
+    ).toEqual(['preferred', 'fallback']);
     expect(response.enrichment.chapters).toEqual(
       expect.arrayContaining(['Chapter 1 Signals', 'Chapter 2 Systems']),
     );

@@ -7,6 +7,12 @@ import type {
 import type { StoreCommandContext } from './store-command-context';
 import { mergeEnrichmentIntoBook } from './store-book-metadata';
 import { updateEnrichmentCache } from './store-helpers';
+import {
+  deleteDocumentContent,
+  deleteQbittorrentHashes,
+  replacedQbittorrentDocuments,
+  staleQbittorrentCandidateHashes,
+} from './store-document-state';
 import { cacheExpiresAt, isoTimestamp } from '../infra/cache-time';
 import { stableEnrichmentCacheKey } from '../infra/enrichment-cache-key';
 
@@ -148,6 +154,18 @@ export function createEnrichmentCommands(
           },
         },
       });
+      const replacedDocuments = replacedQbittorrentDocuments(
+        currentBook,
+        mergedBook,
+      );
+      const replacedDocumentHashes = new Set(
+        replacedDocuments
+          .map((document) => document.torrentHash?.toLowerCase())
+          .filter((hash): hash is string => Boolean(hash)),
+      );
+      const replacedHashes = staleQbittorrentCandidateHashes(mergedBook).filter(
+        (hash) => !replacedDocumentHashes.has(hash),
+      );
       let nextProject: PlannerProjectV1 = {
         ...latestState.project,
         library: {
@@ -174,6 +192,41 @@ export function createEnrichmentCommands(
           message: `Enrichment refreshed for ${mergedBook.short || mergedBook.title}.`,
         },
       });
+      if (replacedDocuments.length) {
+        const deleteErrors = await deleteDocumentContent(
+          latestState.project,
+          new Set([bookId]),
+          latestState.ui.qbittorrentConnection.baseUrl,
+          services.qbittorrentService,
+          latestState.ui.qbittorrentConnection,
+          replacedDocuments,
+        );
+        if (deleteErrors.length) {
+          context.commitUi('enrichment.refreshBook', {
+            banner: {
+              tone: 'warn',
+              message: `Enrichment succeeded, but old qBittorrent cleanup failed: ${deleteErrors[0]}`,
+            },
+          });
+        }
+      }
+      if (replacedHashes.length) {
+        const deleteErrors = await deleteQbittorrentHashes(
+          latestState.project,
+          new Set([bookId]),
+          services.qbittorrentService,
+          latestState.ui.qbittorrentConnection,
+          replacedHashes,
+        );
+        if (deleteErrors.length) {
+          context.commitUi('enrichment.refreshBook', {
+            banner: {
+              tone: 'warn',
+              message: `Enrichment succeeded, but old qBittorrent cleanup failed: ${deleteErrors[0]}`,
+            },
+          });
+        }
+      }
       emitEvent('enrichment-status-changed', { bookId, status: 'success' });
     } catch (error) {
       services.logger.warn('planner.enrichment.failed', {

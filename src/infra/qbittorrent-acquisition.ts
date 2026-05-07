@@ -90,6 +90,7 @@ export async function acquireTorrentDocument(
     await client.addTorrent(candidate);
     info = await client.torrentInfo(candidate);
   }
+  if (!info?.hash) return null;
   const savePath = await client.effectiveSavePath();
   let storagePath =
     info?.content_path ?? info?.save_path ?? savePath ?? candidate.title;

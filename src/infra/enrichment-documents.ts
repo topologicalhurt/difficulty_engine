@@ -6,6 +6,10 @@ import type {
 } from '../core/types';
 import { qbittorrentRuntimeEnabled } from '../core/source-settings-policy';
 import {
+  documentRefGreylistKey,
+  documentRefIsTrackedQbittorrentReplacement,
+  documentRefShouldBeReplaced,
+  mergeDocumentCandidateQueue,
   observeDocumentGreylist,
 } from '../core/document-acquisition-state';
 import {
@@ -16,6 +20,7 @@ import {
 } from './document-acquisition';
 import type {
   AcquiredDocument,
+  DocumentCandidate,
   DocumentAcquisitionPolicy,
   DocumentAcquisitionProvider,
 } from './document-acquisition';
@@ -44,6 +49,11 @@ interface BookEnrichmentLoader {
     request: EnrichmentRequest,
     cacheKey: string,
   ): Promise<EnrichmentResponse>;
+}
+
+interface DocumentAcquisitionRun {
+  documents: AcquiredDocument[];
+  candidates: DocumentCandidate[];
 }
 
 function shouldUseQbittorrentProvider(request: EnrichmentRequest): boolean {
@@ -95,9 +105,9 @@ async function acquireCandidateDocuments(
   provider: DocumentAcquisitionProvider | undefined,
   policy: DocumentAcquisitionPolicy,
   logger: Logger,
-): Promise<AcquiredDocument[]> {
+): Promise<DocumentAcquisitionRun> {
   if (!provider?.enabled || !policy.enabled) {
-    return [];
+    return { documents: [], candidates: [] };
   }
   try {
     const candidates = await provider.findCandidates({
@@ -123,7 +133,7 @@ async function acquireCandidateDocuments(
           acquired.documentRef?.status !== 'failed' &&
           acquired.documentRef?.status !== 'stalled'
         ) {
-          return [acquired];
+          return { documents: [acquired], candidates };
         }
       } catch (error) {
         logger.warn('enrichment.document_acquisition.candidate_failed', {
@@ -133,28 +143,50 @@ async function acquireCandidateDocuments(
         });
       }
     }
-    return latestRejected ? [latestRejected] : [];
+    return { documents: latestRejected ? [latestRejected] : [], candidates };
   } catch (error) {
     logger.warn('enrichment.document_acquisition.failed', {
       bookId: request.book.id,
       error: error instanceof Error ? error.message : String(error),
     });
-    return [];
+    return { documents: [], candidates: [] };
   }
 }
 
-function mergeResolvedDocumentRefs(
+function mergeResolvedDocumentState(
   request: EnrichmentRequest,
-  documents: AcquiredDocument[],
+  run: DocumentAcquisitionRun,
 ): Pick<EnrichmentResponse, 'bookPatch'>['bookPatch'] {
-  const documentRefs = documents
+  const documentRefs = run.documents
     .map((document) => document.documentRef)
     .filter((document): document is BookDocumentRef => Boolean(document));
+  const replacementKeys = new Set(
+    documentRefs
+      .filter(documentRefIsTrackedQbittorrentReplacement)
+      .map(documentRefGreylistKey),
+  );
+  const existingDocuments = replacementKeys.size
+    ? (request.book.documents ?? []).filter((document) => {
+        const existingKey = documentRefGreylistKey(document);
+        return !(
+          document.provider === 'qbittorrent' &&
+          !replacementKeys.has(existingKey) &&
+          documentRefShouldBeReplaced(
+            document,
+            request.book.documentAcquisition,
+          )
+        );
+      })
+    : (request.book.documents ?? []);
   const mergedDocuments = documentRefs.length
-    ? mergeDocumentRefs(request.book.documents ?? [], documentRefs)
+    ? mergeDocumentRefs(existingDocuments, documentRefs)
     : undefined;
-  const documentAcquisition = observeDocumentGreylist(
+  const candidateState = mergeDocumentCandidateQueue(
     request.book.documentAcquisition,
+    run.candidates,
+  );
+  const documentAcquisition = observeDocumentGreylist(
+    candidateState,
     mergedDocuments ?? request.book.documents ?? [],
   );
   const selectedDocumentId =
@@ -187,7 +219,7 @@ export function createBookEnrichmentLoader(
         options.logger,
       );
       const policy = effectiveDocumentPolicy(request, documentPolicy);
-      const acquiredDocuments = await acquireCandidateDocuments(
+      const acquisitionRun = await acquireCandidateDocuments(
         request,
         documentProvider(request, options),
         policy,
@@ -195,7 +227,7 @@ export function createBookEnrichmentLoader(
       );
       const usableDocuments = dedupeAcquiredDocuments([
         ...completedDocuments,
-        ...acquiredDocuments,
+        ...acquisitionRun.documents,
       ]);
       const resolution = await resolveBookEnrichment({
         book: request.book,
@@ -209,7 +241,10 @@ export function createBookEnrichmentLoader(
         cacheKey,
         bookPatch: {
           ...resolution.bookPatch,
-          ...mergeResolvedDocumentRefs(request, usableDocuments),
+          ...mergeResolvedDocumentState(request, {
+            documents: usableDocuments,
+            candidates: acquisitionRun.candidates,
+          }),
         },
         enrichment: resolution.enrichment,
         provenance: resolution.provenance.length

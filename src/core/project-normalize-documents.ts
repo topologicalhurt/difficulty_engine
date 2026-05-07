@@ -171,6 +171,11 @@ function normalizeGreylistEntry(
     observations: normalizeNumber(raw.observations, 0, 0, 10000, true),
     lastStatus,
     lastReason: normalizeString(raw.lastReason) || undefined,
+    lastProgress:
+      raw.lastProgress == null
+        ? undefined
+        : normalizeNumber(raw.lastProgress, 0, 0, 1),
+    lastProgressAt: normalizeString(raw.lastProgressAt) || undefined,
     sourceUrl: normalizeString(raw.sourceUrl) || undefined,
     torrentHash: normalizeString(raw.torrentHash) || undefined,
     title: normalizeString(raw.title) || undefined,

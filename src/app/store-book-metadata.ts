@@ -161,6 +161,8 @@ export function mergeEnrichmentIntoBook(
     documents: patch.documents ?? book.documents ?? [],
     selectedDocumentId:
       patch.selectedDocumentId ?? book.selectedDocumentId ?? null,
+    documentAcquisition:
+      patch.documentAcquisition ?? book.documentAcquisition,
     openLibraryKey: normalizeOpenLibraryKey(
       patch.openLibraryKey ?? book.openLibraryKey,
       'any',
