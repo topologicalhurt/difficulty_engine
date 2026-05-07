@@ -229,6 +229,63 @@ describe('project-file boundary', () => {
     expect(project.library.books.alpha?.selectedDocumentId).toBeNull();
   });
 
+  it('canonicalizes duplicate qBittorrent document refs on import', () => {
+    const project = normalizeProject({
+      version: 1,
+      library: {
+        books: {
+          alpha: {
+            title: 'Alpha',
+            selectedDocumentId: 'old-stalled',
+            documents: [
+              {
+                id: 'old-stalled',
+                provider: 'qbittorrent',
+                fileName: 'Alpha old.pdf',
+                storagePath: 'output/data/documents/Alpha old.pdf',
+                torrentHash: 'old',
+                contentKind: 'pdf',
+                status: 'stalled',
+                matchScore: 0.9,
+                availability: {
+                  seeders: 0,
+                  progress: 0.2,
+                  state: 'stalledDL',
+                },
+              },
+              {
+                id: 'better-live',
+                provider: 'qbittorrent',
+                fileName: 'Alpha.pdf',
+                storagePath: 'output/data/documents/Alpha.pdf',
+                torrentHash: 'new',
+                contentKind: 'pdf',
+                status: 'downloading',
+                matchScore: 0.95,
+                availability: {
+                  seeders: 8,
+                  progress: 0.6,
+                  state: 'downloading',
+                  etaSeconds: 900,
+                  downloadSpeedBytesPerSecond: 500000,
+                },
+              },
+            ],
+          },
+        },
+      },
+      manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+      constraints: {},
+    });
+
+    const book = project.library.books.alpha;
+    expect(book?.documents?.map((document) => document.id)).toEqual([
+      'better-live',
+    ]);
+    expect(book?.documents?.[0]?.availability.etaSeconds).toBe(900);
+    expect(book?.selectedDocumentId).toBeNull();
+  });
+
   it('rejects unsupported project exports outside PlannerProjectV1', () => {
     const fixture = JSON.parse(
       readFileSync(

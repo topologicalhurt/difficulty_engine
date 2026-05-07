@@ -9,10 +9,6 @@ import {
   PLAN_ZOOM_MIN,
   clampLibraryListWidth,
 } from '../core/constants';
-import {
-  bridgeDocumentEndpoint,
-  bridgeEndpoint,
-} from '../infra/document-bridge-url';
 import type { StoreCommandContext } from './store-command-context';
 import type { WiringContractId } from './wiring/contracts';
 
@@ -36,12 +32,7 @@ export function createUiCommands(
   | 'toggleConstraintAdvancedGroup'
   | 'selectConstraintField'
   | 'setGraphOptionsOpen'
-  | 'openBookDocument'
-  | 'readBookDocument'
-  | 'closeBookDocumentReader'
 > {
-  let documentReadSequence = 0;
-
   function commitUiPreference(
     contractId: WiringContractId,
     preferencePatch: UiPreferencePatch,
@@ -162,106 +153,6 @@ export function createUiCommands(
     },
     setGraphOptionsOpen(open: boolean): void {
       context.commitUi('ui.graphOptionsOpen', { graphOptionsOpen: open });
-    },
-    async openBookDocument(bookId: string, documentId: string): Promise<void> {
-      const state = context.getState();
-      const book = state.project.library.books[bookId];
-      const document = book?.documents?.find((item) => item.id === documentId);
-      if (!book || !document) return;
-      try {
-        const response = await fetch(
-          bridgeEndpoint(
-            state.ui.qbittorrentConnection.baseUrl,
-            '/documents/open',
-          ),
-          {
-            method: 'POST',
-            body: JSON.stringify({ path: document.storagePath }),
-            headers: { 'Content-Type': 'application/json' },
-          },
-        );
-        if (!response.ok) throw new Error(await response.text());
-        context.commitUi('ui.documentOpen', {
-          banner: { tone: 'success', message: `Opened ${document.fileName}.` },
-        });
-      } catch (error) {
-        context.commitUi('ui.documentOpen', {
-          banner: {
-            tone: 'error',
-            message:
-              error instanceof Error
-                ? error.message
-                : `Could not open ${document.fileName}.`,
-          },
-        });
-      }
-    },
-    async readBookDocument(bookId: string, documentId: string): Promise<void> {
-      const state = context.getState();
-      const book = state.project.library.books[bookId];
-      const document = book?.documents?.find((item) => item.id === documentId);
-      if (!book || !document) return;
-      const requestSequence = (documentReadSequence += 1);
-      context.commitUi('ui.documentReader', {
-        documentReader: {
-          bookId,
-          documentId,
-          status: 'loading',
-          title: document.fileName,
-          text: '',
-          error: null,
-        },
-      });
-      try {
-        const response = await fetch(
-          bridgeDocumentEndpoint(
-            state.ui.qbittorrentConnection.baseUrl,
-            '/documents/read-text',
-            document.storagePath,
-          ),
-        );
-        if (!response.ok) throw new Error(await response.text());
-        const text = await response.text();
-        if (requestSequence !== documentReadSequence) return;
-        context.commitUi('ui.documentReader', {
-          documentReader: {
-            bookId,
-            documentId,
-            status: 'ready',
-            title: document.fileName,
-            text,
-            error: null,
-          },
-        });
-      } catch (error) {
-        if (requestSequence !== documentReadSequence) return;
-        context.commitUi('ui.documentReader', {
-          documentReader: {
-            bookId,
-            documentId,
-            status: 'failed',
-            title: document.fileName,
-            text: '',
-            error:
-              error instanceof Error
-                ? error.message
-                : 'Could not read document text.',
-          },
-        });
-      }
-    },
-    closeBookDocumentReader(): void {
-      documentReadSequence += 1;
-      context.commitUi('ui.documentReader', {
-        documentReader: {
-          bookId: null,
-          documentId: null,
-          status: 'idle',
-          title: '',
-          text: '',
-          error: null,
-        },
-      });
     },
   };
 }

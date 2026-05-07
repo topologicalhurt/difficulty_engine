@@ -4,6 +4,7 @@ import type {
   AiRecommendationStatus,
   BookSearchStatus,
   BookSearchSuggestion,
+  BookDocumentCandidateOption,
   ConstraintSet,
   EnrichmentCacheEntry,
   GanttView,
@@ -43,6 +44,14 @@ export interface DocumentReaderState {
   error: string | null;
 }
 
+export interface DocumentCandidateBrowserState {
+  bookId: string | null;
+  status: 'idle' | 'loading' | 'ready' | 'failed' | 'acquiring';
+  candidates: BookDocumentCandidateOption[];
+  error: string | null;
+  manualSource: string;
+}
+
 export interface UiState {
   activeView: AppView;
   selectedBookId: string | null;
@@ -66,6 +75,7 @@ export interface UiState {
   qbittorrentConnection: QbittorrentConnectionSettings;
   qbittorrentStatus: QbittorrentRuntimeStatus;
   documentReader: DocumentReaderState;
+  documentCandidates: DocumentCandidateBrowserState;
   aiPrompt: string;
   aiConnection: AiConnectionSettings;
   aiStatus: AiRecommendationStatus;

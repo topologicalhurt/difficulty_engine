@@ -39,6 +39,8 @@ export interface DocumentCandidate {
   seeders?: number | null;
   peers?: number | null;
   matchScore?: number;
+  qualityScore?: number;
+  qualityReason?: string;
   availability?: BookDocumentAvailability;
 }
 
@@ -139,11 +141,25 @@ export function mergeDocumentRefs(
     const previous = byKey.get(key);
     byKey.set(key, previous ? mergeDocumentRef(previous, document) : document);
   });
-  return [...byKey.values()].sort(
+  return canonicalizeBookDocumentRefs([...byKey.values()]).sort(
     (left, right) =>
       left.fileName.localeCompare(right.fileName) ||
       left.id.localeCompare(right.id),
   );
+}
+
+export function canonicalizeBookDocumentRefs(
+  documents: BookDocumentRef[] = [],
+): BookDocumentRef[] {
+  const qbitDocuments = documents.filter(
+    (document) => document.provider === 'qbittorrent',
+  );
+  const otherDocuments = documents.filter(
+    (document) => document.provider !== 'qbittorrent',
+  );
+  if (qbitDocuments.length <= 1) return [...documents];
+  const [preferred] = [...qbitDocuments].sort(compareDocumentRefPreference);
+  return preferred ? [...otherDocuments, preferred] : otherDocuments;
 }
 
 function normalizedDocumentPath(value: string | undefined): string {

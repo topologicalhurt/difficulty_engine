@@ -14,6 +14,11 @@ export interface BookDocumentAvailability {
   peers: number | null;
   progress: number;
   state: string;
+  etaSeconds?: number | null;
+  downloadSpeedBytesPerSecond?: number | null;
+  availability?: number | null;
+  sizeBytes?: number | null;
+  qualityScore?: number;
   reason?: string;
 }
 
@@ -35,4 +40,21 @@ export interface BookDocumentRef {
   provenance: EnrichmentFieldProvenance;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BookDocumentCandidateOption {
+  id: string;
+  provider: string;
+  title: string;
+  sourceUrl: string;
+  contentKind: SourceContentKind | 'unknown';
+  accessBasis?: BookDocumentRef['accessBasis'];
+  confidence: number;
+  sizeBytes?: number;
+  seeders?: number | null;
+  peers?: number | null;
+  matchScore?: number;
+  qualityScore?: number;
+  qualityReason?: string;
+  availability?: BookDocumentAvailability;
 }

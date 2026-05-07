@@ -3,10 +3,52 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPlannerStore } from '../../src/app/store';
 import { createPlannerEngine } from '../../src/core/engine';
 import { plannerClock } from '../../src/core/time';
-import type { EnrichmentProvider, SearchBooksResponse } from '../../src/core/types';
-import { makeProject, makeStore, silentLogger } from './store-test-utils';
+import type {
+  BookDocumentRef,
+  EnrichmentProvider,
+  QbittorrentIntegrationService,
+  SearchBooksResponse,
+} from '../../src/core/types';
+import {
+  makeBook,
+  makeProject,
+  makeStore,
+  makeTestEnrichmentProvider,
+  silentLogger,
+} from './store-test-utils';
 
 describe('createPlannerStore', () => {
+  function documentRef(patch: Partial<BookDocumentRef> = {}): BookDocumentRef {
+    return {
+      id: 'doc-1',
+      provider: 'qbittorrent',
+      sourceUrl: 'magnet:?xt=urn:btih:abc123',
+      torrentHash: 'abc123',
+      fileIndex: 0,
+      fileName: 'Test Book.pdf',
+      storagePath: '/repo/output/data/documents/Test Book.pdf',
+      contentKind: 'pdf',
+      contentType: 'application/pdf',
+      accessBasis: 'user_owned',
+      status: 'downloading',
+      matchScore: 0.9,
+      availability: {
+        seeders: 2,
+        peers: 0,
+        progress: 0.4,
+        state: 'downloading',
+      },
+      provenance: {
+        provider: 'qbittorrent',
+        fetchedAt: '2026-01-05T00:00:00.000Z',
+        confidence: 0.8,
+      },
+      createdAt: '2026-01-05T00:00:00.000Z',
+      updatedAt: '2026-01-05T00:00:00.000Z',
+      ...patch,
+    };
+  }
+
   it('adds a book and keeps the JSON editor synchronized', () => {
     const store = makeStore();
     store.commands.addBook();
@@ -192,6 +234,109 @@ describe('createPlannerStore', () => {
     state = store.selectors.getState();
     expect(state.ui.bookSearchResults).toHaveLength(2);
     expect(state.ui.bookSearchHasMore).toBe(false);
+  });
+
+  it('removes offline document refs and clears selected document ids', async () => {
+    const deleteTorrent = vi.fn();
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchImpl);
+    const project = makeProject({
+      books: {
+        'book-1': makeBook({
+          documents: [documentRef()],
+          selectedDocumentId: 'doc-1',
+        }),
+      },
+    });
+    const store = createPlannerStore({
+      initialProject: project,
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      qbittorrentService: {
+        testConnection: vi.fn(),
+        listPlugins: vi.fn(),
+        findDocumentCandidates: vi.fn(),
+        acquireDocumentCandidate: vi.fn(),
+        deleteTorrent,
+      } satisfies QbittorrentIntegrationService,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    await store.commands.removeBookDocument('book-1', 'doc-1', {
+      deleteContent: true,
+    });
+
+    const book = store.selectors.getProject().library.books['book-1'];
+    expect(book?.documents).toEqual([]);
+    expect(book?.selectedDocumentId).toBeNull();
+    expect(deleteTorrent).toHaveBeenCalledWith(
+      expect.anything(),
+      'abc123',
+      true,
+    );
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.stringContaining('/documents/delete'),
+      expect.anything(),
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('loads ranked document candidates and acquires the selected one', async () => {
+    const acquired = documentRef({
+      id: 'new-doc',
+      torrentHash: 'newhash',
+      fileName: 'Test Book.epub',
+      storagePath: '/repo/output/data/documents/Test Book.epub',
+      contentKind: 'epub',
+      contentType: 'application/epub+zip',
+      status: 'downloading',
+    });
+    const service: QbittorrentIntegrationService = {
+      testConnection: vi.fn(),
+      listPlugins: vi.fn(),
+      findDocumentCandidates: vi.fn(async () => [
+        {
+          id: 'candidate-1',
+          provider: 'qbittorrent',
+          title: 'Test Book',
+          sourceUrl: 'magnet:?xt=urn:btih:newhash',
+          contentKind: 'epub' as const,
+          accessBasis: 'user_owned' as const,
+          confidence: 0.9,
+          matchScore: 0.95,
+          seeders: 10,
+          qualityScore: 0.92,
+        },
+      ]),
+      acquireDocumentCandidate: vi.fn(async () => acquired),
+      deleteTorrent: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      qbittorrentService: service,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    await store.commands.refreshBookDocumentCandidates('book-1');
+    await store.commands.selectBookDocumentCandidate('book-1', 'candidate-1');
+
+    const state = store.selectors.getState();
+    expect(state.ui.documentCandidates.candidates[0]?.id).toBe('candidate-1');
+    expect(
+      state.project.library.books['book-1']?.documents?.map(
+        (document) => document.id,
+      ),
+    ).toEqual(['new-doc']);
   });
 
   it('drops stale catalog search results when the query changes before completion', async () => {

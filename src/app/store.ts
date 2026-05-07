@@ -9,6 +9,7 @@ import type {
 import { createCalendarCommands } from './store-calendar-commands';
 import type { StoreCommandContext } from './store-command-context';
 import { createConstraintCommands } from './store-constraint-commands';
+import { createDocumentCommands } from './store-document-commands';
 import { createEnrichmentCommands } from './store-enrichment';
 import { createLibraryCommands } from './store-library-commands';
 import { createProjectCommands } from './store-project-commands';
@@ -83,6 +84,7 @@ export function createPlannerStore(
     },
     commands: {
       ...createUiCommands(context),
+      ...createDocumentCommands(context, options),
       ...createConstraintCommands(context),
       ...createLibraryCommands(context),
       ...createCalendarCommands(context),

@@ -164,6 +164,14 @@ async function assertSupportedDocumentFile(dataRoot, requestPath) {
   return filePath;
 }
 
+function assertSupportedDocumentPath(dataRoot, requestPath) {
+  const filePath = resolveDocumentPath(dataRoot, requestPath);
+  if (!supportedDocumentKind(filePath)) {
+    throw new Error('Only text, EPUB, and PDF documents can be accessed.');
+  }
+  return filePath;
+}
+
 async function assertDocumentSize(filePath, limitBytes, label) {
   const fileStat = await stat(filePath);
   if (fileStat.size > limitBytes) {
@@ -368,14 +376,20 @@ async function readJsonBody(req) {
   return JSON.parse(raw.toString('utf8'));
 }
 
-function openFile(filePath) {
+function openFile(filePath, mode = 'open') {
+  const reveal = mode === 'reveal';
   const command =
     process.platform === 'darwin'
       ? 'open'
       : process.platform === 'win32'
         ? 'explorer.exe'
         : 'xdg-open';
-  const args = [filePath];
+  const args =
+    process.platform === 'darwin' && reveal
+      ? ['-R', filePath]
+      : process.platform === 'win32' && reveal
+        ? ['/select,', filePath]
+        : [reveal ? dirname(filePath) : filePath];
   const child = spawn(command, args, { detached: true, stdio: 'ignore' });
   child.unref();
 }
@@ -580,6 +594,7 @@ async function handleDocumentRequest(
   res,
   dataRoot,
   allowedOrigins = DEFAULT_ALLOWED_ORIGINS,
+  openDocument = openFile,
 ) {
   const pathname = new URL(req.url || '/', DEFAULT_LISTEN_URL).pathname;
   try {
@@ -676,7 +691,29 @@ async function handleDocumentRequest(
         dataRoot,
         String(body.path || ''),
       );
-      openFile(filePath);
+      openDocument(filePath, 'open');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ ok: true, path: filePath }));
+      return true;
+    }
+    if (pathname === '/documents/reveal' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const filePath = await assertSupportedDocumentFile(
+        dataRoot,
+        String(body.path || ''),
+      );
+      openDocument(filePath, 'reveal');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ ok: true, path: filePath }));
+      return true;
+    }
+    if (pathname === '/documents/delete' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const filePath = assertSupportedDocumentPath(
+        dataRoot,
+        String(body.path || ''),
+      );
+      await rm(filePath, { force: true });
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ ok: true, path: filePath }));
       return true;
@@ -701,6 +738,7 @@ export function createQbittorrentBridgeServer({
   fetchImpl = globalThis.fetch.bind(globalThis),
   timeoutMs = DEFAULT_TIMEOUT_MS,
   allowedOrigins = DEFAULT_ALLOWED_ORIGINS,
+  openDocument = openFile,
 } = {}) {
   let sessionCookie = '';
   const cleanTargetBaseUrl = trimBaseUrl(targetBaseUrl);
@@ -737,6 +775,7 @@ export function createQbittorrentBridgeServer({
           res,
           cleanDataRoot,
           cleanAllowedOrigins,
+          openDocument,
         )
       )
         return;

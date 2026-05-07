@@ -4,6 +4,8 @@ import type {
   AiRecommendationProviderResponse,
   AiRecommendationRequest,
   BookSearchSuggestion,
+  BookDocumentCandidateOption,
+  BookDocumentRef,
   BookEnrichment,
   BookRecord,
   ConstraintSet,
@@ -88,6 +90,21 @@ export interface QbittorrentIntegrationService {
   listPlugins(
     settings: QbittorrentConnectionSettings,
   ): Promise<QbittorrentPluginInfo[]>;
+  findDocumentCandidates(
+    settings: QbittorrentConnectionSettings,
+    request: EnrichmentRequest,
+  ): Promise<BookDocumentCandidateOption[]>;
+  acquireDocumentCandidate(
+    settings: QbittorrentConnectionSettings,
+    request: EnrichmentRequest,
+    candidateId: string,
+    candidates: BookDocumentCandidateOption[],
+  ): Promise<BookDocumentRef | null>;
+  deleteTorrent(
+    settings: QbittorrentConnectionSettings,
+    hash: string,
+    deleteFiles: boolean,
+  ): Promise<void>;
 }
 
 export interface PlannerEngine {
@@ -183,6 +200,19 @@ export interface PlannerStoreCommands {
   refreshQbittorrentPlugins(): Promise<void>;
   setQbittorrentPluginEnabled(pluginName: string, enabled: boolean): void;
   openBookDocument(bookId: string, documentId: string): Promise<void>;
+  revealBookDocument(bookId: string, documentId: string): Promise<void>;
+  removeBookDocument(
+    bookId: string,
+    documentId: string,
+    options?: { deleteContent?: boolean },
+  ): Promise<void>;
+  refreshBookDocumentCandidates(bookId: string): Promise<void>;
+  selectBookDocumentCandidate(
+    bookId: string,
+    candidateId: string,
+  ): Promise<void>;
+  setBookDocumentManualSource(source: string): void;
+  addBookTorrentSource(bookId: string, sourceUrl: string): Promise<void>;
   readBookDocument(bookId: string, documentId: string): Promise<void>;
   closeBookDocumentReader(): void;
   updateAiLocalSettings(patch: Partial<AiConnectionSettings>): void;

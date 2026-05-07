@@ -13,6 +13,7 @@ interface BridgeModule {
     fetchImpl?: typeof fetch;
     timeoutMs?: number;
     allowedOrigins?: string[];
+    openDocument?: (filePath: string, mode: 'open' | 'reveal') => void;
   }): Server;
 }
 
@@ -218,6 +219,55 @@ describe('qBittorrent browser bridge', () => {
     } finally {
       await close(bridge);
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('reveals and deletes only supported files inside the data root', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'difficulty-docs-'));
+    const allowed = join(root, 'book.pdf');
+    const outside = join(tmpdir(), 'outside-book.pdf');
+    await writeFile(allowed, '%PDF allowed', 'utf8');
+    await writeFile(outside, '%PDF outside', 'utf8');
+    const opened: Array<{ path: string; mode: 'open' | 'reveal' }> = [];
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({
+      dataRoot: root,
+      openDocument: (path, mode) => opened.push({ path, mode }),
+    });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const reveal = await fetch(`${bridgeBaseUrl}/documents/reveal`, {
+        method: 'POST',
+        body: JSON.stringify({ path: allowed }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const rejected = await fetch(`${bridgeBaseUrl}/documents/delete`, {
+        method: 'POST',
+        body: JSON.stringify({ path: outside }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const deleted = await fetch(`${bridgeBaseUrl}/documents/delete`, {
+        method: 'POST',
+        body: JSON.stringify({ path: allowed }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const status = await fetch(
+        `${bridgeBaseUrl}/documents/status?${new URLSearchParams({ path: allowed }).toString()}`,
+      );
+
+      expect(reveal.status).toBe(200);
+      expect(opened).toEqual([{ path: allowed, mode: 'reveal' }]);
+      expect(rejected.status).toBe(400);
+      expect(await rejected.text()).toContain(
+        'outside the configured data folder',
+      );
+      expect(deleted.status).toBe(200);
+      expect(status.status).toBe(400);
+    } finally {
+      await close(bridge);
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { force: true });
     }
   });
 

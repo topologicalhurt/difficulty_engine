@@ -161,6 +161,13 @@ export const DEFAULT_UI_STATE: UiState = {
     text: '',
     error: null,
   },
+  documentCandidates: {
+    bookId: null,
+    status: 'idle',
+    candidates: [],
+    error: null,
+    manualSource: '',
+  },
   aiPrompt: '',
   aiConnection: createDefaultAiConnectionSettings(),
   aiStatus: {

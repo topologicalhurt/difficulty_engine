@@ -53,33 +53,41 @@ export function preferredTorrentFile(
   files: TorrentFile[],
   request: DocumentAcquisitionRequest,
 ): TorrentFile | null {
+  return rankedTorrentFiles(files, request)[0] ?? null;
+}
+
+export function rankedTorrentFiles(
+  files: TorrentFile[],
+  request: DocumentAcquisitionRequest,
+): TorrentFile[] {
   const priorityFor = contentKindPriorityForPreference(
     request.policy.contentPreference,
   );
-  return (
-    [...files]
-      .filter(
-        (file) =>
-          file.index != null &&
-          contentKindFromUrl(file.name ?? '') !== 'unknown',
-      )
-      .filter((file) => !BAD_FILE_NAME_PATTERN.test(file.name ?? ''))
-      .sort((left, right) => {
-        const matchDelta =
-          fileMatchScore(right, request) - fileMatchScore(left, request);
-        if (Math.abs(matchDelta) > SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA) {
-          return matchDelta;
-        }
-        const kindDelta =
-          priorityFor(contentKindFromUrl(left.name ?? '')) -
-          priorityFor(contentKindFromUrl(right.name ?? ''));
-        if (kindDelta !== 0) return kindDelta;
-        if (matchDelta !== 0) return matchDelta;
-        const progressDelta = (right.progress ?? 0) - (left.progress ?? 0);
-        if (progressDelta !== 0) return progressDelta;
-        return String(left.name ?? '').localeCompare(String(right.name ?? ''));
-      })[0] ?? null
-  );
+  return [...files]
+    .filter(
+      (file) =>
+        file.index != null &&
+        contentKindFromUrl(file.name ?? '') !== 'unknown',
+    )
+    .filter((file) => !BAD_FILE_NAME_PATTERN.test(file.name ?? ''))
+    .sort((left, right) => {
+      const matchDelta =
+        fileMatchScore(right, request) - fileMatchScore(left, request);
+      if (Math.abs(matchDelta) > SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA) {
+        return matchDelta;
+      }
+      const kindDelta =
+        priorityFor(contentKindFromUrl(left.name ?? '')) -
+        priorityFor(contentKindFromUrl(right.name ?? ''));
+      if (kindDelta !== 0) return kindDelta;
+      if (matchDelta !== 0) return matchDelta;
+      const availabilityDelta =
+        (right.availability ?? 0) - (left.availability ?? 0);
+      if (availabilityDelta !== 0) return availabilityDelta;
+      const progressDelta = (right.progress ?? 0) - (left.progress ?? 0);
+      if (progressDelta !== 0) return progressDelta;
+      return String(left.name ?? '').localeCompare(String(right.name ?? ''));
+    });
 }
 
 export function selectedTorrentFileIsTrusted(
@@ -92,6 +100,35 @@ export function selectedTorrentFileIsTrusted(
     fileScore >= MIN_SELECTED_FILE_MATCH_SCORE &&
     (candidate.matchScore ?? 0) >= MIN_TORRENT_MATCH_SCORE,
   );
+}
+
+export function torrentAvailability(info: TorrentInfo | null): {
+  seeders: number | null;
+  peers: number | null;
+  progress: number;
+  state: string;
+  etaSeconds?: number | null;
+  downloadSpeedBytesPerSecond?: number | null;
+  availability?: number | null;
+  sizeBytes?: number | null;
+} {
+  const seeders = info?.num_seeds == null ? null : Math.max(0, info.num_seeds);
+  const peers = info?.num_leechs == null ? null : Math.max(0, info.num_leechs);
+  return {
+    seeders,
+    peers,
+    progress: info?.progress ?? 0,
+    state: info?.state ?? (info ? 'tracked' : 'unknown'),
+    etaSeconds:
+      info?.eta == null || info.eta < 0 || !Number.isFinite(info.eta)
+        ? null
+        : info.eta,
+    downloadSpeedBytesPerSecond:
+      info?.dlspeed == null ? null : Math.max(0, info.dlspeed),
+    availability:
+      info?.availability == null ? null : Math.max(0, info.availability),
+    sizeBytes: info?.size ?? info?.total_size ?? null,
+  };
 }
 
 export function torrentComplete(

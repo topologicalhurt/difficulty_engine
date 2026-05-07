@@ -178,6 +178,9 @@ describe('store qBittorrent settings', () => {
     const qbittorrentService: QbittorrentIntegrationService = {
       testConnection: vi.fn(() => connectionResult.promise),
       listPlugins: vi.fn(),
+      findDocumentCandidates: vi.fn(),
+      acquireDocumentCandidate: vi.fn(),
+      deleteTorrent: vi.fn(),
     };
     const store = createPlannerStore({
       initialProject: makeProject(),
@@ -226,6 +229,9 @@ describe('store qBittorrent settings', () => {
     const qbittorrentService: QbittorrentIntegrationService = {
       testConnection: vi.fn(),
       listPlugins: vi.fn(() => pluginResult.promise),
+      findDocumentCandidates: vi.fn(),
+      acquireDocumentCandidate: vi.fn(),
+      deleteTorrent: vi.fn(),
     };
     const store = createPlannerStore({
       initialProject: makeProject(),

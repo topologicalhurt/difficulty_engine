@@ -6,7 +6,10 @@ import {
 } from '../../src/core/defaults';
 import type { SourceSettings } from '../../src/core/types';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
-import { createQBittorrentProvider } from '../../src/infra/qbittorrent-provider';
+import {
+  createQBittorrentIntegrationService,
+  createQBittorrentProvider,
+} from '../../src/infra/qbittorrent-provider';
 
 function qbitPolicy(
   patch: { sourceSettings?: SourceSettings } = {},
@@ -23,6 +26,44 @@ function qbitPolicy(
 }
 
 describe('qBittorrent document provider', () => {
+  it('deletes torrents with the requested content deletion flag', async () => {
+    const deleteBodies: URLSearchParams[] = [];
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/v2/auth/login')) {
+        return new Response('Ok.', {
+          status: 200,
+          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
+        });
+      }
+      if (url.endsWith('/api/v2/torrents/delete')) {
+        deleteBodies.push(init?.body as URLSearchParams);
+        return new Response('Ok.', { status: 200 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    const service = createQBittorrentIntegrationService(
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    await service.deleteTorrent(
+      {
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:8787',
+        username: 'user',
+        password: 'pass',
+        savePath: '/tmp/difficulty',
+        category: 'difficulty-engine',
+        timeoutMs: 30_000,
+      },
+      'abc123',
+      true,
+    );
+
+    expect(deleteBodies).toHaveLength(1);
+    expect(deleteBodies[0]?.get('hashes')).toBe('abc123');
+    expect(deleteBodies[0]?.get('deleteFiles')).toBe('true');
+  });
+
   it('does not call qBittorrent when the source mask disables it', async () => {
     const fetchImpl = vi.fn();
     const provider = createQBittorrentProvider({

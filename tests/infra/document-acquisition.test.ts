@@ -142,6 +142,58 @@ describe('document acquisition policy', () => {
     expect(selected?.id).toBe('epub');
   });
 
+  it('uses live availability to prefer viable exact matches over stalled ones', () => {
+    const policy = { ...defaultDocumentAcquisitionPolicy(), enabled: true };
+    const selected = choosePreferredDocumentCandidate(
+      [
+        {
+          id: 'stalled',
+          provider: 'qbittorrent',
+          title: 'Fixture Book Author',
+          sourceUrl: 'magnet:?xt=urn:btih:stalled',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 0.96,
+          seeders: 0,
+          availability: {
+            seeders: 0,
+            peers: 0,
+            progress: 0.05,
+            state: 'stalledDL',
+            availability: 0,
+            etaSeconds: null,
+            downloadSpeedBytesPerSecond: 0,
+          },
+        },
+        {
+          id: 'viable',
+          provider: 'qbittorrent',
+          title: 'Fixture Book Author',
+          sourceUrl: 'magnet:?xt=urn:btih:viable',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 0.94,
+          seeders: 18,
+          availability: {
+            seeders: 18,
+            peers: 1,
+            progress: 0.1,
+            state: 'downloading',
+            availability: 1,
+            etaSeconds: 600,
+            downloadSpeedBytesPerSecond: 900_000,
+          },
+        },
+      ],
+      policy,
+    );
+
+    expect(selected?.id).toBe('viable');
+  });
+
+
   it('selects the best completed document instead of alphabetical order', () => {
     const selected = chooseSelectedDocumentId(
       [
@@ -246,5 +298,40 @@ describe('document acquisition policy', () => {
     expect(merged[0]?.id).toBe('new-complete');
     expect(merged[0]?.status).toBe('complete');
     expect(merged[0]?.storagePath).toBe('/repo/output/data/documents/Book.pdf');
+  });
+
+  it('canonicalizes old qBittorrent downloads to one best ref per book', () => {
+    const merged = mergeDocumentRefs(
+      [
+        documentRef('old-stalled', {
+          provider: 'qbittorrent',
+          torrentHash: 'old',
+          status: 'stalled',
+          matchScore: 0.9,
+          availability: {
+            seeders: 0,
+            peers: 0,
+            progress: 0.2,
+            state: 'stalledDL',
+          },
+        }),
+        documentRef('new-downloading', {
+          provider: 'qbittorrent',
+          torrentHash: 'new',
+          status: 'downloading',
+          matchScore: 0.95,
+          availability: {
+            seeders: 12,
+            peers: 1,
+            progress: 0.6,
+            state: 'downloading',
+          },
+        }),
+      ],
+      [],
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe('new-downloading');
   });
 });

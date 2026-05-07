@@ -5,6 +5,7 @@ import type {
 import type { DocumentCandidate } from './document-acquisition';
 import {
   bridgeDocumentExists,
+  postBridgeDocumentAction,
   readBridgeByteDocument,
   readBridgeTextDocument,
 } from './qbittorrent-document-api';
@@ -123,6 +124,19 @@ export class QBittorrentClient {
     await this.api('/torrents/add', { method: 'POST', body });
   }
 
+  async deleteTorrent(hash: string, deleteFiles: boolean): Promise<void> {
+    if (!hash.trim()) return;
+    const body = new URLSearchParams({
+      hashes: hash,
+      deleteFiles: String(deleteFiles),
+    });
+    await this.api('/torrents/delete', {
+      method: 'POST',
+      body,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+  }
+
   async torrentInfo(candidate: DocumentCandidate): Promise<TorrentInfo | null> {
     const items = await this.listTorrents();
     const hash = hashFromMagnet(candidate.sourceUrl);
@@ -201,6 +215,24 @@ export class QBittorrentClient {
 
   async documentExists(storagePath: string): Promise<boolean> {
     return bridgeDocumentExists(this.fetchImpl, this.baseUrl, storagePath);
+  }
+
+  async revealDocument(storagePath: string): Promise<void> {
+    await postBridgeDocumentAction(
+      this.fetchImpl,
+      this.baseUrl,
+      '/documents/reveal',
+      storagePath,
+    );
+  }
+
+  async deleteDocument(storagePath: string): Promise<void> {
+    await postBridgeDocumentAction(
+      this.fetchImpl,
+      this.baseUrl,
+      '/documents/delete',
+      storagePath,
+    );
   }
 
   async listPlugins(): Promise<QbittorrentPluginInfo[]> {

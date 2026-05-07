@@ -7,9 +7,14 @@ export interface TorrentInfo {
   num_leechs?: number;
   num_seeds?: number;
   amount_left?: number;
+  availability?: number;
+  dlspeed?: number;
+  eta?: number;
   progress?: number;
   save_path?: string;
+  size?: number;
   state?: string;
+  total_size?: number;
 }
 
 export interface TorrentFile {
@@ -18,6 +23,7 @@ export interface TorrentFile {
   progress?: number;
   priority?: number;
   size?: number;
+  availability?: number;
 }
 
 export interface SearchResult {
