@@ -1,7 +1,10 @@
 import { sanitizeChapterTitles } from './chapter-titles';
 import { normalizedIsbn } from './isbn';
 import { normalizeOpenLibraryKey } from './openlibrary-keys';
-import { normalizeBookDocuments } from './project-normalize-documents';
+import {
+  normalizeBookDocumentAcquisition,
+  normalizeBookDocuments,
+} from './project-normalize-documents';
 import { normalizeProvenance } from './project-normalize-provenance';
 import type {
   BookEnrichment,
@@ -99,6 +102,9 @@ export function normalizeBook(
     selectedDocumentId: documents.some((doc) => doc.id === selectedDocumentId)
       ? selectedDocumentId
       : null,
+    documentAcquisition: normalizeBookDocumentAcquisition(
+      raw.documentAcquisition,
+    ),
     openLibraryKey: normalizeOpenLibraryKey(
       normalizeString(raw.openLibraryKey),
       'any',

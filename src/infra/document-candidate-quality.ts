@@ -65,6 +65,7 @@ export function documentCandidateQualityScore(
     'matchScore' | 'seeders' | 'confidence' | 'contentKind' | 'accessBasis'
     | 'availability'
     | 'sizeBytes'
+    | 'greylistPenalty'
   >,
   contentKindPriority: (kind: DocumentCandidate['contentKind']) => number,
 ): number {
@@ -99,14 +100,16 @@ export function documentCandidateQualityScore(
     (candidate.availability?.availability ?? 0) <= 0 &&
     (candidate.availability?.progress ?? 0) < 1;
   const deadPenalty = noAvailability ? 0.55 : seeders === 0 ? 0.35 : 0;
-  return (
+  return Math.max(
+    0,
     matchScore * 0.44 +
-    liveQualityScore * 0.3 +
-    provenanceScore * 0.13 +
-    contentScore * 0.09 +
-    candidate.confidence * 0.04 +
-    exactBoost -
-    deadPenalty
+      liveQualityScore * 0.3 +
+      provenanceScore * 0.13 +
+      contentScore * 0.09 +
+      candidate.confidence * 0.04 +
+      exactBoost -
+      deadPenalty -
+      (candidate.greylistPenalty ?? 0),
   );
 }
 
@@ -122,6 +125,7 @@ export function compareDocumentCandidateQuality(
     | 'accessBasis'
     | 'availability'
     | 'sizeBytes'
+    | 'greylistPenalty'
   >,
   right: Pick<
     DocumentCandidate,
@@ -134,6 +138,7 @@ export function compareDocumentCandidateQuality(
     | 'accessBasis'
     | 'availability'
     | 'sizeBytes'
+    | 'greylistPenalty'
   >,
   contentKindPriority: (kind: DocumentCandidate['contentKind']) => number,
 ): number {

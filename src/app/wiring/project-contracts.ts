@@ -193,4 +193,25 @@ export const PROJECT_CONTRACTS: WiringContract[] = [
     testIds: ['tests/app/wiring-contracts.test.ts'],
     notes: 'Export reads canonical project state without mutation.',
   },
+  {
+    id: 'metadata.clearProject',
+    surface: 'project',
+    control: 'Delete project metadata',
+    command: 'clearProjectMetadata',
+    projectReads: ['library.books', 'enrichmentCache'],
+    projectWrites: [
+      'library.books.enrichment',
+      'library.books.documents',
+      'library.books.documentAcquisition',
+      'enrichmentCache',
+    ],
+    uiReads: ['qbittorrentConnection', 'documentCandidates'],
+    uiWrites: ['documentCandidates', 'banner'],
+    snapshotEffects: ['document diagnostics', 'enrichment diagnostics'],
+    renderEffects: ['project', 'library', 'diagnostics'],
+    recomputePolicy: 'snapshot',
+    testIds: ['tests/app/store.test.ts', 'tests/ui/library-view.test.ts'],
+    notes:
+      'Project metadata cleanup preserves reading progress and manual planning state while clearing enrichment/document artifacts.',
+  },
 ];

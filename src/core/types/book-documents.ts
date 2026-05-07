@@ -56,5 +56,31 @@ export interface BookDocumentCandidateOption {
   matchScore?: number;
   qualityScore?: number;
   qualityReason?: string;
+  greylistKey?: string;
+  greylistPenalty?: number;
+  greylistReason?: string;
+  rank?: number;
+  retryable?: boolean;
+  queuedAt?: string;
+  lastSeenAt?: string;
   availability?: BookDocumentAvailability;
+}
+
+export interface BookDocumentGreylistEntry {
+  key: string;
+  penalty: number;
+  observations: number;
+  lastStatus: BookDocumentStatus | 'candidate';
+  lastReason?: string;
+  sourceUrl?: string;
+  torrentHash?: string;
+  title?: string;
+  updatedAt: string;
+}
+
+export interface BookDocumentAcquisitionState {
+  candidateQueue: BookDocumentCandidateOption[];
+  greylist: Record<string, BookDocumentGreylistEntry>;
+  lastDiagnostic?: string;
+  updatedAt?: string;
 }

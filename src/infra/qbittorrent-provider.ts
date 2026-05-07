@@ -7,6 +7,7 @@ import type {
 import {
   defaultDocumentAcquisitionPolicy,
   isLawfulDocumentCandidate,
+  rankDocumentCandidates,
 } from './document-acquisition';
 import type {
   QbittorrentConnectionSettings,
@@ -34,10 +35,7 @@ import {
   MIN_TORRENT_MATCH_SCORE,
   torrentAvailability,
 } from './qbittorrent-selection';
-import {
-  compareDocumentCandidateQuality,
-  documentCandidateQualityScore,
-} from './document-candidate-quality';
+import { documentCandidateQualityScore } from './document-candidate-quality';
 import { contentKindPriorityForPreference } from './document-content-priority';
 import type { TorrentInfo } from './qbittorrent-types';
 
@@ -63,6 +61,13 @@ function candidateOption(
     matchScore: candidate.matchScore,
     qualityScore: candidate.qualityScore,
     qualityReason: candidate.qualityReason,
+    greylistKey: candidate.greylistKey,
+    greylistPenalty: candidate.greylistPenalty,
+    greylistReason: candidate.greylistReason,
+    rank: candidate.rank,
+    retryable: candidate.retryable,
+    queuedAt: candidate.queuedAt,
+    lastSeenAt: candidate.lastSeenAt,
     availability: candidate.availability,
   };
 }
@@ -82,6 +87,13 @@ function optionCandidate(option: BookDocumentCandidateOption): DocumentCandidate
     matchScore: option.matchScore,
     qualityScore: option.qualityScore,
     qualityReason: option.qualityReason,
+    greylistKey: option.greylistKey,
+    greylistPenalty: option.greylistPenalty,
+    greylistReason: option.greylistReason,
+    rank: option.rank,
+    retryable: option.retryable,
+    queuedAt: option.queuedAt,
+    lastSeenAt: option.lastSeenAt,
     availability: option.availability,
   };
 }
@@ -239,7 +251,7 @@ export function createQBittorrentProvider(
       const priorityFor = contentKindPriorityForPreference(
         request.policy.contentPreference,
       );
-      return candidates
+      const scoredCandidates = candidates
         .filter((candidate) =>
           isLawfulDocumentCandidate(candidate, request.policy),
         )
@@ -248,10 +260,12 @@ export function createQBittorrentProvider(
           qualityScore:
             candidate.qualityScore ??
             documentCandidateQualityScore(candidate, priorityFor),
-        }))
-        .sort((left, right) =>
-          compareDocumentCandidateQuality(left, right, priorityFor),
-        );
+        }));
+      return rankDocumentCandidates(
+        scoredCandidates,
+        request.policy,
+        request.book.documentAcquisition,
+      );
     },
     async acquire(
       candidate: DocumentCandidate,

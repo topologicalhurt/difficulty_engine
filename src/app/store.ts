@@ -14,6 +14,7 @@ import { createEnrichmentCommands } from './store-enrichment';
 import { createLibraryCommands } from './store-library-commands';
 import { createProjectCommands } from './store-project-commands';
 import { createQbittorrentCommands } from './store-qbittorrent-commands';
+import { createMetadataCommands } from './store-metadata-commands';
 import { createStoreRuntime } from './store-runtime';
 import { createCatalogSearchRunner } from './store-search';
 import { createSearchCommands } from './store-search-commands';
@@ -90,6 +91,7 @@ export function createPlannerStore(
       ...createCalendarCommands(context),
       ...createSearchCommands(context),
       ...createProjectCommands(context),
+      ...createMetadataCommands(context, options),
       ...createQbittorrentCommands(context, options),
       ...createAiRecommendationCommands(context, options),
       ...enrichmentCommands,

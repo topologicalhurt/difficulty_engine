@@ -1,4 +1,7 @@
-import type { BookDocumentRef } from './book-documents';
+import type {
+  BookDocumentAcquisitionState,
+  BookDocumentRef,
+} from './book-documents';
 import type { BookEnrichment } from './enrichment';
 
 export interface BookRecord {
@@ -16,6 +19,7 @@ export interface BookRecord {
   sourcePath?: string | null;
   documents?: BookDocumentRef[];
   selectedDocumentId?: string | null;
+  documentAcquisition?: BookDocumentAcquisitionState;
   openLibraryKey?: string | null;
   openLibraryEditionKey?: string | null;
   openLibraryWorkKey?: string | null;

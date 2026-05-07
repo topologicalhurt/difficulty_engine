@@ -215,6 +215,11 @@ export interface PlannerStoreCommands {
   addBookTorrentSource(bookId: string, sourceUrl: string): Promise<void>;
   readBookDocument(bookId: string, documentId: string): Promise<void>;
   closeBookDocumentReader(): void;
+  clearBookMetadata(
+    bookId: string,
+    options?: { deleteContent?: boolean },
+  ): Promise<void>;
+  clearProjectMetadata(options?: { deleteContent?: boolean }): Promise<void>;
   updateAiLocalSettings(patch: Partial<AiConnectionSettings>): void;
   setAiRecommendationPrompt(prompt: string): void;
   requestAiRecommendations(): Promise<void>;

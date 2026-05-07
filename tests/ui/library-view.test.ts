@@ -108,6 +108,24 @@ describe('library view', () => {
                 updatedAt: '2026-01-05T00:00:00.000Z',
               },
             ],
+            documentAcquisition: {
+              candidateQueue: [
+                {
+                  id: 'candidate-1',
+                  provider: 'qbittorrent',
+                  title: 'Test Book seeded result',
+                  sourceUrl: 'magnet:?xt=urn:btih:candidate1',
+                  contentKind: 'pdf',
+                  accessBasis: 'user_owned',
+                  confidence: 0.9,
+                  matchScore: 0.95,
+                  seeders: 12,
+                  qualityScore: 0.91,
+                  rank: 1,
+                },
+              ],
+              greylist: {},
+            },
           }),
         },
       }),
@@ -120,6 +138,8 @@ describe('library view', () => {
     expect(text).toContain('Remove');
     expect(text).toContain('Also delete downloaded files/content');
     expect(text).toContain('Find ranked results');
+    expect(text).toContain('Test Book seeded result');
+    expect(text).toContain('Delete metadata');
     expect(
       view.querySelector(
         'input[placeholder="Paste magnet link or HTTPS .torrent URL"]',

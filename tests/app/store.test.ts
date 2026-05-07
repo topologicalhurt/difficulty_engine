@@ -337,6 +337,10 @@ describe('createPlannerStore', () => {
         (document) => document.id,
       ),
     ).toEqual(['new-doc']);
+    expect(
+      state.project.library.books['book-1']?.documentAcquisition
+        ?.candidateQueue[0]?.id,
+    ).toBe('candidate-1');
   });
 
   it('drops stale catalog search results when the query changes before completion', async () => {

@@ -5,12 +5,21 @@ import type {
   PlannerProjectV1,
   PlannerStoreCommands,
 } from '../core/types';
-import {
-  chooseSelectedDocumentId,
-  mergeDocumentRefs,
-} from '../infra/document-acquisition';
 import { bridgeEndpoint } from '../infra/document-bridge-url';
 import type { StoreCommandContext } from './store-command-context';
+import {
+  documentGreylistKey,
+  documentRefGreylistKey,
+  documentRefIsGreylistable,
+} from '../core/document-acquisition-state';
+import {
+  bookCandidateContextKey,
+  deleteDocumentContent,
+  postDocumentAction,
+  projectWithCandidateQueue,
+  projectWithDocumentAdded,
+  projectWithDocumentRemoved,
+} from './store-document-state';
 
 function isSafeTorrentSource(value: string): boolean {
   if (/^magnet:/i.test(value)) return true;
@@ -28,82 +37,13 @@ function bookDocument(
   project: PlannerProjectV1,
   bookId: string,
   documentId: string,
-): { book: PlannerProjectV1['library']['books'][string]; document: BookDocumentRef } | null {
+): {
+  book: PlannerProjectV1['library']['books'][string];
+  document: BookDocumentRef;
+} | null {
   const book = project.library.books[bookId];
   const document = book?.documents?.find((item) => item.id === documentId);
   return book && document ? { book, document } : null;
-}
-
-function projectWithDocumentRemoved(
-  project: PlannerProjectV1,
-  bookId: string,
-  documentId: string,
-): PlannerProjectV1 {
-  const book = project.library.books[bookId];
-  if (!book) return project;
-  const documents = (book.documents ?? []).filter(
-    (document) => document.id !== documentId,
-  );
-  return {
-    ...project,
-    library: {
-      books: {
-        ...project.library.books,
-        [bookId]: {
-          ...book,
-          documents,
-          selectedDocumentId:
-            book.selectedDocumentId === documentId
-              ? chooseSelectedDocumentId(
-                  documents,
-                  null,
-                  project.sourceSettings.contentPreference,
-                )
-              : book.selectedDocumentId,
-        },
-      },
-    },
-  };
-}
-
-function projectWithDocumentAdded(
-  project: PlannerProjectV1,
-  bookId: string,
-  document: BookDocumentRef,
-): PlannerProjectV1 {
-  const book = project.library.books[bookId];
-  if (!book) return project;
-  const documents = mergeDocumentRefs(book.documents ?? [], [document]);
-  return {
-    ...project,
-    library: {
-      books: {
-        ...project.library.books,
-        [bookId]: {
-          ...book,
-          documents,
-          selectedDocumentId: chooseSelectedDocumentId(
-            documents,
-            book.selectedDocumentId,
-            project.sourceSettings.contentPreference,
-          ),
-        },
-      },
-    },
-  };
-}
-
-async function postDocumentAction(
-  baseUrl: string,
-  endpoint: string,
-  storagePath: string,
-): Promise<void> {
-  const response = await fetch(bridgeEndpoint(baseUrl, endpoint), {
-    method: 'POST',
-    body: JSON.stringify({ path: storagePath }),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) throw new Error(await response.text());
 }
 
 export function createDocumentCommands(
@@ -181,14 +121,35 @@ export function createDocumentCommands(
     if (!document) {
       throw new Error('No trusted file was selected from this candidate.');
     }
+    const beforeProject = context.getState().project;
+    const beforeBook = beforeProject.library.books[bookId];
+    const newKey = documentRefGreylistKey(document);
+    const replacedDocuments =
+      document.provider === 'qbittorrent' &&
+      document.status !== 'failed' &&
+      document.status !== 'stalled'
+        ? (beforeBook?.documents ?? []).filter((existing) => {
+            const existingKey = documentRefGreylistKey(existing);
+            return (
+              existing.provider === 'qbittorrent' &&
+              existingKey !== newKey &&
+              (documentRefIsGreylistable(existing) ||
+                beforeBook?.documentAcquisition?.greylist[existingKey])
+            );
+          })
+        : [];
+    const nextProject = projectWithDocumentAdded(beforeProject, bookId, document);
     context.commitProject(
       'document.selectCandidate',
-      projectWithDocumentAdded(context.getState().project, bookId, document),
+      nextProject,
       {
         documentCandidates: {
           ...context.getState().ui.documentCandidates,
           bookId,
           status: 'ready',
+          candidates:
+            nextProject.library.books[bookId]?.documentAcquisition
+              ?.candidateQueue ?? [],
           error: null,
         },
         banner: {
@@ -197,6 +158,24 @@ export function createDocumentCommands(
         },
       },
     );
+    if (replacedDocuments.length) {
+      const deleteErrors = await deleteDocumentContent(
+        beforeProject,
+        new Set([bookId]),
+        state.ui.qbittorrentConnection.baseUrl,
+        services.qbittorrentService,
+        state.ui.qbittorrentConnection,
+        replacedDocuments,
+      );
+      if (deleteErrors.length) {
+        context.commitUi('document.selectCandidate', {
+          banner: {
+            tone: 'warn',
+            message: `Started ${document.fileName}, but old content cleanup failed: ${deleteErrors[0]}`,
+          },
+        });
+      }
+    }
   }
 
   return {
@@ -227,18 +206,15 @@ export function createDocumentCommands(
       );
       if (!options.deleteContent) return;
       try {
-        if (document.torrentHash && services.qbittorrentService) {
-          await services.qbittorrentService.deleteTorrent(
-            state.ui.qbittorrentConnection,
-            document.torrentHash,
-            true,
-          );
-        }
-        await postDocumentAction(
+        const errors = await deleteDocumentContent(
+          state.project,
+          new Set([bookId]),
           state.ui.qbittorrentConnection.baseUrl,
-          '/documents/delete',
-          document.storagePath,
+          services.qbittorrentService,
+          state.ui.qbittorrentConnection,
+          [document],
         );
+        if (errors.length) throw new Error(errors[0]);
       } catch (error) {
         context.commitUi('document.remove', {
           banner: {
@@ -256,11 +232,12 @@ export function createDocumentCommands(
       const book = state.project.library.books[bookId];
       if (!book) return;
       const sequence = (candidateRequestSequence += 1);
+      const contextKey = bookCandidateContextKey(book);
       context.commitUi('document.candidates', {
         documentCandidates: {
           bookId,
           status: 'loading',
-          candidates: [],
+          candidates: book.documentAcquisition?.candidateQueue ?? [],
           error: null,
           manualSource: state.ui.documentCandidates.manualSource,
         },
@@ -279,11 +256,24 @@ export function createDocumentCommands(
             },
           );
         if (sequence !== candidateRequestSequence) return;
-        context.commitUi('document.candidates', {
+        const currentBook =
+          context.getState().project.library.books[bookId];
+        if (!currentBook || bookCandidateContextKey(currentBook) !== contextKey) {
+          return;
+        }
+        const nextProject = projectWithCandidateQueue(
+          context.getState().project,
+          bookId,
+          candidates,
+        );
+        const queue =
+          nextProject.library.books[bookId]?.documentAcquisition
+            ?.candidateQueue ?? [];
+        context.commitProject('document.candidates', nextProject, {
           documentCandidates: {
             bookId,
             status: 'ready',
-            candidates,
+            candidates: queue,
             error: null,
             manualSource: context.getState().ui.documentCandidates.manualSource,
           },
@@ -309,7 +299,8 @@ export function createDocumentCommands(
       const candidates =
         state.ui.documentCandidates.bookId === bookId
           ? state.ui.documentCandidates.candidates
-          : [];
+          : (state.project.library.books[bookId]?.documentAcquisition
+              ?.candidateQueue ?? []);
       try {
         context.commitUi('document.candidates', {
           documentCandidates: {
@@ -367,6 +358,8 @@ export function createDocumentCommands(
         matchScore: 1,
         qualityScore: 1,
         qualityReason: 'User-provided source.',
+        greylistKey: documentGreylistKey({ sourceUrl: source }),
+        retryable: true,
       };
       const projectWithSource = {
         ...state.project,
@@ -377,15 +370,25 @@ export function createDocumentCommands(
           },
         },
       };
-      context.commitProject('document.manualSource', projectWithSource, {
-        documentCandidates: {
-          ...state.ui.documentCandidates,
-          bookId,
-          status: 'acquiring',
-          manualSource: source,
-          error: null,
+      const nextProject = projectWithCandidateQueue(projectWithSource, bookId, [
+        manualCandidate,
+      ]);
+      context.commitProject(
+        'document.manualSource',
+        nextProject,
+        {
+          documentCandidates: {
+            ...state.ui.documentCandidates,
+            bookId,
+            status: 'acquiring',
+            candidates:
+              nextProject.library.books[bookId]?.documentAcquisition
+                ?.candidateQueue ?? [],
+            manualSource: source,
+            error: null,
+          },
         },
-      });
+      );
       try {
         await acquireCandidate(bookId, manualCandidate.id, [manualCandidate]);
       } catch (error) {

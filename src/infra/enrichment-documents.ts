@@ -6,6 +6,9 @@ import type {
 } from '../core/types';
 import { qbittorrentRuntimeEnabled } from '../core/source-settings-policy';
 import {
+  observeDocumentGreylist,
+} from '../core/document-acquisition-state';
+import {
   chooseSelectedDocumentId,
   defaultDocumentAcquisitionPolicy,
   mergeDocumentRefs,
@@ -103,7 +106,11 @@ async function acquireCandidateDocuments(
       signal: request.signal,
     });
     let latestRejected: AcquiredDocument | null = null;
-    for (const candidate of rankDocumentCandidates(candidates, policy)) {
+    for (const candidate of rankDocumentCandidates(
+      candidates,
+      policy,
+      request.book.documentAcquisition,
+    )) {
       try {
         const acquired = await provider.acquire(candidate, {
           book: request.book,
@@ -146,6 +153,10 @@ function mergeResolvedDocumentRefs(
   const mergedDocuments = documentRefs.length
     ? mergeDocumentRefs(request.book.documents ?? [], documentRefs)
     : undefined;
+  const documentAcquisition = observeDocumentGreylist(
+    request.book.documentAcquisition,
+    mergedDocuments ?? request.book.documents ?? [],
+  );
   const selectedDocumentId =
     mergedDocuments &&
     chooseSelectedDocumentId(
@@ -153,9 +164,10 @@ function mergeResolvedDocumentRefs(
       request.book.selectedDocumentId,
       request.sourceSettings.contentPreference,
     );
-  return mergedDocuments
-    ? { documents: mergedDocuments, selectedDocumentId }
-    : {};
+  return {
+    ...(mergedDocuments ? { documents: mergedDocuments, selectedDocumentId } : {}),
+    documentAcquisition,
+  };
 }
 
 export function createBookEnrichmentLoader(

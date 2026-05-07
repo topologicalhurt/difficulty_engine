@@ -1,5 +1,6 @@
 import type {
   AppState,
+  BookDocumentCandidateOption,
   BookDocumentRef,
   BookRecord,
   PlannerStore,
@@ -7,6 +8,11 @@ import type {
 import { badge, button, card, el, emptyState } from './dom';
 import { checkboxControl, textInputControl } from './form-controls';
 import { formatOneDecimal, formatPercent } from './format';
+import { runConfirmableAction } from './confirmable-action';
+import {
+  getPendingBooleanOption,
+  setPendingBooleanOption,
+} from './pending-action-options';
 
 function statusTone(
   status: BookDocumentRef['status'],
@@ -118,6 +124,12 @@ function renderCandidateBrowser(
   const browser = state.ui.documentCandidates;
   const activeForBook = browser.bookId === book.id;
   const manualValue = browser.manualSource;
+  const persistedQueue = book.documentAcquisition?.candidateQueue ?? [];
+  const candidates = activeForBook
+    ? browser.candidates.length
+      ? browser.candidates
+      : persistedQueue
+    : persistedQueue;
   return card(
     'Find a better document',
     el(
@@ -149,59 +161,12 @@ function renderCandidateBrowser(
     activeForBook && browser.error
       ? el('div', { className: 'muted-copy danger-copy', text: browser.error })
       : null,
-    activeForBook && browser.candidates.length
+    candidates.length
       ? el(
           'div',
           { className: 'stack-list' },
-          ...browser.candidates.slice(0, 10).map((candidate) =>
-            el(
-              'div',
-              { className: 'document-card' },
-              el(
-                'div',
-                { className: 'detail-toolbar' },
-                badge(candidate.contentKind),
-                candidate.accessBasis ? badge(candidate.accessBasis) : null,
-                el('strong', { text: candidate.title }),
-              ),
-              el('div', {
-                className: 'muted-copy',
-                text: [
-                  candidate.seeders == null
-                    ? 'unknown seeders'
-                    : `${candidate.seeders} seeders`,
-                  candidate.peers == null ? null : `${candidate.peers} peers`,
-                  candidate.availability?.etaSeconds == null
-                    ? null
-                    : `ETA ${formatDuration(candidate.availability.etaSeconds)}`,
-                  candidate.availability?.downloadSpeedBytesPerSecond == null
-                    ? null
-                    : `${formatBytes(candidate.availability.downloadSpeedBytesPerSecond)}/s`,
-                  `match ${formatOneDecimal((candidate.matchScore ?? 0) * 10)}/10`,
-                  candidate.qualityScore == null
-                    ? null
-                    : `quality ${formatOneDecimal(candidate.qualityScore * 10)}/10`,
-                ]
-                  .filter(Boolean)
-                  .join(' · '),
-              }),
-              candidate.qualityReason
-                ? el('div', {
-                    className: 'muted-copy',
-                    text: candidate.qualityReason,
-                  })
-                : null,
-              el('div', { className: 'muted-copy', text: candidate.sourceUrl }),
-              button('Use this result', {
-                className: 'ghost-button',
-                disabled: browser.status === 'acquiring',
-                onClick: () =>
-                  void store.commands.selectBookDocumentCandidate(
-                    book.id,
-                    candidate.id,
-                  ),
-              }),
-            ),
+          ...candidates.slice(0, 10).map((candidate) =>
+            renderCandidateQueueItem(book, candidate, browser.status, store),
           ),
         )
       : activeForBook && browser.status === 'ready'
@@ -210,6 +175,111 @@ function renderCandidateBrowser(
             'Try a more precise manual magnet or HTTPS .torrent source with matching author or ISBN evidence.',
           )
         : null,
+  );
+}
+
+function renderCandidateQueueItem(
+  book: BookRecord,
+  candidate: BookDocumentCandidateOption,
+  status: AppState['ui']['documentCandidates']['status'],
+  store: PlannerStore,
+): HTMLElement {
+  return el(
+    'div',
+    { className: 'document-card' },
+    el(
+      'div',
+      { className: 'detail-toolbar' },
+      candidate.rank ? badge(`#${candidate.rank}`) : null,
+      badge(candidate.contentKind),
+      candidate.accessBasis ? badge(candidate.accessBasis) : null,
+      candidate.greylistPenalty
+        ? badge(
+            `greylist -${formatOneDecimal(candidate.greylistPenalty * 10)}`,
+            'warn',
+          )
+        : null,
+      el('strong', { text: candidate.title }),
+    ),
+    el('div', {
+      className: 'muted-copy',
+      text: [
+        candidate.seeders == null
+          ? 'unknown seeders'
+          : `${candidate.seeders} seeders`,
+        candidate.peers == null ? null : `${candidate.peers} peers`,
+        candidate.availability?.etaSeconds == null
+          ? null
+          : `ETA ${formatDuration(candidate.availability.etaSeconds)}`,
+        candidate.availability?.downloadSpeedBytesPerSecond == null
+          ? null
+          : `${formatBytes(candidate.availability.downloadSpeedBytesPerSecond)}/s`,
+        `match ${formatOneDecimal((candidate.matchScore ?? 0) * 10)}/10`,
+        candidate.qualityScore == null
+          ? null
+          : `quality ${formatOneDecimal(candidate.qualityScore * 10)}/10`,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    }),
+    candidate.greylistReason
+      ? el('div', {
+          className: 'muted-copy',
+          text: candidate.greylistReason,
+        })
+      : null,
+    candidate.qualityReason
+      ? el('div', {
+          className: 'muted-copy',
+          text: candidate.qualityReason,
+        })
+      : null,
+    el('div', { className: 'muted-copy', text: candidate.sourceUrl }),
+    button('Use this result', {
+      className: 'ghost-button',
+      disabled: status === 'acquiring',
+      onClick: () =>
+        void store.commands.selectBookDocumentCandidate(book.id, candidate.id),
+    }),
+  );
+}
+
+function renderMetadataCleanup(
+  book: BookRecord,
+  store: PlannerStore,
+): HTMLElement {
+  const optionKey = `metadata.clearBook.deleteContent:${book.id}`;
+  return card(
+    'Metadata cleanup',
+    el('p', {
+      className: 'muted-copy',
+      text:
+        'Clears enrichment, TOC, provider IDs, qBittorrent candidates, greylist entries, and document refs for this book. Progress and manual planning choices are preserved.',
+    }),
+    el(
+      'label',
+      { className: 'inline-control muted-copy' },
+      checkboxControl({
+        checked: getPendingBooleanOption(store, optionKey),
+        onChange: (checked) => {
+          setPendingBooleanOption(store, optionKey, checked);
+        },
+      }),
+      el('span', { text: 'Also delete downloaded PDFs/content' }),
+    ),
+    button('Delete metadata', {
+      className: 'ghost-button danger-button',
+      onClick: () =>
+        runConfirmableAction(store, {
+          id: `metadata.clearBook:${book.id}`,
+          message:
+            'Click Delete metadata again to confirm clearing this book’s enrichment/document metadata.',
+          action: () =>
+            void store.commands.clearBookMetadata(book.id, {
+              deleteContent: getPendingBooleanOption(store, optionKey),
+            }),
+        }),
+    }),
   );
 }
 
@@ -306,5 +376,6 @@ export function renderBookDocumentsPanel(
         ),
     renderReader(state, book, store),
     renderCandidateBrowser(state, book, store),
+    renderMetadataCleanup(book, store),
   );
 }
