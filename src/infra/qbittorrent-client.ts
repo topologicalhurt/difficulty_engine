@@ -4,6 +4,7 @@ import type {
 } from '../core/types';
 import type { DocumentCandidate } from './document-acquisition';
 import {
+  bridgeDocumentExists,
   readBridgeByteDocument,
   readBridgeTextDocument,
 } from './qbittorrent-document-api';
@@ -123,8 +124,7 @@ export class QBittorrentClient {
   }
 
   async torrentInfo(candidate: DocumentCandidate): Promise<TorrentInfo | null> {
-    const response = await this.api('/torrents/info');
-    const items = (await response.json()) as TorrentInfo[];
+    const items = await this.listTorrents();
     const hash = hashFromMagnet(candidate.sourceUrl);
     if (hash) {
       const exact = items.find(
@@ -140,6 +140,15 @@ export class QBittorrentClient {
           .includes(normalizedTitle),
       ) ?? null
     );
+  }
+
+  async listTorrents(): Promise<TorrentInfo[]> {
+    const response = await this.api('/torrents/info');
+    return (await response.json()) as TorrentInfo[];
+  }
+
+  torrentCategory(): string {
+    return this.options.category || 'difficulty-engine';
   }
 
   async torrentFiles(hash: string): Promise<TorrentFile[]> {
@@ -188,6 +197,10 @@ export class QBittorrentClient {
 
   async readByteDocument(storagePath: string): Promise<Uint8Array | undefined> {
     return readBridgeByteDocument(this.fetchImpl, this.baseUrl, storagePath);
+  }
+
+  async documentExists(storagePath: string): Promise<boolean> {
+    return bridgeDocumentExists(this.fetchImpl, this.baseUrl, storagePath);
   }
 
   async listPlugins(): Promise<QbittorrentPluginInfo[]> {

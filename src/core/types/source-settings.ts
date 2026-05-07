@@ -6,7 +6,8 @@ export type DocumentSourceKey =
   | 'directUrl'
   | 'localFile'
   | 'internetArchiveText'
-  | 'qbittorrent';
+  | 'qbittorrent'
+  | 'localOcr';
 export type SourceContentKind = 'text' | 'epub' | 'ocr_text' | 'pdf';
 
 export interface SourceProviderMask {
@@ -20,6 +21,7 @@ export interface DocumentProviderMask {
   localFile: boolean;
   internetArchiveText: boolean;
   qbittorrent: boolean;
+  localOcr: boolean;
 }
 
 export interface QbittorrentSourceSettings {

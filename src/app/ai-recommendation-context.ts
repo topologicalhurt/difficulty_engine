@@ -9,6 +9,8 @@ import type {
 const CONTEXT_BOOK_LIMIT = 80;
 const CONTEXT_RELATION_LIMIT = 160;
 const CONTEXT_SUBJECT_LIMIT = 8;
+const FNV1A_OFFSET_BASIS = 2166136261;
+const FNV1A_PRIME = 16777619;
 
 function compactBook(
   book: BookRecord,
@@ -84,10 +86,11 @@ export function buildAiRecommendationContext(
 }
 
 export function contextDigest(context: AiRecommendationContext): string {
-  return [
-    context.books.length,
-    context.relations.length,
-    context.constraints.parallel,
-    context.constraints.scheduleAlgorithm,
-  ].join('-');
+  const serialized = JSON.stringify(context);
+  let hash = FNV1A_OFFSET_BASIS;
+  for (let index = 0; index < serialized.length; index += 1) {
+    hash ^= serialized.charCodeAt(index);
+    hash = Math.imul(hash, FNV1A_PRIME);
+  }
+  return (hash >>> 0).toString(36);
 }

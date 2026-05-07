@@ -5,6 +5,7 @@ import {
   DEFAULT_CONSTRAINTS,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import type { PairSignal } from '../../src/core/internal-types';
 import { pairSignal } from '../../src/core/relation-signals';
@@ -63,11 +64,7 @@ function project(left: BookRecord, right: BookRecord): PlannerProjectV1 {
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 

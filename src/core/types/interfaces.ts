@@ -129,8 +129,16 @@ export interface PlannerStoreCommands {
   setGanttView(ganttView: UiState['ganttView']): void;
   setGanttZoom(ganttZoom: number): void;
   setPlanColorMode(planColorMode: UiState['planColorMode']): void;
+  setPlanSectionOpen(
+    section: keyof UiState['planSections'],
+    open: boolean,
+  ): void;
+  setLibraryListWidth(widthPx: number): void;
+  dismissWarningCode(code: string): void;
+  restoreDismissedWarnings(): void;
   toggleConstraintAdvancedGroup(group: string): void;
   selectConstraintField(key: keyof ConstraintSet): void;
+  setGraphOptionsOpen(open: boolean): void;
   updateConstraint<K extends keyof ConstraintSet>(
     key: K,
     value: ConstraintSet[K],
@@ -202,6 +210,7 @@ export interface CreatePlannerStoreOptions {
   initialProject?: PlannerProjectV1;
   engine: PlannerEngine;
   computeAdapter?: PlannerComputeAdapter;
+  debugUi?: boolean;
   enrichmentProvider: EnrichmentProvider;
   aiRecommendationProvider?: AiRecommendationProvider;
   localSettings?: LocalIntegrationSettingsAdapter;
@@ -221,6 +230,7 @@ export interface MountPlannerAppOptions {
   logger: Logger;
   clock: Clock;
   computeMode?: 'auto' | 'sync' | 'worker';
+  debugUi?: boolean;
   performance?: {
     workerThresholdBooks?: number;
     collectMetrics?: boolean;

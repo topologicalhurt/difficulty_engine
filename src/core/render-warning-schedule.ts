@@ -161,7 +161,7 @@ export function buildScheduleWarnings(
   project: PlannerProjectV1,
   snapshot: Omit<EngineSnapshot, 'renderModel' | 'diagnostics'>,
 ): WarningItem[] {
-  const { dayPlan, scheduleStats } = snapshot;
+  const { dayPlan, schedulePlan, scheduleStats } = snapshot;
   const warnings =
     normalizeFeasibilityMode(project.constraints.feasibilityMode) ===
     'strict_floor'
@@ -206,6 +206,20 @@ export function buildScheduleWarnings(
         'warn',
         'peak-concurrency',
         `Peak concurrency reaches ${scheduleStats.peakBooks} while parallel is set to ${project.constraints.par}.`,
+      ),
+    );
+  }
+
+  const floorBoundIds = schedulePlan.items
+    .filter((item) => item.pacingBindingReason === 'floor_bound')
+    .map((item) => item.id);
+  if (floorBoundIds.length > 0) {
+    warnings.push(
+      createWarning(
+        'warn',
+        'pacing-floor-bound',
+        `${floorBoundIds.length} book(s) have desired page targets below the strict floor, so visible pages/day variation is being clipped by min pages/day.`,
+        floorBoundIds,
       ),
     );
   }

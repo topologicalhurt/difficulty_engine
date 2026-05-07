@@ -1,5 +1,5 @@
 import type { LibraryViewModel } from '../app/selectors/library';
-import type { PlannerStore } from '../core/types';
+import type { ConstraintSet, PlannerStore } from '../core/types';
 import { badge, button, card, el, emptyState } from './dom';
 import { selectInput } from './form-controls';
 import { renderProgressBar } from './progress';
@@ -46,7 +46,8 @@ export function renderReadingListPanel(
           onChange: (event) =>
             store.commands.updateConstraint(
               'bookOrderPolicy',
-              (event.target as HTMLSelectElement).value as never,
+              (event.target as HTMLSelectElement)
+                .value as ConstraintSet['bookOrderPolicy'],
             ),
         },
       ),

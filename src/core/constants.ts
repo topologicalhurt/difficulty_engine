@@ -148,11 +148,35 @@ export const PRACTICAL_MIN_PAGE_FLOOR = 1;
 // Preserve the historical default time curve while decoupling display compression controls from hours.
 export const TIME_DIFFICULTY_RESPONSE_EXPONENT = 0.65;
 // Overview zoom must stay low enough to inspect long plans without losing clickable bars.
-export const PLAN_ZOOM_MIN = 0.12;
+export const PLAN_ZOOM_MIN = 0.04;
 export const PLAN_ZOOM_MAX = 3;
+export const LIBRARY_LIST_WIDTH_MIN = 320;
+export const LIBRARY_LIST_WIDTH_MAX = 760;
+export const LIBRARY_LIST_WIDTH_STEP = 24;
+
+export function clampLibraryListWidth(widthPx: number): number {
+  return Math.max(
+    LIBRARY_LIST_WIDTH_MIN,
+    Math.min(LIBRARY_LIST_WIDTH_MAX, Math.round(widthPx)),
+  );
+}
 export const RELATIVE_PACING_MIN = 0;
 export const RELATIVE_PACING_DEFAULT = 50;
 export const RELATIVE_PACING_MAX = 100;
+export const LEARNER_ADAPTIVITY_MIN = 0;
+export const LEARNER_ADAPTIVITY_DEFAULT = 50;
+export const LEARNER_ADAPTIVITY_MAX = 100;
+export const TARGET_CHALLENGE_MIN = 0;
+export const TARGET_CHALLENGE_DEFAULT = 55;
+export const TARGET_CHALLENGE_MAX = 100;
+// Logged actuals need enough pages before they are allowed to recalibrate workload.
+export const LEARNER_CALIBRATION_MIN_PAGES = 20;
+// Shrink observed pace strongly toward the selected profile until a real history exists.
+export const LEARNER_CALIBRATION_PAGE_NORMALIZER = 160;
+// A single outlier should never move schedule difficulty by more than this amount.
+export const LEARNER_CALIBRATION_LIFT_CAP = 1.2;
+// Low-confidence evidence still contributes, but diagnostics should make the uncertainty visible.
+export const DIFFICULTY_HIGH_UNCERTAINTY = 0.55;
 // Cohort mode favors continuing active books before rotating in fresh starts.
 export const DAILY_COHORT_ACTIVE_BONUS = 4.5;
 export const DAILY_COHORT_NEW_START_PENALTY = 1.25;

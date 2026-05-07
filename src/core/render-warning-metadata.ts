@@ -1,4 +1,5 @@
 import type { EngineSnapshot, PlannerProjectV1, WarningItem } from './types';
+import { difficultyDistributionStats } from './difficulty-mapping';
 import { createWarning } from './render-warning-utils';
 
 export function buildMetadataWarnings(
@@ -53,6 +54,40 @@ export function buildMetadataWarnings(
         'low-difficulty-confidence',
         `${lowDifficultyConfidenceIds.length} active book(s) have low difficulty confidence because subjects, descriptions, or chapters are sparse. Enrichment or a PDF/TOC will improve the workload estimate.`,
         lowDifficultyConfidenceIds,
+      ),
+    );
+  }
+
+  const activeDifficulties = Object.entries(snapshot.difficultyModel).filter(
+    ([id]) => {
+      const book = project.library.books[id];
+      return Boolean(book && !book.ignored && !book.completed);
+    },
+  );
+  const highUncertaintyIds = activeDifficulties
+    .filter(([, difficulty]) => difficulty.workloadUncertainty >= 0.55)
+    .map(([id]) => id);
+  if (highUncertaintyIds.length > 0) {
+    warnings.push(
+      createWarning(
+        'warn',
+        'high-difficulty-uncertainty',
+        `${highUncertaintyIds.length} active book(s) have uncertain workload estimates; logged reading progress, enrichment, or a better TOC will make difficulty less compressed.`,
+        highUncertaintyIds,
+      ),
+    );
+  }
+
+  const distribution = difficultyDistributionStats(
+    activeDifficulties.map(([, difficulty]) => difficulty.scheduleDifficulty),
+  );
+  if (activeDifficulties.length >= 3 && distribution.spread < 0.8) {
+    warnings.push(
+      createWarning(
+        'info',
+        'low-raw-difficulty-variance',
+        `Raw schedule difficulties are tightly clustered (${distribution.spread.toFixed(1)} spread). Display scaling can make the chart clearer, but planner truth will stay clustered until stronger evidence or logged actuals support more separation.`,
+        activeDifficulties.map(([id]) => id),
       ),
     );
   }

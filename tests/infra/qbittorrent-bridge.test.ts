@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -33,6 +34,10 @@ function listen(server: Server): Promise<string> {
 
 function close(server: Server): Promise<void> {
   return new Promise((resolveClose) => server.close(() => resolveClose()));
+}
+
+function sha256Text(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
 }
 
 describe('qBittorrent browser bridge', () => {
@@ -300,6 +305,45 @@ describe('qBittorrent browser bridge', () => {
     } finally {
       await close(bridge);
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('serves cached OCR sidecars and keeps OCR endpoints inside the data root', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'difficulty-docs-'));
+    const pdf = join(root, 'book.pdf');
+    const pdfContent = '%PDF fixture';
+    await writeFile(pdf, pdfContent, 'utf8');
+    const sidecarDir = join(root, '.difficulty-engine-ocr');
+    await mkdir(sidecarDir, { recursive: true });
+    await writeFile(
+      join(sidecarDir, `${sha256Text(pdfContent)}.toc.txt`),
+      'Contents\nChapter 1 Cached OCR',
+      'utf8',
+    );
+    const outside = join(tmpdir(), 'outside-book.pdf');
+    await writeFile(outside, pdfContent, 'utf8');
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({ dataRoot: root });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const cached = await fetch(
+        `${bridgeBaseUrl}/documents/ocr-status?${new URLSearchParams({ path: pdf }).toString()}`,
+      );
+      const rejected = await fetch(
+        `${bridgeBaseUrl}/documents/ocr-status?${new URLSearchParams({ path: outside }).toString()}`,
+      );
+
+      expect(cached.status).toBe(200);
+      expect(await cached.json()).toMatchObject({
+        status: 'complete',
+        text: 'Contents\nChapter 1 Cached OCR',
+      });
+      expect(rejected.status).toBe(400);
+    } finally {
+      await close(bridge);
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { force: true });
     }
   });
 });

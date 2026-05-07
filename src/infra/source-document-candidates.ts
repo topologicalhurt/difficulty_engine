@@ -31,6 +31,8 @@ export interface SourceDocumentCandidate {
   strategy?: string;
   inferred?: boolean;
   evidenceAnchors?: string[];
+  rejectedReasons?: string[];
+  pageRange?: { start: number; end: number };
 }
 
 function candidateFromExtraction(
@@ -48,6 +50,9 @@ function candidateFromExtraction(
     strategy: extraction.strategy,
     inferred: extraction.inferred,
     evidenceAnchors: extraction.evidenceAnchors,
+    rejectedReasons: extraction.attempts
+      ?.filter((attempt) => !attempt.accepted)
+      .flatMap((attempt) => attempt.rejectedReasons),
   };
 }
 

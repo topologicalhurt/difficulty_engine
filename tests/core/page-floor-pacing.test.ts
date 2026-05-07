@@ -4,6 +4,7 @@ import {
   DEFAULT_CONSTRAINTS,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import type { BookRecord, PlannerProjectV1 } from '../../src/core/types';
 import { computeSnapshot } from './engine-test-utils';
@@ -63,11 +64,7 @@ function project(): PlannerProjectV1 {
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 
@@ -157,6 +154,27 @@ describe('page floors and relative pacing', () => {
     expect(targetSpread(relativeTargets)).toBeGreaterThan(
       targetSpread(absoluteTargets),
     );
+  });
+
+  it('uses whole-page planning targets when whole pages are feasible', () => {
+    const input = project();
+    input.constraints = {
+      ...input.constraints,
+      relativePacingStrength: 100,
+      hpd: 8,
+      minPg: 5,
+      maxPg: 40,
+      bmp: 1,
+      gam: 1,
+      boostUnused: false,
+    };
+
+    const targets = computeSnapshot(input).schedulePlan.items.flatMap((item) => [
+      item.pacingPageTarget,
+      item.finalPagesPerDay,
+    ]);
+
+    expect(targets.every((target) => Number.isInteger(target))).toBe(true);
   });
 
   it('raises relaxed-mode page targets when the recommended minimum rises', () => {

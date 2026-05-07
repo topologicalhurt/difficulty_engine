@@ -7,6 +7,7 @@ const USER_FACING_COPY_FILES = [
   'src/ui/constraints-view.ts',
   'src/ui/graphs-view.ts',
   'src/ui/info-view.ts',
+  'src/content/info/readme.ts',
   'src/app/selectors/shell.ts',
 ];
 

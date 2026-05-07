@@ -21,6 +21,7 @@
     "src/**/*.ts",
     "src/**/*.d.ts",
     "tests/**/*.ts",
+    "scripts/**/*.ts",
     "scripts/**/*.mjs",
     "*.ts"
   ]

@@ -1,7 +1,7 @@
 import {
-  DEFAULT_UI_STATE,
   createDefaultAiRecommendationSettings,
   createDefaultConstraints,
+  createDefaultUiPreferences,
 } from './defaults';
 import { normalizeAiRecommendationSettings } from './project-normalize-ai';
 import {
@@ -27,11 +27,7 @@ export function createEmptyProject(): PlannerProjectV1 {
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: normalizeSourceSettings(undefined),
     enrichmentCache: {},
-    uiPreferences: {
-      ganttView: DEFAULT_UI_STATE.ganttView,
-      ganttZoom: DEFAULT_UI_STATE.ganttZoom,
-      planColorMode: DEFAULT_UI_STATE.planColorMode,
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 

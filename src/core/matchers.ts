@@ -145,6 +145,21 @@ export function isbnAppearsInText(
   return Boolean(normalized && normalizedIsbnText(text).includes(normalized));
 }
 
+export function authorAppearsInText(
+  authors: string[] | null | undefined,
+  text: string | null | undefined,
+): boolean {
+  const candidateTokens = matchTokenSet(text);
+  if (!authors?.length || !candidateTokens.size) return false;
+  return authors.some((author) => {
+    const tokens = matchTokens(author);
+    const lastName = tokens.at(-1);
+    if (lastName && candidateTokens.has(lastName)) return true;
+    const shared = tokens.filter((token) => candidateTokens.has(token)).length;
+    return tokens.length > 1 && shared >= Math.min(2, tokens.length);
+  });
+}
+
 function candidateIsbnMatches(
   isbn: string | null | undefined,
   candidate: BookMatchCandidate,

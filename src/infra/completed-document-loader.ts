@@ -1,8 +1,16 @@
 import type { BookDocumentRef, EnrichmentRequest, Logger } from '../core/types';
-import { sourceEnabledForDocumentProvider } from '../core/source-settings-policy';
+import {
+  localOcrEnabled,
+  sourceEnabledForDocumentProvider,
+} from '../core/source-settings-policy';
 import type { AcquiredDocument } from './document-acquisition';
 import { isoTimestamp } from './cache-time';
 import { bridgeDocumentEndpoint } from './document-bridge-url';
+import { extractDocumentChapters } from './document-text-extractor';
+import {
+  requestBridgeEmbeddedPdfText,
+  requestBridgeOcrToc,
+} from './qbittorrent-document-api';
 
 const DOCUMENT_TEXT_ENDPOINT = '/documents/read-text';
 const DOCUMENT_BYTES_ENDPOINT = '/documents/read-bytes';
@@ -72,7 +80,7 @@ export async function loadCompletedDocumentRefs(
   for (const document of documents) {
     try {
       const text =
-        TEXT_KINDS.has(document.contentKind) || document.contentKind === 'pdf'
+        TEXT_KINDS.has(document.contentKind)
           ? await readBridgeText(
               fetchImpl,
               baseUrl,
@@ -81,7 +89,7 @@ export async function loadCompletedDocumentRefs(
             ).catch(() => undefined)
           : undefined;
       const bytes =
-        !text && document.contentKind === 'pdf'
+        document.contentKind === 'pdf'
           ? await readBridgeBytes(
               fetchImpl,
               baseUrl,
@@ -89,7 +97,37 @@ export async function loadCompletedDocumentRefs(
               request.signal,
             ).catch(() => undefined)
           : undefined;
-      if (!text && !bytes) continue;
+      const embeddedText =
+        document.contentKind === 'pdf'
+          ? await requestBridgeEmbeddedPdfText(
+              fetchImpl,
+              baseUrl,
+              document.storagePath,
+              request.signal,
+            ).catch(() => undefined)
+          : undefined;
+      const extractionWithoutOcr =
+        text || embeddedText || bytes
+          ? extractDocumentChapters({
+              text: text ?? embeddedText,
+              bytes,
+              contentType: document.contentType,
+              sourceUrl: document.sourceUrl ?? document.storagePath,
+            })
+          : null;
+      const ocr =
+        !extractionWithoutOcr &&
+        document.contentKind === 'pdf' &&
+        localOcrEnabled(request.sourceSettings)
+          ? await requestBridgeOcrToc(
+              fetchImpl,
+              baseUrl,
+              document.storagePath,
+              request.signal,
+            ).catch(() => undefined)
+          : undefined;
+      const ocrText = ocr?.status === 'complete' ? ocr.text : undefined;
+      if (!text && !embeddedText && !bytes && !ocrText) continue;
       acquired.push({
         candidateId: document.id,
         provider: document.provider,
@@ -99,7 +137,7 @@ export async function loadCompletedDocumentRefs(
         accessBasis: document.accessBasis,
         confidence:
           document.provenance.confidence || document.matchScore || 0.6,
-        text,
+        text: text ?? embeddedText ?? ocrText,
         bytes,
         sha256: document.sha256,
         documentRef:

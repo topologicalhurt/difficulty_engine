@@ -7,6 +7,7 @@ import type {
 import type { StoreCommandContext } from './store-command-context';
 import { mergeEnrichmentIntoBook } from './store-book-metadata';
 import { updateEnrichmentCache } from './store-helpers';
+import { cacheExpiresAt, isoTimestamp } from '../infra/cache-time';
 import { stableEnrichmentCacheKey } from '../infra/enrichment-cache-key';
 
 const ENRICHMENT_STALE_WINDOW_MS = 6 * 60 * 60 * 1_000;
@@ -84,7 +85,8 @@ export function createEnrichmentCommands(
       sourceSettings: state.project.sourceSettings,
       qbittorrentConnection: state.ui.qbittorrentConnection,
     });
-    const startedAt = services.clock.now().toISOString();
+    const nowMs = (): number => services.clock.now().getTime();
+    const startedAt = isoTimestamp(nowMs);
     services.logger.info('planner.enrichment.start', { bookId });
     const loadingProject = updateEnrichmentCache(state.project, bookId, {
       status: 'loading',
@@ -106,7 +108,7 @@ export function createEnrichmentCommands(
         sourceSettings: state.project.sourceSettings,
         qbittorrentConnection: state.ui.qbittorrentConnection,
       });
-      const fetchedAt = services.clock.now().toISOString();
+      const fetchedAt = isoTimestamp(nowMs);
       const latestState = context.getState();
       if (!requestIsCurrent(bookId, requestSequence)) return;
       const currentBook = latestState.project.library.books[bookId] ?? book;
@@ -159,9 +161,9 @@ export function createEnrichmentCommands(
         status: 'success',
         cacheKey: response.cacheKey,
         fetchedAt,
-        staleAt: new Date(
-          services.clock.now().getTime() + ENRICHMENT_STALE_WINDOW_MS,
-        ).toISOString(),
+        staleAt: isoTimestamp(() =>
+          cacheExpiresAt(ENRICHMENT_STALE_WINDOW_MS, nowMs),
+        ),
         error: undefined,
         data: response.enrichment,
         provenance: response.provenance,

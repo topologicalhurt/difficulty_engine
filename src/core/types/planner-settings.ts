@@ -6,6 +6,12 @@ export type PlanColorMode =
   | 'reading_time_gradient';
 export type FeasibilityMode = 'practical' | 'strict_floor';
 export type RelativePacingCurve = 'linear' | 'smoothstep' | 'sqrt' | 'power';
+export type LearnerProfileMode =
+  | 'balanced_adaptive'
+  | 'confidence_builder'
+  | 'fast_track'
+  | 'deep_mastery'
+  | 'manual';
 export type DailyBookMode = 'interspersed' | 'daily_cohort';
 export type EmptyDayPolicy = 'fill_when_possible' | 'preserve_schedule_gaps';
 export type BookOrderPolicy = 'auto' | 'prefer' | 'enforce';
@@ -45,6 +51,9 @@ export interface ConstraintSet {
   maxPg: number;
   relativePacingStrength: number;
   relativePacingCurve: RelativePacingCurve;
+  learnerProfileMode: LearnerProfileMode;
+  learnerAdaptivityStrength: number;
+  targetChallenge: number;
   subjectWorkloadStrength: number;
   dailyBookMode: DailyBookMode;
   emptyDayPolicy: EmptyDayPolicy;

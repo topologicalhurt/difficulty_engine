@@ -143,6 +143,27 @@ describe('createPlannerStore', () => {
     expect(state.ui.selectedBookId).toBe(matchingBooks[0]?.id ?? null);
   });
 
+  it('does not invent placeholder authors for sparse search results', () => {
+    const store = makeStore();
+    store.commands.addBookFromSuggestion({
+      key: 'sparse',
+      title: 'Sparse Search Result',
+      authors: [],
+      subtitle: '',
+      isbn: null,
+      year: null,
+      publisher: '',
+      subjects: [],
+      description: '',
+      pages: null,
+    });
+
+    const added = Object.values(store.selectors.getProject().library.books).find(
+      (book) => book.title === 'Sparse Search Result',
+    );
+    expect(added?.authors).toEqual([]);
+  });
+
   it('moves books through the canonical library order command', () => {
     const store = makeStore();
     store.commands.addBook();

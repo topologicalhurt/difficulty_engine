@@ -6,6 +6,7 @@ import {
   RAW_DIFFICULTY_SPAN,
 } from '../../core/difficulty-mapping';
 import { gradientColor } from '../../core/display-colors';
+import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 import type { AppState } from '../../core/types';
 import { round1 } from '../../core/utils';
 
@@ -91,10 +92,12 @@ function plotOffsets(
 ): Map<string, number> {
   const offsetById = new Map<string, number>();
   [...entries]
-    .sort(
-      (left, right) =>
-        left.rawDifficulty - right.rawDifficulty ||
-        left.title.localeCompare(right.title),
+    .sort((left, right) =>
+      compareChain(
+        compareNumberAsc(left.rawDifficulty, right.rawDifficulty),
+        compareText(left.title, right.title),
+        compareText(left.id, right.id),
+      ),
     )
     .forEach((entry, index) => {
       offsetById.set(
@@ -143,8 +146,11 @@ export function selectDifficultyMappingViewModel(
   );
   const sortedByMapped = [...entries].sort(
     (left, right) =>
-      left.displayDifficulty - right.displayDifficulty ||
-      left.title.localeCompare(right.title),
+      compareChain(
+        compareNumberAsc(left.displayDifficulty, right.displayDifficulty),
+        compareText(left.title, right.title),
+        compareText(left.id, right.id),
+      ),
   );
   const offsetById = plotOffsets(entries);
   return {

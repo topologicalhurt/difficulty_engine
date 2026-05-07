@@ -38,12 +38,12 @@ export function renderGraphPanels(model: GraphRenderModel): HTMLElement {
     hypergraph
       ? renderInteractiveGraphCard(
           'hypergraph',
-          'Shared-topic hypergraph',
-          'Overlap hubs show clusters of books that share reusable material and skim opportunities.',
+          'Topic overlap explorer',
+          'Matrix columns show shared topic intersections; colored dots show which books participate.',
           hypergraph,
         )
       : emptyState(
-          'No hypergraph to show',
+          'No overlap explorer to show',
           'Overlap clusters appear here once books share enough topic evidence.',
         ),
   );

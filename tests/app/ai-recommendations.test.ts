@@ -183,6 +183,39 @@ describe('AI recommendations store flow', () => {
     expect(result.skippedTitles).toEqual(['Existing Foundations']);
   });
 
+  it('does not invent placeholder authors for proposals without authors', () => {
+    const proposal: AiRecommendationProposal = {
+      id: 'proposal-no-authors',
+      provider: 'openai',
+      model: 'test-model',
+      prompt: 'recommend follow-on books',
+      summary: 'One recommendation without author metadata.',
+      books: [
+        {
+          proposalId: 'new-book',
+          title: 'Metadata Sparse Book',
+          authors: [],
+          isbn: null,
+          pages: 120,
+          subjects: ['testing'],
+          displayGroup: 'Core',
+          manualSeedDifficulty: 5,
+          rationale: 'Sparse metadata should stay sparse.',
+          prerequisiteIds: [],
+          coStudyIds: [],
+        },
+      ],
+      warnings: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      contextDigest: 'test-digest',
+    };
+
+    const result = applyAiProposalToProject(makeProject(), proposal);
+    expect(
+      result.project.library.books[result.addedIds[0] ?? '']?.authors,
+    ).toEqual([]);
+  });
+
   it('fails closed when provider settings are incomplete', async () => {
     const provider = aiProvider();
     const store = makeStore({ aiRecommendationProvider: provider });
@@ -218,6 +251,39 @@ describe('AI recommendations store flow', () => {
     expect(withoutKey.selectors.getState().ui.aiStatus.message).toBe(
       'Add a local AI API key before requesting recommendations.',
     );
+  });
+
+  it('switches provider defaults and canonicalizes maintained model aliases', () => {
+    const store = makeStore();
+
+    store.commands.updateAiLocalSettings({ provider: 'anthropic' });
+    expect(store.selectors.getState().ui.aiConnection).toMatchObject({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+    });
+
+    store.commands.updateAiLocalSettings({ model: 'gpt latest' });
+    expect(store.selectors.getState().ui.aiConnection).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-5.2',
+    });
+
+    store.commands.updateAiLocalSettings({ model: 'Claude-sonnet' });
+    expect(store.selectors.getState().ui.aiConnection).toMatchObject({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+    });
+  });
+
+  it('keeps custom model text when no maintained match is confident', () => {
+    const store = makeStore();
+
+    store.commands.updateAiLocalSettings({ model: 'local-custom-model' });
+
+    expect(store.selectors.getState().ui.aiConnection).toMatchObject({
+      provider: 'openai',
+      model: 'local-custom-model',
+    });
   });
 
   it('preserves prompt whitespace while typing but sends a sanitized request', async () => {
@@ -291,5 +357,97 @@ describe('AI recommendations store flow', () => {
       message: 'Prompt changed. Request recommendations again.',
     });
     expect(store.selectors.getState().ui.aiPrompt).toBe('second prompt');
+  });
+
+  it('invalidates recommendation responses after project context edits', async () => {
+    let resolveRecommendation!: (
+      response: AiRecommendationProviderResponse,
+    ) => void;
+    const provider: AiRecommendationProvider = {
+      recommend: vi.fn(
+        async () =>
+          new Promise<AiRecommendationProviderResponse>((resolve) => {
+            resolveRecommendation = resolve;
+          }),
+      ),
+    };
+    const store = makeStore({ aiRecommendationProvider: provider });
+
+    store.commands.updateAiLocalSettings({
+      enabled: true,
+      apiKey: 'local-secret',
+    });
+    store.commands.setAiRecommendationPrompt('recommend next circuit book');
+    const request = store.commands.requestAiRecommendations();
+    expect(store.selectors.getState().ui.aiStatus.state).toBe('loading');
+
+    store.commands.updateBook('book-1', {
+      title: 'Changed Existing Foundations',
+    });
+    resolveRecommendation({
+      books: [
+        {
+          proposalId: 'stale-project',
+          title: 'Stale Context Proposal',
+          authors: [],
+          isbn: null,
+          pages: 100,
+          subjects: ['stale'],
+          displayGroup: 'Core',
+          manualSeedDifficulty: 5,
+          rationale: 'Should not be accepted after the project changed.',
+          prerequisiteIds: [],
+          coStudyIds: [],
+        },
+      ],
+    });
+    await request;
+
+    expect(store.selectors.getState().ui.aiProposal).toBeNull();
+    expect(store.selectors.getState().ui.aiStatus).toEqual({
+      state: 'idle',
+      message: 'Planner context changed. Request recommendations again.',
+    });
+  });
+
+  it('does not apply a ready proposal after the project context changes', async () => {
+    const provider = aiProvider();
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          'book-1': makeBook({
+            id: 'book-1',
+            title: 'Existing Foundations',
+            planOrder: 0,
+          }),
+        },
+      }),
+      aiRecommendationProvider: provider,
+    });
+
+    store.commands.updateAiLocalSettings({
+      enabled: true,
+      apiKey: 'local-secret',
+    });
+    store.commands.setAiRecommendationPrompt('recommend electronics next steps');
+    await store.commands.requestAiRecommendations();
+
+    expect(store.selectors.getState().ui.aiProposal?.books).toHaveLength(2);
+
+    store.commands.updateBook('book-1', {
+      title: 'Edited Foundations',
+    });
+    store.commands.applyAiRecommendation();
+
+    expect(
+      Object.values(store.selectors.getProject().library.books).map(
+        (book) => book.title,
+      ),
+    ).not.toContain('Practical Circuit Foundations');
+    expect(store.selectors.getState().ui.aiProposal).toBeNull();
+    expect(store.selectors.getState().ui.aiStatus).toEqual({
+      state: 'idle',
+      message: 'Planner context changed. Request recommendations again.',
+    });
   });
 });

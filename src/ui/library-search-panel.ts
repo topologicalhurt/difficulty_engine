@@ -7,6 +7,7 @@ import {
   MIN_TEXT_SEARCH_CHARS,
 } from '../infra/book-search';
 import { badge, button, card, el, emptyState } from './dom';
+import { formatPages } from './format';
 import { textInputControl } from './form-controls';
 
 const SEARCH_DEBOUNCE_MS = 260;
@@ -136,7 +137,7 @@ export function renderLibrarySearchPanel(
                         : null,
                       suggestion.isbn ? badge(`ISBN ${suggestion.isbn}`) : null,
                       suggestion.pages
-                        ? badge(`${suggestion.pages} pages`)
+                        ? badge(`${formatPages(suggestion.pages)} pages`)
                         : null,
                       ...suggestion.subjects
                         .slice(0, 3)

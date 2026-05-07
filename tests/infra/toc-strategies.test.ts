@@ -61,7 +61,6 @@ describe('resolveBookEnrichment', () => {
     });
 
     expect(resolution.enrichment.chapters).toEqual([
-      'Contents',
       'Chapter 1 Signals',
       'Chapter 2 Systems',
     ]);
@@ -233,7 +232,6 @@ describe('resolveBookEnrichment', () => {
     const resolution = await resolveBookEnrichment({ book, fetchJson });
 
     expect(resolution.enrichment.chapters).toEqual([
-      'Contents',
       'Chapter 1 Signals',
       'Chapter 2 Systems',
     ]);
@@ -275,7 +273,6 @@ describe('resolveBookEnrichment', () => {
 
     expect(resolution.enrichment.tocSource).toBe('pdf');
     expect(resolution.enrichment.chapters).toEqual([
-      'CONTENTS',
       'CHAPTER 1 Introduction to Electronics',
       'CHAPTER 2 Theory',
       'CHAPTER 3 Basic Electronic Circuit Components',
@@ -343,7 +340,6 @@ describe('resolveBookEnrichment', () => {
 
     expect(resolution.enrichment.tocSource).toBe('internet_archive');
     expect(resolution.enrichment.chapters).toEqual([
-      'Contents',
       'Chapter 1 Signals',
       'Chapter 2 Systems',
       'Appendix A Transform Tables',

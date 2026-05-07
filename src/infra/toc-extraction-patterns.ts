@@ -7,7 +7,10 @@ export interface TocExtractionPatternSpec {
 }
 
 export const PDF_OBJECT_NOISE_PATTERN =
-  /(?:\/(?:Type|Length|Filter|Subtype|Resources|Font)\b|endobj|xref|trailer)/i;
+  /(?:^%|^(?:\d+\s+){1,2}obj\b|^endobj\b|^xref\b|^trailer\b|^stream\b|^endstream\b|^\/[A-Za-z0-9]+|[A-Z]:[\\/].+\.(?:eps|pdf|png|jpe?g|tiff?)\b)/i;
+export const CONTROL_HEAVY_LINE_PATTERN = new RegExp(
+  String.raw`[\u0000-\u0008\u000b-\u001f\u007f-\u009f]`,
+);
 export const CONTENTS_LINE_PATTERN = /^(?:table of )?contents$/i;
 export const EXPLICIT_CONTENTS_PATTERN = /\b(?:table of contents|contents)\b/i;
 export const BODY_CHAPTER_START_PATTERN =
@@ -51,6 +54,12 @@ export const TOC_EXTRACTION_PATTERN_SPECS: TocExtractionPatternSpec[] = [
     purpose: 'Recognize decimal section headers only with title text.',
     accepts: ['3.1 Metric Spaces'],
     rejects: ['3.1'],
+  },
+  {
+    id: 'pdf_object_noise',
+    pattern: PDF_OBJECT_NOISE_PATTERN,
+    purpose: 'Reject raw PDF object and binary stream fragments.',
+    rejects: ['1 0 obj', '/Width 1041', 'stream'],
   },
   {
     id: 'front_back_line',

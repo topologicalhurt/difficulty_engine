@@ -1,5 +1,6 @@
 import { plannerClock } from '../core/time';
 import type { Clock, PlannerProjectV1 } from '../core/types';
+import { isoTimestamp } from '../infra/cache-time';
 
 export interface WorkerComputeMessage {
   type: 'compute';
@@ -18,8 +19,10 @@ export function buildWorkerComputeMessage(
     type: 'compute',
     requestId,
     project,
-    nowIso: clock.now().toISOString(),
-    timelineStartIso: clock.timelineStart(project).toISOString(),
+    nowIso: isoTimestamp(() => clock.now().getTime()),
+    timelineStartIso: isoTimestamp(() =>
+      clock.timelineStart(project).getTime(),
+    ),
   };
 }
 

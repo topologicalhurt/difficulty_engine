@@ -1,4 +1,5 @@
 import type { AppState } from '../../core/types';
+import { selectRenderableActiveView } from './shell';
 
 function selectedCalendarEntryKey(state: AppState): string {
   const entry = state.ui.selectedCalendarEntry;
@@ -8,10 +9,11 @@ function selectedCalendarEntryKey(state: AppState): string {
 export function selectActiveTabRenderKeys(
   state: AppState,
 ): readonly unknown[] {
-  switch (state.ui.activeView) {
+  const activeView = selectRenderableActiveView(state);
+  switch (activeView) {
     case 'library':
       return [
-        state.ui.activeView,
+        activeView,
         state.project,
         state.snapshot,
         state.ui.selectedBookId,
@@ -22,10 +24,11 @@ export function selectActiveTabRenderKeys(
         state.ui.bookSearchOffset,
         state.ui.bookSearchError,
         state.ui.documentReader,
+        state.ui.libraryListWidthPx,
       ];
     case 'constraints':
       return [
-        state.ui.activeView,
+        activeView,
         state.project.constraints,
         state.snapshot,
         state.ui.openConstraintGroups,
@@ -33,7 +36,7 @@ export function selectActiveTabRenderKeys(
       ];
     case 'ai':
       return [
-        state.ui.activeView,
+        activeView,
         state.project,
         state.snapshot,
         state.ui.aiPrompt,
@@ -43,16 +46,17 @@ export function selectActiveTabRenderKeys(
       ];
     case 'graphs':
       return [
-        state.ui.activeView,
+        activeView,
         state.project.constraints,
         state.snapshot,
         state.ui.selectedBookId,
+        state.ui.graphOptionsOpen,
       ];
     case 'diagnostics':
-      return [state.ui.activeView, state.snapshot];
+      return [activeView, state.snapshot];
     case 'project':
       return [
-        state.ui.activeView,
+        activeView,
         state.project,
         state.ui.importExportText,
         state.ui.importExportDirty,
@@ -60,11 +64,11 @@ export function selectActiveTabRenderKeys(
         state.ui.qbittorrentStatus,
       ];
     case 'info':
-      return [state.ui.activeView];
+      return [activeView];
     case 'plan':
     default:
       return [
-        state.ui.activeView,
+        activeView,
         state.project,
         state.snapshot,
         state.ui.selectedBookId,
@@ -72,6 +76,7 @@ export function selectActiveTabRenderKeys(
         state.ui.ganttView,
         state.ui.ganttZoom,
         state.ui.planColorMode,
+        state.ui.planSections,
         state.ui.bookSearchQuery,
         state.ui.bookSearchStatus,
         state.ui.bookSearchResults,

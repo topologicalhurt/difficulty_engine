@@ -26,6 +26,10 @@ AD_HOC_SELECT_RE = re.compile(
 AD_HOC_TEXT_CONTROL_RE = re.compile(
     r"(?:document\.createElement\(['\"](?:input|textarea)['\"]\)|\bel\(['\"](?:input|textarea)['\"])",
 )
+AD_HOC_BUTTON_RE = re.compile(
+    r"(?:document\.createElement\(['\"]button['\"]\)|\bel\(['\"]button['\"])",
+)
+RAW_ASSET_IMPORT_RE = re.compile(r"from\s+['\"][^'\"]+\?(?:raw|text)['\"]")
 LOCAL_UI_PERCENT_RE = re.compile(r"\$\{\s*Math\.round\([^}]*\*\s*100\)\s*\}%")
 LOCAL_FINITE_NUMBER_RE = re.compile(r"\bfunction\s+finiteNumber\b")
 LOCAL_COLOR_HASH_RE = re.compile(r"hash\s*=\s*\(\s*hash\s*\*\s*31\s*\+")
@@ -181,6 +185,8 @@ def main() -> int:
         change_text = read_text(change_guide)
         required_patterns = [
             "Document content priority: `src/infra/document-content-priority.ts`",
+            "Document candidate quality: `src/infra/document-candidate-quality.ts`",
+            "Guide content: `src/content/info/readme.ts`",
             "Add Or Change Worker Compute Or Persistence",
             "If the change creates a new helper",
         ]
@@ -276,6 +282,18 @@ def main() -> int:
         ):
             failures.append(
                 f"Ad hoc input/textarea construction outside shared control factories: {path.relative_to(ROOT)}"
+            )
+        if (
+            relative_path.startswith("src/ui/")
+            and relative_path != "src/ui/dom.ts"
+            and AD_HOC_BUTTON_RE.search(text)
+        ):
+            failures.append(
+                f"Ad hoc button construction outside shared button primitive: {path.relative_to(ROOT)}"
+            )
+        if RAW_ASSET_IMPORT_RE.search(text):
+            failures.append(
+                f"Raw asset query import leaks private bundler requirements: {path.relative_to(ROOT)}"
             )
         if (
             relative_path.startswith("src/ui/")

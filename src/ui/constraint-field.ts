@@ -125,7 +125,6 @@ function renderSelectField(
     focusKey: `constraint:${String(field.key)}`,
     onFocus: () => selectConstraintField(store, field),
     onChange: (event) => {
-      selectConstraintField(store, field);
       deferConstraintUpdate(
         store,
         field.key,
@@ -159,7 +158,6 @@ function renderWeekdaySetField(
             checked: active.has(day.value),
             onFocus: () => selectConstraintField(store, field),
             onChange: (checked) => {
-              selectConstraintField(store, field);
               const next = new Set(constraints.studyWeekdays);
               if (checked) next.add(day.value);
               else next.delete(day.value);

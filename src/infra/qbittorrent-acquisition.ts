@@ -110,6 +110,10 @@ export async function acquireTorrentDocument(
     contentType,
     status,
   );
+  const completedFileExists =
+    status === 'complete'
+      ? await client.documentExists(storagePath).catch(() => false)
+      : false;
   const now = isoTimestamp();
   const fileName = basename(storagePath);
   const progress = selected?.progress ?? info?.progress ?? 0;
@@ -118,12 +122,14 @@ export async function acquireTorrentDocument(
     candidate.contentKind,
   );
   const refStatus =
-    text || bytes
-      ? 'complete'
-      : status === 'complete' &&
-          (contentKind === 'text' || contentKind === 'ocr_text')
-        ? 'unreadable'
-        : status;
+    status === 'complete' && !completedFileExists
+      ? 'failed'
+      : text || bytes
+        ? 'complete'
+        : status === 'complete' &&
+            (contentKind === 'text' || contentKind === 'ocr_text')
+          ? 'unreadable'
+          : status;
 
   return {
     candidateId: candidate.id,
@@ -157,7 +163,9 @@ export async function acquireTorrentDocument(
         progress,
         state: info?.state ?? (info ? 'tracked' : 'unknown'),
         reason:
-          status === 'stalled'
+          refStatus === 'failed'
+            ? 'Completed torrent file is missing from the configured data folder.'
+            : status === 'stalled'
             ? 'Torrent is stalled or has no active download progress.'
             : undefined,
       },

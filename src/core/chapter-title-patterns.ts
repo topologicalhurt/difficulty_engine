@@ -30,6 +30,11 @@ export const SENTENCE_BOUNDARY_PATTERN = /[.!?]\s+[\p{Lu}\d]/u;
 export const URL_OR_ISBN_PATTERN =
   /\b(?:https?:\/\/|www\.|isbn|copyright|all rights reserved)\b/i;
 export const LETTER_PATTERN = /\p{L}/u;
+export const DOCUMENT_OBJECT_NOISE_PATTERN =
+  /^(?:%|(?:\d+\s+){1,2}obj\b|endobj\b|xref\b|trailer\b|stream\b|endstream\b|\/[a-z0-9]+|[a-z]:[\\/].+\.(?:eps|pdf|png|jpe?g|tiff?)\b)/i;
+export const CONTROL_HEAVY_TEXT_PATTERN = new RegExp(
+  String.raw`[\u0000-\u0008\u000b-\u001f\u007f-\u009f]`,
+);
 export const NARRATIVE_START_PATTERN =
   /^(?:this|these|those|it|they|we|you|your|readers?|students?|instructors?|teachers?)\b/i;
 export const NARRATIVE_VERB_PATTERN =
@@ -40,6 +45,7 @@ export const DESCRIPTION_WORD_PATTERN =
   /\b(?:description|overview|summary|synopsis|blurb)\b/i;
 export const MARKETING_TOC_FRAGMENT_PATTERN =
   /^(?:chapter\s+(?:on|new)\b|new\s+(?:sections?\s+covering|and\s+revised)\b)/i;
+export const TOC_HEADING_ONLY_PATTERN = /^(?:table of )?contents$/i;
 export const PLAIN_PAGE_SUFFIX_PATTERN =
   /^(.+?)\s+((?:[ivxlcdm]+)|(?:\d{1,4}))$/i;
 
@@ -74,6 +80,13 @@ export const CHAPTER_TITLE_PATTERN_SPECS: ChapterTitlePatternSpec[] = [
     accepts: ['3.1 Metric Spaces', 'IV. Integration'],
   },
   {
+    id: 'document_object_noise',
+    role: 'reject',
+    pattern: DOCUMENT_OBJECT_NOISE_PATTERN,
+    purpose: 'Reject raw PDF/object-stream fragments before title scoring.',
+    rejects: ['1 0 obj', '/Width 1041', 'stream'],
+  },
+  {
     id: 'narrative_or_marketing',
     role: 'reject',
     pattern: NARRATIVE_VERB_PATTERN,
@@ -86,5 +99,12 @@ export const CHAPTER_TITLE_PATTERN_SPECS: ChapterTitlePatternSpec[] = [
     pattern: MARKETING_TOC_FRAGMENT_PATTERN,
     purpose: 'Reject common provider-snippet fragments mistaken for chapters.',
     rejects: ['chapter on the latest microcontrollers'],
+  },
+  {
+    id: 'toc_heading_only',
+    role: 'reject',
+    pattern: TOC_HEADING_ONLY_PATTERN,
+    purpose: 'Use TOC headings as anchors, not persisted chapter titles.',
+    rejects: ['Contents', 'Table of Contents'],
   },
 ];

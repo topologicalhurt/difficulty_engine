@@ -2,7 +2,7 @@ import type { BookEditorViewModel } from '../app/selectors/library';
 import type { AppState, BookRecord, PlannerStore } from '../core/types';
 import { runConfirmableAction } from './confirmable-action';
 import { badge, button, card, el } from './dom';
-import { formatOneDecimal } from './format';
+import { formatOneDecimal, formatPages } from './format';
 import { enrichmentBadge } from './library-controls';
 import { renderEnrichmentProvenanceCard } from './library-provenance-panel';
 import { renderRelationChips } from './library-relations-panel';
@@ -17,7 +17,7 @@ export function renderBookDetailToolbar(
     'div',
     { className: 'detail-toolbar' },
     badge(book.displayGroup || 'Ungrouped'),
-    badge(`${book.pages} pages`),
+    badge(`${formatPages(book.pages)} pages`),
     badge(`Seed ${formatOneDecimal(book.manualSeedDifficulty)}`),
     enrichmentBadge(state, book.id),
     el('div', { className: 'detail-spacer' }),

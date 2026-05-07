@@ -6,6 +6,7 @@ import {
   qbittorrentRuntimeEnabled,
   qbittorrentSearchPluginsEnabled,
   qbittorrentUserTorrentsEnabled,
+  localOcrEnabled,
   sourceEnabledForDocumentProvider,
 } from '../../src/core/source-settings-policy';
 import {
@@ -34,6 +35,9 @@ describe('source settings policy', () => {
     expect(metadataSourceEnabled(settings, 'googleBooks')).toBe(true);
     expect(documentSourceEnabled(settings, 'directUrl')).toBe(false);
     expect(documentSourceEnabled(settings, 'internetArchiveText')).toBe(true);
+    expect(localOcrEnabled(settings)).toBe(false);
+    settings.documentSources.localOcr = true;
+    expect(localOcrEnabled(settings)).toBe(true);
   });
 
   it('requires explicit qBittorrent source and feature enablement', () => {

@@ -9,6 +9,8 @@ export type ConstraintFieldView = ConstraintField & {
 
 const ADVANCED_KEYS = new Set<keyof ConstraintSet>([
   'emptyDayPolicy',
+  'learnerAdaptivityStrength',
+  'targetChallenge',
   'backfillMode',
   'prereqMode',
   'relativePacingCurve',
@@ -64,6 +66,12 @@ const DETAILS: Partial<Record<keyof ConstraintSet, string>> = {
     'Allows a minimum amount of graph lift before the relative cap clamps it.',
   damp: 'Reduces graph propagation strength. Higher damping makes prerequisites affect difficulty less.',
   gam: 'Shapes how schedule difficulty changes reading time per page. This is a workload/time setting, not a display compression setting.',
+  learnerProfileMode:
+    'Selects adaptive defaults for challenge, pacing spread, uncertainty tolerance, and how much logged reading behavior can recalibrate the model.',
+  learnerAdaptivityStrength:
+    'Controls how strongly actual logged minutes/pages adjust future workload estimates after enough evidence exists.',
+  targetChallenge:
+    'Controls desired workload before hard feasibility constraints are applied. Binding floors, time limits, and manual windows can still override it.',
   propMix:
     'Controls how strongly prerequisite and graph signals can alter schedule difficulty.',
   emptyDayPolicy:
@@ -129,6 +137,18 @@ const OPTION_DETAILS: Partial<
     linear: 'Maps relative difficulty directly into the page range.',
     sqrt: 'Gives easier and mid-range books more separation.',
     power: 'Emphasizes separation among the hardest books.',
+  },
+  learnerProfileMode: {
+    balanced_adaptive:
+      'Balances confidence, finish time, and evidence uncertainty. This is the default for normal planning.',
+    confidence_builder:
+      'Prefers less overwhelming daily targets and avoids overreacting to uncertain difficulty evidence.',
+    fast_track:
+      'Uses a more ambitious challenge target and wider pacing spread when the goal is finishing sooner.',
+    deep_mastery:
+      'Allows slower, more conservative progress on high-uncertainty or concept-heavy books.',
+    manual:
+      'Uses the explicit advanced controls without profile-level defaults changing them.',
   },
   blendMode: {
     geometric:

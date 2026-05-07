@@ -49,6 +49,7 @@ export function renderGanttRow(
     'div',
     {
       className: `gantt-board-row${selected ? ' selected' : ''}`,
+      dataset: { planGanttBookId: row.id },
       onClick: () => store.commands.selectBook(row.id),
     },
     el(

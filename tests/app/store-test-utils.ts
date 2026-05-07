@@ -5,6 +5,7 @@ import {
   DEFAULT_CONSTRAINTS,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import { createPlannerEngine } from '../../src/core/engine';
 import { plannerClock } from '../../src/core/time';
@@ -37,6 +38,7 @@ interface TestStoreOptions {
   initialProject?: PlannerProjectV1;
   enrichmentProvider?: EnrichmentProvider;
   aiRecommendationProvider?: AiRecommendationProvider;
+  debugUi?: boolean;
 }
 
 export function makeBook(patch: Partial<BookRecord> = {}): BookRecord {
@@ -144,11 +146,7 @@ export function makeProject(
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: options.sourceSettings ?? createDefaultSourceSettings(),
     enrichmentCache: {},
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
   return { ...base, ...options.projectPatch };
 }
@@ -162,6 +160,7 @@ export function makeStore(
     enrichmentProvider:
       options.enrichmentProvider ?? makeTestEnrichmentProvider(),
     aiRecommendationProvider: options.aiRecommendationProvider,
+    debugUi: options.debugUi,
     logger: silentLogger,
     clock: plannerClock,
   });

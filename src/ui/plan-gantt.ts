@@ -1,7 +1,8 @@
 import type { GanttViewModel, PlanViewModel } from '../app/selectors/plan';
 import { DAYS_PER_WEEK } from '../core/date-constants';
 import type { PlannerStore } from '../core/types';
-import { card, el, emptyState } from './dom';
+import { el, emptyState } from './dom';
+import { collapsibleCard } from './collapsible-card';
 import { renderGanttRow } from './plan-gantt-row';
 import { renderGanttToolbar } from './plan-gantt-toolbar';
 
@@ -33,14 +34,18 @@ export function renderGantt(
   gantt: GanttViewModel,
   colors: PlanViewModel['colors'],
   emptyDayPolicy: PlanViewModel['emptyDayPolicy'],
+  bookJumpOptions: PlanViewModel['bookJumpOptions'],
+  sectionOpen: boolean,
   selectedBookId: string | null,
   timelineLabel: (slot: number) => string,
   store: PlannerStore,
 ): HTMLElement {
   const rows = gantt.rows;
   if (!rows.length) {
-    return card(
+    return collapsibleCard(
       'Gantt timeline',
+      sectionOpen,
+      (open) => store.commands.setPlanSectionOpen('gantt', open),
       emptyState(
         'No schedule yet',
         'Add books and constraints to generate a schedule.',
@@ -51,9 +56,18 @@ export function renderGantt(
   const diagnostics = gantt.diagnostics;
   const maxSlot = gantt.maxSlot;
 
-  return card(
+  return collapsibleCard(
     'Gantt timeline',
-    renderGanttToolbar(gantt, colors, emptyDayPolicy, store),
+    sectionOpen,
+    (open) => store.commands.setPlanSectionOpen('gantt', open),
+    renderGanttToolbar(
+      gantt,
+      colors,
+      emptyDayPolicy,
+      bookJumpOptions,
+      selectedBookId,
+      store,
+    ),
     el(
       'div',
       { className: 'gantt-scroll-wrap' },

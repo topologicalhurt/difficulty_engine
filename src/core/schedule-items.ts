@@ -78,6 +78,7 @@ export function buildScheduleItems(
       title: corpus.byId[id]?.title || id,
       pages: corpus.byId[id]?.pages || 1,
       difficulty: difficultyFor(id, corpus, difficultyModel),
+      evidenceConfidence: difficultyModel.byId[id]?.evidenceConfidence,
     })),
     project.constraints,
   );
@@ -85,12 +86,17 @@ export function buildScheduleItems(
   const items = activeIds.map<SchedulePlanItem>((id) => {
     const book = corpus.byId[id];
     const diff = difficultyFor(id, corpus, difficultyModel);
-    const pacing = pacingTargets[id] || {
-      absolutePageTarget: 1,
-      relativePageTarget: 1,
-      relativePacingPercentile: 50,
-      pacingPageTarget: 1,
-    };
+      const pacing = pacingTargets[id] || {
+        absolutePageTarget: 1,
+        relativePageTarget: 1,
+        relativePacingPercentile: 50,
+        pacingPageTarget: 1,
+        desiredPagesPerDay: 1,
+        feasibleMinPagesPerDay: 1,
+        feasibleMaxPagesPerDay: 1,
+        finalPagesPerDay: 1,
+        pacingBindingReason: 'none' as const,
+      };
     const manual = project.manualOverrides.schedule[id] || {};
     const allowPrereqOverlap = Boolean(relationInfo.manualAllowOverlap[id]);
     const effectiveMin = round1(effectiveFloorPg(diff, project.constraints));
@@ -144,6 +150,13 @@ export function buildScheduleItems(
       relativePageTarget: pacing.relativePageTarget,
       relativePacingPercentile: pacing.relativePacingPercentile,
       pacingPageTarget: pacing.pacingPageTarget,
+      desiredPagesPerDay: pacing.desiredPagesPerDay,
+      feasibleMinPagesPerDay: pacing.feasibleMinPagesPerDay,
+      feasibleMaxPagesPerDay: pacing.feasibleMaxPagesPerDay,
+      finalPagesPerDay: pacing.finalPagesPerDay,
+      pacingBindingReason: manual.days != null
+        ? 'manual_window'
+        : pacing.pacingBindingReason,
       floorPolicy: floorRelaxed ? 'relaxed' : 'strict',
       manual,
       manualOverride: manual.ds != null || manual.days != null,

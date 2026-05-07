@@ -1,4 +1,5 @@
 import type { AppState } from '../../core/types';
+import { compareChain, compareNumberDesc, compareText } from '../../core/sort';
 import {
   dateKeyFromDate,
   parseLocalDateKey,
@@ -89,7 +90,11 @@ export function buildDifficultySeries(state: AppState): DifficultyPoint[] {
     })
     .sort(
       (left, right) =>
-        right.score - left.score || left.label.localeCompare(right.label),
+        compareChain(
+          compareNumberDesc(left.score, right.score),
+          compareText(left.label, right.label),
+          compareText(left.id, right.id),
+        ),
     )
     .slice(0, MAX_DIFFICULTY_POINTS);
 }

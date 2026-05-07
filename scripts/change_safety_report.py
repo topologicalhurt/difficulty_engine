@@ -21,6 +21,11 @@ CANONICAL_PATTERNS = [
         "Use formatPercent, formatOneDecimal, round0, formatDate, parseCsv, and joinCsv for display strings.",
     ),
     (
+        "Guide content",
+        "src/content/info/readme.ts",
+        "Static guide copy is a TypeScript string module; public UI imports must not require raw asset loader plugins.",
+    ),
+    (
         "Number formatting",
         "src/core/number-format.ts",
         "Use shared number/percent formatters instead of local finite-number helpers.",
@@ -94,6 +99,11 @@ CANONICAL_PATTERNS = [
         "Document content priority",
         "src/infra/document-content-priority.ts",
         "Content preference ordering is shared by document acquisition and qBittorrent ranking.",
+    ),
+    (
+        "Document candidate quality",
+        "src/infra/document-candidate-quality.ts",
+        "Use the shared quality comparator for document refs, acquisition candidates, and provider result ranking.",
     ),
     (
         "Document content kind and paths",

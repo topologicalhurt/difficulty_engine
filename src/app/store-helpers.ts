@@ -82,10 +82,14 @@ export function buildUi(
     ganttView: ui.ganttView ?? project.uiPreferences.ganttView,
     ganttZoom: ui.ganttZoom ?? project.uiPreferences.ganttZoom,
     planColorMode: ui.planColorMode ?? project.uiPreferences.planColorMode,
+    planSections: ui.planSections ?? project.uiPreferences.planSections,
+    libraryListWidthPx:
+      ui.libraryListWidthPx ?? project.uiPreferences.libraryListWidthPx,
     openConstraintGroups:
       ui.openConstraintGroups ?? DEFAULT_UI_STATE.openConstraintGroups,
     selectedConstraintKey:
       ui.selectedConstraintKey ?? DEFAULT_UI_STATE.selectedConstraintKey,
+    graphOptionsOpen: ui.graphOptionsOpen ?? DEFAULT_UI_STATE.graphOptionsOpen,
     bookSearchQuery: ui.bookSearchQuery ?? DEFAULT_UI_STATE.bookSearchQuery,
     bookSearchStatus: ui.bookSearchStatus ?? DEFAULT_UI_STATE.bookSearchStatus,
     bookSearchResults:
@@ -106,6 +110,7 @@ export function buildUi(
     aiConnection: ui.aiConnection ?? DEFAULT_UI_STATE.aiConnection,
     aiStatus: ui.aiStatus ?? DEFAULT_UI_STATE.aiStatus,
     aiProposal: ui.aiProposal ?? DEFAULT_UI_STATE.aiProposal,
+    debugUi: ui.debugUi ?? DEFAULT_UI_STATE.debugUi,
   };
 }
 

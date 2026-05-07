@@ -14,6 +14,8 @@ export interface EnrichmentFieldProvenance {
   strategy?: string;
   inferred?: boolean;
   evidenceAnchors?: string[];
+  rejectedReasons?: string[];
+  pageRange?: { start: number; end: number };
 }
 
 export interface BookEnrichment {

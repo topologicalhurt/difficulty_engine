@@ -1,10 +1,16 @@
 import {
   PLAN_ZOOM_MAX,
   PLAN_ZOOM_MIN,
+  LIBRARY_LIST_WIDTH_MAX,
+  LIBRARY_LIST_WIDTH_MIN,
+  LEARNER_ADAPTIVITY_MAX,
+  LEARNER_ADAPTIVITY_MIN,
   RELATIVE_PACING_MAX,
   RELATIVE_PACING_MIN,
   SUBJECT_WORKLOAD_MAX,
   SUBJECT_WORKLOAD_MIN,
+  TARGET_CHALLENGE_MAX,
+  TARGET_CHALLENGE_MIN,
 } from './constants';
 import {
   normalizeBackfillMode,
@@ -13,6 +19,7 @@ import {
   normalizeDailyBookMode,
   normalizeEmptyDayPolicy,
   normalizeFeasibilityMode,
+  normalizeLearnerProfileMode,
   normalizePlanColorMode,
   normalizePrereqMode,
   normalizeRelativePacingCurve,
@@ -30,6 +37,7 @@ import {
   normalizeDateKey,
   normalizeNumber,
   normalizeString,
+  normalizeStringArray,
   normalizeWeekdays,
 } from './project-normalize-primitives';
 
@@ -84,6 +92,21 @@ export function normalizeConstraints(value: unknown): ConstraintSet {
     ),
     relativePacingCurve: normalizeRelativePacingCurve(
       normalizeString(raw.relativePacingCurve) || defaults.relativePacingCurve,
+    ),
+    learnerProfileMode: normalizeLearnerProfileMode(
+      normalizeString(raw.learnerProfileMode) || defaults.learnerProfileMode,
+    ),
+    learnerAdaptivityStrength: normalizeNumber(
+      raw.learnerAdaptivityStrength,
+      defaults.learnerAdaptivityStrength,
+      LEARNER_ADAPTIVITY_MIN,
+      LEARNER_ADAPTIVITY_MAX,
+    ),
+    targetChallenge: normalizeNumber(
+      raw.targetChallenge,
+      defaults.targetChallenge,
+      TARGET_CHALLENGE_MIN,
+      TARGET_CHALLENGE_MAX,
     ),
     subjectWorkloadStrength: normalizeNumber(
       raw.subjectWorkloadStrength,
@@ -202,30 +225,49 @@ export function normalizeConstraints(value: unknown): ConstraintSet {
 export function normalizeUiPreferences(
   raw: Record<string, unknown>,
 ): PlannerProjectV1['uiPreferences'] {
+  const input =
+    raw.uiPreferences && typeof raw.uiPreferences === 'object'
+      ? (raw.uiPreferences as Record<string, unknown>)
+      : {};
+  const rawSections =
+    input.planSections && typeof input.planSections === 'object'
+      ? (input.planSections as Record<string, unknown>)
+      : {};
   return {
     ganttView:
-      raw.uiPreferences && typeof raw.uiPreferences === 'object'
-        ? String((raw.uiPreferences as Record<string, unknown>).ganttView) ===
-          'diagnostics'
-          ? 'diagnostics'
-          : DEFAULT_UI_STATE.ganttView
+      String(input.ganttView) === 'diagnostics'
+        ? 'diagnostics'
         : DEFAULT_UI_STATE.ganttView,
-    ganttZoom:
-      raw.uiPreferences && typeof raw.uiPreferences === 'object'
-        ? normalizeNumber(
-            (raw.uiPreferences as Record<string, unknown>).ganttZoom,
-            DEFAULT_UI_STATE.ganttZoom,
-            PLAN_ZOOM_MIN,
-            PLAN_ZOOM_MAX,
-          )
-        : DEFAULT_UI_STATE.ganttZoom,
-    planColorMode:
-      raw.uiPreferences && typeof raw.uiPreferences === 'object'
-        ? normalizePlanColorMode(
-            normalizeString(
-              (raw.uiPreferences as Record<string, unknown>).planColorMode,
-            ),
-          )
-        : DEFAULT_UI_STATE.planColorMode,
+    ganttZoom: normalizeNumber(
+      input.ganttZoom,
+      DEFAULT_UI_STATE.ganttZoom,
+      PLAN_ZOOM_MIN,
+      PLAN_ZOOM_MAX,
+    ),
+    planColorMode: normalizePlanColorMode(normalizeString(input.planColorMode)),
+    planSections: {
+      gantt:
+        rawSections.gantt == null
+          ? DEFAULT_UI_STATE.planSections.gantt
+          : normalizeBoolean(rawSections.gantt),
+      calendar:
+        rawSections.calendar == null
+          ? DEFAULT_UI_STATE.planSections.calendar
+          : normalizeBoolean(rawSections.calendar),
+    },
+    libraryListWidthPx: normalizeNumber(
+      input.libraryListWidthPx,
+      DEFAULT_UI_STATE.libraryListWidthPx,
+      LIBRARY_LIST_WIDTH_MIN,
+      LIBRARY_LIST_WIDTH_MAX,
+      true,
+    ),
+    dismissedWarningCodes: Array.from(
+      new Set(
+        normalizeStringArray(input.dismissedWarningCodes)
+          .map((code) => code.trim())
+          .filter(Boolean),
+      ),
+    ).sort(),
   };
 }

@@ -38,6 +38,9 @@ describe('constraints view model', () => {
     const difficultyGroup = viewModel.groups.find(
       (group) => group.group === 'Difficulty Mapping',
     );
+    const pacingGroup = viewModel.groups.find(
+      (group) => group.group === 'Pacing Model',
+    );
     const planWindowGroup = viewModel.groups.find(
       (group) => group.group === 'Plan Window',
     );
@@ -49,6 +52,10 @@ describe('constraints view model', () => {
     expect(difficultyGroup?.fields.map((field) => field.key)).toEqual([
       'diffMapMode',
     ]);
+    expect(pacingGroup?.fields.map((field) => field.key)).toContain(
+      'learnerProfileMode',
+    );
+    expect(pacingGroup?.hiddenAdvancedCount).toBeGreaterThan(0);
 
     plannerStore.commands.toggleConstraintAdvancedGroup('Difficulty Mapping');
     viewModel = selectConstraintsViewModel(plannerStore.selectors.getState());

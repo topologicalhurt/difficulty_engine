@@ -85,6 +85,79 @@ describe('store enrichment commands', () => {
     expect(store.selectors.getBook('draft')?.pages).toBe(412);
   });
 
+  it('replaces placeholder authors with enriched provider authors', async () => {
+    const store = createStoreWithProvider(
+      {
+        fetchBook: vi.fn(async ({ book }) => ({
+          cacheKey: book.id,
+          bookPatch: { authors: ['Real Author'] },
+          enrichment: book.enrichment,
+          provenance: [
+            {
+              provider: 'test',
+              fetchedAt: '2026-01-05T00:00:00.000Z',
+              confidence: 1,
+            },
+          ],
+        })),
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      makeProject({
+        books: {
+          draft: makeBook({
+            id: 'draft',
+            title: 'Draft Manual Book',
+            short: 'Draft',
+            authors: EXAMPLE_BOOK.authors,
+          }),
+        },
+      }),
+    );
+
+    await store.commands.refreshBookEnrichment('draft');
+
+    expect(store.selectors.getBook('draft')?.authors).toEqual(['Real Author']);
+  });
+
+  it('replaces placeholder subjects with enriched provider subjects', async () => {
+    const store = createStoreWithProvider(
+      {
+        fetchBook: vi.fn(async ({ book }) => ({
+          cacheKey: book.id,
+          bookPatch: { subjects: ['real subject'] },
+          enrichment: {
+            ...book.enrichment,
+            olSubjects: ['real subject'],
+          },
+          provenance: [
+            {
+              provider: 'test',
+              fetchedAt: '2026-01-05T00:00:00.000Z',
+              confidence: 1,
+            },
+          ],
+        })),
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      makeProject({
+        books: {
+          draft: makeBook({
+            id: 'draft',
+            title: 'Draft Manual Book',
+            short: 'Draft',
+            subjects: EXAMPLE_BOOK.subjects,
+          }),
+        },
+      }),
+    );
+
+    await store.commands.refreshBookEnrichment('draft');
+
+    expect(store.selectors.getBook('draft')?.subjects).toEqual([
+      'real subject',
+    ]);
+  });
+
   it('keeps user-entered page counts when enrichment returns a different count', async () => {
     const store = createStoreWithProvider(
       {

@@ -27,8 +27,18 @@ const DOCUMENT_KEYS: DocumentSourceKey[] = [
   'localFile',
   'internetArchiveText',
   'qbittorrent',
+  'localOcr',
 ];
 const CONTENT_KINDS: SourceContentKind[] = ['text', 'epub', 'ocr_text', 'pdf'];
+
+function normalizedUniqueStrings(
+  value: unknown,
+  mapEntry: (value: string) => string = (entry) => entry,
+): string[] {
+  return unique(normalizeStringArray(value).map(mapEntry)).sort((left, right) =>
+    left.localeCompare(right),
+  );
+}
 
 function normalizeMask<T extends string>(
   value: unknown,
@@ -69,6 +79,7 @@ export function normalizeSourceSettings(value: unknown): SourceSettings {
     raw.qbittorrent && typeof raw.qbittorrent === 'object'
       ? (raw.qbittorrent as Record<string, unknown>)
       : {};
+  const normalizedCategories = normalizedUniqueStrings(qbitRaw.categories);
   return {
     metadataSources: normalizeMask(
       raw.metadataSources,
@@ -89,15 +100,15 @@ export function normalizeSourceSettings(value: unknown): SourceSettings {
         qbitRaw.searchPlugins == null
           ? defaults.qbittorrent.searchPlugins
           : normalizeBoolean(qbitRaw.searchPlugins),
-      allowedPlugins: normalizeStringArray(qbitRaw.allowedPlugins),
+      allowedPlugins: normalizedUniqueStrings(qbitRaw.allowedPlugins),
       allowedSites:
         qbitRaw.allowedSites == null
           ? [...defaults.qbittorrent.allowedSites]
-          : normalizeStringArray(qbitRaw.allowedSites).map((site) =>
+          : normalizedUniqueStrings(qbitRaw.allowedSites, (site) =>
               normalizeString(site).toLowerCase(),
             ),
-      categories: normalizeStringArray(qbitRaw.categories).length
-        ? normalizeStringArray(qbitRaw.categories)
+      categories: normalizedCategories.length
+        ? normalizedCategories
         : [...defaults.qbittorrent.categories],
       maxResults: normalizeNumber(
         qbitRaw.maxResults,

@@ -2,6 +2,7 @@ import { selectAiRecommendationViewModel } from '../app/selectors/ai-recommendat
 import type { AiRecommendedBook, AppState, PlannerStore } from '../core/types';
 import { compactJoin } from '../core/utils';
 import { badge, button, card, el } from './dom';
+import { formatOneDecimal, formatPages } from './format';
 
 function relationBadges(book: AiRecommendedBook): HTMLElement {
   const prereq = book.prerequisiteIds.length
@@ -34,8 +35,8 @@ function proposalBookCard(book: AiRecommendedBook): HTMLElement {
           text: compactJoin(
             [
               book.authors.join(', ') || 'Unknown author',
-              book.pages ? `${book.pages} pages` : 'pages unknown',
-              `difficulty seed ${book.manualSeedDifficulty.toFixed(1)}`,
+              book.pages ? `${formatPages(book.pages)} pages` : 'pages unknown',
+              `difficulty seed ${formatOneDecimal(book.manualSeedDifficulty)}`,
             ],
             ' · ',
           ),

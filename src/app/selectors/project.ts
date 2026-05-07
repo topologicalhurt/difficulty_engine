@@ -66,6 +66,13 @@ const SOURCE_PROVIDER_DEFINITIONS = [
     detail:
       'Preferred TOC/document source when the local bridge is enabled; lawful/user-owned torrents only.',
   },
+  {
+    kind: 'document',
+    key: 'localOcr',
+    label: 'Local OCR fallback',
+    detail:
+      'Optional bridge-only OCR for trusted completed PDFs when embedded text and raw TOC extraction fail.',
+  },
 ] as const satisfies readonly SourceProviderDefinition[];
 
 type SourceProviderRow = (typeof SOURCE_PROVIDER_DEFINITIONS)[number] & {

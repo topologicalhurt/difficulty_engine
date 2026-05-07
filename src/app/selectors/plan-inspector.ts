@@ -24,11 +24,7 @@ export function selectBookInspector(
   state: AppState,
   progressByBook: Record<string, BookProgressView>,
 ): BookInspectorViewModel {
-  const fallbackId =
-    state.ui.selectedBookId ||
-    state.snapshot.renderModel.gantt.rows[0]?.id ||
-    Object.keys(state.project.library.books)[0] ||
-    null;
+  const fallbackId = state.ui.selectedBookId;
   const book = fallbackId ? state.project.library.books[fallbackId] : undefined;
   const difficulty = fallbackId
     ? state.snapshot.difficultyModel[fallbackId]

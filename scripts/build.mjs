@@ -15,6 +15,11 @@ const entryFile = resolve(rootDir, 'src', 'main.ts');
 const workerEntryFile = resolve(rootDir, 'src', 'app', 'planner-worker.ts');
 const cssFile = resolve(rootDir, 'src', 'styles', 'app.css');
 const templateFile = resolve(rootDir, 'src', 'template', 'index.html');
+const PRIVATE_SYMBOL_DESCRIPTION_RE = /Symbol\("[^"]* props"\)/g;
+
+function stripPrivateSymbolDescriptions(script) {
+  return script.replace(PRIVATE_SYMBOL_DESCRIPTION_RE, 'Symbol("")');
+}
 
 async function main() {
   const [bundle, workerBundle, css, template] = await Promise.all([
@@ -42,20 +47,18 @@ async function main() {
     readFile(cssFile, 'utf8'),
     readFile(templateFile, 'utf8'),
   ]);
-  const script = (bundle.outputFiles[0]?.text ?? '').replaceAll(
-    '"legacy props"',
-    '""',
-  );
+  const script = stripPrivateSymbolDescriptions(bundle.outputFiles[0]?.text ?? '');
   const workerScript = workerBundle.outputFiles[0]?.text ?? '';
   const runtimeEnv =
     process.env.DIFFICULTY_ENGINE_BUNDLE_ENV === '1'
       ? publicRuntimeEnvAssignment(await readRuntimeEnv(rootDir))
       : RUNTIME_ENV_ASSIGNMENT;
   const html = template
-    .replace('<!-- APP_STYLE -->', `<style>\n${css}\n</style>`)
+    .replace('<!-- APP_STYLE -->', () => `<style>\n${css}\n</style>`)
     .replace(
       '<!-- APP_SCRIPT -->',
-      `<script>\n${runtimeEnv}\nwindow.__DIFFICULTY_ENGINE_WORKER_SCRIPT__ = ${JSON.stringify(workerScript)};\n${script}\n</script>`,
+      () =>
+        `<script>\n${runtimeEnv}\nwindow.__DIFFICULTY_ENGINE_WORKER_SCRIPT__ = ${JSON.stringify(workerScript)};\n${script}\n</script>`,
     );
 
   await mkdir(resolve(rootDir, 'dist'), { recursive: true });

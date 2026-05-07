@@ -6,6 +6,7 @@ import {
   EXAMPLE_BOOK,
   createDefaultAiRecommendationSettings,
   createDefaultSourceSettings,
+  createDefaultUiPreferences,
 } from '../../src/core/defaults';
 import {
   difficultyDistributionStats,
@@ -70,16 +71,27 @@ function project(patch: Partial<ConstraintSet> = {}): PlannerProjectV1 {
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     enrichmentCache: {},
     sourceSettings: createDefaultSourceSettings(),
-    uiPreferences: {
-      ganttView: 'plan',
-      ganttZoom: 1,
-      planColorMode: 'category_mono',
-    },
+    uiPreferences: createDefaultUiPreferences(),
   };
 }
 
 function snapshot(patch: Partial<ConstraintSet> = {}): EngineSnapshot {
   return computeSnapshot(project(patch));
+}
+
+function unlockedSnapshot(patch: Partial<ConstraintSet> = {}): EngineSnapshot {
+  const input = project(patch);
+  Object.values(input.library.books).forEach((entry) => {
+    entry.lockDiff = false;
+  });
+  return computeSnapshot(input);
+}
+
+function displaySignature(result: EngineSnapshot): string {
+  return Object.entries(result.difficultyModel)
+    .map(([id, entry]) => `${id}:${entry.displayDifficulty}`)
+    .sort()
+    .join('|');
 }
 
 function scheduleSignature(result: EngineSnapshot): string {
@@ -187,50 +199,58 @@ describe('difficulty mapping controls', () => {
   it('wires display mapping controls into displayDifficulty', () => {
     const base = snapshot({
       diffMapMode: 'scaled',
+      diffMapMin: 3,
+      diffMapMax: 8,
       compressMode: 'off',
       diffRamp: 1,
     });
-    const baseMid = base.difficultyModel.mid.displayDifficulty;
+    const baseDisplay = displaySignature(base);
 
     expect(
-      snapshot({ diffMapMode: 'raw' }).difficultyModel.mid.displayDifficulty,
-    ).not.toBe(baseMid);
+      displaySignature(snapshot({ diffMapMode: 'raw' })),
+    ).not.toBe(baseDisplay);
     expect(
-      snapshot({ diffMapMode: 'scaled', diffMapMin: 5, diffMapMax: 9 })
-        .difficultyModel.mid.displayDifficulty,
-    ).not.toBe(baseMid);
+      displaySignature(snapshot({ diffMapMode: 'scaled', diffMapMin: 5, diffMapMax: 9 })),
+    ).not.toBe(baseDisplay);
     expect(
-      snapshot({ diffMapMode: 'scaled', compressMode: 'off', diffRamp: 2 })
-        .difficultyModel.mid.displayDifficulty,
-    ).not.toBe(baseMid);
+      displaySignature(snapshot({ diffMapMode: 'scaled', compressMode: 'off', diffRamp: 2 })),
+    ).not.toBe(baseDisplay);
     expect(
-      snapshot({
-        diffMapMode: 'scaled',
-        compressMode: 'manual',
-        compressExp: 2,
-      }).difficultyModel.mid.displayDifficulty,
-    ).not.toBe(baseMid);
+      displaySignature(
+        snapshot({
+          diffMapMode: 'scaled',
+          compressMode: 'manual',
+          compressExp: 2,
+        }),
+      ),
+    ).not.toBe(baseDisplay);
     expect(
-      snapshot({
-        diffMapMode: 'scaled',
-        compressMode: 'manual',
-        compressCurve: 'tanh',
-      }).difficultyModel.mid.displayDifficulty,
-    ).not.toBe(baseMid);
+      displaySignature(
+        snapshot({
+          diffMapMode: 'scaled',
+          compressMode: 'manual',
+          compressCurve: 'tanh',
+        }),
+      ),
+    ).not.toBe(baseDisplay);
     expect(
-      snapshot({
-        diffMapMode: 'scaled',
-        compressMode: 'manual',
-        compressCurve: 'inverse_tanh',
-      }).difficultyModel.mid.displayDifficulty,
-    ).not.toBe(baseMid);
+      displaySignature(
+        snapshot({
+          diffMapMode: 'scaled',
+          compressMode: 'manual',
+          compressCurve: 'inverse_tanh',
+        }),
+      ),
+    ).not.toBe(baseDisplay);
     expect(
-      snapshot({
-        diffMapMode: 'scaled',
-        compressMode: 'manual',
-        diffCurveCeilingPoint: 0.65,
-      }).difficultyModel.mid.displayDifficulty,
-    ).not.toBe(baseMid);
+      displaySignature(
+        snapshot({
+          diffMapMode: 'scaled',
+          compressMode: 'manual',
+          diffCurveCeilingPoint: 0.65,
+        }),
+      ),
+    ).not.toBe(baseDisplay);
   });
 
   it('keeps display compression controls out of schedule hours and day allocation', () => {
@@ -285,7 +305,7 @@ describe('difficulty mapping controls', () => {
   });
 
   it('wires graph blending controls into scheduleDifficulty', () => {
-    const base = snapshot({
+    const base = unlockedSnapshot({
       blendMode: 'linear',
       propMix: 1,
       damp: 0,
@@ -295,18 +315,18 @@ describe('difficulty mapping controls', () => {
     }).difficultyModel.hard.scheduleDifficulty;
 
     expect(
-      snapshot({ propMix: 0 }).difficultyModel.hard.scheduleDifficulty,
+      unlockedSnapshot({ propMix: 0 }).difficultyModel.hard.scheduleDifficulty,
     ).not.toBe(base);
     expect(
-      snapshot({ damp: 1 }).difficultyModel.hard.scheduleDifficulty,
+      unlockedSnapshot({ damp: 1 }).difficultyModel.hard.scheduleDifficulty,
     ).not.toBe(base);
     expect(
-      snapshot({ alphaCap: 0.05, absFloor: 0.1, propLiftCap: 0.2 })
+      unlockedSnapshot({ alphaCap: 0.05, absFloor: 0.1, propLiftCap: 0.2 })
         .difficultyModel.hard.scheduleDifficulty,
     ).not.toBe(base);
     expect(
-      snapshot({ blendMode: 'geometric', propMix: 1, damp: 0 }).difficultyModel
-        .hard.scheduleDifficulty,
+      unlockedSnapshot({ blendMode: 'geometric', propMix: 1, damp: 0 })
+        .difficultyModel.hard.scheduleDifficulty,
     ).not.toBe(base);
   });
 });

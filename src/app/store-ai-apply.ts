@@ -29,7 +29,7 @@ function bookFromProposal(
     id,
     title: proposal.title,
     short: shortLabel(proposal.title),
-    authors: proposal.authors.length ? proposal.authors : EXAMPLE_BOOK.authors,
+    authors: proposal.authors,
     displayGroup: proposal.displayGroup,
     manualSeedDifficulty: proposal.manualSeedDifficulty,
     pages: proposal.pages ?? 250,

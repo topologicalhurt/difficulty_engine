@@ -1,6 +1,7 @@
 import { isLikelyChapterTitle } from '../core/chapter-titles';
 import {
   BARE_NUMBER_MARKER_PATTERN,
+  CONTROL_HEAVY_LINE_PATTERN,
   DECIMAL_HEADER_PATTERN,
   MARKER_ONLY_CHAPTER_PATTERN,
   NUMBERED_HEADER_PATTERN,
@@ -12,8 +13,25 @@ import {
 export const DOCUMENT_TEXT_SCAN_CHARS = 260_000;
 
 const HEADER_MAX_LENGTH = 110;
+const MAX_CONTROL_CHAR_RATIO = 0.02;
 const RICHER_MARKER_PATTERN =
   /^(chapter|ch\.?|part|book|unit|section|appendix|lecture|lesson|module)\s+(\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b.+/i;
+
+function controlCharRatio(line: string): number {
+  if (!line.length) return 0;
+  const controlCount = Array.from(line).filter((char) =>
+    CONTROL_HEAVY_LINE_PATTERN.test(char),
+  ).length;
+  return controlCount / line.length;
+}
+
+export function isTocNoiseLine(line: string): boolean {
+  return (
+    PDF_OBJECT_NOISE_PATTERN.test(line) ||
+    CONTROL_HEAVY_LINE_PATTERN.test(line) ||
+    controlCharRatio(line) > MAX_CONTROL_CHAR_RATIO
+  );
+}
 
 export function normalizeDocumentLines(text: string): string[] {
   return text
@@ -21,7 +39,7 @@ export function normalizeDocumentLines(text: string): string[] {
     .split(/\n+/)
     .map((line) => line.replace(/\s+/g, ' ').trim())
     .filter((line) => line.length >= 2 && line.length <= HEADER_MAX_LENGTH)
-    .filter((line) => !PDF_OBJECT_NOISE_PATTERN.test(line));
+    .filter((line) => !isTocNoiseLine(line));
 }
 
 function markerKey(title: string): string | null {

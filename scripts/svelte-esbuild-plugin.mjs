@@ -13,6 +13,7 @@ export function sveltePlugin() {
           generate: 'client',
           css: 'injected',
           dev: false,
+          runes: true,
         });
         return {
           contents: compiled.js.code,
