@@ -2,7 +2,18 @@ import type { ProjectViewModel } from '../app/selectors/project';
 import type { PlannerStore } from '../core/types';
 import { runConfirmableAction } from './confirmable-action';
 import { button, card, el } from './dom';
-import { fileInputControl, inputField, textAreaControl } from './form-controls';
+import {
+  checkboxControl,
+  fileInputControl,
+  inputField,
+  textAreaControl,
+} from './form-controls';
+import {
+  getPendingBooleanOption,
+  setPendingBooleanOption,
+} from './pending-action-options';
+
+const CLEAR_PROJECT_DELETE_CONTENT_OPTION = 'metadata.clearProject.deleteContent';
 
 export function renderImportExportCard(
   viewModel: ProjectViewModel,
@@ -113,6 +124,47 @@ export function renderImportExportCard(
           });
         }
       },
+    }),
+    el('hr', { className: 'section-divider' }),
+    el('h3', { text: 'Project metadata maintenance' }),
+    el('p', {
+      className: 'muted-copy',
+      text:
+        'Clears enrichment, TOC, provider IDs, qBittorrent candidates, greylist entries, and document refs for every book. Reading progress and manual planning choices are preserved.',
+    }),
+    el(
+      'label',
+      { className: 'inline-control muted-copy' },
+      checkboxControl({
+        checked: getPendingBooleanOption(
+          store,
+          CLEAR_PROJECT_DELETE_CONTENT_OPTION,
+        ),
+        onChange: (checked) => {
+          setPendingBooleanOption(
+            store,
+            CLEAR_PROJECT_DELETE_CONTENT_OPTION,
+            checked,
+          );
+        },
+      }),
+      el('span', { text: 'Also delete downloaded PDFs/content' }),
+    ),
+    button('Delete all metadata', {
+      className: 'ghost-button danger-button',
+      onClick: () =>
+        runConfirmableAction(store, {
+          id: 'metadata.clearProject',
+          message:
+            'Click Delete all metadata again to confirm clearing enrichment/document metadata for every book.',
+          action: () =>
+            void store.commands.clearProjectMetadata({
+              deleteContent: getPendingBooleanOption(
+                store,
+                CLEAR_PROJECT_DELETE_CONTENT_OPTION,
+              ),
+            }),
+        }),
     }),
   );
 }

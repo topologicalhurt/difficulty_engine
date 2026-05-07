@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { BookDocumentRef, SourceContentKind } from '../../src/core/types';
 import {
+  mergeDocumentCandidateQueue,
+  observeDocumentGreylist,
+} from '../../src/core/document-acquisition-state';
+import {
   chooseSelectedDocumentId,
   choosePreferredDocumentCandidate,
   defaultDocumentAcquisitionPolicy,
@@ -142,6 +146,187 @@ describe('document acquisition policy', () => {
     expect(selected?.id).toBe('epub');
   });
 
+  it('uses live availability to prefer viable exact matches over stalled ones', () => {
+    const policy = { ...defaultDocumentAcquisitionPolicy(), enabled: true };
+    const selected = choosePreferredDocumentCandidate(
+      [
+        {
+          id: 'stalled',
+          provider: 'qbittorrent',
+          title: 'Fixture Book Author',
+          sourceUrl: 'magnet:?xt=urn:btih:stalled',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 0.96,
+          seeders: 0,
+          availability: {
+            seeders: 0,
+            peers: 0,
+            progress: 0.05,
+            state: 'stalledDL',
+            availability: 0,
+            etaSeconds: null,
+            downloadSpeedBytesPerSecond: 0,
+          },
+        },
+        {
+          id: 'viable',
+          provider: 'qbittorrent',
+          title: 'Fixture Book Author',
+          sourceUrl: 'magnet:?xt=urn:btih:viable',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 0.94,
+          seeders: 18,
+          availability: {
+            seeders: 18,
+            peers: 1,
+            progress: 0.1,
+            state: 'downloading',
+            availability: 1,
+            etaSeconds: 600,
+            downloadSpeedBytesPerSecond: 900_000,
+          },
+        },
+      ],
+      policy,
+    );
+
+    expect(selected?.id).toBe('viable');
+  });
+
+  it('demotes greylisted candidates without blocking manual retry', () => {
+    const policy = { ...defaultDocumentAcquisitionPolicy(), enabled: true };
+    const state = mergeDocumentCandidateQueue(
+      observeDocumentGreylist(
+        undefined,
+        [
+          documentRef('stalled-doc', {
+            provider: 'qbittorrent',
+            sourceUrl: 'magnet:?xt=urn:btih:stalled',
+            torrentHash: 'stalled',
+            status: 'stalled',
+            availability: {
+              seeders: 0,
+              peers: 0,
+              progress: 0.1,
+              state: 'stalledDL',
+              availability: 0,
+              downloadSpeedBytesPerSecond: 0,
+            },
+          }),
+        ],
+        '2026-01-05T00:00:00.000Z',
+      ),
+      [
+        {
+          id: 'stalled',
+          provider: 'qbittorrent',
+          title: 'Fixture Book Author',
+          sourceUrl: 'magnet:?xt=urn:btih:stalled',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.95,
+          matchScore: 0.97,
+          seeders: 0,
+          availability: {
+            seeders: 0,
+            peers: 0,
+            progress: 0.1,
+            state: 'stalledDL',
+            availability: 0,
+            downloadSpeedBytesPerSecond: 0,
+          },
+        },
+        {
+          id: 'viable',
+          provider: 'qbittorrent',
+          title: 'Fixture Book Author',
+          sourceUrl: 'magnet:?xt=urn:btih:viable',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 0.94,
+          seeders: 8,
+          availability: {
+            seeders: 8,
+            peers: 1,
+            progress: 0,
+            state: 'search-result',
+            availability: 1,
+          },
+        },
+      ],
+      '2026-01-05T00:01:00.000Z',
+    );
+    const selected = choosePreferredDocumentCandidate(
+      state.candidateQueue,
+      policy,
+      state,
+    );
+
+    expect(state.candidateQueue.map((candidate) => candidate.id)).toEqual([
+      'viable',
+      'stalled',
+    ]);
+    expect(state.candidateQueue[1]?.retryable).toBe(true);
+    expect(selected?.id).toBe('viable');
+  });
+
+  it('decays greylist penalties after clean observations', () => {
+    const first = observeDocumentGreylist(
+      undefined,
+      [
+        documentRef('stalled-doc', {
+          provider: 'qbittorrent',
+          sourceUrl: 'magnet:?xt=urn:btih:decay',
+          torrentHash: 'decay',
+          status: 'stalled',
+          availability: {
+            seeders: 0,
+            peers: 0,
+            progress: 0.2,
+            state: 'stalledDL',
+            availability: 0,
+          },
+        }),
+      ],
+      '2026-01-05T00:00:00.000Z',
+    );
+    const second = mergeDocumentCandidateQueue(
+      first,
+      [
+        {
+          id: 'clean',
+          provider: 'qbittorrent',
+          title: 'Fixture Book Author',
+          sourceUrl: 'magnet:?xt=urn:btih:decay',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 0.95,
+          seeders: 10,
+          availability: {
+            seeders: 10,
+            peers: 1,
+            progress: 0.2,
+            state: 'downloading',
+            availability: 1,
+            downloadSpeedBytesPerSecond: 1000,
+          },
+        },
+      ],
+      '2026-01-05T00:01:00.000Z',
+    );
+
+    expect(second.greylist['hash:decay']?.penalty).toBeLessThan(
+      first.greylist['hash:decay']?.penalty ?? 0,
+    );
+  });
+
+
   it('selects the best completed document instead of alphabetical order', () => {
     const selected = chooseSelectedDocumentId(
       [
@@ -246,5 +431,40 @@ describe('document acquisition policy', () => {
     expect(merged[0]?.id).toBe('new-complete');
     expect(merged[0]?.status).toBe('complete');
     expect(merged[0]?.storagePath).toBe('/repo/output/data/documents/Book.pdf');
+  });
+
+  it('canonicalizes old qBittorrent downloads to one best ref per book', () => {
+    const merged = mergeDocumentRefs(
+      [
+        documentRef('old-stalled', {
+          provider: 'qbittorrent',
+          torrentHash: 'old',
+          status: 'stalled',
+          matchScore: 0.9,
+          availability: {
+            seeders: 0,
+            peers: 0,
+            progress: 0.2,
+            state: 'stalledDL',
+          },
+        }),
+        documentRef('new-downloading', {
+          provider: 'qbittorrent',
+          torrentHash: 'new',
+          status: 'downloading',
+          matchScore: 0.95,
+          availability: {
+            seeders: 12,
+            peers: 1,
+            progress: 0.6,
+            state: 'downloading',
+          },
+        }),
+      ],
+      [],
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe('new-downloading');
   });
 });

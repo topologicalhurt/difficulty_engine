@@ -9,8 +9,9 @@ import {
   documentRefId,
   documentStatus,
   fileMatchScore,
-  preferredTorrentFile,
+  rankedTorrentFiles,
   selectedTorrentFileIsTrusted,
+  torrentAvailability,
 } from './qbittorrent-selection';
 import type { TorrentFile, TorrentInfo } from './qbittorrent-types';
 import {
@@ -31,9 +32,12 @@ async function selectedTorrentFile(
 ): Promise<TorrentFile | null> {
   if (!info.hash) return null;
   const files = await client.torrentFiles(info.hash).catch(() => []);
-  const selected = preferredTorrentFile(files, request);
+  const selected =
+    rankedTorrentFiles(files, request).find((file) =>
+      selectedTorrentFileIsTrusted(file, candidate, request),
+    ) ?? null;
   const selectedIndex = selected?.index;
-  if (selected && !selectedTorrentFileIsTrusted(selected, candidate, request)) {
+  if (!selected) {
     const allIndexes = files
       .map((file) => file.index)
       .filter((index): index is number => index != null);
@@ -117,6 +121,7 @@ export async function acquireTorrentDocument(
   const now = isoTimestamp();
   const fileName = basename(storagePath);
   const progress = selected?.progress ?? info?.progress ?? 0;
+  const availability = torrentAvailability(info);
   const contentKind = sourceContentKindFromPath(
     storagePath,
     candidate.contentKind,
@@ -158,10 +163,11 @@ export async function acquireTorrentDocument(
         ? fileMatchScore(selected, request)
         : (candidate.matchScore ?? candidate.confidence),
       availability: {
-        seeders: candidate.seeders ?? null,
-        peers: candidate.peers ?? null,
+        ...availability,
+        seeders: candidate.seeders ?? availability.seeders,
+        peers: candidate.peers ?? availability.peers,
         progress,
-        state: info?.state ?? (info ? 'tracked' : 'unknown'),
+        state: availability.state,
         reason:
           refStatus === 'failed'
             ? 'Completed torrent file is missing from the configured data folder.'

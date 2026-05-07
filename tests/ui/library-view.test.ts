@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { renderLibraryView } from '../../src/ui/library-view';
-import { makeStore } from '../app/store-test-utils';
+import { makeBook, makeProject, makeStore } from '../app/store-test-utils';
 
 function pointerEvent(
   type: string,
@@ -73,5 +73,77 @@ describe('library view', () => {
       600,
     );
     expect(handle.releasePointerCapture).toHaveBeenCalledWith(1);
+  });
+
+  it('renders download management actions and candidate browser controls', () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          'book-1': makeBook({
+            documents: [
+              {
+                id: 'doc-1',
+                provider: 'qbittorrent',
+                fileName: 'Test Book.pdf',
+                storagePath: '/repo/output/data/documents/Test Book.pdf',
+                contentKind: 'pdf',
+                contentType: 'application/pdf',
+                accessBasis: 'user_owned',
+                status: 'stalled',
+                matchScore: 0.9,
+                availability: {
+                  seeders: 0,
+                  peers: 0,
+                  progress: 0.4,
+                  state: 'stalledDL',
+                  etaSeconds: null,
+                  downloadSpeedBytesPerSecond: 0,
+                },
+                provenance: {
+                  provider: 'qbittorrent',
+                  fetchedAt: '2026-01-05T00:00:00.000Z',
+                  confidence: 0.8,
+                },
+                createdAt: '2026-01-05T00:00:00.000Z',
+                updatedAt: '2026-01-05T00:00:00.000Z',
+              },
+            ],
+            documentAcquisition: {
+              candidateQueue: [
+                {
+                  id: 'candidate-1',
+                  provider: 'qbittorrent',
+                  title: 'Test Book seeded result',
+                  sourceUrl: 'magnet:?xt=urn:btih:candidate1',
+                  contentKind: 'pdf',
+                  accessBasis: 'user_owned',
+                  confidence: 0.9,
+                  matchScore: 0.95,
+                  seeders: 12,
+                  qualityScore: 0.91,
+                  rank: 1,
+                },
+              ],
+              greylist: {},
+            },
+          }),
+        },
+      }),
+    });
+    store.commands.selectBook('book-1');
+    const view = renderLibraryView(store.selectors.getState(), store);
+    const text = view.textContent ?? '';
+
+    expect(text).toContain('Reveal location');
+    expect(text).toContain('Remove');
+    expect(text).toContain('Also delete downloaded files/content');
+    expect(text).toContain('Find ranked results');
+    expect(text).toContain('Test Book seeded result');
+    expect(text).toContain('Delete metadata');
+    expect(
+      view.querySelector(
+        'input[placeholder="Paste magnet link or HTTPS .torrent URL"]',
+      ),
+    ).toBeTruthy();
   });
 });

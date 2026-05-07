@@ -161,6 +161,13 @@ export const DEFAULT_UI_STATE: UiState = {
     text: '',
     error: null,
   },
+  documentCandidates: {
+    bookId: null,
+    status: 'idle',
+    candidates: [],
+    error: null,
+    manualSource: '',
+  },
   aiPrompt: '',
   aiConnection: createDefaultAiConnectionSettings(),
   aiStatus: {
@@ -198,6 +205,7 @@ export const EXAMPLE_BOOK: BookRecord = {
   sourcePath: null,
   documents: [],
   selectedDocumentId: null,
+  documentAcquisition: { candidateQueue: [], greylist: {} },
   openLibraryKey: null,
   openLibraryEditionKey: null,
   openLibraryWorkKey: null,

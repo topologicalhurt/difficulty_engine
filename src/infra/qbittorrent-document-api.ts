@@ -68,3 +68,17 @@ export async function requestBridgeOcrToc(
   );
   return response.ok ? ((await response.json()) as BridgeOcrStatus) : undefined;
 }
+
+export async function postBridgeDocumentAction(
+  fetchImpl: typeof fetch,
+  baseUrl: string,
+  endpoint: string,
+  storagePath: string,
+): Promise<void> {
+  const response = await fetchImpl(`${baseUrl.replace(/\/+$/, '')}${endpoint}`, {
+    method: 'POST',
+    body: JSON.stringify({ path: storagePath }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await response.text());
+}

@@ -24,6 +24,7 @@ export function selectActiveTabRenderKeys(
         state.ui.bookSearchOffset,
         state.ui.bookSearchError,
         state.ui.documentReader,
+        state.ui.documentCandidates,
         state.ui.libraryListWidthPx,
       ];
     case 'constraints':

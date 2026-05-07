@@ -106,6 +106,8 @@ export function buildUi(
     qbittorrentStatus:
       ui.qbittorrentStatus ?? DEFAULT_UI_STATE.qbittorrentStatus,
     documentReader: ui.documentReader ?? DEFAULT_UI_STATE.documentReader,
+    documentCandidates:
+      ui.documentCandidates ?? DEFAULT_UI_STATE.documentCandidates,
     aiPrompt: ui.aiPrompt ?? DEFAULT_UI_STATE.aiPrompt,
     aiConnection: ui.aiConnection ?? DEFAULT_UI_STATE.aiConnection,
     aiStatus: ui.aiStatus ?? DEFAULT_UI_STATE.aiStatus,

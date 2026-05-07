@@ -4,11 +4,17 @@ import type {
   DocumentAcquisitionRequest,
   DocumentCandidate,
 } from './document-acquisition';
-import { isLawfulDocumentCandidate } from './document-acquisition';
+import {
+  defaultDocumentAcquisitionPolicy,
+  isLawfulDocumentCandidate,
+  rankDocumentCandidates,
+} from './document-acquisition';
 import type {
   QbittorrentConnectionSettings,
   QbittorrentIntegrationService,
   QbittorrentPluginInfo,
+  BookDocumentCandidateOption,
+  EnrichmentRequest,
 } from '../core/types';
 import {
   qbittorrentDocumentSourceEnabled,
@@ -27,12 +33,87 @@ import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import {
   bookMatchScore,
   MIN_TORRENT_MATCH_SCORE,
+  torrentAvailability,
 } from './qbittorrent-selection';
+import { documentCandidateQualityScore } from './document-candidate-quality';
+import { contentKindPriorityForPreference } from './document-content-priority';
 import type { TorrentInfo } from './qbittorrent-types';
 
 type QBittorrentProvider = DocumentAcquisitionProvider & {
   listPlugins(): Promise<QbittorrentPluginInfo[]>;
+  deleteTorrent(hash: string, deleteFiles: boolean): Promise<void>;
 };
+
+function candidateOption(
+  candidate: DocumentCandidate,
+): BookDocumentCandidateOption {
+  return {
+    id: candidate.id,
+    provider: candidate.provider,
+    title: candidate.title,
+    sourceUrl: candidate.sourceUrl,
+    contentKind: candidate.contentKind,
+    accessBasis: candidate.accessBasis,
+    confidence: candidate.confidence,
+    sizeBytes: candidate.sizeBytes,
+    seeders: candidate.seeders,
+    peers: candidate.peers,
+    matchScore: candidate.matchScore,
+    qualityScore: candidate.qualityScore,
+    qualityReason: candidate.qualityReason,
+    greylistKey: candidate.greylistKey,
+    greylistPenalty: candidate.greylistPenalty,
+    greylistReason: candidate.greylistReason,
+    rank: candidate.rank,
+    retryable: candidate.retryable,
+    queuedAt: candidate.queuedAt,
+    lastSeenAt: candidate.lastSeenAt,
+    availability: candidate.availability,
+  };
+}
+
+function optionCandidate(option: BookDocumentCandidateOption): DocumentCandidate {
+  return {
+    id: option.id,
+    provider: option.provider,
+    title: option.title,
+    sourceUrl: option.sourceUrl,
+    contentKind: option.contentKind,
+    accessBasis: option.accessBasis,
+    confidence: option.confidence,
+    sizeBytes: option.sizeBytes,
+    seeders: option.seeders,
+    peers: option.peers,
+    matchScore: option.matchScore,
+    qualityScore: option.qualityScore,
+    qualityReason: option.qualityReason,
+    greylistKey: option.greylistKey,
+    greylistPenalty: option.greylistPenalty,
+    greylistReason: option.greylistReason,
+    rank: option.rank,
+    retryable: option.retryable,
+    queuedAt: option.queuedAt,
+    lastSeenAt: option.lastSeenAt,
+    availability: option.availability,
+  };
+}
+
+function acquisitionRequest(
+  request: EnrichmentRequest,
+  settings: QbittorrentConnectionSettings,
+): DocumentAcquisitionRequest {
+  return {
+    book: request.book,
+    signal: request.signal,
+    policy: {
+      ...defaultDocumentAcquisitionPolicy(),
+      enabled: true,
+      dataRoot: settings.savePath,
+      contentPreference: request.sourceSettings.contentPreference,
+      sourceSettings: request.sourceSettings,
+    },
+  };
+}
 
 function isSafeUserProvidedTorrentSource(value: string): boolean {
   if (/^magnet:/i.test(value)) return true;
@@ -107,25 +188,35 @@ async function localTorrentCandidates(
         torrent.magnet_uri ||
         (torrent.hash ? `magnet:?xt=urn:btih:${torrent.hash}` : '');
       if (!sourceUrl) return null;
-      const seeders = Math.max(0, torrent.num_seeds ?? 0);
-      const peers = Math.max(0, torrent.num_leechs ?? 0);
-      return {
+      const availability = torrentAvailability(torrent);
+      const candidate = {
         id: `qbittorrent-local:${request.book.id}:${torrent.hash ?? title}`,
         provider: 'qbittorrent',
         title,
         sourceUrl,
         contentKind: contentKindFromUrl(torrent.content_path || title),
-        accessBasis: 'user_owned',
+        accessBasis: 'user_owned' as const,
         confidence: Math.min(0.98, 0.55 + matchScore * 0.35),
         matchScore,
-        seeders,
-        peers,
-        availability: {
-          seeders,
-          peers,
-          progress: torrent.progress ?? 0,
-          state: torrent.state ?? 'tracked',
-        },
+        seeders: availability.seeders,
+        peers: availability.peers,
+        sizeBytes: availability.sizeBytes ?? undefined,
+        qualityReason:
+          availability.etaSeconds != null
+            ? `${availability.seeders ?? 0} seeder(s), ETA ${Math.round(
+                availability.etaSeconds / 60,
+              )}m.`
+            : `${availability.seeders ?? 0} seeder(s), ${Math.round(
+                availability.progress * 100,
+              )}% tracked.`,
+        availability,
+      };
+      return {
+        ...candidate,
+        qualityScore: documentCandidateQualityScore(
+          candidate,
+          contentKindPriorityForPreference(request.policy.contentPreference),
+        ),
       };
     })
     .filter((candidate): candidate is DocumentCandidate => Boolean(candidate));
@@ -139,6 +230,10 @@ export function createQBittorrentProvider(
     id: 'qbittorrent',
     enabled: true,
     listPlugins: () => client.listPlugins(),
+    async deleteTorrent(hash, deleteFiles) {
+      await client.login();
+      await client.deleteTorrent(hash, deleteFiles);
+    },
     async findCandidates(
       request: DocumentAcquisitionRequest,
     ): Promise<DocumentCandidate[]> {
@@ -153,8 +248,23 @@ export function createQBittorrentProvider(
       if (qbittorrentSearchPluginsEnabled(request.policy.sourceSettings)) {
         candidates.push(...(await pluginSearchCandidates(client, request)));
       }
-      return candidates.filter((candidate) =>
-        isLawfulDocumentCandidate(candidate, request.policy),
+      const priorityFor = contentKindPriorityForPreference(
+        request.policy.contentPreference,
+      );
+      const scoredCandidates = candidates
+        .filter((candidate) =>
+          isLawfulDocumentCandidate(candidate, request.policy),
+        )
+        .map((candidate) => ({
+          ...candidate,
+          qualityScore:
+            candidate.qualityScore ??
+            documentCandidateQualityScore(candidate, priorityFor),
+        }));
+      return rankDocumentCandidates(
+        scoredCandidates,
+        request.policy,
+        request.book.documentAcquisition,
       );
     },
     async acquire(
@@ -183,6 +293,44 @@ export function createQBittorrentIntegrationService(
       return createQBittorrentProvider(
         settingsToOptions(settings, fetchImpl),
       ).listPlugins();
+    },
+    async findDocumentCandidates(
+      settings: QbittorrentConnectionSettings,
+      request: EnrichmentRequest,
+    ): Promise<BookDocumentCandidateOption[]> {
+      const provider = createQBittorrentProvider(
+        settingsToOptions(settings, fetchImpl),
+      );
+      return (
+        await provider.findCandidates(acquisitionRequest(request, settings))
+      ).map(candidateOption);
+    },
+    async acquireDocumentCandidate(
+      settings: QbittorrentConnectionSettings,
+      request: EnrichmentRequest,
+      candidateId: string,
+      candidates: BookDocumentCandidateOption[],
+    ) {
+      const option = candidates.find((candidate) => candidate.id === candidateId);
+      if (!option) return null;
+      const provider = createQBittorrentProvider(
+        settingsToOptions(settings, fetchImpl),
+      );
+      const acquired = await provider.acquire(
+        optionCandidate(option),
+        acquisitionRequest(request, settings),
+      );
+      return acquired?.documentRef ?? null;
+    },
+    async deleteTorrent(
+      settings: QbittorrentConnectionSettings,
+      hash: string,
+      deleteFiles: boolean,
+    ): Promise<void> {
+      const provider = createQBittorrentProvider(
+        settingsToOptions(settings, fetchImpl),
+      );
+      await provider.deleteTorrent(hash, deleteFiles);
     },
   };
 }

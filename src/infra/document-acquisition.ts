@@ -1,5 +1,6 @@
 import type {
   BookDocumentAvailability,
+  BookDocumentAcquisitionState,
   BookDocumentRef,
   BookRecord,
 } from '../core/types';
@@ -9,7 +10,14 @@ import {
 } from '../core/default-source-settings';
 import type { SourceContentKind, SourceSettings } from '../core/types';
 import { contentKindPriorityForPreference } from './document-content-priority';
-import { compareDocumentCandidateQuality } from './document-candidate-quality';
+import {
+  compareDocumentCandidateQuality,
+  documentCandidateQualityScore,
+} from './document-candidate-quality';
+import {
+  documentGreylistKey,
+  mergeDocumentCandidateQueue,
+} from '../core/document-acquisition-state';
 
 export type DocumentAccessBasis =
   | 'public_domain'
@@ -39,6 +47,15 @@ export interface DocumentCandidate {
   seeders?: number | null;
   peers?: number | null;
   matchScore?: number;
+  qualityScore?: number;
+  qualityReason?: string;
+  greylistKey?: string;
+  greylistPenalty?: number;
+  greylistReason?: string;
+  rank?: number;
+  retryable?: boolean;
+  queuedAt?: string;
+  lastSeenAt?: string;
   availability?: BookDocumentAvailability;
 }
 
@@ -111,22 +128,51 @@ export function isLawfulDocumentCandidate(
 export function choosePreferredDocumentCandidate(
   candidates: DocumentCandidate[],
   policy: DocumentAcquisitionPolicy,
+  acquisitionState?: BookDocumentAcquisitionState,
 ): DocumentCandidate | null {
-  return rankDocumentCandidates(candidates, policy)[0] ?? null;
+  return rankDocumentCandidates(candidates, policy, acquisitionState)[0] ?? null;
 }
 
 export function rankDocumentCandidates(
   candidates: DocumentCandidate[],
   policy: DocumentAcquisitionPolicy,
+  acquisitionState?: BookDocumentAcquisitionState,
 ): DocumentCandidate[] {
   const priorityFor = contentKindPriorityForPreference(
     policy.contentPreference,
   );
+  const queueState = acquisitionState
+    ? mergeDocumentCandidateQueue(acquisitionState, candidates)
+    : undefined;
+  const penaltyByKey = new Map(
+    queueState?.candidateQueue.map((candidate) => [
+      documentGreylistKey(candidate),
+      candidate,
+    ]) ?? [],
+  );
   return [...candidates]
     .filter((candidate) => isLawfulDocumentCandidate(candidate, policy))
+    .map((candidate) => {
+      const queued = penaltyByKey.get(documentGreylistKey(candidate));
+      return queued
+        ? {
+            ...candidate,
+            greylistKey: queued.greylistKey,
+            greylistPenalty: queued.greylistPenalty,
+            greylistReason: queued.greylistReason,
+            qualityScore: Math.max(
+              0,
+              documentCandidateQualityScore(
+                { ...candidate, greylistPenalty: 0 },
+                priorityFor,
+              ) - (queued.greylistPenalty ?? 0),
+            ),
+          }
+        : candidate;
+    })
     .sort((left, right) =>
       compareDocumentCandidateQuality(left, right, priorityFor),
-  );
+    );
 }
 
 export function mergeDocumentRefs(
@@ -139,11 +185,25 @@ export function mergeDocumentRefs(
     const previous = byKey.get(key);
     byKey.set(key, previous ? mergeDocumentRef(previous, document) : document);
   });
-  return [...byKey.values()].sort(
+  return canonicalizeBookDocumentRefs([...byKey.values()]).sort(
     (left, right) =>
       left.fileName.localeCompare(right.fileName) ||
       left.id.localeCompare(right.id),
   );
+}
+
+export function canonicalizeBookDocumentRefs(
+  documents: BookDocumentRef[] = [],
+): BookDocumentRef[] {
+  const qbitDocuments = documents.filter(
+    (document) => document.provider === 'qbittorrent',
+  );
+  const otherDocuments = documents.filter(
+    (document) => document.provider !== 'qbittorrent',
+  );
+  if (qbitDocuments.length <= 1) return [...documents];
+  const [preferred] = [...qbitDocuments].sort(compareDocumentRefPreference);
+  return preferred ? [...otherDocuments, preferred] : otherDocuments;
 }
 
 function normalizedDocumentPath(value: string | undefined): string {

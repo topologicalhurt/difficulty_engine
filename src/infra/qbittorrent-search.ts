@@ -16,7 +16,10 @@ import {
   MIN_TORRENT_MATCH_SCORE,
   normalizedBookIsbn,
 } from './qbittorrent-selection';
-import { compareDocumentCandidateQuality } from './document-candidate-quality';
+import {
+  compareDocumentCandidateQuality,
+  documentCandidateQualityScore,
+} from './document-candidate-quality';
 import {
   accessBasisForSearchResult,
   hostFromUrl,
@@ -133,7 +136,7 @@ export function candidatesFromSearchResults(
         )?.name ??
         allowedPlugins[0]?.name ??
         '';
-      return {
+      const candidate = {
         id: `${idPrefix}:${index}`,
         provider: 'qbittorrent',
         title,
@@ -157,6 +160,14 @@ export function candidatesFromSearchResults(
         },
         sizeBytes:
           result.fileSize && result.fileSize > 0 ? result.fileSize : undefined,
+      };
+      return {
+        ...candidate,
+        qualityScore: documentCandidateQualityScore(
+          candidate,
+          contentKindPriorityForPreference(request.policy.contentPreference),
+        ),
+        qualityReason: `${seeders} seeder(s), match ${Math.round(matchScore * 100)}%.`,
       };
     })
     .filter((candidate): candidate is DocumentCandidate =>
