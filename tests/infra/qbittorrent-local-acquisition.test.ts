@@ -100,7 +100,7 @@ describe('qBittorrent local acquisition', () => {
     expect(acquired?.documentRef?.availability.reason).toContain('missing');
   });
 
-  it('uses the bridge data root as qBittorrent save path when local settings are relative', async () => {
+  it('uses bridge data root but waits for qBittorrent tracking before creating refs', async () => {
     const addSavePaths: Array<string | null> = [];
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/__health')) {
@@ -147,7 +147,7 @@ describe('qBittorrent local acquisition', () => {
     });
 
     expect(addSavePaths).toEqual(['/absolute/data/documents']);
-    expect(acquired?.documentRef?.status).toBe('downloading');
+    expect(acquired).toBeNull();
   });
 
   it('reuses already tracked difficulty-engine torrents as find candidates', async () => {
