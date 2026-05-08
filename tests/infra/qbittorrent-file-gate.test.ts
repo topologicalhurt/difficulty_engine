@@ -88,4 +88,184 @@ describe('qBittorrent selected file gate', () => {
     expect(priorityCalls).toEqual(['0:0']);
     expect(resumeCalls).toEqual([]);
   });
+
+  it('accepts a trusted single-file torrent when the file has author evidence', async () => {
+    const priorityCalls: string[] = [];
+    const resumeCalls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/v2/auth/login')) {
+        return new Response('Ok.', {
+          status: 200,
+          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
+        });
+      }
+      if (url.endsWith('/api/v2/torrents/info')) {
+        return Response.json([
+          {
+            hash: 'steinhash',
+            name: 'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
+            save_path: 'output/data/documents',
+            state: 'pausedDL',
+            progress: 0.2,
+            num_seeds: 12,
+            num_leechs: 4,
+          },
+        ]);
+      }
+      if (url.includes('/api/v2/torrents/files?')) {
+        return Response.json([
+          {
+            index: 0,
+            name: 'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012.pdf',
+            size: 10_000,
+            progress: 0.2,
+          },
+        ]);
+      }
+      if (url.endsWith('/api/v2/torrents/filePrio')) {
+        const body = init?.body as URLSearchParams;
+        priorityCalls.push(`${body.get('id')}:${body.get('priority')}`);
+        return new Response('Ok.', { status: 200 });
+      }
+      if (
+        url.endsWith('/api/v2/torrents/start') ||
+        url.endsWith('/api/v2/torrents/resume')
+      ) {
+        resumeCalls.push(url);
+        return new Response('Ok.', { status: 200 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    const provider = createQBittorrentProvider({
+      baseUrl: 'http://127.0.0.1:8787',
+      username: 'user',
+      password: 'pass',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      savePath: 'output/data/documents',
+    });
+    const sourceSettings = createDefaultSourceSettings();
+    const candidate = {
+      id: 'stein-search',
+      provider: 'qbittorrent',
+      title: 'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
+      sourceUrl:
+        'https://www.limetorrents.lol/Stein-E-Lectures-in-Analysis-Vol-4-Functional-Analysis-2012-torrent-17818262.html',
+      contentKind: 'pdf' as const,
+      accessBasis: 'user_owned' as const,
+      confidence: 0.92,
+      matchScore: 1,
+      seeders: 12,
+      peers: 4,
+    };
+
+    const acquired = await provider.acquire(candidate, {
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Functional Analysis',
+        authors: ['Elias Stein'],
+        sourcePath: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+        sourceSettings,
+      },
+    });
+
+    const ref = acquired?.documentRef;
+    expect(ref?.torrentHash).toBe('steinhash');
+    expect(ref?.fileIndex).toBe(0);
+    expect(ref?.fileName).toBe(
+      'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012.pdf',
+    );
+    expect(priorityCalls).toEqual(['0:7']);
+    expect(resumeCalls).toHaveLength(1);
+  });
+
+  it('keeps a tracked torrent queued while qBittorrent loads file metadata', async () => {
+    const priorityCalls: string[] = [];
+    const resumeCalls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/v2/auth/login')) {
+        return new Response('Ok.', {
+          status: 200,
+          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
+        });
+      }
+      if (url.endsWith('/api/v2/torrents/info')) {
+        return Response.json([
+          {
+            hash: 'pendinghash',
+            name: 'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
+            save_path: 'output/data/documents',
+            state: 'metaDL',
+            progress: 0,
+            num_seeds: 12,
+            num_leechs: 4,
+          },
+        ]);
+      }
+      if (url.includes('/api/v2/torrents/files?')) {
+        return Response.json([]);
+      }
+      if (url.endsWith('/api/v2/torrents/filePrio')) {
+        const body = init?.body as URLSearchParams;
+        priorityCalls.push(`${body.get('id')}:${body.get('priority')}`);
+        return new Response('Ok.', { status: 200 });
+      }
+      if (
+        url.endsWith('/api/v2/torrents/start') ||
+        url.endsWith('/api/v2/torrents/resume')
+      ) {
+        resumeCalls.push(url);
+        return new Response('Ok.', { status: 200 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    const provider = createQBittorrentProvider({
+      baseUrl: 'http://127.0.0.1:8787',
+      username: 'user',
+      password: 'pass',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      savePath: 'output/data/documents',
+    });
+    const sourceSettings = createDefaultSourceSettings();
+    const candidate = {
+      id: 'stein-pending',
+      provider: 'qbittorrent',
+      title: 'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
+      sourceUrl:
+        'https://www.limetorrents.lol/Stein-E-Lectures-in-Analysis-Vol-4-Functional-Analysis-2012-torrent-17818262.html',
+      contentKind: 'pdf' as const,
+      accessBasis: 'user_owned' as const,
+      confidence: 0.92,
+      matchScore: 1,
+      seeders: 12,
+      peers: 4,
+    };
+
+    const acquired = await provider.acquire(candidate, {
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Functional Analysis',
+        authors: ['Elias Stein'],
+        sourcePath: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+        sourceSettings,
+      },
+    });
+
+    const ref = acquired?.documentRef;
+    expect(ref?.torrentHash).toBe('pendinghash');
+    expect(ref?.fileIndex).toBeUndefined();
+    expect(ref?.status).toBe('queued');
+    expect(ref?.availability?.reason).toContain(
+      'has not exposed its file list yet',
+    );
+    expect(priorityCalls).toEqual([]);
+    expect(resumeCalls).toEqual([]);
+  });
 });
