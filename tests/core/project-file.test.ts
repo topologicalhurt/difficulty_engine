@@ -36,7 +36,7 @@ describe('project-file boundary', () => {
     expect(parsed.sourceSettings.documentSources.qbittorrent).toBe(true);
     expect(parsed.sourceSettings.documentSources.localOcr).toBe(false);
     expect(parsed.sourceSettings.qbittorrent.searchPlugins).toBe(true);
-    expect(parsed.sourceSettings.qbittorrent.maxResults).toBe(50);
+    expect(parsed.sourceSettings.qbittorrent.maxResults).toBe(100);
     expect(parsed.sourceSettings.qbittorrent.allowedSites).toEqual(
       expect.arrayContaining([
         'archive.org',
@@ -66,7 +66,12 @@ describe('project-file boundary', () => {
         qbittorrent: {
           searchPlugins: true,
           allowedPlugins: ['z-plugin', 'open-plugin', 'open-plugin', ''],
-          allowedSites: ['StandardEBooks.org', 'archive.org', 'archive.org', ''],
+          allowedSites: [
+            'StandardEBooks.org',
+            'archive.org',
+            'archive.org',
+            '',
+          ],
           categories: ['zines', 'books', 'books', ''],
           maxResults: 500,
         },
@@ -94,7 +99,7 @@ describe('project-file boundary', () => {
       'books',
       'zines',
     ]);
-    expect(project.sourceSettings.qbittorrent.maxResults).toBe(50);
+    expect(project.sourceSettings.qbittorrent.maxResults).toBe(150);
     expect(exported).not.toContain('must-not-export');
     expect(exported).not.toContain('qbittorrentConnection');
   });

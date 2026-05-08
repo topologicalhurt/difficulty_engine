@@ -66,6 +66,12 @@ TOC extraction prefers trusted local document evidence before online snippets: m
 
 `npm run toc:audit` runs synthetic TOC fixtures and any local files under `output/data/documents`. It fails on fixture recall below the target or known garbage chapters, and it labels local misses as needing embedded text/OCR instead of silently accepting noisy PDF bytes.
 
+## qBittorrent sourcing
+
+qBittorrent searches use staged recall queries rather than one exact title string: ISBN, cleaned core title, core title plus author surnames, author/topic tokens, hyphenated title, and broad title. Enabled plugins are searched as grouped jobs with bounded concurrency, and the Library download box keeps the best candidate queue plus a search trace.
+
+Automatic downloads remain strict: unknown-license hits, weak matches, wrong authors, zero-seed rows, solution/manual files, and plugin errors are blocked and shown as diagnostics. An eligible blocked magnet or HTTPS torrent can only be used after an explicit user action.
+
 ## Local AI keys
 
 For local development, place AI credentials in `.env`:

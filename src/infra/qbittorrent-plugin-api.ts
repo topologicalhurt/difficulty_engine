@@ -6,8 +6,8 @@ export type QbittorrentApi = (
   init?: RequestInit,
 ) => Promise<Response>;
 
-const SEARCH_POLL_ATTEMPTS = 6;
-const SEARCH_POLL_INTERVAL_MS = 450;
+const SEARCH_POLL_ATTEMPTS = 18;
+const SEARCH_POLL_INTERVAL_MS = 650;
 
 export function normalizeQbittorrentPlugins(
   items: Array<{
@@ -56,12 +56,13 @@ export async function readQbittorrentSearchResults(
   api: QbittorrentApi,
   id: number,
   limit: number,
+  offset = 0,
 ): Promise<SearchResultsResponse> {
   const response = await api(
     `/search/results?${new URLSearchParams({
       id: String(id),
       limit: String(limit),
-      offset: '0',
+      offset: String(offset),
     }).toString()}`,
   );
   return (await response.json()) as SearchResultsResponse;

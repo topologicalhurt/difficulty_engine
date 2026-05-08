@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPlannerStore } from '../../src/app/store';
 import { createPlannerEngine } from '../../src/core/engine';
 import { plannerClock } from '../../src/core/time';
-import type { BookDocumentRef, QbittorrentIntegrationService } from '../../src/core/types';
+import type {
+  BookDocumentRef,
+  QbittorrentIntegrationService,
+} from '../../src/core/types';
 import {
   makeBook,
   makeProject,
@@ -80,20 +83,24 @@ describe('document metadata commands', () => {
     const service: QbittorrentIntegrationService = {
       testConnection: vi.fn(),
       listPlugins: vi.fn(),
-      findDocumentCandidates: vi.fn(async () => [
-        {
-          id: 'candidate-1',
-          provider: 'qbittorrent',
-          title: 'Test Book',
-          sourceUrl: 'magnet:?xt=urn:btih:newhash',
-          contentKind: 'pdf' as const,
-          accessBasis: 'user_owned' as const,
-          confidence: 0.9,
-          matchScore: 0.95,
-          seeders: 9,
-          qualityScore: 0.92,
-        },
-      ]),
+      findDocumentCandidates: vi.fn(async () => ({
+        candidates: [
+          {
+            id: 'candidate-1',
+            provider: 'qbittorrent',
+            title: 'Test Book',
+            sourceUrl: 'magnet:?xt=urn:btih:newhash',
+            contentKind: 'pdf' as const,
+            accessBasis: 'user_owned' as const,
+            confidence: 0.9,
+            matchScore: 0.95,
+            seeders: 9,
+            qualityScore: 0.92,
+          },
+        ],
+        blockedCandidates: [],
+        searchAttempts: [],
+      })),
       acquireDocumentCandidate: vi.fn(async () => newDocument),
       deleteTorrent,
     };

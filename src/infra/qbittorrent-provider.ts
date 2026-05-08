@@ -14,6 +14,8 @@ import type {
   QbittorrentIntegrationService,
   QbittorrentPluginInfo,
   BookDocumentCandidateOption,
+  BookDocumentBlockedCandidateOption,
+  BookDocumentSearchAttempt,
   EnrichmentRequest,
 } from '../core/types';
 import {
@@ -41,6 +43,11 @@ import type { TorrentInfo } from './qbittorrent-types';
 
 type QBittorrentProvider = DocumentAcquisitionProvider & {
   listPlugins(): Promise<QbittorrentPluginInfo[]>;
+  findCandidateSearch(request: DocumentAcquisitionRequest): Promise<{
+    candidates: DocumentCandidate[];
+    blockedCandidates: BookDocumentBlockedCandidateOption[];
+    searchAttempts: BookDocumentSearchAttempt[];
+  }>;
   deleteTorrent(hash: string, deleteFiles: boolean): Promise<void>;
 };
 
@@ -72,7 +79,9 @@ function candidateOption(
   };
 }
 
-function optionCandidate(option: BookDocumentCandidateOption): DocumentCandidate {
+function optionCandidate(
+  option: BookDocumentCandidateOption,
+): DocumentCandidate {
   return {
     id: option.id,
     provider: option.provider,
@@ -151,11 +160,7 @@ function userProvidedTorrentCandidate(
 }
 
 function torrentEvidenceText(torrent: TorrentInfo): string {
-  return [
-    torrent.name,
-    torrent.content_path,
-    torrent.magnet_uri,
-  ].join(' ');
+  return [torrent.name, torrent.content_path, torrent.magnet_uri].join(' ');
 }
 
 function torrentHasRequiredAuthorEvidence(
@@ -246,7 +251,8 @@ export function createQBittorrentProvider(
         ...(await localTorrentCandidates(client, request).catch(() => [])),
       );
       if (qbittorrentSearchPluginsEnabled(request.policy.sourceSettings)) {
-        candidates.push(...(await pluginSearchCandidates(client, request)));
+        const search = await pluginSearchCandidates(client, request);
+        candidates.push(...search.candidates);
       }
       const priorityFor = contentKindPriorityForPreference(
         request.policy.contentPreference,
@@ -266,6 +272,38 @@ export function createQBittorrentProvider(
         request.policy,
         request.book.documentAcquisition,
       );
+    },
+    async findCandidateSearch(request: DocumentAcquisitionRequest): Promise<{
+      candidates: DocumentCandidate[];
+      blockedCandidates: BookDocumentBlockedCandidateOption[];
+      searchAttempts: BookDocumentSearchAttempt[];
+    }> {
+      if (!qbittorrentDocumentSourceEnabled(request.policy.sourceSettings)) {
+        return { candidates: [], blockedCandidates: [], searchAttempts: [] };
+      }
+      await client.login();
+      const search = qbittorrentSearchPluginsEnabled(
+        request.policy.sourceSettings,
+      )
+        ? await pluginSearchCandidates(client, request)
+        : { candidates: [], blockedCandidates: [], searchAttempts: [] };
+      const localCandidates = await localTorrentCandidates(
+        client,
+        request,
+      ).catch(() => []);
+      const manualCandidate = userProvidedTorrentCandidate(request);
+      return {
+        ...search,
+        candidates: rankDocumentCandidates(
+          [
+            ...(manualCandidate ? [manualCandidate] : []),
+            ...localCandidates,
+            ...search.candidates,
+          ],
+          request.policy,
+          request.book.documentAcquisition,
+        ),
+      };
     },
     async acquire(
       candidate: DocumentCandidate,
@@ -297,13 +335,22 @@ export function createQBittorrentIntegrationService(
     async findDocumentCandidates(
       settings: QbittorrentConnectionSettings,
       request: EnrichmentRequest,
-    ): Promise<BookDocumentCandidateOption[]> {
+    ): Promise<{
+      candidates: BookDocumentCandidateOption[];
+      blockedCandidates: BookDocumentBlockedCandidateOption[];
+      searchAttempts: BookDocumentSearchAttempt[];
+    }> {
       const provider = createQBittorrentProvider(
         settingsToOptions(settings, fetchImpl),
       );
-      return (
-        await provider.findCandidates(acquisitionRequest(request, settings))
-      ).map(candidateOption);
+      const search = await provider.findCandidateSearch(
+        acquisitionRequest(request, settings),
+      );
+      return {
+        candidates: search.candidates.map(candidateOption),
+        blockedCandidates: search.blockedCandidates,
+        searchAttempts: search.searchAttempts,
+      };
     },
     async acquireDocumentCandidate(
       settings: QbittorrentConnectionSettings,
@@ -311,7 +358,9 @@ export function createQBittorrentIntegrationService(
       candidateId: string,
       candidates: BookDocumentCandidateOption[],
     ) {
-      const option = candidates.find((candidate) => candidate.id === candidateId);
+      const option = candidates.find(
+        (candidate) => candidate.id === candidateId,
+      );
       if (!option) return null;
       const provider = createQBittorrentProvider(
         settingsToOptions(settings, fetchImpl),

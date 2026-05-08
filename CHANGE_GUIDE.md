@@ -104,6 +104,8 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Infra cache time: `src/infra/cache-time.ts`
 - Document content priority: `src/infra/document-content-priority.ts`
 - Document candidate quality: `src/infra/document-candidate-quality.ts`
+- qBittorrent search query generation and blocked-hit diagnostics: `src/infra/qbittorrent-search.ts`
+- qBittorrent grouped search execution: `src/infra/qbittorrent-plugin-search.ts`, `src/infra/qbittorrent-plugin-api.ts`
 - Document content kind and path helpers: `src/infra/qbittorrent-file-kinds.ts`
 - Document text/TOC extraction: `src/infra/document-text-extractor.ts`
 - PDF outline/raw-byte extraction: `src/infra/pdf-outline-titles.ts`

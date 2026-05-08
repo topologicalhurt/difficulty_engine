@@ -35,7 +35,12 @@ function createStoreWithProvider(
 describe('store enrichment commands', () => {
   it('refreshes enrichment through the store and records cache provenance', async () => {
     const store = makeStore();
+    let snapshotUpdates = 0;
+    const unsubscribe = store.subscriptions.subscribeEvents((event) => {
+      if (event.type === 'snapshot-updated') snapshotUpdates += 1;
+    });
     await store.commands.refreshBookEnrichment('book-1');
+    unsubscribe();
     const state = store.selectors.getState();
     expect(state.project.enrichmentCache['book-1']?.status).toBe('success');
     expect(
@@ -47,6 +52,7 @@ describe('store enrichment commands', () => {
     expect(state.project.library.books['book-1']?.publisher).toBe(
       'Enriched Press',
     );
+    expect(snapshotUpdates).toBe(1);
   });
 
   it('replaces placeholder page counts with enriched provider page counts', async () => {
@@ -380,11 +386,20 @@ describe('store enrichment commands', () => {
       ...baseProject,
       library: { books },
     });
+    let snapshotUpdates = 0;
+    let projectChanges = 0;
+    const unsubscribe = store.subscriptions.subscribeEvents((event) => {
+      if (event.type === 'snapshot-updated') snapshotUpdates += 1;
+      if (event.type === 'project-changed') projectChanges += 1;
+    });
 
     await store.commands.refreshAllEnrichment();
+    unsubscribe();
 
     expect(maxActive).toBeGreaterThan(1);
     expect(maxActive).toBeLessThanOrEqual(4);
+    expect(projectChanges).toBe(2);
+    expect(snapshotUpdates).toBe(1);
     expect(
       Object.values(store.selectors.getState().project.enrichmentCache),
     ).toHaveLength(6);

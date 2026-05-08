@@ -3,7 +3,10 @@ import type {
   DocumentSourceKey,
   MetadataSourceKey,
 } from '../../core/types';
-import { DEFAULT_QBITTORRENT_WEB_UI_URL } from '../../core/defaults';
+import {
+  DEFAULT_QBITTORRENT_BRIDGE_ALLOWED_ORIGINS,
+  DEFAULT_QBITTORRENT_WEB_UI_URL,
+} from '../../core/defaults';
 
 type SourceProviderDefinition = {
   label: string;
@@ -110,7 +113,6 @@ function shellQuote(value: string): string {
 
 export function selectProjectViewModel(state: AppState): ProjectViewModel {
   const localPassword = state.ui.qbittorrentConnection.password;
-  const allowedOrigins = 'http://127.0.0.1:*,http://localhost:*';
   const sourceProviders = SOURCE_PROVIDER_DEFINITIONS.map((definition) => ({
     ...definition,
     checked: sourceProviderChecked(definition, state),
@@ -126,7 +128,7 @@ export function selectProjectViewModel(state: AppState): ProjectViewModel {
     qbittorrentStatus: state.ui.qbittorrentStatus,
     exportedCredentialFree:
       !localPassword || !state.ui.importExportText.includes(localPassword),
-    qbittorrentLaunchCommand: `npm run qbittorrent:launch -- --url ${shellQuote(DEFAULT_QBITTORRENT_WEB_UI_URL)} --bridge-url ${shellQuote(state.ui.qbittorrentConnection.baseUrl)} --data-root ${shellQuote(state.ui.qbittorrentConnection.savePath)} --allowed-origin ${shellQuote(allowedOrigins)}`,
-    qbittorrentConfigureCommand: `npm run qbittorrent:launch -- --enable-webui --url ${shellQuote(DEFAULT_QBITTORRENT_WEB_UI_URL)} --bridge-url ${shellQuote(state.ui.qbittorrentConnection.baseUrl)} --data-root ${shellQuote(state.ui.qbittorrentConnection.savePath)} --allowed-origin ${shellQuote(allowedOrigins)}`,
+    qbittorrentLaunchCommand: `npm run qbittorrent:launch -- --url ${shellQuote(DEFAULT_QBITTORRENT_WEB_UI_URL)} --bridge-url ${shellQuote(state.ui.qbittorrentConnection.baseUrl)} --data-root ${shellQuote(state.ui.qbittorrentConnection.savePath)} --allowed-origin ${shellQuote(DEFAULT_QBITTORRENT_BRIDGE_ALLOWED_ORIGINS)}`,
+    qbittorrentConfigureCommand: `npm run qbittorrent:launch -- --enable-webui --url ${shellQuote(DEFAULT_QBITTORRENT_WEB_UI_URL)} --bridge-url ${shellQuote(state.ui.qbittorrentConnection.baseUrl)} --data-root ${shellQuote(state.ui.qbittorrentConnection.savePath)} --allowed-origin ${shellQuote(DEFAULT_QBITTORRENT_BRIDGE_ALLOWED_ORIGINS)}`,
   };
 }

@@ -36,6 +36,7 @@ const DOCUMENT_TEXT_READ_LIMIT_BYTES = 8 * 1024 * 1024;
 const DOCUMENT_BYTE_READ_LIMIT_BYTES = 32 * 1024 * 1024;
 const DOCUMENT_PDF_TEXT_FILE_LIMIT_BYTES = 80 * 1024 * 1024;
 const DEFAULT_ALLOWED_ORIGINS = [
+  'null',
   'http://127.0.0.1:*',
   'http://localhost:*',
   'http://[::1]:*',

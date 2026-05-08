@@ -200,9 +200,9 @@ describe('createPlannerStore', () => {
       pages: null,
     });
 
-    const added = Object.values(store.selectors.getProject().library.books).find(
-      (book) => book.title === 'Sparse Search Result',
-    );
+    const added = Object.values(
+      store.selectors.getProject().library.books,
+    ).find((book) => book.title === 'Sparse Search Result');
     expect(added?.authors).toEqual([]);
   });
 
@@ -298,20 +298,24 @@ describe('createPlannerStore', () => {
     const service: QbittorrentIntegrationService = {
       testConnection: vi.fn(),
       listPlugins: vi.fn(),
-      findDocumentCandidates: vi.fn(async () => [
-        {
-          id: 'candidate-1',
-          provider: 'qbittorrent',
-          title: 'Test Book',
-          sourceUrl: 'magnet:?xt=urn:btih:newhash',
-          contentKind: 'epub' as const,
-          accessBasis: 'user_owned' as const,
-          confidence: 0.9,
-          matchScore: 0.95,
-          seeders: 10,
-          qualityScore: 0.92,
-        },
-      ]),
+      findDocumentCandidates: vi.fn(async () => ({
+        candidates: [
+          {
+            id: 'candidate-1',
+            provider: 'qbittorrent',
+            title: 'Test Book',
+            sourceUrl: 'magnet:?xt=urn:btih:newhash',
+            contentKind: 'epub' as const,
+            accessBasis: 'user_owned' as const,
+            confidence: 0.9,
+            matchScore: 0.95,
+            seeders: 10,
+            qualityScore: 0.92,
+          },
+        ],
+        blockedCandidates: [],
+        searchAttempts: [],
+      })),
       acquireDocumentCandidate: vi.fn(async () => acquired),
       deleteTorrent: vi.fn(),
     };

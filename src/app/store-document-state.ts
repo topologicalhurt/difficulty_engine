@@ -9,6 +9,8 @@ import {
 } from '../core/document-acquisition-state';
 import type {
   BookDocumentCandidateOption,
+  BookDocumentBlockedCandidateOption,
+  BookDocumentSearchAttempt,
   BookDocumentRef,
   PlannerProjectV1,
   QbittorrentIntegrationService,
@@ -149,6 +151,10 @@ export function projectWithCandidateQueue(
   project: PlannerProjectV1,
   bookId: string,
   candidates: BookDocumentCandidateOption[],
+  diagnostics: {
+    blockedCandidates?: BookDocumentBlockedCandidateOption[];
+    searchAttempts?: BookDocumentSearchAttempt[];
+  } = {},
 ): PlannerProjectV1 {
   const book = project.library.books[bookId];
   if (!book) return project;
@@ -166,6 +172,7 @@ export function projectWithCandidateQueue(
           documentAcquisition: mergeDocumentCandidateQueue(
             observedState,
             candidates,
+            diagnostics,
           ),
         },
       },

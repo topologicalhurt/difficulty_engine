@@ -73,7 +73,9 @@ export function createDocumentCommands(
     if (!resolved) return;
     const verb = endpoint === '/documents/reveal' ? 'Revealed' : 'Opened';
     const contractId =
-      endpoint === '/documents/reveal' ? 'ui.documentReveal' : 'ui.documentOpen';
+      endpoint === '/documents/reveal'
+        ? 'ui.documentReveal'
+        : 'ui.documentOpen';
     try {
       await postDocumentAction(
         state.ui.qbittorrentConnection.baseUrl,
@@ -122,7 +124,11 @@ export function createDocumentCommands(
     }
     const beforeProject = context.getState().project;
     const beforeBook = beforeProject.library.books[bookId];
-    const nextProject = projectWithDocumentAdded(beforeProject, bookId, document);
+    const nextProject = projectWithDocumentAdded(
+      beforeProject,
+      bookId,
+      document,
+    );
     const afterBook = nextProject.library.books[bookId];
     const replacedDocuments =
       beforeBook && afterBook
@@ -139,25 +145,21 @@ export function createDocumentCommands(
             (hash) => !replacedDocumentHashes.has(hash),
           )
         : [];
-    context.commitProject(
-      'document.selectCandidate',
-      nextProject,
-      {
-        documentCandidates: {
-          ...context.getState().ui.documentCandidates,
-          bookId,
-          status: 'ready',
-          candidates:
-            nextProject.library.books[bookId]?.documentAcquisition
-              ?.candidateQueue ?? [],
-          error: null,
-        },
-        banner: {
-          tone: 'success',
-          message: `Started ${document.fileName}.`,
-        },
+    context.commitProject('document.selectCandidate', nextProject, {
+      documentCandidates: {
+        ...context.getState().ui.documentCandidates,
+        bookId,
+        status: 'ready',
+        candidates:
+          nextProject.library.books[bookId]?.documentAcquisition
+            ?.candidateQueue ?? [],
+        error: null,
       },
-    );
+      banner: {
+        tone: 'success',
+        message: `Started ${document.fileName}.`,
+      },
+    });
     if (replacedDocuments.length) {
       const deleteErrors = await deleteDocumentContent(
         beforeProject,
@@ -202,11 +204,7 @@ export function createDocumentCommands(
     revealBookDocument(bookId, documentId): Promise<void> {
       return openOrRevealBookDocument(bookId, documentId, '/documents/reveal');
     },
-    async removeBookDocument(
-      bookId,
-      documentId,
-      options = {},
-    ): Promise<void> {
+    async removeBookDocument(bookId, documentId, options = {}): Promise<void> {
       const state = context.getState();
       const resolved = bookDocument(state.project, bookId, documentId);
       if (!resolved) return;
@@ -263,25 +261,30 @@ export function createDocumentCommands(
         if (!services.qbittorrentService) {
           throw new Error('qBittorrent integration is not available.');
         }
-        const candidates =
-          await services.qbittorrentService.findDocumentCandidates(
-            state.ui.qbittorrentConnection,
-            {
-              book,
-              sourceSettings: state.project.sourceSettings,
-              qbittorrentConnection: state.ui.qbittorrentConnection,
-            },
-          );
+        const search = await services.qbittorrentService.findDocumentCandidates(
+          state.ui.qbittorrentConnection,
+          {
+            book,
+            sourceSettings: state.project.sourceSettings,
+            qbittorrentConnection: state.ui.qbittorrentConnection,
+          },
+        );
         if (sequence !== candidateRequestSequence) return;
-        const currentBook =
-          context.getState().project.library.books[bookId];
-        if (!currentBook || bookCandidateContextKey(currentBook) !== contextKey) {
+        const currentBook = context.getState().project.library.books[bookId];
+        if (
+          !currentBook ||
+          bookCandidateContextKey(currentBook) !== contextKey
+        ) {
           return;
         }
         const nextProject = projectWithCandidateQueue(
           context.getState().project,
           bookId,
-          candidates,
+          search.candidates,
+          {
+            blockedCandidates: search.blockedCandidates,
+            searchAttempts: search.searchAttempts,
+          },
         );
         const queue =
           nextProject.library.books[bookId]?.documentAcquisition
@@ -390,22 +393,18 @@ export function createDocumentCommands(
       const nextProject = projectWithCandidateQueue(projectWithSource, bookId, [
         manualCandidate,
       ]);
-      context.commitProject(
-        'document.manualSource',
-        nextProject,
-        {
-          documentCandidates: {
-            ...state.ui.documentCandidates,
-            bookId,
-            status: 'acquiring',
-            candidates:
-              nextProject.library.books[bookId]?.documentAcquisition
-                ?.candidateQueue ?? [],
-            manualSource: source,
-            error: null,
-          },
+      context.commitProject('document.manualSource', nextProject, {
+        documentCandidates: {
+          ...state.ui.documentCandidates,
+          bookId,
+          status: 'acquiring',
+          candidates:
+            nextProject.library.books[bookId]?.documentAcquisition
+              ?.candidateQueue ?? [],
+          manualSource: source,
+          error: null,
         },
-      );
+      });
       try {
         await acquireCandidate(bookId, manualCandidate.id, [manualCandidate]);
       } catch (error) {

@@ -114,7 +114,7 @@ export function normalizeSourceSettings(value: unknown): SourceSettings {
         qbitRaw.maxResults,
         defaults.qbittorrent.maxResults,
         1,
-        50,
+        150,
         true,
       ),
       requireKnownAccessBasis:

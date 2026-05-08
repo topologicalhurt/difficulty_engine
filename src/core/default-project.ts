@@ -205,7 +205,12 @@ export const EXAMPLE_BOOK: BookRecord = {
   sourcePath: null,
   documents: [],
   selectedDocumentId: null,
-  documentAcquisition: { candidateQueue: [], greylist: {} },
+  documentAcquisition: {
+    candidateQueue: [],
+    blockedCandidates: [],
+    searchAttempts: [],
+    greylist: {},
+  },
   openLibraryKey: null,
   openLibraryEditionKey: null,
   openLibraryWorkKey: null,

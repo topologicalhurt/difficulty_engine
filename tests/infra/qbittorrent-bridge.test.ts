@@ -92,6 +92,30 @@ describe('qBittorrent browser bridge', () => {
     }
   });
 
+  it('allows standalone file app requests with Origin null by default', async () => {
+    const upstream = createServer((_req, res) => {
+      res.setHeader('Content-Type', 'text/plain');
+      res.end('v-test');
+    });
+    const targetBaseUrl = await listen(upstream);
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({ targetBaseUrl });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const response = await fetch(`${bridgeBaseUrl}/api/v2/app/version`, {
+        headers: { Origin: 'null' },
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('access-control-allow-origin')).toBe('null');
+      expect(await response.text()).toBe('v-test');
+    } finally {
+      await close(bridge);
+      await close(upstream);
+    }
+  });
+
   it('rejects disallowed browser origins before proxying or reading local documents', async () => {
     const root = await mkdtemp(join(tmpdir(), 'difficulty-docs-'));
     const allowed = join(root, 'book.txt');
