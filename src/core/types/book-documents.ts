@@ -66,6 +66,53 @@ export interface BookDocumentCandidateOption {
   availability?: BookDocumentAvailability;
 }
 
+export type QbittorrentSearchIntent =
+  | 'isbn_exact'
+  | 'core_title'
+  | 'core_title_author'
+  | 'author_topic'
+  | 'hyphenated_title'
+  | 'broad_recall';
+
+export interface BookDocumentBlockedCandidateOption {
+  id: string;
+  provider: string;
+  title: string;
+  sourceUrl: string;
+  contentKind: SourceContentKind | 'unknown';
+  confidence: number;
+  blockedReasons: string[];
+  searchIntent?: QbittorrentSearchIntent;
+  pattern?: string;
+  plugin?: string;
+  siteUrl?: string;
+  seeders?: number | null;
+  peers?: number | null;
+  matchScore?: number;
+  qualityScore?: number;
+  qualityReason?: string;
+  retryableAsUserOwned?: boolean;
+  sizeBytes?: number;
+  availability?: BookDocumentAvailability;
+}
+
+export interface BookDocumentSearchAttempt {
+  id: string;
+  provider: 'qbittorrent';
+  intent: QbittorrentSearchIntent;
+  pattern: string;
+  plugins: string;
+  category: string;
+  resultCount: number;
+  acceptedCount: number;
+  blockedCount: number;
+  pollDurationMs: number;
+  status?: string;
+  error?: string;
+  rejectedReasons: string[];
+  createdAt: string;
+}
+
 export interface BookDocumentGreylistEntry {
   key: string;
   penalty: number;
@@ -82,6 +129,8 @@ export interface BookDocumentGreylistEntry {
 
 export interface BookDocumentAcquisitionState {
   candidateQueue: BookDocumentCandidateOption[];
+  blockedCandidates?: BookDocumentBlockedCandidateOption[];
+  searchAttempts?: BookDocumentSearchAttempt[];
   greylist: Record<string, BookDocumentGreylistEntry>;
   lastDiagnostic?: string;
   updatedAt?: string;

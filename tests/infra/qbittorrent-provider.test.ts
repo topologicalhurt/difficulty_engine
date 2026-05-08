@@ -467,9 +467,9 @@ describe('qBittorrent document provider', () => {
     });
 
     expect(searchStartBodies.map((body) => body.get('pattern'))).toEqual([
-      'fixture book author name',
-      'fixture book name',
       'fixture book',
+      'fixture book name',
+      'name fixture book',
     ]);
     expect(
       new Set(searchStartBodies.map((body) => body.get('plugins'))),
@@ -487,5 +487,4 @@ describe('qBittorrent document provider', () => {
     ]);
     expect(candidates).toHaveLength(1);
   });
-
 });

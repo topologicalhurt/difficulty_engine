@@ -63,7 +63,7 @@ describe('project view model', () => {
       "--data-root 'output/data/books; echo '\\''bad'\\'''",
     );
     expect(viewModel.qbittorrentLaunchCommand).toContain(
-      "--allowed-origin 'http://127.0.0.1:*,http://localhost:*'",
+      "--allowed-origin 'null,http://127.0.0.1:*,http://localhost:*'",
     );
   });
 });

@@ -150,9 +150,9 @@ describe('qBittorrent search precision', () => {
     ).toEqual(
       new Set([
         '9781111111111',
-        'precise systems a author',
-        'precise systems author',
         'precise systems',
+        'precise systems author',
+        'author precise systems',
       ]),
     );
     expect(candidates.map((candidate) => candidate.sourceUrl)).toEqual([
@@ -206,38 +206,34 @@ describe('qBittorrent search precision', () => {
         const job = jobs.get(Number(params.get('id')));
         return Response.json({
           status: 'Stopped',
-          results:
-            job?.plugin === 'standard'
-              ? [
-                  {
-                    fileName: `${job.pattern} Standard exact.pdf`,
-                    fileUrl: 'magnet:?xt=urn:btih:standard',
-                    siteUrl: 'https://standardebooks.org/fixture',
-                    accessBasis: 'open_access',
-                    nbSeeders: 40,
-                    nbLeechers: 1,
-                    fileSize: 12_000,
-                  },
-                ]
-              : [
-                  {
-                    fileName: `${job?.pattern ?? ''} Archive exact.pdf`,
-                    fileUrl: 'magnet:?xt=urn:btih:archive',
-                    siteUrl: 'https://archive.org/details/fixture',
-                    accessBasis: 'open_access',
-                    nbSeeders: 6,
-                    nbLeechers: 80,
-                    fileSize: 12_000,
-                  },
-                  {
-                    fileName: `${job?.pattern ?? ''} Archive dead.pdf`,
-                    fileUrl: 'magnet:?xt=urn:btih:dead',
-                    siteUrl: 'https://archive.org/details/dead',
-                    nbSeeders: 0,
-                    nbLeechers: 400,
-                    fileSize: 12_000,
-                  },
-                ],
+          results: [
+            {
+              fileName: `${job?.pattern ?? ''} Standard exact.pdf`,
+              fileUrl: 'magnet:?xt=urn:btih:standard',
+              siteUrl: 'https://standardebooks.org/fixture',
+              accessBasis: 'open_access',
+              nbSeeders: 40,
+              nbLeechers: 1,
+              fileSize: 12_000,
+            },
+            {
+              fileName: `${job?.pattern ?? ''} Archive exact.pdf`,
+              fileUrl: 'magnet:?xt=urn:btih:archive',
+              siteUrl: 'https://archive.org/details/fixture',
+              accessBasis: 'open_access',
+              nbSeeders: 6,
+              nbLeechers: 80,
+              fileSize: 12_000,
+            },
+            {
+              fileName: `${job?.pattern ?? ''} Archive dead.pdf`,
+              fileUrl: 'magnet:?xt=urn:btih:dead',
+              siteUrl: 'https://archive.org/details/dead',
+              nbSeeders: 0,
+              nbLeechers: 400,
+              fileSize: 12_000,
+            },
+          ],
         });
       }
       if (url.endsWith('/api/v2/search/delete')) {
@@ -275,29 +271,20 @@ describe('qBittorrent search precision', () => {
       },
     });
 
-    expect(searchStartBodies.map((body) => body.get('plugins')).sort()).toEqual(
-      [
-        'archive',
-        'archive',
-        'archive',
-        'archive',
-        'standard',
-        'standard',
-        'standard',
-        'standard',
-      ],
+    expect(searchStartBodies.map((body) => body.get('plugins'))).toEqual(
+      Array.from({ length: 4 }, () => 'archive|standard'),
     );
     expect(
       new Set(searchStartBodies.map((body) => body.get('pattern'))),
     ).toEqual(
       new Set([
         '9781111111111',
-        'precise systems a author',
-        'precise systems author',
         'precise systems',
+        'precise systems author',
+        'author precise systems',
       ]),
     );
-    expect(resultLimits).toEqual(Array.from({ length: 8 }, () => '30'));
+    expect(resultLimits).toEqual(Array.from({ length: 4 }, () => '30'));
     expect(candidates.map((candidate) => candidate.sourceUrl)).toEqual([
       'magnet:?xt=urn:btih:standard',
       'magnet:?xt=urn:btih:archive',
@@ -475,13 +462,12 @@ describe('qBittorrent search precision', () => {
 
     expect(searchStartBodies.map((body) => body.get('pattern'))).toEqual([
       '9781111111111',
-      'precise systems a author',
-      'precise systems author',
       'precise systems',
+      'precise systems author',
+      'author precise systems',
     ]);
     expect(candidates.map((candidate) => candidate.sourceUrl)).toEqual([
       'magnet:?xt=urn:btih:lawfultitle',
     ]);
   });
-
 });

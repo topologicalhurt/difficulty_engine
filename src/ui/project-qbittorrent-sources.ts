@@ -56,12 +56,12 @@ export function renderQbittorrentSourceSettings(
       ),
     ),
     inputField(
-      'Max results per plugin',
+      'Max results per search',
       projectNumberInput(
         qbit.maxResults,
         (maxResults) => updateQbit({ maxResults }),
         '1',
-        '50',
+        '150',
         'project:qbit:maxResults',
       ),
     ),

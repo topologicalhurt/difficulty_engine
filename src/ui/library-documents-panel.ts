@@ -1,6 +1,8 @@
 import type {
   AppState,
+  BookDocumentBlockedCandidateOption,
   BookDocumentCandidateOption,
+  BookDocumentSearchAttempt,
   BookDocumentRef,
   BookRecord,
   PlannerStore,
@@ -49,7 +51,8 @@ function documentSummary(document: BookDocumentRef): string {
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${formatOneDecimal(bytes / 1024 / 1024)} MB`;
+  if (bytes >= 1024 * 1024)
+    return `${formatOneDecimal(bytes / 1024 / 1024)} MB`;
   if (bytes >= 1024) return `${formatOneDecimal(bytes / 1024)} KB`;
   return `${Math.round(bytes)} B`;
 }
@@ -125,6 +128,8 @@ function renderCandidateBrowser(
   const activeForBook = browser.bookId === book.id;
   const manualValue = browser.manualSource;
   const persistedQueue = book.documentAcquisition?.candidateQueue ?? [];
+  const blockedCandidates = book.documentAcquisition?.blockedCandidates ?? [];
+  const searchAttempts = book.documentAcquisition?.searchAttempts ?? [];
   const candidates = activeForBook
     ? browser.candidates.length
       ? browser.candidates
@@ -161,13 +166,16 @@ function renderCandidateBrowser(
     activeForBook && browser.error
       ? el('div', { className: 'muted-copy danger-copy', text: browser.error })
       : null,
+    searchAttempts.length ? renderSearchTrace(searchAttempts) : null,
     candidates.length
       ? el(
           'div',
           { className: 'stack-list' },
-          ...candidates.slice(0, 10).map((candidate) =>
-            renderCandidateQueueItem(book, candidate, browser.status, store),
-          ),
+          ...candidates
+            .slice(0, 10)
+            .map((candidate) =>
+              renderCandidateQueueItem(book, candidate, browser.status, store),
+            ),
         )
       : activeForBook && browser.status === 'ready'
         ? emptyState(
@@ -175,6 +183,92 @@ function renderCandidateBrowser(
             'Try a more precise manual magnet or HTTPS .torrent source with matching author or ISBN evidence.',
           )
         : null,
+    blockedCandidates.length
+      ? renderBlockedCandidates(book, blockedCandidates, store)
+      : null,
+  );
+}
+
+function renderSearchTrace(attempts: BookDocumentSearchAttempt[]): HTMLElement {
+  return el(
+    'details',
+    { className: 'document-card compact-stack' },
+    el('summary', {
+      text: `Search trace (${attempts.length} recent attempt${attempts.length === 1 ? '' : 's'})`,
+    }),
+    el(
+      'div',
+      { className: 'stack-list compact-stack' },
+      ...attempts.slice(0, 8).map((attempt) =>
+        el(
+          'div',
+          { className: 'muted-copy' },
+          el('strong', { text: attempt.intent.replace(/_/g, ' ') }),
+          el('span', {
+            text: `: "${attempt.pattern}" via ${attempt.plugins || 'enabled plugins'} · ${attempt.resultCount} raw · ${attempt.acceptedCount} accepted · ${attempt.blockedCount} blocked · ${formatOneDecimal(attempt.pollDurationMs / 1000)}s${attempt.error ? ` · ${attempt.error}` : ''}`,
+          }),
+        ),
+      ),
+    ),
+  );
+}
+
+function renderBlockedCandidates(
+  book: BookRecord,
+  candidates: BookDocumentBlockedCandidateOption[],
+  store: PlannerStore,
+): HTMLElement {
+  return el(
+    'details',
+    { className: 'document-card compact-stack' },
+    el('summary', {
+      text: `Raw matches found but blocked (${candidates.length})`,
+    }),
+    el(
+      'div',
+      { className: 'stack-list compact-stack' },
+      ...candidates.slice(0, 10).map((candidate) =>
+        el(
+          'div',
+          { className: 'document-card' },
+          el(
+            'div',
+            { className: 'detail-toolbar' },
+            badge(candidate.contentKind),
+            candidate.retryableAsUserOwned
+              ? badge('manual confirmable', 'warn')
+              : null,
+            el('strong', { text: candidate.title }),
+          ),
+          el('div', {
+            className: 'muted-copy',
+            text: [
+              candidate.seeders == null
+                ? 'unknown seeders'
+                : `${candidate.seeders} seeders`,
+              candidate.matchScore == null
+                ? null
+                : `match ${formatOneDecimal(candidate.matchScore * 10)}/10`,
+              candidate.pattern ? `query "${candidate.pattern}"` : null,
+              `blocked: ${candidate.blockedReasons.join(', ')}`,
+            ]
+              .filter(Boolean)
+              .join(' · '),
+          }),
+          el('div', { className: 'muted-copy', text: candidate.sourceUrl }),
+          candidate.retryableAsUserOwned
+            ? button('Use as user-owned source', {
+                className: 'ghost-button',
+                onClick: () =>
+                  void store.commands.addBookTorrentSource(
+                    book.id,
+                    candidate.sourceUrl,
+                  ),
+              })
+            : null,
+        ),
+      ),
+    ),
   );
 }
 
@@ -253,8 +347,7 @@ function renderMetadataCleanup(
     'Metadata cleanup',
     el('p', {
       className: 'muted-copy',
-      text:
-        'Clears enrichment, TOC, provider IDs, qBittorrent candidates, greylist entries, and document refs for this book. Progress and manual planning choices are preserved.',
+      text: 'Clears enrichment, TOC, provider IDs, qBittorrent candidates, greylist entries, and document refs for this book. Progress and manual planning choices are preserved.',
     }),
     el(
       'label',

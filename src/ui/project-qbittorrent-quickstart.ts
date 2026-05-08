@@ -13,7 +13,7 @@ export function renderQbittorrentQuickStart(
     el('strong', { text: 'Quick start' }),
     el('div', {
       className: 'muted-copy',
-      text: 'Run the local helper to open qBittorrent and start the browser bridge. The bridge only accepts browser requests from loopback origins by default; add your site or Obsidian origin with --allowed-origin when embedding elsewhere.',
+      text: 'Run the local helper to open qBittorrent and start the browser bridge. The bridge accepts the standalone file app plus loopback browser origins by default; add your site or Obsidian origin with --allowed-origin when embedding elsewhere.',
     }),
     el('code', {
       className: 'inline-code',

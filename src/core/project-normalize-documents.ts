@@ -2,10 +2,13 @@ import { normalizeProvenance } from './project-normalize-provenance';
 import type {
   BookDocumentAcquisitionState,
   BookDocumentAvailability,
+  BookDocumentBlockedCandidateOption,
   BookDocumentCandidateOption,
   BookDocumentGreylistEntry,
   BookDocumentRef,
+  BookDocumentSearchAttempt,
   BookDocumentStatus,
+  QbittorrentSearchIntent,
   SourceContentKind,
 } from './types';
 import { compactItems, safeNumber } from './utils';
@@ -71,13 +74,9 @@ function normalizeDocumentAvailability(
         ? null
         : normalizeNumber(raw.downloadSpeedBytesPerSecond, 0, 0),
     availability:
-      raw.availability == null
-        ? null
-        : normalizeNumber(raw.availability, 0, 0),
+      raw.availability == null ? null : normalizeNumber(raw.availability, 0, 0),
     sizeBytes:
-      raw.sizeBytes == null
-        ? null
-        : normalizeNumber(raw.sizeBytes, 0, 0),
+      raw.sizeBytes == null ? null : normalizeNumber(raw.sizeBytes, 0, 0),
     qualityScore:
       raw.qualityScore == null
         ? undefined
@@ -86,7 +85,9 @@ function normalizeDocumentAvailability(
   };
 }
 
-function normalizeCandidateOption(input: unknown): BookDocumentCandidateOption | null {
+function normalizeCandidateOption(
+  input: unknown,
+): BookDocumentCandidateOption | null {
   const raw =
     input && typeof input === 'object'
       ? (input as Record<string, unknown>)
@@ -119,13 +120,19 @@ function normalizeCandidateOption(input: unknown): BookDocumentCandidateOption |
     sizeBytes:
       raw.sizeBytes == null ? undefined : normalizeNumber(raw.sizeBytes, 0, 0),
     seeders:
-      raw.seeders == null ? null : normalizeNumber(raw.seeders, 0, 0, 100000, true),
+      raw.seeders == null
+        ? null
+        : normalizeNumber(raw.seeders, 0, 0, 100000, true),
     peers:
       raw.peers == null ? null : normalizeNumber(raw.peers, 0, 0, 100000, true),
     matchScore:
-      raw.matchScore == null ? undefined : normalizeNumber(raw.matchScore, 0, 0, 1),
+      raw.matchScore == null
+        ? undefined
+        : normalizeNumber(raw.matchScore, 0, 0, 1),
     qualityScore:
-      raw.qualityScore == null ? undefined : normalizeNumber(raw.qualityScore, 0, 0, 1),
+      raw.qualityScore == null
+        ? undefined
+        : normalizeNumber(raw.qualityScore, 0, 0, 1),
     qualityReason: normalizeString(raw.qualityReason) || undefined,
     greylistKey: normalizeString(raw.greylistKey) || undefined,
     greylistPenalty:
@@ -133,7 +140,10 @@ function normalizeCandidateOption(input: unknown): BookDocumentCandidateOption |
         ? undefined
         : normalizeNumber(raw.greylistPenalty, 0, 0, 1),
     greylistReason: normalizeString(raw.greylistReason) || undefined,
-    rank: raw.rank == null ? undefined : normalizeNumber(raw.rank, 0, 0, 1000, true),
+    rank:
+      raw.rank == null
+        ? undefined
+        : normalizeNumber(raw.rank, 0, 0, 1000, true),
     retryable: raw.retryable == null ? true : Boolean(raw.retryable),
     queuedAt: normalizeString(raw.queuedAt) || undefined,
     lastSeenAt: normalizeString(raw.lastSeenAt) || undefined,
@@ -142,6 +152,106 @@ function normalizeCandidateOption(input: unknown): BookDocumentCandidateOption |
   return {
     ...candidate,
     greylistKey: documentGreylistKey(candidate),
+  };
+}
+
+function normalizeSearchIntent(value: unknown): QbittorrentSearchIntent {
+  return value === 'isbn_exact' ||
+    value === 'core_title' ||
+    value === 'core_title_author' ||
+    value === 'author_topic' ||
+    value === 'hyphenated_title' ||
+    value === 'broad_recall'
+    ? value
+    : 'broad_recall';
+}
+
+function normalizeBlockedCandidateOption(
+  input: unknown,
+): BookDocumentBlockedCandidateOption | null {
+  const raw =
+    input && typeof input === 'object'
+      ? (input as Record<string, unknown>)
+      : {};
+  const id = normalizeString(raw.id);
+  const sourceUrl = normalizeString(raw.sourceUrl);
+  const title = normalizeString(raw.title);
+  if (!id || !sourceUrl || !title) return null;
+  const blockedReasons = Array.isArray(raw.blockedReasons)
+    ? compactItems(raw.blockedReasons.map((reason) => normalizeString(reason)))
+    : [];
+  return {
+    id,
+    provider: normalizeString(raw.provider, 'qbittorrent') || 'qbittorrent',
+    title,
+    sourceUrl,
+    contentKind:
+      raw.contentKind === 'text' ||
+      raw.contentKind === 'epub' ||
+      raw.contentKind === 'ocr_text' ||
+      raw.contentKind === 'pdf' ||
+      raw.contentKind === 'unknown'
+        ? raw.contentKind
+        : 'unknown',
+    confidence: normalizeNumber(raw.confidence, 0, 0, 1),
+    blockedReasons,
+    searchIntent:
+      raw.searchIntent == null
+        ? undefined
+        : normalizeSearchIntent(raw.searchIntent),
+    pattern: normalizeString(raw.pattern) || undefined,
+    plugin: normalizeString(raw.plugin) || undefined,
+    siteUrl: normalizeString(raw.siteUrl) || undefined,
+    seeders:
+      raw.seeders == null
+        ? null
+        : normalizeNumber(raw.seeders, 0, 0, 100000, true),
+    peers:
+      raw.peers == null ? null : normalizeNumber(raw.peers, 0, 0, 100000, true),
+    matchScore:
+      raw.matchScore == null
+        ? undefined
+        : normalizeNumber(raw.matchScore, 0, 0, 1),
+    qualityScore:
+      raw.qualityScore == null
+        ? undefined
+        : normalizeNumber(raw.qualityScore, 0, 0, 1),
+    qualityReason: normalizeString(raw.qualityReason) || undefined,
+    retryableAsUserOwned: Boolean(raw.retryableAsUserOwned),
+    sizeBytes:
+      raw.sizeBytes == null ? undefined : normalizeNumber(raw.sizeBytes, 0, 0),
+    availability: normalizeDocumentAvailability(raw.availability),
+  };
+}
+
+function normalizeSearchAttempt(
+  input: unknown,
+): BookDocumentSearchAttempt | null {
+  const raw =
+    input && typeof input === 'object'
+      ? (input as Record<string, unknown>)
+      : {};
+  const id = normalizeString(raw.id);
+  const pattern = normalizeString(raw.pattern);
+  if (!id || !pattern) return null;
+  const rejectedReasons = Array.isArray(raw.rejectedReasons)
+    ? compactItems(raw.rejectedReasons.map((reason) => normalizeString(reason)))
+    : [];
+  return {
+    id,
+    provider: 'qbittorrent',
+    intent: normalizeSearchIntent(raw.intent),
+    pattern,
+    plugins: normalizeString(raw.plugins),
+    category: normalizeString(raw.category, 'all') || 'all',
+    resultCount: normalizeNumber(raw.resultCount, 0, 0, 100000, true),
+    acceptedCount: normalizeNumber(raw.acceptedCount, 0, 0, 100000, true),
+    blockedCount: normalizeNumber(raw.blockedCount, 0, 0, 100000, true),
+    pollDurationMs: normalizeNumber(raw.pollDurationMs, 0, 0, 60 * 60 * 1000),
+    status: normalizeString(raw.status) || undefined,
+    error: normalizeString(raw.error) || undefined,
+    rejectedReasons,
+    createdAt: normalizeString(raw.createdAt) || EPOCH_ISO_TIMESTAMP,
   };
 }
 
@@ -206,8 +316,16 @@ export function normalizeBookDocumentAcquisition(
         .slice(0, DOCUMENT_CANDIDATE_QUEUE_LIMIT)
         .map((candidate, index) => ({ ...candidate, rank: index + 1 }))
     : [];
+  const blockedCandidates = Array.isArray(raw.blockedCandidates)
+    ? compactItems(raw.blockedCandidates.map(normalizeBlockedCandidateOption))
+    : [];
+  const searchAttempts = Array.isArray(raw.searchAttempts)
+    ? compactItems(raw.searchAttempts.map(normalizeSearchAttempt))
+    : [];
   return {
     candidateQueue,
+    blockedCandidates,
+    searchAttempts,
     greylist,
     lastDiagnostic: normalizeString(raw.lastDiagnostic) || undefined,
     updatedAt: normalizeString(raw.updatedAt) || undefined,
@@ -245,9 +363,7 @@ function canonicalizeQbittorrentDocuments(
     (doc) => doc.provider === 'qbittorrent',
   );
   if (qbitDocuments.length <= 1) return documents;
-  const others = documents.filter(
-    (doc) => doc.provider !== 'qbittorrent',
-  );
+  const others = documents.filter((doc) => doc.provider !== 'qbittorrent');
   const [preferred] = [...qbitDocuments].sort(compareDocumentPreference);
   return preferred ? [...others, preferred] : others;
 }

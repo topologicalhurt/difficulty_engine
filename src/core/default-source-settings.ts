@@ -7,6 +7,8 @@ import type {
 
 export const DEFAULT_QBITTORRENT_WEB_UI_URL = 'http://127.0.0.1:8080';
 export const DEFAULT_QBITTORRENT_BRIDGE_URL = 'http://127.0.0.1:8787';
+export const DEFAULT_QBITTORRENT_BRIDGE_ALLOWED_ORIGINS =
+  'null,http://127.0.0.1:*,http://localhost:*';
 export const DEFAULT_DOCUMENT_DATA_ROOT = 'output/data/documents';
 export const QBITTORRENT_OPEN_SOURCE_SITES = [
   'archive.org',
@@ -40,7 +42,7 @@ export function createDefaultSourceSettings(): SourceSettings {
       allowedPlugins: [],
       allowedSites: [...QBITTORRENT_OPEN_SOURCE_SITES],
       categories: ['all'],
-      maxResults: 50,
+      maxResults: 100,
       requireKnownAccessBasis: true,
     },
     contentPreference: [...DEFAULT_CONTENT_PREFERENCE],

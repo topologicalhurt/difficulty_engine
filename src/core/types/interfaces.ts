@@ -4,7 +4,9 @@ import type {
   AiRecommendationProviderResponse,
   AiRecommendationRequest,
   BookSearchSuggestion,
+  BookDocumentBlockedCandidateOption,
   BookDocumentCandidateOption,
+  BookDocumentSearchAttempt,
   BookDocumentRef,
   BookEnrichment,
   BookRecord,
@@ -93,7 +95,11 @@ export interface QbittorrentIntegrationService {
   findDocumentCandidates(
     settings: QbittorrentConnectionSettings,
     request: EnrichmentRequest,
-  ): Promise<BookDocumentCandidateOption[]>;
+  ): Promise<{
+    candidates: BookDocumentCandidateOption[];
+    blockedCandidates: BookDocumentBlockedCandidateOption[];
+    searchAttempts: BookDocumentSearchAttempt[];
+  }>;
   acquireDocumentCandidate(
     settings: QbittorrentConnectionSettings,
     request: EnrichmentRequest,

@@ -37,6 +37,12 @@ Every automated TOC attempt must expose strategy, confidence, accepted chapter c
 
 Local OCR is bridge-only and opt-in through source settings. Missing Poppler/Tesseract binaries must produce diagnostics rather than app failures. Run `npm run toc:audit` after any matcher, document, qBittorrent, or enrichment change that can affect chapter sourcing.
 
+## qBittorrent Search Contract
+
+qBittorrent search is recall-first but policy-gated. The app generates staged query intents from ISBN, cleaned core title, author/topic surnames, hyphenated titles, and broad title recall. Search jobs are grouped across enabled plugins with a four-job concurrency cap so the app stays under qBittorrent's five-running-search limit.
+
+Automatic acquisition still requires lawful access basis and title/author/ISBN trust. Unknown-license, zero-seed, wrong-author, weak-title, plugin-error, solution/manual, and unallowed-source rows are persisted as blocked diagnostics under `book.documentAcquisition`, not silently converted into planner truth. Users may explicitly retry an eligible blocked magnet or HTTPS torrent source as user-provided/user-owned evidence from the Library download box.
+
 `src/index.ts`
 : Named public entrypoint for embedders.
 

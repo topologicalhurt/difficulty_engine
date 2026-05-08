@@ -5,6 +5,7 @@ import type { SourceContentKind } from '../../src/core/types';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
 import {
   qbittorrentSearchPatterns,
+  qbittorrentSearchQueries,
   sortSearchCandidates,
 } from '../../src/infra/qbittorrent-search';
 
@@ -74,13 +75,41 @@ describe('qBittorrent search patterns and ordering', () => {
     });
 
     expect(patterns).toEqual([
-      'practical electronics for inventors paul scherz',
-      'practical electronics for inventors scherz',
-      'practical electronics paul scherz',
-      'practical electronics scherz',
       'practical electronics for inventors',
+      'practical electronics for inventors scherz',
+      'scherz electronics inventors',
       'practical electronics',
     ]);
     expect(patterns.join(' ')).not.toMatch(/4th|Edition/i);
+  });
+
+  it('generates broad and author-topic queries for noisy technical titles', () => {
+    const queries = qbittorrentSearchQueries({
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Discrete-time Signal Processing, 2nd, Second Edition',
+        short: 'Discrete-time Signal Processing',
+        authors: ['Ronald W. Oppenheim Alan V. / Schafer'],
+        isbn: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+      },
+    });
+
+    expect(queries).toEqual(
+      expect.arrayContaining([
+        { intent: 'core_title', pattern: 'discrete time signal processing' },
+        {
+          intent: 'hyphenated_title',
+          pattern: 'discrete-time signal processing',
+        },
+        {
+          intent: 'author_topic',
+          pattern: 'oppenheim schafer signal processing',
+        },
+      ]),
+    );
   });
 });

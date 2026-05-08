@@ -1,14 +1,18 @@
 import type {
   BookDocumentAcquisitionState,
   BookDocumentAvailability,
+  BookDocumentBlockedCandidateOption,
   BookDocumentCandidateOption,
   BookDocumentGreylistEntry,
   BookDocumentRef,
+  BookDocumentSearchAttempt,
   BookDocumentStatus,
 } from './types';
 import { currentIsoTimestamp } from './time';
 
 export const DOCUMENT_CANDIDATE_QUEUE_LIMIT = 10;
+const DOCUMENT_BLOCKED_CANDIDATE_LIMIT = 20;
+const DOCUMENT_SEARCH_ATTEMPT_LIMIT = 20;
 export const GREYLIST_REQUIRED_STALL_OBSERVATIONS = 2;
 const GREYLIST_PENALTY_STEP = 0.18;
 const GREYLIST_PENALTY_DECAY = 0.09;
@@ -19,7 +23,12 @@ const STALLED_STATE_PATTERN = /(?:stalledDL|error|missingFiles|unknown)/i;
 const USER_PAUSED_STATE_PATTERN = /(?:paused|stopped|queued)/i;
 
 export function emptyDocumentAcquisitionState(): BookDocumentAcquisitionState {
-  return { candidateQueue: [], greylist: {} };
+  return {
+    candidateQueue: [],
+    blockedCandidates: [],
+    searchAttempts: [],
+    greylist: {},
+  };
 }
 
 function boundedPenalty(value: number): number {
@@ -32,17 +41,17 @@ function btihFromText(value: string | undefined): string | null {
 }
 
 function normalizedSourceKey(value: string | undefined): string {
-  return String(value ?? '').trim().toLowerCase();
+  return String(value ?? '')
+    .trim()
+    .toLowerCase();
 }
 
-export function documentGreylistKey(
-  source: {
-    sourceUrl?: string;
-    greylistKey?: string;
-    torrentHash?: string;
-    storagePath?: string;
-  },
-): string {
+export function documentGreylistKey(source: {
+  sourceUrl?: string;
+  greylistKey?: string;
+  torrentHash?: string;
+  storagePath?: string;
+}): string {
   if (source.greylistKey) return source.greylistKey;
   if (source.torrentHash) return `hash:${source.torrentHash.toLowerCase()}`;
   const btih = btihFromText(source.sourceUrl);
@@ -52,13 +61,11 @@ export function documentGreylistKey(
   return `path:${normalizedSourceKey(source.storagePath)}`;
 }
 
-export function documentGreylistHash(
-  source: {
-    sourceUrl?: string;
-    greylistKey?: string;
-    torrentHash?: string;
-  },
-): string | null {
+export function documentGreylistHash(source: {
+  sourceUrl?: string;
+  greylistKey?: string;
+  torrentHash?: string;
+}): string | null {
   const key = documentGreylistKey(source);
   return key.startsWith('hash:') ? key.slice('hash:'.length) : null;
 }
@@ -72,10 +79,10 @@ export function documentRefIsTrackedQbittorrentReplacement(
 ): boolean {
   return Boolean(
     docRef.provider === 'qbittorrent' &&
-      docRef.status !== 'failed' &&
-      docRef.status !== 'stalled' &&
-      docRef.torrentHash?.trim() &&
-      docRef.fileIndex != null,
+    docRef.status !== 'failed' &&
+    docRef.status !== 'stalled' &&
+    docRef.torrentHash?.trim() &&
+    docRef.fileIndex != null,
   );
 }
 
@@ -177,7 +184,9 @@ function nextGreylistEntry(
   };
 }
 
-function fallbackCandidateQuality(candidate: BookDocumentCandidateOption): number {
+function fallbackCandidateQuality(
+  candidate: BookDocumentCandidateOption,
+): number {
   const seeders = candidate.seeders ?? candidate.availability?.seeders ?? 0;
   const seederScore = Math.min(
     1,
@@ -231,13 +240,14 @@ export function documentRefHasActiveGreylist(
   state: BookDocumentAcquisitionState | undefined,
   docRef: BookDocumentRef,
 ): boolean {
-  const entry = normalizeDocumentAcquisitionState(state).greylist[
-    documentRefGreylistKey(docRef)
-  ];
+  const entry =
+    normalizeDocumentAcquisitionState(state).greylist[
+      documentRefGreylistKey(docRef)
+    ];
   return Boolean(
     entry &&
-      (entry.penalty > 0 ||
-        entry.observations >= GREYLIST_REQUIRED_STALL_OBSERVATIONS),
+    (entry.penalty > 0 ||
+      entry.observations >= GREYLIST_REQUIRED_STALL_OBSERVATIONS),
   );
 }
 
@@ -263,8 +273,18 @@ function decayEntry(
 export function mergeDocumentCandidateQueue(
   state: BookDocumentAcquisitionState | undefined,
   candidates: BookDocumentCandidateOption[],
-  now = currentIsoTimestamp(),
+  diagnosticsOrNow:
+    | {
+        blockedCandidates?: BookDocumentBlockedCandidateOption[];
+        searchAttempts?: BookDocumentSearchAttempt[];
+      }
+    | string = {},
+  now = typeof diagnosticsOrNow === 'string'
+    ? diagnosticsOrNow
+    : currentIsoTimestamp(),
 ): BookDocumentAcquisitionState {
+  const diagnostics =
+    typeof diagnosticsOrNow === 'string' ? {} : diagnosticsOrNow;
   const next = normalizeDocumentAcquisitionState(state);
   const greylist = { ...next.greylist };
   candidates.forEach((candidate) => {
@@ -336,12 +356,69 @@ export function mergeDocumentCandidateQueue(
 
   return {
     candidateQueue,
+    blockedCandidates: mergeBlockedCandidates(
+      next.blockedCandidates,
+      diagnostics.blockedCandidates,
+    ),
+    searchAttempts: mergeSearchAttempts(
+      next.searchAttempts,
+      diagnostics.searchAttempts,
+    ),
     greylist,
     updatedAt: now,
     lastDiagnostic: candidateQueue.length
       ? `Tracked ${candidateQueue.length} ranked document candidate(s).`
-      : next.lastDiagnostic,
+      : diagnostics.blockedCandidates?.length
+        ? `Found ${diagnostics.blockedCandidates.length} blocked qBittorrent result(s).`
+        : next.lastDiagnostic,
   };
+}
+
+function mergeBlockedCandidates(
+  existing: BookDocumentBlockedCandidateOption[] = [],
+  incoming: BookDocumentBlockedCandidateOption[] = [],
+): BookDocumentBlockedCandidateOption[] {
+  const byKey = new Map<string, BookDocumentBlockedCandidateOption>();
+  [...existing, ...incoming].forEach((candidate) => {
+    const key = `${candidate.sourceUrl.toLowerCase()}|${candidate.title.toLowerCase()}`;
+    const previous = byKey.get(key);
+    if (
+      !previous ||
+      (candidate.seeders ?? 0) > (previous.seeders ?? 0) ||
+      (candidate.matchScore ?? 0) > (previous.matchScore ?? 0)
+    ) {
+      byKey.set(key, candidate);
+    }
+  });
+  return [...byKey.values()]
+    .sort(compareBlockedCandidates)
+    .slice(0, DOCUMENT_BLOCKED_CANDIDATE_LIMIT);
+}
+
+function compareBlockedCandidates(
+  left: BookDocumentBlockedCandidateOption,
+  right: BookDocumentBlockedCandidateOption,
+): number {
+  return (
+    Number(right.retryableAsUserOwned) - Number(left.retryableAsUserOwned) ||
+    (right.matchScore ?? 0) - (left.matchScore ?? 0) ||
+    (right.seeders ?? 0) - (left.seeders ?? 0) ||
+    left.title.localeCompare(right.title) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+function mergeSearchAttempts(
+  existing: BookDocumentSearchAttempt[] = [],
+  incoming: BookDocumentSearchAttempt[] = [],
+): BookDocumentSearchAttempt[] {
+  return [...incoming, ...existing]
+    .sort(
+      (left, right) =>
+        right.createdAt.localeCompare(left.createdAt) ||
+        left.id.localeCompare(right.id),
+    )
+    .slice(0, DOCUMENT_SEARCH_ATTEMPT_LIMIT);
 }
 
 export function clearDocumentAcquisitionState(): BookDocumentAcquisitionState {
@@ -361,7 +438,10 @@ export function normalizeDocumentAcquisitionState(
           ...entry,
           key: entry.key || key,
           penalty: boundedPenalty(Number(entry.penalty) || 0),
-          observations: Math.max(0, Math.round(Number(entry.observations) || 0)),
+          observations: Math.max(
+            0,
+            Math.round(Number(entry.observations) || 0),
+          ),
           lastProgress:
             entry.lastProgress == null
               ? undefined
@@ -390,6 +470,8 @@ export function normalizeDocumentAcquisitionState(
     .map((candidate, index) => ({ ...candidate, rank: index + 1 }));
   return {
     candidateQueue,
+    blockedCandidates: mergeBlockedCandidates(state?.blockedCandidates),
+    searchAttempts: mergeSearchAttempts(state?.searchAttempts),
     greylist: normalizedGreylist,
     lastDiagnostic: state?.lastDiagnostic,
     updatedAt: state?.updatedAt,

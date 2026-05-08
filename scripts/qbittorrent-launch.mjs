@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 const DEFAULT_URL = 'http://127.0.0.1:8080';
 const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:8787';
 const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_ALLOWED_ORIGINS = 'null,http://127.0.0.1:*,http://localhost:*';
 const POLL_INTERVAL_MS = 900;
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, '..');
@@ -178,13 +179,27 @@ async function openUrl(url) {
   }
 }
 
-async function bridgeResponds(bridgeUrl) {
+async function bridgeHealth(bridgeUrl) {
   try {
     const response = await fetch(`${bridgeUrl}/__health`);
-    return response.ok;
+    if (!response.ok) return null;
+    return await response.json();
   } catch {
-    return false;
+    return null;
   }
+}
+
+async function bridgeResponds(bridgeUrl) {
+  return Boolean(await bridgeHealth(bridgeUrl));
+}
+
+function requestedOriginsSatisfied(health, allowedOrigin) {
+  const active = new Set(health?.allowedOrigins ?? []);
+  return String(allowedOrigin)
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .every((origin) => active.has(origin));
 }
 
 async function startBridge(
@@ -195,7 +210,13 @@ async function startBridge(
   allowedOrigin,
 ) {
   if (hasArg('--no-bridge')) return;
-  if (await bridgeResponds(bridgeUrl)) {
+  const health = await bridgeHealth(bridgeUrl);
+  if (health) {
+    if (!requestedOriginsSatisfied(health, allowedOrigin)) {
+      throw new Error(
+        `qBittorrent browser bridge is already running at ${bridgeUrl}, but its allowed origins are ${JSON.stringify(health.allowedOrigins ?? [])}. Stop the existing bridge process and rerun this command so it can allow ${allowedOrigin}.`,
+      );
+    }
     process.stdout.write(
       `qBittorrent browser bridge is reachable at ${bridgeUrl}.\n`,
     );
@@ -376,7 +397,7 @@ async function main() {
   const allowedOrigin = argValue(
     '--allowed-origin',
     process.env.QBITTORRENT_BRIDGE_ALLOWED_ORIGINS ||
-      'http://127.0.0.1:*,http://localhost:*',
+      DEFAULT_ALLOWED_ORIGINS,
   );
 
   if (hasArg('--enable-webui')) {
