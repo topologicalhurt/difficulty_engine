@@ -29,12 +29,29 @@ async function selectedTorrentFile(
   info: TorrentInfo,
   candidate: DocumentCandidate,
   request: DocumentAcquisitionRequest,
-): Promise<TorrentFile | null> {
-  if (!info.hash) return null;
+): Promise<{
+  selected: TorrentFile | null;
+  fileCount: number;
+  eligibleFileCount: number;
+}> {
+  if (!info.hash) return { selected: null, fileCount: 0, eligibleFileCount: 0 };
   const files = await client.torrentFiles(info.hash).catch(() => []);
+  const rankedFiles = rankedTorrentFiles(files, request);
+  if (!rankedFiles.length) {
+    const allIndexes = files
+      .map((file) => file.index)
+      .filter((index): index is number => index != null);
+    await client.setFilePriority(info.hash, allIndexes, 0);
+    return { selected: null, fileCount: files.length, eligibleFileCount: 0 };
+  }
   const selected =
-    rankedTorrentFiles(files, request).find((file) =>
-      selectedTorrentFileIsTrusted(file, candidate, request),
+    rankedFiles.find((file) =>
+      selectedTorrentFileIsTrusted(
+        file,
+        candidate,
+        request,
+        rankedFiles.length,
+      ),
     ) ?? null;
   const selectedIndex = selected?.index;
   if (!selected) {
@@ -42,7 +59,11 @@ async function selectedTorrentFile(
       .map((file) => file.index)
       .filter((index): index is number => index != null);
     await client.setFilePriority(info.hash, allIndexes, 0);
-    return null;
+    return {
+      selected: null,
+      fileCount: files.length,
+      eligibleFileCount: rankedFiles.length,
+    };
   }
   if (selectedIndex != null) {
     const otherIndexes = files
@@ -53,7 +74,11 @@ async function selectedTorrentFile(
     await client.setFilePriority(info.hash, otherIndexes, 0);
     await client.setFilePriority(info.hash, [selectedIndex], 7);
   }
-  return selected;
+  return {
+    selected,
+    fileCount: files.length,
+    eligibleFileCount: rankedFiles.length,
+  };
 }
 
 async function readCompletedDocument(
@@ -78,6 +103,11 @@ async function readCompletedDocument(
   };
 }
 
+function pendingMetadataReason(info: TorrentInfo): string {
+  const state = info.state ? ` (${info.state})` : '';
+  return `Torrent is tracked but qBittorrent has not exposed its file list yet${state}. Refresh after metadata loads to select the exact file.`;
+}
+
 export async function acquireTorrentDocument(
   client: QBittorrentClient,
   candidate: DocumentCandidate,
@@ -95,20 +125,28 @@ export async function acquireTorrentDocument(
   let storagePath =
     info?.content_path ?? info?.save_path ?? savePath ?? candidate.title;
   let selected: TorrentFile | null = null;
+  let metadataPending = false;
   if (info?.hash) {
-    selected = await selectedTorrentFile(client, info, candidate, request);
-    if (!selected) return null;
+    const selection = await selectedTorrentFile(
+      client,
+      info,
+      candidate,
+      request,
+    );
+    selected = selection.selected;
+    metadataPending = !selected && selection.fileCount === 0;
+    if (!selected && !metadataPending) return null;
     if (selected?.index != null) {
       storagePath = joinStoragePath(
         info.save_path ?? savePath,
         selected.name ?? storagePath,
       );
+      await client.resumeTorrent(info.hash);
     }
-    await client.resumeTorrent(info.hash);
   }
 
   const contentType = contentTypeFromPath(storagePath ?? candidate.sourceUrl);
-  const status = documentStatus(info, selected);
+  const status = metadataPending ? 'queued' : documentStatus(info, selected);
   const { text, bytes } = await readCompletedDocument(
     client,
     storagePath,
@@ -170,11 +208,13 @@ export async function acquireTorrentDocument(
         progress,
         state: availability.state,
         reason:
-          refStatus === 'failed'
-            ? 'Completed torrent file is missing from the configured data folder.'
-            : status === 'stalled'
-            ? 'Torrent is stalled or has no active download progress.'
-            : undefined,
+          metadataPending && info
+            ? pendingMetadataReason(info)
+            : refStatus === 'failed'
+              ? 'Completed torrent file is missing from the configured data folder.'
+              : status === 'stalled'
+                ? 'Torrent is stalled or has no active download progress.'
+                : undefined,
       },
       provenance: {
         provider: 'qbittorrent',

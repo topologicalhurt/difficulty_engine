@@ -5,7 +5,12 @@ import type {
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import type { TorrentFile, TorrentInfo } from './qbittorrent-types';
 import { contentKindPriorityForPreference } from './document-content-priority';
-import { bookMatchDecision, normalizedIsbnText } from '../core/matchers';
+import {
+  authorAppearsInText,
+  bookMatchDecision,
+  isbnAppearsInText,
+  normalizedIsbnText,
+} from '../core/matchers';
 import { SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA } from './document-candidate-quality';
 
 export const MIN_PLUGIN_SEEDERS = 1;
@@ -66,8 +71,7 @@ export function rankedTorrentFiles(
   return [...files]
     .filter(
       (file) =>
-        file.index != null &&
-        contentKindFromUrl(file.name ?? '') !== 'unknown',
+        file.index != null && contentKindFromUrl(file.name ?? '') !== 'unknown',
     )
     .filter((file) => !BAD_FILE_NAME_PATTERN.test(file.name ?? ''))
     .sort((left, right) => {
@@ -94,11 +98,31 @@ export function selectedTorrentFileIsTrusted(
   file: TorrentFile,
   candidate: DocumentCandidate,
   request: DocumentAcquisitionRequest,
+  eligibleFileCount = 1,
 ): boolean {
   const fileScore = fileMatchScore(file, request);
   return Boolean(
-    fileScore >= MIN_SELECTED_FILE_MATCH_SCORE &&
-    (candidate.matchScore ?? 0) >= MIN_TORRENT_MATCH_SCORE,
+    (candidate.matchScore ?? 0) >= MIN_TORRENT_MATCH_SCORE &&
+    (fileScore >= MIN_SELECTED_FILE_MATCH_SCORE ||
+      candidateCanTrustSingleFile(file, candidate, request, eligibleFileCount)),
+  );
+}
+
+function candidateCanTrustSingleFile(
+  file: TorrentFile,
+  candidate: DocumentCandidate,
+  request: DocumentAcquisitionRequest,
+  eligibleFileCount: number,
+): boolean {
+  const name = file.name ?? '';
+  if (eligibleFileCount !== 1) return false;
+  if ((candidate.matchScore ?? 0) < 0.8) return false;
+  if (contentKindFromUrl(name) === 'unknown') return false;
+  if (BAD_FILE_NAME_PATTERN.test(name)) return false;
+  return (
+    isbnAppearsInText(request.book.isbn, name) ||
+    authorAppearsInText(request.book.authors, name) ||
+    (!request.book.authors.length && !request.book.isbn)
   );
 }
 
