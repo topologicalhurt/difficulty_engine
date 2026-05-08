@@ -91,6 +91,75 @@ export function button(
   return el('button', { type: 'button', ...props, text: label });
 }
 
+export interface PanelOptions {
+  id?: string;
+  className?: string;
+  bodyClassName?: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  resizable?: 'horizontal' | 'none';
+  scrollable?: boolean;
+}
+
+const collapsedPanels = new Map<string, boolean>();
+
+export function panel(
+  title: string,
+  options: PanelOptions = {},
+  ...children: Child[]
+): HTMLElement {
+  const panelId = options.id ?? title;
+  const collapsible = options.collapsible ?? true;
+  const collapsed =
+    collapsible &&
+    (collapsedPanels.get(panelId) ?? !(options.defaultOpen ?? true));
+  const body = el(
+    'div',
+    {
+      className: options.bodyClassName ?? 'card-body',
+      dataset: { scrollable: String(options.scrollable ?? true) },
+    },
+    ...children,
+  );
+  body.hidden = collapsed;
+  const toggle = collapsible
+    ? button(collapsed ? 'Show' : 'Hide', {
+        className: 'ghost-button compact-button panel-toggle-button',
+        ariaLabel: `${collapsed ? 'Show' : 'Hide'} ${title}`,
+        onClick: (event) => {
+          event.stopPropagation();
+          const nextCollapsed = !body.hidden;
+          body.hidden = nextCollapsed;
+          collapsedPanels.set(panelId, nextCollapsed);
+          const button = event.currentTarget as HTMLButtonElement;
+          button.textContent = nextCollapsed ? 'Show' : 'Hide';
+          button.setAttribute(
+            'aria-label',
+            `${nextCollapsed ? 'Show' : 'Hide'} ${title}`,
+          );
+        },
+      })
+    : null;
+  return el(
+    'section',
+    {
+      className: `card panel-card${options.className ? ` ${options.className}` : ''}`,
+      dataset: {
+        panelId,
+        collapsible: String(collapsible),
+        resizable: options.resizable ?? 'horizontal',
+      },
+    },
+    el(
+      'div',
+      { className: 'card-header panel-card-header' },
+      el('h2', { text: title }),
+      toggle,
+    ),
+    body,
+  );
+}
+
 export function badge(
   label: string,
   tone: 'neutral' | 'success' | 'warn' | 'danger' = 'neutral',
@@ -108,10 +177,5 @@ export function emptyState(title: string, message: string): HTMLElement {
 }
 
 export function card(title: string, ...children: Child[]): HTMLElement {
-  return el(
-    'section',
-    { className: 'card' },
-    el('div', { className: 'card-header' }, el('h2', { text: title })),
-    el('div', { className: 'card-body' }, ...children),
-  );
+  return panel(title, {}, ...children);
 }

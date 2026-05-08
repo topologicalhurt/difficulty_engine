@@ -173,6 +173,38 @@ describe('store qBittorrent settings', () => {
     );
   });
 
+  it('warns instead of testing qBittorrent while disabled', async () => {
+    const qbittorrentService: QbittorrentIntegrationService = {
+      testConnection: vi.fn(),
+      listPlugins: vi.fn(),
+      findDocumentCandidates: vi.fn(),
+      acquireDocumentCandidate: vi.fn(),
+      deleteTorrent: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: {
+        fetchBook: vi.fn(),
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      qbittorrentService,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    await store.commands.testQbittorrentConnection();
+
+    expect(qbittorrentService.testConnection).not.toHaveBeenCalled();
+    expect(store.selectors.getState().ui.banner?.tone).toBe('warn');
+    expect(store.selectors.getState().ui.qbittorrentStatus.message).toContain(
+      'disabled',
+    );
+  });
+
   it('ignores stale connection test results after local settings change', async () => {
     const connectionResult = createDeferred<void>();
     const qbittorrentService: QbittorrentIntegrationService = {

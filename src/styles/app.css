@@ -64,6 +64,7 @@ body.difficulty-engine-standalone #app {
   width: min(1660px, 100%);
   margin: 0 auto;
   padding: 16px;
+  position: relative;
 }
 
 .app-header,
@@ -286,6 +287,30 @@ body.difficulty-engine-standalone #app {
   background: rgba(255, 123, 123, 0.14);
 }
 
+.saved-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 20;
+  padding: 10px 13px;
+  border: 1px solid rgba(111, 211, 163, 0.42);
+  border-radius: var(--radius-sm);
+  background: rgba(10, 24, 32, 0.96);
+  color: var(--accent-strong);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.saved-toast-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .split-layout {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
@@ -314,15 +339,37 @@ body.difficulty-engine-standalone #app {
   overflow: hidden;
 }
 
+.panel-card[data-resizable='horizontal'] {
+  min-width: min(100%, 260px);
+  max-width: 100%;
+  resize: horizontal;
+  overflow: auto;
+}
+
 .card-header {
   padding: 12px 14px 10px;
   border-bottom: 1px solid var(--border);
+}
+
+.panel-card-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-toggle-button {
+  flex: 0 0 auto;
 }
 
 .card-body {
   padding: 14px;
   display: grid;
   gap: 12px;
+}
+
+.card-body[data-scrollable='true'] {
+  overflow: auto;
 }
 
 .field,
@@ -360,6 +407,52 @@ body.difficulty-engine-standalone #app {
 
 .text-area {
   resize: vertical;
+}
+
+.locked-input {
+  opacity: 0.58;
+}
+
+.autocomplete-control {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.autocomplete-input {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+.autocomplete-ghost {
+  position: absolute;
+  top: 9px;
+  left: 11px;
+  right: 11px;
+  color: rgba(151, 169, 202, 0.45);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.autocomplete-menu {
+  display: grid;
+  gap: 5px;
+}
+
+.autocomplete-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
 }
 
 .ai-prompt-area {
@@ -590,6 +683,54 @@ body.difficulty-engine-standalone #app {
   align-items: center;
 }
 
+.book-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 92px));
+  gap: 6px;
+  justify-content: end;
+}
+
+.book-badge-grid .badge {
+  justify-content: center;
+}
+
+.enrichment-progress {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.enrichment-subprogress {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 7px;
+}
+
+.subprogress {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+}
+
+.subprogress-success {
+  border-color: rgba(111, 211, 163, 0.24);
+}
+
+.subprogress-danger {
+  border-color: rgba(255, 123, 123, 0.24);
+}
+
+.subprogress-info {
+  border-color: rgba(93, 144, 255, 0.24);
+}
+
 .progress-block {
   display: grid;
   gap: 7px;
@@ -738,6 +879,28 @@ body.difficulty-engine-standalone #app {
   border: 1px dashed rgba(255, 255, 255, 0.14);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.014);
+}
+
+.status-callout {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.status-callout-success {
+  border-color: rgba(111, 211, 163, 0.42);
+  background: rgba(111, 211, 163, 0.11);
+}
+
+.status-callout-warn {
+  border-color: rgba(249, 204, 99, 0.42);
+  background: rgba(249, 204, 99, 0.1);
+}
+
+.status-callout-info {
+  border-color: rgba(93, 144, 255, 0.38);
+  background: rgba(93, 144, 255, 0.1);
 }
 
 .inline-code {
@@ -963,6 +1126,8 @@ body.difficulty-engine-standalone #app {
   position: sticky;
   top: 12px;
   z-index: 1;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
 }
 
 .calendar-log-panel-head {
@@ -1297,6 +1462,35 @@ body.difficulty-engine-standalone #app {
   gap: 6px;
 }
 
+.ai-diff-view {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(111, 211, 163, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 16, 28, 0.72);
+  font-family: var(--font-mono);
+}
+
+.ai-diff-line {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.ai-diff-add {
+  color: var(--accent-strong);
+}
+
+.ai-diff-meta {
+  color: var(--muted);
+}
+
+.ai-diff-prefix {
+  text-align: center;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -1322,6 +1516,45 @@ body.difficulty-engine-standalone #app {
   padding-left: 18px;
   display: grid;
   gap: 8px;
+}
+
+.markdown-readme {
+  display: grid;
+  gap: 14px;
+  line-height: 1.62;
+}
+
+.markdown-readme h1,
+.markdown-readme h2,
+.markdown-readme h3,
+.markdown-readme p,
+.markdown-readme ul,
+.markdown-readme ol {
+  margin: 0;
+}
+
+.markdown-readme h1 {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 1.65rem;
+}
+
+.markdown-readme h2 {
+  margin-top: 8px;
+  font-size: 1.18rem;
+}
+
+.markdown-readme ul,
+.markdown-readme ol {
+  padding-left: 22px;
+}
+
+.markdown-readme li + li {
+  margin-top: 6px;
+}
+
+.markdown-readme strong {
+  color: var(--accent-strong);
 }
 
 .weekday-picker {

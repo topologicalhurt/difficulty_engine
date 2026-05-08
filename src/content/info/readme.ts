@@ -1,6 +1,6 @@
 export const INFO_README = `# Difficulty Engine Guide
 
-This guide walks through the normal way to use Difficulty Engine. You do not need to understand the solver internals to build a useful plan.
+This guide walks through the normal way to use Difficulty Engine. You do not need to understand solver internals to build a useful plan.
 
 ## Jump To
 
@@ -14,8 +14,8 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 ## Quick Start
 
 - Start in Library. Search for books, add the editions you actually want, and mark which books you already own.
-- Open Planner Settings. Set your available hours, study weekdays, page range, and prerequisite behavior.
-- Use Plan as the main workspace. The Gantt shows the long-range order; the calendar shows what to read on each study day.
+- Open Planner Settings. Set available hours, study weekdays, page range, and prerequisite behavior.
+- Use Plan as the main workspace. The Gantt shows long-range order; the calendar shows what to read on each study day.
 - Use Graphs when you want to understand why books are connected, which topics overlap, and where co-study links came from.
 - Use Project to import, export, configure sources, and enable local qBittorrent document acquisition.
 
@@ -70,4 +70,13 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 - Source toggles control which providers can contribute metadata, documents, and table-of-contents evidence.
 - Local OCR fallback is opt-in and only works through the local bridge when Poppler/Tesseract are installed.
 - Diagnostics are hidden in normal builds. Use the debug build when you need detailed engine evidence.
+
+## Terms
+
+- **Schedule difficulty**: planner truth used for time and scheduling.
+- **Display difficulty**: visual mapping used for charts, colors, and explanations.
+- **Strict page floor**: minimum pages/day is hard; conflicts are reported rather than hidden.
+- **Relative pacing**: spreads page targets across the reading list before feasibility clamps are applied.
+- **Backfill**: starts another eligible book when a branch is blocked.
+- **Prerequisite overlap**: permits dependent work before every prerequisite is fully finished under the configured policy.
 `;

@@ -13,6 +13,15 @@ export function renderQbittorrentConnectionSettings(
   store: PlannerStore,
 ): HTMLElement[] {
   const connection = viewModel.qbittorrentConnection;
+  const statusTone =
+    viewModel.qbittorrentStatus.state === 'success'
+      ? 'success'
+      : viewModel.qbittorrentStatus.state === 'failed'
+        ? 'warn'
+        : viewModel.qbittorrentStatus.state === 'testing' ||
+            viewModel.qbittorrentStatus.state === 'loading_plugins'
+          ? 'info'
+          : 'neutral';
   const updateConnection = (patch: Partial<typeof connection>): void =>
     store.commands.updateQbittorrentLocalSettings(patch);
   return [
@@ -92,7 +101,7 @@ export function renderQbittorrentConnectionSettings(
       }),
     ),
     el('div', {
-      className: 'muted-copy',
+      className: `status-callout status-callout-${statusTone}`,
       text: viewModel.qbittorrentStatus.message,
     }),
   ];

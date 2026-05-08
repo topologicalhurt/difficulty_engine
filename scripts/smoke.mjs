@@ -289,7 +289,16 @@ async function main() {
       .fill('smoke');
     await quickAddCard.getByRole('button', { name: 'Search' }).click();
     await quickAddCard.getByText('Smoke Search Result').waitFor();
-    await quickAddCard.getByRole('button', { name: 'Add' }).first().click();
+    await quickAddCard
+      .locator('.search-result-card')
+      .filter({ hasText: 'Smoke Search Result' })
+      .getByRole('button', { name: 'Add' })
+      .click();
+    await page
+      .locator('#embed-root')
+      .getByRole('navigation')
+      .getByRole('button', { name: 'Library' })
+      .click();
     await page
       .locator('#embed-root .book-list-item')
       .filter({ hasText: 'Smoke Search Result' })

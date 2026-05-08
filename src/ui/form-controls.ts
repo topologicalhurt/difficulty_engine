@@ -13,6 +13,18 @@ export interface TextControlOptions {
   className?: string;
   type?: string;
   listId?: string;
+  disabled?: boolean;
+}
+
+export interface AutocompleteOption {
+  value: string;
+  label: string;
+  detail?: string;
+}
+
+export interface AutocompleteTextControlOptions extends TextControlOptions {
+  options: AutocompleteOption[];
+  onAccept: (value: string) => void;
 }
 
 export interface CheckboxControlOptions {
@@ -36,6 +48,8 @@ export interface NumberControlOptions {
   ariaLabel?: string;
   onClick?: (event: MouseEvent) => void;
   onFocus?: (event: FocusEvent) => void;
+  onKeyDown?: (event: KeyboardEvent) => void;
+  onEmpty?: (input: HTMLInputElement) => void;
 }
 
 export interface DraftNumberControlOptions
@@ -87,12 +101,57 @@ export function textInputControl(
     focusKey: options.focusKey,
     list: options.listId,
     placeholder: options.placeholder ?? '',
+    disabled: options.disabled,
     onInput: (event) => {
       if (event.target instanceof HTMLInputElement) {
         options.onInput(event.target.value);
       }
     },
   });
+}
+
+export function autocompleteTextInputControl(
+  options: AutocompleteTextControlOptions,
+): HTMLElement {
+  const best = options.options[0] ?? null;
+  const input = textInputControl({
+    ...options,
+    className: `${options.className ?? 'text-input'} autocomplete-input`,
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || !best) return;
+    event.preventDefault();
+    options.onAccept(best.value);
+  });
+  return el(
+    'div',
+    { className: 'autocomplete-control' },
+    el('div', {
+      className: 'autocomplete-ghost',
+      text: best && best.value !== options.value ? best.value : '',
+    }),
+    input,
+    options.options.length
+      ? el(
+          'div',
+          { className: 'autocomplete-menu' },
+          ...options.options.map((option) =>
+            el(
+              'button',
+              {
+                className: 'autocomplete-option',
+                type: 'button',
+                onClick: () => options.onAccept(option.value),
+              },
+              el('span', { text: option.label }),
+              option.detail
+                ? el('span', { className: 'muted-copy', text: option.detail })
+                : null,
+            ),
+          ),
+        )
+      : null,
+  );
 }
 
 export function draftNumberInputControl(
@@ -164,8 +223,13 @@ export function numberInputControl(
     ariaLabel: options.ariaLabel,
     onClick: options.onClick,
     onFocus: options.onFocus,
+    onKeyDown: options.onKeyDown,
     onChange: (event) => {
       if (event.target instanceof HTMLInputElement) {
+        if (!event.target.value.trim() && options.onEmpty) {
+          options.onEmpty(event.target);
+          return;
+        }
         options.onChange(Number(event.target.value));
       }
     },

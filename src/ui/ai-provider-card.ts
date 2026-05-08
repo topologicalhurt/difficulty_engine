@@ -1,14 +1,20 @@
 import { selectAiRecommendationViewModel } from '../app/selectors/ai-recommendations';
+import {
+  bestAiModelMatch,
+  defaultAiModel,
+} from '../core/ai-provider-registry';
 import type { AppState, PlannerStore } from '../core/types';
 import { card, el } from './dom';
 import {
+  autocompleteTextInputControl,
   checkboxControl,
-  datalistControl,
   draftNumberInputControl,
   inputField,
   selectInput,
   textInputControl,
 } from './form-controls';
+
+const apiKeyLockedByStore = new WeakMap<PlannerStore, boolean>();
 
 export function renderAiProviderCard(
   state: AppState,
@@ -16,10 +22,23 @@ export function renderAiProviderCard(
 ): HTMLElement {
   const viewModel = selectAiRecommendationViewModel(state);
   const connection = viewModel.connection;
-  const modelListId = 'ai-model-options';
+  if (!apiKeyLockedByStore.has(store)) {
+    apiKeyLockedByStore.set(store, Boolean(connection.apiKey.trim()));
+  }
+  const apiKeyLocked =
+    Boolean(connection.apiKey.trim()) &&
+    Boolean(apiKeyLockedByStore.get(store));
+  const acceptModel = (model: string): void => {
+    const match = bestAiModelMatch(model);
+    store.commands.updateAiLocalSettings({
+      model: match?.model ?? model,
+      ...(match && match.provider !== connection.provider
+        ? { provider: match.provider }
+        : {}),
+    });
+  };
   return card(
     'AI provider',
-    datalistControl(modelListId, viewModel.modelOptions),
     el(
       'div',
       { className: 'form-grid' },
@@ -48,15 +67,27 @@ export function renderAiProviderCard(
       ),
       inputField(
         'Model',
-        textInputControl({
+        autocompleteTextInputControl({
           value: connection.model,
           focusKey: 'ai:model',
-          listId: modelListId,
-          placeholder:
-            connection.provider === 'anthropic'
-              ? 'claude-sonnet-4-6'
-              : 'gpt-5-mini',
-          onInput: (model) => store.commands.updateAiLocalSettings({ model }),
+          placeholder: defaultAiModel(connection.provider),
+          options: viewModel.modelSuggestions.map((suggestion) => ({
+            value: suggestion.model,
+            label: suggestion.label,
+            detail: suggestion.provider,
+          })),
+          onInput: (model) => {
+            const match = bestAiModelMatch(model);
+            store.commands.updateAiLocalSettings({
+              model,
+              ...(match &&
+              match.provider !== connection.provider &&
+              model.trim().length >= 4
+                ? { provider: match.provider }
+                : {}),
+            });
+          },
+          onAccept: acceptModel,
         }),
         viewModel.modelSuggestion
           ? `Nearest maintained model: ${viewModel.modelSuggestion}`
@@ -76,14 +107,40 @@ export function renderAiProviderCard(
       ),
       inputField(
         'API key',
-        textInputControl({
-          type: 'password',
-          value: connection.apiKey,
-          focusKey: 'ai:apiKey',
-          placeholder: 'Stored only for this app session',
-          onInput: (apiKey) => store.commands.updateAiLocalSettings({ apiKey }),
-        }),
-        `${viewModel.apiKeyIndicator} ${viewModel.secretStorageNote}`,
+        el(
+          'div',
+          { className: 'stack-layout compact-stack' },
+          textInputControl({
+            type: 'password',
+            value: connection.apiKey,
+            focusKey: 'ai:apiKey',
+            placeholder: 'Stored only for this app session',
+            className: apiKeyLocked ? 'text-input locked-input' : 'text-input',
+            disabled: apiKeyLocked,
+            onInput: (apiKey) =>
+              store.commands.updateAiLocalSettings({ apiKey }),
+          }),
+          connection.apiKey.trim()
+            ? el(
+                'label',
+                { className: 'inline-control muted-copy' },
+                checkboxControl({
+                  checked: apiKeyLocked,
+                  onChange: (locked) => {
+                    apiKeyLockedByStore.set(store, locked);
+                    store.commands.setBanner({
+                      tone: 'info',
+                      message: locked
+                        ? 'AI API key field locked.'
+                        : 'AI API key field unlocked for editing.',
+                    });
+                  },
+                }),
+                el('span', { text: 'Lock API key field' }),
+              )
+            : null,
+        ),
+        viewModel.secretStorageNote,
       ),
       inputField(
         'Output token cap',

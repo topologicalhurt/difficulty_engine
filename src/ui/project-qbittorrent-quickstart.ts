@@ -13,7 +13,7 @@ export function renderQbittorrentQuickStart(
     el('strong', { text: 'Quick start' }),
     el('div', {
       className: 'muted-copy',
-      text: 'Run the local helper to open qBittorrent and start the browser bridge. The bridge accepts the standalone file app plus loopback browser origins by default; add your site or Obsidian origin with --allowed-origin when embedding elsewhere.',
+      text: 'Run the local helper as a background service: it opens qBittorrent hidden on macOS, starts the browser bridge, and avoids opening the Web UI unless you pass --open-browser. The bridge only accepts browser requests from loopback origins by default; add your site or Obsidian origin with --allowed-origin when embedding elsewhere.',
     }),
     el('code', {
       className: 'inline-code',
@@ -29,6 +29,19 @@ export function renderQbittorrentQuickStart(
       button('Prepare qBittorrent settings', {
         className: 'primary-button',
         onClick: () => store.commands.prepareQbittorrentQuickStart(),
+      }),
+      button('Copy setup commands', {
+        className: 'primary-button',
+        onClick: async () => {
+          await navigator.clipboard.writeText(
+            `${viewModel.qbittorrentConfigureCommand}\n${viewModel.qbittorrentLaunchCommand}`,
+          );
+          store.commands.setBanner({
+            tone: 'success',
+            message:
+              'qBittorrent setup commands copied: configure once, then launch the background bridge.',
+          });
+        },
       }),
       button('Copy launch command', {
         className: 'ghost-button',

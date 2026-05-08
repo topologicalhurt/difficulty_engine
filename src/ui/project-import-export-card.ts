@@ -113,7 +113,9 @@ export function renderImportExportCard(
       className: 'primary-button',
       onClick: () => {
         try {
-          store.commands.importProjectText(viewModel.importExportText);
+          store.commands.importProjectText(
+            store.selectors.getState().ui.importExportText,
+          );
         } catch (error) {
           store.commands.setBanner({
             tone: 'error',

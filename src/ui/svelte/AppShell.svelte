@@ -5,6 +5,9 @@
   let { appState, store } = $props();
 
   let workspace;
+  let lastSavedRevision = 0;
+  let saveToastVisible = $state(false);
+  let saveToastTimer;
 
   const viewModel = $derived(selectShellViewModel($appState));
 
@@ -13,6 +16,21 @@
       renderActiveTabBody(workspace, $appState, store);
     }
   });
+
+  $effect(() => {
+    const revision = $appState.performance.projectRevision;
+    if (lastSavedRevision > 0 && revision > lastSavedRevision) {
+      saveToastVisible = false;
+      clearTimeout(saveToastTimer);
+      requestAnimationFrame(() => {
+        saveToastVisible = true;
+        saveToastTimer = setTimeout(() => {
+          saveToastVisible = false;
+        }, 1700);
+      });
+    }
+    lastSavedRevision = revision;
+  });
 </script>
 
 <div class="app-shell" data-active-view={viewModel.activeView}>
@@ -20,7 +38,6 @@
     <div class="app-header-main">
       <div class="eyebrow">Difficulty Engine</div>
       <h1>Study Planner</h1>
-      <p class="muted-copy">{viewModel.activeDescription}</p>
     </div>
     <div class="app-header-side">
       {#each viewModel.stats as item (item.label)}
@@ -84,4 +101,12 @@
     class="main-content workspace-content"
     data-shell-slot="body"
   ></main>
+
+  <div
+    class:saved-toast-visible={saveToastVisible}
+    class="saved-toast"
+    aria-live="polite"
+  >
+    Saved
+  </div>
 </div>

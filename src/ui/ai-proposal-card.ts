@@ -59,6 +59,35 @@ function proposalBookCard(book: AiRecommendedBook): HTMLElement {
   );
 }
 
+function proposalDiffLine(prefix: '+' | '~', text: string): HTMLElement {
+  return el(
+    'div',
+    { className: `ai-diff-line ai-diff-${prefix === '+' ? 'add' : 'meta'}` },
+    el('span', { className: 'ai-diff-prefix', text: prefix }),
+    el('span', { text }),
+  );
+}
+
+function proposalDiffView(books: AiRecommendedBook[]): HTMLElement {
+  return el(
+    'div',
+    { className: 'ai-diff-view' },
+    el('div', { className: 'diff-pane-label', text: 'Reading list diff' }),
+    ...books.flatMap((book) => [
+      proposalDiffLine(
+        '+',
+        `${book.title}${book.authors.length ? ` - ${book.authors.join(', ')}` : ''}`,
+      ),
+      ...book.prerequisiteIds.map((id) =>
+        proposalDiffLine('~', `adds prerequisite edge from ${id}`),
+      ),
+      ...book.coStudyIds.map((id) =>
+        proposalDiffLine('~', `adds co-study link with ${id}`),
+      ),
+    ]),
+  );
+}
+
 export function renderAiProposalCard(
   state: AppState,
   store: PlannerStore,
@@ -94,6 +123,7 @@ export function renderAiProposalCard(
       { className: 'search-results' },
       ...viewModel.proposal.books.map((book) => proposalBookCard(book)),
     ),
+    proposalDiffView(viewModel.proposal.books),
     el(
       'div',
       { className: 'toolbar-row' },

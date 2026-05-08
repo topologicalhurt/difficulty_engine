@@ -87,6 +87,8 @@ The planner contract is strict:
 - UI never computes domain truth directly.
 - Repeated primitive operations must use canonical helpers: string compaction/joining/deduplication in `src/core/utils.ts`, number formatting in `src/core/number-format.ts`, display colors in `src/core/display-colors.ts`, stable sorting in `src/core/sort.ts`, external-source matching in `src/core/matchers.ts`, provider metadata cleanup in `src/infra/source-metadata.ts`, display formatting in `src/ui/format.ts`, document content priority in `src/infra/document-content-priority.ts`, document candidate quality in `src/infra/document-candidate-quality.ts`, and document kind/path helpers in `src/infra/qbittorrent-file-kinds.ts`.
 - Static guide copy lives in `src/content/info/readme.ts`; public UI imports must not rely on bundler-specific raw asset query loaders.
+- Panels are centralized through `src/ui/dom.ts`; collapse, scroll, and horizontal resize behavior are default panel capabilities with explicit options for exclusions.
+- Provider/model autocomplete is centralized through `src/core/ai-provider-registry.ts` plus `src/ui/form-controls.ts`; UI code should not maintain separate model lists or fuzzy matching.
 - No inline event handlers, runtime monkey-patching, or retired adapter branches remain in the production path.
 - Source audits enforce file-size caps, default-export bans, and stale-runtime removal.
 - Before adding a new helper, search the pattern registry in `CHANGE_GUIDE.md`; new helpers are only acceptable when the existing owner cannot express the concept cleanly.

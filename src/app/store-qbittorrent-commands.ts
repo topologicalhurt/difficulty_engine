@@ -36,10 +36,7 @@ export function createQbittorrentCommands(
   const connectionFingerprint = (
     settings: QbittorrentConnectionSettings,
   ): string => JSON.stringify(normalizeQbittorrentConnectionSettings(settings));
-  const requestIsCurrent = (
-    sequence: number,
-    fingerprint: string,
-  ): boolean =>
+  const requestIsCurrent = (sequence: number, fingerprint: string): boolean =>
     sequence === requestSequence &&
     connectionFingerprint(context.getState().ui.qbittorrentConnection) ===
       fingerprint;
@@ -90,7 +87,8 @@ export function createQbittorrentCommands(
           },
           banner: {
             tone: 'success',
-            message: 'qBittorrent quick-start settings enabled.',
+            message:
+              'qBittorrent enabled: local bridge URL set, document acquisition enabled, open-source sites allow-listed, and plugin search enabled.',
           },
         },
       );
@@ -98,6 +96,22 @@ export function createQbittorrentCommands(
     async testQbittorrentConnection(): Promise<void> {
       const state = context.getState();
       const connection = state.ui.qbittorrentConnection;
+      if (!connection.enabled) {
+        context.commitUi('project.qbittorrentTest', {
+          qbittorrentStatus: {
+            ...state.ui.qbittorrentStatus,
+            state: 'failed',
+            message:
+              'qBittorrent is disabled. Enable the connection before testing.',
+          },
+          banner: {
+            tone: 'warn',
+            message:
+              'qBittorrent connection test skipped because the integration is disabled.',
+          },
+        });
+        return;
+      }
       const sequence = beginRequest();
       const fingerprint = connectionFingerprint(connection);
       context.commitUi('project.qbittorrentTest', {
@@ -150,6 +164,22 @@ export function createQbittorrentCommands(
     async refreshQbittorrentPlugins(): Promise<void> {
       const state = context.getState();
       const connection = state.ui.qbittorrentConnection;
+      if (!connection.enabled) {
+        context.commitUi('project.qbittorrentPlugins', {
+          qbittorrentStatus: {
+            ...state.ui.qbittorrentStatus,
+            state: 'failed',
+            message:
+              'qBittorrent is disabled. Enable the connection before loading plugins.',
+          },
+          banner: {
+            tone: 'warn',
+            message:
+              'qBittorrent plugin refresh skipped because the integration is disabled.',
+          },
+        });
+        return;
+      }
       const sequence = beginRequest();
       const fingerprint = connectionFingerprint(connection);
       context.commitUi('project.qbittorrentPlugins', {
@@ -165,9 +195,8 @@ export function createQbittorrentCommands(
             'qBittorrent integration is not available in this host.',
           );
         }
-        const plugins = await services.qbittorrentService.listPlugins(
-          connection,
-        );
+        const plugins =
+          await services.qbittorrentService.listPlugins(connection);
         if (!requestIsCurrent(sequence, fingerprint)) return;
         context.commitUi('project.qbittorrentPlugins', {
           qbittorrentStatus: {

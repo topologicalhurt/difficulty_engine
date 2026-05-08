@@ -169,7 +169,7 @@ async function quitApp() {
 }
 
 async function openUrl(url) {
-  if (hasArg('--no-browser')) return;
+  if (hasArg('--no-browser') || !hasArg('--open-browser')) return;
   if (process.platform === 'darwin') {
     await run('open', [url]);
   } else if (process.platform === 'win32') {
@@ -275,7 +275,10 @@ async function launchApp(baseUrl) {
   const { port } = urlParts(baseUrl);
   const candidates = ['qBittorrent', 'qbittorrent'];
   for (const appName of candidates) {
-    if (await run('open', ['-ga', appName, '--args', `--webui-port=${port}`])) {
+    const args = hasArg('--foreground')
+      ? ['-ga', appName, '--args', `--webui-port=${port}`]
+      : ['-g', '-j', '-a', appName, '--args', `--webui-port=${port}`];
+    if (await run('open', args)) {
       process.stdout.write(`Opened ${appName}.\n`);
       return true;
     }

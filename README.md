@@ -5,7 +5,7 @@ Difficulty Engine now ships as a typed, embeddable planner subsystem with one ca
 ## Tooling
 
 - TypeScript with strict type-checking
-- Svelte shell for the mounted app UI
+- Svelte shell for the mounted app UI, with centralized collapsible/resizable panel primitives
 - esbuild for single-file bundling
 - ESLint + Prettier for guardrails
 - Vitest for unit/integration tests
@@ -57,6 +57,8 @@ python3 scripts/audit_source.py
 The production artifact is written to `dist/difficulty_engine.html`.
 
 For AI-assisted or large maintenance edits, follow `CHANGE_GUIDE.md` first. It lists the canonical owners for controls, formatting, matching, document ranking, source masks, and wiring so new code does not reimplement local copies of existing patterns.
+
+The Info tab renders its guide from a Markdown README source with the shared Markdown renderer; update that content instead of scattering explanatory cards through tab views.
 
 Large-project computes may use the worker-backed `PlannerComputeAdapter`. Store commands must still commit project changes synchronously so persistence and embedded hosts never wait on worker results before seeing the latest project state.
 
