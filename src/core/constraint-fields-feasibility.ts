@@ -55,12 +55,12 @@ export const PRACTICAL_FEASIBILITY_COSTUDY_FIELDS: ConstraintField[] = [
     key: 'mutualOversize',
     group: 'Practical Feasibility',
     label: 'Co-study oversize handling',
-    description: 'How large mutual groups should be treated.',
+    description: 'Whether over-cap co-study groups split or block.',
     effect: 'schedule_policy',
     kind: 'select',
     options: [
-      { value: 'batch', label: 'Batch' },
-      { value: 'strict', label: 'Strict' },
+      { value: 'batch', label: 'Batch within hard cap' },
+      { value: 'strict', label: 'Require same epoch or block' },
     ],
   },
 ];

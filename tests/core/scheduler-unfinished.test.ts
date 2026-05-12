@@ -132,4 +132,24 @@ describe('unfinished scheduler invariants', () => {
       ),
     ).toBe(false);
   });
+
+  it('blocks strict co-study groups instead of exceeding the hard parallel cap', () => {
+    const input = projectWithSynchronizedGroup();
+    input.constraints.par = 2;
+
+    const snapshot = computeSnapshot(input);
+
+    expect(snapshot.scheduleStats.peakBooks).toBeLessThanOrEqual(2);
+    expect(snapshot.scheduleStats.finishDate).toBeUndefined();
+    expect(
+      snapshot.renderModel.warnings.some(
+        (warning) => warning.code === 'costudy-group-over-parallel-cap',
+      ),
+    ).toBe(true);
+    expect(
+      snapshot.renderModel.warnings.some(
+        (warning) => warning.code === 'parallel-cap-exceeded',
+      ),
+    ).toBe(false);
+  });
 });

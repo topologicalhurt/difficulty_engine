@@ -1,4 +1,5 @@
 import { DIFFICULTY_HIGH_UNCERTAINTY, SUBJECT_WORKLOAD_DEFAULT, WORKLOAD_LIFT_CAP } from './constants';
+import { calibrateLatentWorkloads } from './difficulty-calibration';
 import { buildDifficultyEvidence } from './difficulty-evidence';
 import { applyGraphWorkloadPropagation } from './difficulty-graph';
 import { applyLearnerCalibration } from './difficulty-learner';
@@ -40,11 +41,12 @@ function subjectWorkloadLift(
 ): number {
   const strength = workloadStrength(project);
   if (strength <= 0) return 0;
+  const confidence = clamp(clusterConfidence, 0, 1);
   return round2(
     clamp(
       (clusterPrior - baseDifficulty) *
         strength *
-        clamp(clusterConfidence, 0, 1) *
+        Math.pow(confidence, 1.15) *
         clamp(1 - evidenceConfidence, 0.2, 1),
       -WORKLOAD_LIFT_CAP,
       WORKLOAD_LIFT_CAP,
@@ -75,6 +77,13 @@ export function computeDifficultyModel(
   const ids = corpus.books.map((book) => book.id);
   const depths = topologicalDepth(ids, relationInfo.prereqById);
   const evidenceById = buildDifficultyEvidence(corpus, topicIndex, project);
+  const latentById = calibrateLatentWorkloads(
+    ids.map((id) => ({
+      id,
+      estimate: estimateLatentWorkload(evidenceById[id]),
+      locked: Boolean(corpus.byId[id]?.lockDiff),
+    })),
+  );
   const model: DifficultyModelSnapshot['byId'] = {};
   const order = [...ids].sort(
     (left, right) => depths[left] - depths[right] || left.localeCompare(right),
@@ -83,7 +92,7 @@ export function computeDifficultyModel(
   order.forEach((id) => {
     const book = corpus.byId[id];
     const evidence = evidenceById[id];
-    const latent = estimateLatentWorkload(evidence);
+    const latent = latentById[id] || estimateLatentWorkload(evidence);
     const workload = workloadClusters?.byBookId[id];
     const subjectWorkloadPrior =
       workload?.subjectWorkloadPrior ?? round1(latent.latentWorkload);

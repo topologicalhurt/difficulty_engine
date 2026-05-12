@@ -21,8 +21,8 @@ export const PLAN_WINDOW_FIELDS: ConstraintField[] = [
   {
     key: 'par',
     group: 'Plan Window',
-    label: 'Parallel slots',
-    description: 'Target number of active books per study day.',
+    label: 'Hard active-book cap',
+    description: 'Maximum generated active books on a study day.',
     effect: 'schedule_policy',
     kind: 'number',
     min: 1,
@@ -32,14 +32,14 @@ export const PLAN_WINDOW_FIELDS: ConstraintField[] = [
   {
     key: 'dailyBookMode',
     group: 'Plan Window',
-    label: 'Daily book cadence',
+    label: 'Active-book rotation',
     description:
-      'Whether parallel slots rotate freely or stay as a daily cohort until books finish.',
+      'Whether the hard N-book cap behaves as a rotating pool or a fixed learning epoch.',
     effect: 'schedule_policy',
     kind: 'select',
     options: [
-      { value: 'interspersed', label: 'Interspersed rotation' },
-      { value: 'daily_cohort', label: 'Daily N-book cohort' },
+      { value: 'interspersed', label: 'Rotating eligible pool' },
+      { value: 'daily_cohort', label: 'Fixed N-book learning epoch' },
     ],
   },
   {

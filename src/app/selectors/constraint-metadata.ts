@@ -86,9 +86,9 @@ const OPTION_DETAILS: Partial<
 > = {
   dailyBookMode: {
     interspersed:
-      'The scheduler may rotate between eligible books across days to keep the plan flexible.',
+      'The planner may choose from the eligible pool each day while never exceeding the hard active-book cap.',
     daily_cohort:
-      'The same N books are kept active together until they finish, matching a stable daily stack.',
+      'The same N-book learning epoch stays active until one book finishes and a slot opens.',
   },
   emptyDayPolicy: {
     fill_when_possible:
@@ -188,9 +188,9 @@ const OPTION_DETAILS: Partial<
   },
   mutualOversize: {
     batch:
-      'Large co-study groups are split into batches that fit the parallel setting.',
+      'Large co-study groups are split into batches that fit the hard active-book cap.',
     strict:
-      'Large co-study groups must stay together even if they exceed the normal parallel target.',
+      'Large co-study groups must stay together in one epoch; if they exceed the hard cap, they block with a diagnostic instead of spilling over.',
   },
 };
 

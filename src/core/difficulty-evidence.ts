@@ -1,6 +1,6 @@
 import type { CorpusBook, CorpusSnapshot, TopicIndex } from './internal-types';
 import type { PlannerProjectV1 } from './types';
-import { clamp, mean, round1, round2, safeNumber } from './utils';
+import { clamp, mean, round2, safeNumber } from './utils';
 
 const NEUTRAL_MANUAL_SEED = 5;
 const MANUAL_SEED_BLEND_WEIGHT = 0.65;
@@ -122,7 +122,7 @@ function signal(
   return {
     key,
     label,
-    value: round1(clamp(value, 1, 10)),
+    value: clamp(value, 1, 10),
     confidence: round2(clamp(confidence, 0, 1)),
     reason,
   };
@@ -230,8 +230,8 @@ export function buildDifficultyEvidence(
         book.id,
         {
           bookId: book.id,
-          seed: round1(seed),
-          corpusComplexity: round1(stats.baseComplexity || seed),
+          seed,
+          corpusComplexity: stats.baseComplexity || seed,
           metadataConfidence: metadata,
           evidenceConfidence,
           signals,

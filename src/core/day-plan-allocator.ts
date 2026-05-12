@@ -144,6 +144,23 @@ export function allocateDayEntries(
     return true;
   };
 
+  const allocateActualOverrides = (): void => {
+    input.pending
+      .filter((state) =>
+        hasActualProgressOverride(
+          calendarActualOverride(input.project, state, input.dateStr),
+        ),
+      )
+      .sort(
+        (left, right) =>
+          priorityScore(right, false) - priorityScore(left, false) ||
+          left.short.localeCompare(right.short),
+      )
+      .forEach((state) => {
+        allocateTo(state, state.remainingTenths, false, 'strict');
+      });
+  };
+
   const fillStage = (
     candidates: PlanningState[],
     stage: DayStartMode,
@@ -173,9 +190,7 @@ export function allocateDayEntries(
         set.members.every((member) => !entryIds.has(member.state.id)),
       );
       const nextSet = sets.find(
-        (set) =>
-          dayEntries.length + set.members.length <=
-          Math.max(input.maxParallel, set.members.length),
+        (set) => dayEntries.length + set.members.length <= input.maxParallel,
       );
       if (!nextSet) break;
       let allocated = false;
@@ -187,6 +202,7 @@ export function allocateDayEntries(
     }
   };
 
+  allocateActualOverrides();
   fillStage(input.strictCandidates, 'strict');
   if (entryIds.size < input.maxParallel) {
     latestBackfillCandidates = input.recomputeBackfillCandidates([...entryIds]);

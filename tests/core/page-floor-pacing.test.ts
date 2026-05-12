@@ -311,6 +311,104 @@ describe('page floors and relative pacing', () => {
     expect(rotatingSecondDayIds).toEqual(['c', 'd']);
   });
 
+  it('keeps automatic allocation under the hard parallel cap across allocator modes', () => {
+    const base = project();
+    base.library.books = {
+      a: book('a', 'A', 3, 80, ['alpha']),
+      b: book('b', 'B', 4, 80, ['beta']),
+      c: book('c', 'C', 5, 80, ['gamma']),
+      d: book('d', 'D', 6, 80, ['delta']),
+    };
+    const cases = [
+      {
+        feasibilityMode: 'strict_floor' as const,
+        dailyBookMode: 'interspersed' as const,
+      },
+      {
+        feasibilityMode: 'practical' as const,
+        dailyBookMode: 'interspersed' as const,
+      },
+      {
+        feasibilityMode: 'strict_floor' as const,
+        dailyBookMode: 'daily_cohort' as const,
+      },
+      {
+        feasibilityMode: 'strict_floor' as const,
+        dailyBookMode: 'interspersed' as const,
+        prereqMode: 'smart_overlap' as const,
+        backfillMode: 'branch_local' as const,
+      },
+    ];
+
+    cases.forEach((patch) => {
+      const snapshot = computeSnapshot({
+        ...base,
+        constraints: {
+          ...base.constraints,
+          ...patch,
+          par: 2,
+          hpd: 8,
+          minPg: 5,
+          maxPg: 20,
+          bmp: 1,
+          gam: 1,
+          boostUnused: true,
+          applyOverlapSkim: false,
+        },
+      });
+
+      expect(snapshot.scheduleStats.peakBooks).toBeLessThanOrEqual(2);
+      expect(
+        snapshot.renderModel.warnings.some(
+          (warning) => warning.code === 'parallel-cap-exceeded',
+        ),
+      ).toBe(false);
+    });
+  });
+
+  it('preserves user-entered actual logs that exceed the generated cap', () => {
+    const input = project();
+    input.library.books = {
+      a: book('a', 'A', 3, 80, ['alpha']),
+      b: book('b', 'B', 4, 80, ['beta']),
+      c: book('c', 'C', 5, 80, ['gamma']),
+    };
+    input.manualOverrides.actuals = {
+      '2026-01-05': {
+        a: { minutes: 20, pages: 5 },
+        b: { minutes: 20, pages: 5 },
+        c: { minutes: 20, pages: 5 },
+      },
+    };
+    input.constraints = {
+      ...input.constraints,
+      par: 2,
+      hpd: 8,
+      minPg: 5,
+      maxPg: 20,
+      bmp: 1,
+      gam: 1,
+      boostUnused: false,
+      applyOverlapSkim: false,
+    };
+
+    const snapshot = computeSnapshot(input);
+    const entries = snapshot.dayPlan.byDate['2026-01-05'];
+
+    expect(entries).toHaveLength(3);
+    expect(entries.every((entry) => entry.actualOverride)).toBe(true);
+    expect(
+      snapshot.renderModel.warnings.some(
+        (warning) => warning.code === 'logged-parallel-overflow',
+      ),
+    ).toBe(true);
+    expect(
+      snapshot.renderModel.warnings.some(
+        (warning) => warning.code === 'parallel-cap-exceeded',
+      ),
+    ).toBe(false);
+  });
+
   it('explains strict cohort conflicts and stacks only when relaxed floors can fit', () => {
     const input = project();
     input.library.books = {

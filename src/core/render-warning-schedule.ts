@@ -162,6 +162,7 @@ export function buildScheduleWarnings(
   snapshot: Omit<EngineSnapshot, 'renderModel' | 'diagnostics'>,
 ): WarningItem[] {
   const { dayPlan, schedulePlan, scheduleStats } = snapshot;
+  const parallelCap = Math.max(1, Math.trunc(project.constraints.par || 1));
   const warnings =
     normalizeFeasibilityMode(project.constraints.feasibilityMode) ===
     'strict_floor'
@@ -200,12 +201,51 @@ export function buildScheduleWarnings(
     );
   }
 
-  if (scheduleStats.peakBooks > project.constraints.par) {
+  const automaticOverflowDates = Object.entries(dayPlan.byDate).filter(
+    ([, entries]) =>
+      entries.filter((entry) => !entry.actualOverride).length > parallelCap,
+  );
+  const loggedOverflowDates = Object.entries(dayPlan.byDate).filter(
+    ([, entries]) =>
+      entries.length > parallelCap &&
+      entries.filter((entry) => !entry.actualOverride).length <= parallelCap,
+  );
+  if (automaticOverflowDates.length > 0) {
+    warnings.push(
+      createWarning(
+        'fail',
+        'parallel-cap-exceeded',
+        `Automatic allocation exceeded the hard ${parallelCap}-book parallel cap on ${automaticOverflowDates.length} day(s).`,
+        automaticOverflowDates.flatMap(([, entries]) =>
+          entries
+            .filter((entry) => !entry.actualOverride)
+            .map((entry) => entry.bookId),
+        ),
+      ),
+    );
+  } else if (loggedOverflowDates.length > 0) {
     warnings.push(
       createWarning(
         'warn',
-        'peak-concurrency',
-        `Peak concurrency reaches ${scheduleStats.peakBooks} while parallel is set to ${project.constraints.par}.`,
+        'logged-parallel-overflow',
+        `Logged reading history has more than ${parallelCap} book(s) on ${loggedOverflowDates.length} day(s). The planner preserves those user-entered actuals but keeps generated allocation capped.`,
+      ),
+    );
+  }
+
+  const oversizeStrictGroups =
+    project.constraints.mutualOversize === 'strict'
+      ? schedulePlan.coStudyMeta.groups.filter(
+          (group) => group.ids.length > parallelCap,
+        )
+      : [];
+  if (oversizeStrictGroups.length > 0) {
+    warnings.push(
+      createWarning(
+        'fail',
+        'costudy-group-over-parallel-cap',
+        `${oversizeStrictGroups.length} strict co-study group(s) are larger than the hard ${parallelCap}-book parallel cap. Increase parallel slots or switch co-study oversize handling to batching.`,
+        oversizeStrictGroups.flatMap((group) => group.ids),
       ),
     );
   }

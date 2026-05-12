@@ -209,6 +209,73 @@ describe('latent difficulty pipeline', () => {
     expect(spread(highSpread)).toBeGreaterThan(spread(lowSpread));
   });
 
+  it('separates subtle technical evidence without display-only scaling', () => {
+    const snapshot = computeSnapshot(
+      project(
+        { diffMapMode: 'raw' },
+        {
+          library: {
+            books: {
+              notes: book('notes', 'Workshop Notes', 5, {
+                pages: 90,
+                subjects: ['basic workshop notes'],
+                enrichment: {
+                  chapters: chapters('notes', 3),
+                  description: 'Short practical overview.',
+                  olSubjects: ['basic workshop notes'],
+                  tocSource: 'manual',
+                },
+              }),
+              circuits: book('circuits', 'Circuit Analysis', 5, {
+                pages: 280,
+                subjects: ['circuit analysis', 'electronics'],
+                enrichment: {
+                  chapters: chapters('circuits', 8),
+                  description:
+                    'Circuit analysis with examples and worked exercises.',
+                  olSubjects: ['circuit analysis', 'electronics'],
+                  tocSource: 'manual',
+                },
+              }),
+              dsp: book('dsp', 'Discrete-Time Signal Processing', 5, {
+                pages: 520,
+                subjects: [
+                  'discrete-time signal processing',
+                  'fourier analysis',
+                  'digital filters',
+                  'z transforms',
+                  'spectral estimation',
+                ],
+                enrichment: {
+                  chapters: chapters('dsp', 15),
+                  description:
+                    'Dense technical treatment with proofs, problems, applications, and signal processing projects.',
+                  olSubjects: [
+                    'discrete-time signal processing',
+                    'fourier analysis',
+                    'digital filters',
+                  ],
+                  tocSource: 'manual',
+                },
+              }),
+            },
+          },
+        },
+      ),
+    );
+    const values = Object.values(snapshot.difficultyModel).map(
+      (entry) => entry.scheduleDifficulty,
+    );
+
+    expect(spread(values)).toBeGreaterThan(0.3);
+    expect(snapshot.difficultyModel.dsp.scheduleDifficulty).toBeGreaterThan(
+      snapshot.difficultyModel.notes.scheduleDifficulty,
+    );
+    expect(snapshot.difficultyModel.dsp.difficultyEvidence.join(' ')).toContain(
+      'Evidence-calibrated cohort prior',
+    );
+  });
+
   it('recalibrates from logged actuals only after enough pages exist', () => {
     const sparse = computeSnapshot(
       project(
@@ -255,6 +322,7 @@ describe('latent difficulty pipeline', () => {
         targetChallenge: 0,
         relativePacingStrength: 0,
         feasibilityMode: 'strict_floor',
+        hpd: 8.5,
         minPg: 20,
         maxPg: 40,
         bmp: 20,

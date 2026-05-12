@@ -171,8 +171,7 @@ export function buildCandidateSets(input: CandidateSetInput): CandidateSet[] {
         );
         if (
           steps.length === groupStates.length &&
-          input.dayEntriesLength + steps.length <=
-            Math.max(input.maxParallel, steps.length) &&
+          input.dayEntriesLength + steps.length <= input.maxParallel &&
           totalMins <=
             input.budgetMinutes -
               input.dayUsedMinutes +

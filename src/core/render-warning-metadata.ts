@@ -82,11 +82,20 @@ export function buildMetadataWarnings(
     activeDifficulties.map(([, difficulty]) => difficulty.scheduleDifficulty),
   );
   if (activeDifficulties.length >= 3 && distribution.spread < 0.8) {
+    const avgConfidence =
+      activeDifficulties.reduce(
+        (total, [, difficulty]) => total + difficulty.evidenceConfidence,
+        0,
+      ) / activeDifficulties.length;
+    const reason =
+      avgConfidence < 0.45
+        ? 'Evidence confidence is low, so the model is shrinking scores toward the neutral prior.'
+        : 'The available evidence is genuinely similar, so the confidence-gated cohort calibration is not forcing artificial separation.';
     warnings.push(
       createWarning(
         'info',
         'low-raw-difficulty-variance',
-        `Raw schedule difficulties are tightly clustered (${distribution.spread.toFixed(1)} spread). Display scaling can make the chart clearer, but planner truth will stay clustered until stronger evidence or logged actuals support more separation.`,
+        `Raw schedule difficulties are tightly clustered (${distribution.spread.toFixed(1)} spread). ${reason}`,
         activeDifficulties.map(([id]) => id),
       ),
     );
