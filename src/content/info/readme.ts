@@ -27,6 +27,7 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 - TOC sourcing prefers trusted local evidence first: manual chapters, completed text/EPUB/OCR text, local PDF outline or embedded text, optional local OCR, then online provider snippets.
 - qBittorrent acquisition is PDF-only: the app selects a matching PDF at the torrent root or one folder down, and blocks qBittorrent text/EPUB/OCR side files.
 - Manual prerequisites and co-study links are useful when you know something the metadata does not.
+- Reading scope lets you skip learned non-core sections such as TOCs, appendices, indexes, solution/reference material, and duplicates for planning. The original TOC and source pages stay intact.
 - Document badges tell you whether metadata, a sourced file, or a usable table of contents has been found.
 
 ## Planner Settings
@@ -35,6 +36,7 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 - Strict page floor means the minimum pages per day must fit, or the planner reports a conflict.
 - Relaxed page recommendation lets the planner lower the page floor when the strict floor cannot fit.
 - Learner profile sets the planner's default attitude: balanced, confidence-building, fast, deep mastery, or manual.
+- Profiles change challenge, pacing spread, ramp shape, uncertainty tolerance, and prerequisite strictness in bounded ways. They do not override manual locks or impossible constraints.
 - Relative pacing changes the desired spread of page targets across the current reading list before hard limits are applied.
 - Display difficulty mapping changes charts and colors only. It does not change hours, finish date, or calendar allocation.
 - Scheduler mode changes how the planner chooses between balance, critical paths, and fastest completion.
@@ -47,6 +49,7 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 - Clicking a book or calendar chip selects it and opens logging details.
 - Actual minutes and actual pages override the planned estimate for that day.
 - Book details show desired pages/day, feasible range, final pages/day, and why a floor, time budget, max page cap, or manual window is binding.
+- Early sessions on a book may start lighter and ramp toward the base target. Very hard books damp this ramp so the plan does not pretend difficult material quickly becomes easy.
 - Warnings explain plan conflicts or non-blocking concerns. Blocking errors cannot be dismissed.
 
 ## Graphs
@@ -60,7 +63,7 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 ## AI Suggestions
 
 - AI Suggestions can propose books to add, but it does not mutate the library until you review and apply a proposal.
-- The request is batched with your current books, relations, and planning context.
+- The request includes the full non-secret planner context: books, relations, constraints, reading scope, progress summaries, difficulty evidence, plan summaries, document status labels, and warnings.
 - Provider defaults are cost-first. You can still choose higher-quality models when needed.
 - API keys are local integration settings and are never exported inside project JSON.
 
@@ -70,13 +73,17 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 - Local qBittorrent credentials are stored locally and are not exported.
 - Source toggles control which providers can contribute metadata, documents, and table-of-contents evidence.
 - Local OCR fallback is opt-in and only works through the local bridge when Poppler/Tesseract are installed.
+- Solve everything for me creates a confidence-first preview. It only changes settings after you review and apply the proposal.
 - Diagnostics are hidden in normal builds. Use the debug build when you need detailed engine evidence.
 
 ## Terms
 
 - **Schedule difficulty**: planner truth used for time and scheduling.
 - **Display difficulty**: visual mapping used for charts, colors, and explanations.
+- **Effective reading pages**: derived workload pages after trusted reading-scope skips. Source page count is preserved.
+- **Local title cue**: introductory or advanced wording that only matters relative to a close same-topic comparator.
 - **Strict page floor**: minimum pages/day is hard; conflicts are reported rather than hidden.
+- **Reading ramp**: nonlinear per-book ramp that starts normal books lighter and approaches the base target over later sessions.
 - **Relative pacing**: spreads page targets across the reading list before feasibility clamps are applied.
 - **Backfill**: starts another eligible book when a branch is blocked.
 - **Prerequisite overlap**: permits dependent work before every prerequisite is fully finished under the configured policy.

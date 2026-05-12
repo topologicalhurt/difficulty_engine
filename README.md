@@ -37,10 +37,20 @@ The planner separates workload truth from presentation:
 
 - `scheduleDifficulty` is the solver input used for minutes/page, feasibility, scheduling, and day plans.
 - `displayDifficulty` is only for charts, labels, colors, and explanation.
-- Difficulty is estimated from evidence first: seed difficulty, page burden, topic density/rarity, technical density, chapter/TOC quality, metadata confidence, graph prerequisites, learner profile, and logged actual reading pace.
+- Difficulty is estimated from evidence first: seed difficulty, effective reading pages, topic density/rarity, technical density, chapter/TOC quality, metadata confidence, graph prerequisites, learner profile policy, and logged actual reading pace.
+- Reading scope never deletes source metadata. Learned non-core sections such as TOC rows, appendices, indexes, solutions, and duplicate/reference material are classified separately and can reduce `effectiveReadingPages` only when section/page evidence is trusted.
+- Title words such as “Introduction”, “Beginner”, “Advanced”, and “Expert” are local cohort cues only. They can adjust rank against a close same-topic comparator, but they do not globally make an unrelated technical book easy or hard.
+- Learner profiles are bounded policy presets. They alter challenge, pacing spread, ramp shape, uncertainty tolerance, learner feedback strength, and prerequisite strictness bias without overriding manual locks or hard constraints.
+- Day allocation uses a nonlinear per-book ramp: early sessions usually allocate less work, later sessions approach the base target, and very hard material dampens the ramp.
 - Page targets are also staged: desired pages/day, feasible page range, and final allocated pages/day. If a hard constraint binds, the snapshot explains the binding reason.
 
 This split is intentional. Display compression can make the UI easier to read, but it must not change hours, finish date, or calendar allocation.
+
+## Autopilot And AI Context
+
+The “solve this for me” autopilot is confidence-first and preview-only. It proposes conservative settings, useful reading-scope skips, and prerequisite-aware pacing changes, then waits for explicit apply. It must preserve manual progress, manual relations, manual schedule/defer overrides, and difficulty locks.
+
+AI recommendations receive full non-secret planner context: books, relations, constraints, reading scope, progress summaries, plan summaries, difficulty evidence, document status labels, warnings, and the active learner profile. Requests must not include API keys, qBittorrent credentials, local filesystem paths, bridge settings, or full document text.
 
 ## Commands
 

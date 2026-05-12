@@ -48,13 +48,33 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 ### Add Or Change Difficulty Or Pacing Logic
 
-- Owner: `src/core/difficulty-evidence.ts`, `src/core/difficulty-latent.ts`, `src/core/difficulty-graph.ts`, `src/core/difficulty-learner.ts`, `src/core/difficulty.ts`, and `src/core/relative-pacing.ts`.
+- Owner: `src/core/section-classifier.ts`, `src/core/effective-pages.ts`, `src/core/local-title-cues.ts`, `src/core/profile-policy.ts`, `src/core/reading-ramp.ts`, `src/core/difficulty-evidence.ts`, `src/core/difficulty-latent.ts`, `src/core/difficulty-graph.ts`, `src/core/difficulty-learner.ts`, `src/core/difficulty.ts`, and `src/core/relative-pacing.ts`.
 - Contract: `scheduleDifficulty` is planner truth; `displayDifficulty` is visual-only.
 - Evidence: new signals must include confidence, a reason, deterministic ordering, and tests for sparse and well-evidenced books.
+- Reading scope: source chapters/documents are preserved; only derived `effectiveReadingPages` may change workload/schedule when evidence is trusted.
+- Title cues: introduction/beginner/advanced/expert wording is local cohort evidence only. If there is no same-topic comparator, surface a diagnostic and do not globally shift the book.
+- Profiles: use `profilePolicy`; profile differences must be visible in feasible fixtures but bounded by manual locks and hard constraints.
+- Reading ramp: use `readingRampForState`; do not fake progress by dropping total remaining work.
 - Adaptivity: logged actuals may recalibrate only through shrinkage and only after enough pages exist.
 - Pacing: compute desired pages/day first, then feasible bounds, then final allocation with `pacingBindingReason`.
 - Tests: update `tests/core/difficulty-pipeline.test.ts`, relevant page-floor/pacing tests, and display-mapping tests.
 - Avoid: making display compression affect hours, recomputing schedule from UI selectors, rounding early, or silently clipping away desired pacing variation.
+
+### Add Or Change Reading Scope
+
+- Owner: `src/core/reading-scope.ts`, `src/core/section-classifier.ts`, `src/core/effective-pages.ts`, and focused store commands in `src/app/store-reading-scope-commands.ts`.
+- Contract: reading scope is derived workload policy. It must not mutate source TOC, enrichment, documents, reading logs, or book identity.
+- UI: per-book controls belong in the Library editor; project defaults belong in Project maintenance/settings. Both must call store commands.
+- Tests: section classification, effective pages, schedule-item pages, and UI command wiring.
+- Avoid: deleting sections, guessing page savings from weak/provider-only snippets, or applying global skips without a confidence/binding reason.
+
+### Add Or Change AI Context Or Autopilot
+
+- Owner: `src/app/ai-recommendation-context.ts` for serialized context, `src/core/autopilot.ts` for proposal policy, and `src/app/store-autopilot-commands.ts` for apply/clear commands.
+- Contract: AI context includes all non-secret planner state needed for recommendations; autopilot always previews before mutation.
+- Secrets: never serialize API keys, qBittorrent credentials, bridge settings, local filesystem paths, or full document text.
+- Tests: AI context digest/serialization tests and autopilot proposal/apply tests.
+- Avoid: hidden project mutation during proposal, prompt count ceilings that omit books/relations, or UI-only autopilot logic.
 
 ### Add Or Change Worker Compute Or Persistence
 
@@ -100,8 +120,14 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Progress display/math: `src/app/selectors/progress.ts` and `src/ui/progress.ts`
 - Date constants and weekday math: `src/core/date-constants.ts`, `src/core/time.ts`, `src/core/weekdays.ts`
 - Planner constraints and pacing math: `src/core/constraints.ts`
+- Reading scope and effective workload pages: `src/core/reading-scope.ts`, `src/core/section-classifier.ts`, `src/core/effective-pages.ts`
+- Local title cue policy: `src/core/local-title-cues.ts`
+- Learner profile policy: `src/core/profile-policy.ts`
+- Reading ramp policy: `src/core/reading-ramp.ts`
 - Difficulty evidence/model stages: `src/core/difficulty-evidence.ts`, `src/core/difficulty-latent.ts`, `src/core/difficulty-graph.ts`, `src/core/difficulty-learner.ts`, `src/core/difficulty.ts`
 - Desired/feasible/final pacing projection: `src/core/relative-pacing.ts`
+- Autopilot proposal policy: `src/core/autopilot.ts`
+- AI recommendation context serialization: `src/app/ai-recommendation-context.ts`
 - Infra cache time: `src/infra/cache-time.ts`
 - Document content priority: `src/infra/document-content-priority.ts`
 - Document candidate quality: `src/infra/document-candidate-quality.ts`
