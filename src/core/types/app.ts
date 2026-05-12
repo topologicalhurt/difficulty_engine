@@ -2,6 +2,7 @@ import type {
   AiConnectionSettings,
   AiRecommendationProposal,
   AiRecommendationStatus,
+  AutopilotProposal,
   BookSearchStatus,
   BookSearchSuggestion,
   BookDocumentCandidateOption,
@@ -80,6 +81,7 @@ export interface UiState {
   aiConnection: AiConnectionSettings;
   aiStatus: AiRecommendationStatus;
   aiProposal: AiRecommendationProposal | null;
+  autopilotProposal: AutopilotProposal | null;
   debugUi: boolean;
   banner: {
     tone: 'info' | 'success' | 'warn' | 'error';

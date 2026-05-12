@@ -15,6 +15,7 @@ import type {
   PlannerProjectV1,
   QbittorrentConnectionSettings,
   QbittorrentPluginInfo,
+  ReadingScopeSettings,
   SourceSettings,
 } from './domain';
 import type { EngineSnapshot } from './snapshot';
@@ -178,6 +179,13 @@ export interface PlannerStoreCommands {
       manualCoStudy?: string[];
     },
   ): void;
+  updateBookReadingScope(
+    id: string,
+    patch: Partial<BookRecord['readingScope']>,
+  ): void;
+  updateReadingScopeSettings(
+    patch: Partial<ReadingScopeSettings>,
+  ): void;
   moveBook(id: string, direction: 'up' | 'down'): void;
   removeBook(id: string): void;
   deferCalendarEntry(dateKey: string, bookId: string): void;
@@ -231,6 +239,9 @@ export interface PlannerStoreCommands {
   requestAiRecommendations(): Promise<void>;
   clearAiRecommendation(): void;
   applyAiRecommendation(): void;
+  solveProjectForMe(): void;
+  applyAutopilotProposal(): void;
+  clearAutopilotProposal(): void;
   refreshBookEnrichment(bookId: string): Promise<void>;
   refreshAllEnrichment(): Promise<void>;
 }

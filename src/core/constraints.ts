@@ -1,7 +1,5 @@
 import {
-  GENERIC_DIFFICULTY_ADVANCED_SHIFT,
   GENERIC_DIFFICULTY_BASE,
-  GENERIC_DIFFICULTY_INTRO_SHIFT,
   GENERIC_DIFFICULTY_LONG_BOOK_SHIFT,
   GENERIC_DIFFICULTY_LONG_BOOK_THRESHOLD,
   GENERIC_DIFFICULTY_MEDIUM_BOOK_SHIFT,
@@ -135,15 +133,16 @@ export function genericEstimateDifficulty(
   subjects: string[],
   publisher: string,
   normalizeText: (text: string) => string,
-  introCues: string[],
-  advancedCues: string[],
+  _introCues: string[],
+  _advancedCues: string[],
 ): number {
-  const text = normalizeText([title, subjects.join(' '), publisher].join(' '));
+  void title;
+  void subjects;
+  void publisher;
+  void normalizeText;
+  void _introCues;
+  void _advancedCues;
   let score = GENERIC_DIFFICULTY_BASE;
-  if (introCues.some((cue) => text.includes(cue)))
-    score += GENERIC_DIFFICULTY_INTRO_SHIFT;
-  if (advancedCues.some((cue) => text.includes(cue)))
-    score += GENERIC_DIFFICULTY_ADVANCED_SHIFT;
   if (pages > GENERIC_DIFFICULTY_LONG_BOOK_THRESHOLD)
     score += GENERIC_DIFFICULTY_LONG_BOOK_SHIFT;
   else if (pages > GENERIC_DIFFICULTY_MEDIUM_BOOK_THRESHOLD)

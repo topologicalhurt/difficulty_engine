@@ -4,6 +4,7 @@ import { buildTopicIndexForCorpus } from './topic-index';
 import type { BookRecord, PlannerProjectV1 } from './types';
 import { tokenizeWords } from './text';
 import { asArray, unique } from './utils';
+import { readingScopeSettingsForProject } from './reading-scope';
 
 export function displayGroupFromBooks(
   book: Pick<BookRecord, 'title' | 'subjects' | 'publisher'>,
@@ -67,8 +68,9 @@ export function displayGroupFromBooks(
 }
 
 export function extractCorpus(project: PlannerProjectV1): CorpusSnapshot {
+  const readingScopeSettings = readingScopeSettingsForProject(project);
   const books = Object.entries(project.library.books).map(([id, book]) =>
-    corpusBookFromRecord(id, book),
+    corpusBookFromRecord(id, book, readingScopeSettings),
   );
 
   const docFreq: Record<string, number> = {};

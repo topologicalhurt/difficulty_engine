@@ -15,6 +15,7 @@ import {
   normalizeManualSchedule,
 } from './project-normalize-overrides';
 import { normalizeBookRelations } from './project-normalize-relations';
+import { normalizeReadingScopeSettings } from './project-normalize-reading-scope';
 import { normalizeSourceSettings } from './project-normalize-sources';
 import type { PlannerProjectV1 } from './types';
 
@@ -26,6 +27,7 @@ export function createEmptyProject(): PlannerProjectV1 {
     constraints: createDefaultConstraints(),
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: normalizeSourceSettings(undefined),
+    readingScopeSettings: normalizeReadingScopeSettings(undefined),
     enrichmentCache: {},
     uiPreferences: createDefaultUiPreferences(),
   };
@@ -85,6 +87,9 @@ export function normalizeProject(
       raw.aiRecommendationSettings,
     ),
     sourceSettings: normalizeSourceSettings(raw.sourceSettings),
+    readingScopeSettings: normalizeReadingScopeSettings(
+      raw.readingScopeSettings,
+    ),
     enrichmentCache,
     uiPreferences: normalizeUiPreferences(raw),
   };

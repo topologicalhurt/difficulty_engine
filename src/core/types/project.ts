@@ -6,6 +6,7 @@ import type {
   GanttView,
   PlanColorMode,
 } from './planner-settings';
+import type { ReadingScopeSettings } from './reading-scope';
 import type { SourceSettings } from './source-settings';
 
 export interface ManualScheduleOverride {
@@ -47,6 +48,7 @@ export interface PlannerProjectV1 {
   constraints: ConstraintSet;
   aiRecommendationSettings: AiRecommendationSettings;
   sourceSettings: SourceSettings;
+  readingScopeSettings?: ReadingScopeSettings;
   enrichmentCache: Record<string, EnrichmentCacheEntry>;
   uiPreferences: UiPreferences;
 }

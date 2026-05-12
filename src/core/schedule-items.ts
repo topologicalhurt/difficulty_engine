@@ -9,6 +9,7 @@ import {
   normalizeFeasibilityMode,
 } from './constraint-normalizers';
 import { computeRelativePacingTargets } from './relative-pacing';
+import { effectiveReadingPagesById } from './effective-pages';
 import type {
   CorpusSnapshot,
   DifficultyModelSnapshot,
@@ -72,11 +73,13 @@ export function buildScheduleItems(
     project.constraints.feasibilityMode,
   );
   const strictMinPg = pageBounds(project.constraints).minPg;
+  const readingPagesById = effectiveReadingPagesById(project);
   const pacingTargets = computeRelativePacingTargets(
     activeIds.map((id) => ({
       id,
       title: corpus.byId[id]?.title || id,
-      pages: corpus.byId[id]?.pages || 1,
+      pages:
+        readingPagesById[id]?.effectivePages ?? corpus.byId[id]?.pages ?? 1,
       difficulty: difficultyFor(id, corpus, difficultyModel),
       evidenceConfidence: difficultyModel.byId[id]?.evidenceConfidence,
     })),
@@ -85,6 +88,7 @@ export function buildScheduleItems(
 
   const items = activeIds.map<SchedulePlanItem>((id) => {
     const book = corpus.byId[id];
+    const effectivePages = readingPagesById[id]?.effectivePages ?? book.pages;
     const diff = difficultyFor(id, corpus, difficultyModel);
       const pacing = pacingTargets[id] || {
         absolutePageTarget: 1,
@@ -104,7 +108,7 @@ export function buildScheduleItems(
       feasibilityMode === 'practical' &&
       effectiveMin < strictMinPg - FLOOR_RELAXED_EPSILON;
     const bounds = allowedDayWindow(
-      book.pages,
+      effectivePages,
       project.constraints,
       effectiveMin,
     );
@@ -113,7 +117,7 @@ export function buildScheduleItems(
         ? Math.max(1, Math.round(manual.days))
         : Math.max(
             1,
-            Math.ceil(book.pages / Math.max(0.1, pacing.pacingPageTarget)),
+            Math.ceil(effectivePages / Math.max(0.1, pacing.pacingPageTarget)),
           );
     const manualWindowImpossibleReason =
       manual.days != null &&
@@ -131,18 +135,18 @@ export function buildScheduleItems(
       short: book.short,
       displayGroup: book.displayGroup,
       authors: [...book.authors],
-      pages: book.pages,
+      pages: effectivePages,
       scheduleDifficulty: diff,
       displayDifficulty: difficultyModel.byId[id]?.displayDifficulty || diff,
       baseDays: plannedDays,
       plannedDays,
       requestedDays,
-      dayPages: round1(book.pages / Math.max(1, plannedDays)),
+      dayPages: round1(effectivePages / Math.max(1, plannedDays)),
       dayMins: round1(
-        (totalHours(book.pages, diff, project.constraints) * 60) /
+        (totalHours(effectivePages, diff, project.constraints) * 60) /
           plannedDays || 0,
       ),
-      hours: round2(totalHours(book.pages, diff, project.constraints)),
+      hours: round2(totalHours(effectivePages, diff, project.constraints)),
       strictMinPg,
       effectiveMinPg: effectiveMin,
       floorRelaxed,

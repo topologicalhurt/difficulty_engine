@@ -12,11 +12,22 @@ import {
   countTokens,
 } from './text';
 import { asArray, deepClone, sum, unique } from './utils';
+import { classifyReadingSections } from './section-classifier';
+import type { ReadingScopeSettings } from './types';
 
-export function corpusBookFromRecord(id: string, book: BookRecord): CorpusBook {
-  const chapterTitles = asArray(book.enrichment.chapters)
+export function corpusBookFromRecord(
+  id: string,
+  book: BookRecord,
+  readingScopeSettings?: ReadingScopeSettings,
+): CorpusBook {
+  const sourceChapterTitles = asArray(book.enrichment.chapters)
     .map((chapter) => String(chapter || ''))
     .filter(Boolean);
+  const chapterTitles = readingScopeSettings
+    ? classifyReadingSections(book, readingScopeSettings)
+        .filter((section) => !section.skipped)
+        .map((section) => section.title)
+    : sourceChapterTitles;
   const subjectTexts = unique([
     ...(book.subjects || []),
     ...(book.enrichment.olSubjects || []),
@@ -85,7 +96,7 @@ export function corpusBookFromRecord(id: string, book: BookRecord): CorpusBook {
       book.title,
       book.short,
       subjectTexts,
-      chapterTitles,
+      sourceChapterTitles,
       book.enrichment.description,
     ),
   };

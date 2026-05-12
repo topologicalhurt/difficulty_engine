@@ -5,7 +5,7 @@ import {
   slotBudgetMinutes,
   totalBudgetMinutes,
 } from './constraints';
-import { challengeMultiplier, learnerProfile } from './difficulty-profiles';
+import { profilePolicy } from './profile-policy';
 import type { ConstraintSet } from './types';
 import { clamp, round1, safeNumber } from './utils';
 
@@ -99,8 +99,9 @@ export function computeRelativePacingTargets(
   constraints: ConstraintSet,
 ): Record<string, PacingBookTarget> {
   const bounds = pageBounds(constraints);
-  const profile = learnerProfile(constraints);
-  const challenge = challengeMultiplier(profile);
+  const policy = profilePolicy(constraints);
+  const profile = policy.profile;
+  const challenge = policy.challengeMultiplier;
   const ranked = [...books].sort(
     (left, right) =>
       left.difficulty - right.difficulty ||

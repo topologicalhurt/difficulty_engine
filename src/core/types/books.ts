@@ -3,6 +3,7 @@ import type {
   BookDocumentRef,
 } from './book-documents';
 import type { BookEnrichment } from './enrichment';
+import type { BookReadingScope } from './reading-scope';
 
 export interface BookRecord {
   id: string;
@@ -35,4 +36,5 @@ export interface BookRecord {
   constantRD: boolean;
   completed: boolean;
   enrichment: BookEnrichment;
+  readingScope?: BookReadingScope;
 }

@@ -1,4 +1,6 @@
 import type { CorpusBook, CorpusSnapshot, TopicIndex } from './internal-types';
+import { effectiveReadingPagesById } from './effective-pages';
+import { localTitleCueById } from './local-title-cues';
 import type { PlannerProjectV1 } from './types';
 import { clamp, mean, round2, safeNumber } from './utils';
 
@@ -131,8 +133,23 @@ function signal(
 export function buildDifficultyEvidence(
   corpus: CorpusSnapshot,
   topicIndex: TopicIndex,
-  _project: PlannerProjectV1,
+  project: PlannerProjectV1,
 ): Record<string, DifficultyEvidence> {
+  const effectivePages = effectiveReadingPagesById(project);
+  const effectiveMedianPages = (() => {
+    const values = corpus.books
+      .map((book) => effectivePages[book.id]?.effectivePages ?? book.pages)
+      .sort((left, right) => left - right);
+    const mid = Math.floor(values.length / 2);
+    return values.length
+      ? values.length % 2
+        ? values[mid] || corpus.pageMedian
+        : ((values[mid - 1] || corpus.pageMedian) +
+            (values[mid] || corpus.pageMedian)) /
+          2
+      : corpus.pageMedian;
+  })();
+  const titleCues = localTitleCueById(corpus, topicIndex);
   return Object.fromEntries(
     corpus.books.map((book) => {
       const stats = topicIndex.bookStats[book.id] || {
@@ -142,8 +159,10 @@ export function buildDifficultyEvidence(
         lexicalDensity: book.lexicalDensity,
       };
       const seed = effectiveSeed(book);
+      const readingPages = effectivePages[book.id];
+      const pageCount = readingPages?.effectivePages ?? book.pages;
       const pageBurden = clamp(
-        5 + Math.log2(book.pages / Math.max(1, corpus.pageMedian)) * 1.25,
+        5 + Math.log2(pageCount / Math.max(1, effectiveMedianPages)) * 1.25,
         1,
         10,
       );
@@ -163,8 +182,20 @@ export function buildDifficultyEvidence(
         book,
         stats.topicCount,
       );
+      const titleCue = titleCues[book.id] || {
+        lift: 0,
+        confidence: 0,
+        reason: 'No local title cue.',
+      };
       const signals = [
         signal('seed', 'Seed estimate', seed, 0.75, 'Manual/enriched seed anchors the model.'),
+        signal(
+          'local_title_cue',
+          'Local title cue',
+          5 + titleCue.lift,
+          titleCue.confidence,
+          titleCue.reason,
+        ),
         signal(
           'corpus',
           'Corpus complexity',
@@ -177,7 +208,9 @@ export function buildDifficultyEvidence(
           'Page burden',
           pageBurden,
           0.8,
-          'Longer books raise workload relative to this library median.',
+          readingPages?.skippedPages
+            ? `Effective reading pages (${readingPages.effectivePages}/${readingPages.physicalPages}) drive workload after learned non-core sections are skipped.`
+            : 'Longer books raise workload relative to this library median.',
         ),
         signal(
           'topic_density',
@@ -218,7 +251,16 @@ export function buildDifficultyEvidence(
       const evidenceConfidence = round2(
         clamp(mean(signals.map((entry) => entry.confidence)) * 0.75 + metadata * 0.25, 0, 1),
       );
-      const reasons = signals
+      const mandatoryReasons = [
+        readingPages?.skippedPages
+          ? `Page burden: Effective reading pages (${readingPages.effectivePages}/${readingPages.physicalPages}) drive workload after learned non-core sections are skipped.`
+          : null,
+        titleCue.reason.includes('ignored globally') ||
+        titleCue.reason.includes('same-topic comparator')
+          ? `Local title cue: ${titleCue.reason}`
+          : null,
+      ].filter((reason): reason is string => Boolean(reason));
+      const topReasons = [...signals]
         .sort(
           (left, right) =>
             right.value * right.confidence - left.value * left.confidence ||
@@ -226,6 +268,7 @@ export function buildDifficultyEvidence(
         )
         .slice(0, 4)
         .map((entry) => `${entry.label}: ${entry.reason}`);
+      const reasons = Array.from(new Set([...mandatoryReasons, ...topReasons]));
       return [
         book.id,
         {

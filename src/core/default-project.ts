@@ -15,6 +15,7 @@ import type {
   AiRecommendationSettings,
   BookRecord,
   ConstraintSet,
+  ReadingScopeSettings,
   PlannerProjectV1,
   UiState,
   UiPreferences,
@@ -111,6 +112,20 @@ export function createDefaultAiConnectionSettings(): AiConnectionSettings {
   };
 }
 
+export function createDefaultReadingScopeSettings(): ReadingScopeSettings {
+  return {
+    defaultMode: 'skip_non_core',
+    skipKinds: [
+      'front_matter',
+      'toc',
+      'appendix',
+      'bibliography_index',
+      'solutions_reference',
+      'redundant_duplicate',
+    ],
+  };
+}
+
 const DEFAULT_UI_PREFERENCES: UiPreferences = {
   ganttView: 'plan',
   ganttZoom: 1,
@@ -175,6 +190,7 @@ export const DEFAULT_UI_STATE: UiState = {
     message: 'Enter a goal, then ask the recommender for a proposed addition.',
   },
   aiProposal: null,
+  autopilotProposal: null,
   debugUi: false,
   banner: null,
 };
@@ -187,6 +203,7 @@ export const EMPTY_PROJECT: PlannerProjectV1 = {
   constraints: DEFAULT_CONSTRAINTS,
   aiRecommendationSettings: createDefaultAiRecommendationSettings(),
   sourceSettings: createDefaultSourceSettings(),
+  readingScopeSettings: createDefaultReadingScopeSettings(),
   uiPreferences: createDefaultUiPreferences(),
 };
 
@@ -230,5 +247,10 @@ export const EXAMPLE_BOOK: BookRecord = {
     description: '',
     olSubjects: [],
     tocSource: 'none',
+  },
+  readingScope: {
+    mode: 'project',
+    skippedSectionTitles: [],
+    includedSectionTitles: [],
   },
 };

@@ -4,6 +4,8 @@ import { buildDifficultyEvidence } from './difficulty-evidence';
 import { applyGraphWorkloadPropagation } from './difficulty-graph';
 import { applyLearnerCalibration } from './difficulty-learner';
 import { estimateLatentWorkload } from './difficulty-latent';
+import { effectiveReadingPagesById } from './effective-pages';
+import { profilePolicy } from './profile-policy';
 import {
   difficultyDistributionStats,
   mapDisplayDifficulty,
@@ -77,6 +79,8 @@ export function computeDifficultyModel(
   const ids = corpus.books.map((book) => book.id);
   const depths = topologicalDepth(ids, relationInfo.prereqById);
   const evidenceById = buildDifficultyEvidence(corpus, topicIndex, project);
+  const readingPagesById = effectiveReadingPagesById(project);
+  const policy = profilePolicy(project.constraints);
   const latentById = calibrateLatentWorkloads(
     ids.map((id) => ({
       id,
@@ -93,6 +97,7 @@ export function computeDifficultyModel(
     const book = corpus.byId[id];
     const evidence = evidenceById[id];
     const latent = latentById[id] || estimateLatentWorkload(evidence);
+    const readingPages = readingPagesById[id];
     const workload = workloadClusters?.byBookId[id];
     const subjectWorkloadPrior =
       workload?.subjectWorkloadPrior ?? round1(latent.latentWorkload);
@@ -130,12 +135,16 @@ export function computeDifficultyModel(
     );
     const profileAdjustedDifficulty = book.lockDiff
       ? workloadBaseDifficulty
-      : project.constraints.blendMode === 'linear'
-        ? propagatedDifficulty
-        : Math.sqrt(
-            Math.max(0.1, workloadBaseDifficulty) *
-              Math.max(0.1, propagatedDifficulty),
-          );
+      : clamp(
+          (project.constraints.blendMode === 'linear'
+            ? propagatedDifficulty
+            : Math.sqrt(
+                Math.max(0.1, workloadBaseDifficulty) *
+                  Math.max(0.1, propagatedDifficulty),
+              )) + policy.difficultyLift,
+          1,
+          10,
+        );
     const learner = applyLearnerCalibration({
       project,
       bookId: id,
@@ -160,6 +169,9 @@ export function computeDifficultyModel(
         ? ['Manual difficulty lock disables graph and learner difficulty lifts.']
         : graph.reasons),
       learner.reason,
+      policy.difficultyLift
+        ? `${policy.profile.mode} profile applies a bounded ${round2(policy.difficultyLift)} workload/time calibration lift.`
+        : 'Learner profile leaves schedule difficulty neutral and affects pacing/ramp policy.',
     ];
 
     model[id] = {
@@ -175,6 +187,11 @@ export function computeDifficultyModel(
       metadataConfidence: round2(
         Math.max(evidence.metadataConfidence, workload?.metadataConfidence ?? 0),
       ),
+      physicalPages: readingPages?.physicalPages ?? book.pages,
+      effectiveReadingPages: readingPages?.effectivePages ?? book.pages,
+      skippedReadingPages: readingPages?.skippedPages ?? 0,
+      readingScopeConfidence: readingPages?.confidence ?? 0,
+      readingScopeReason: readingPages?.bindingReason ?? null,
       graphBurden: graph.graphBurden,
       graphWorkloadLift,
       learnerCalibrationLift: learner.learnerCalibrationLift,

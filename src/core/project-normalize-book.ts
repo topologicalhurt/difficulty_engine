@@ -6,6 +6,7 @@ import {
   normalizeBookDocuments,
 } from './project-normalize-documents';
 import { normalizeProvenance } from './project-normalize-provenance';
+import { normalizeBookReadingScope } from './project-normalize-reading-scope';
 import type {
   BookEnrichment,
   BookRecord,
@@ -129,6 +130,7 @@ export function normalizeBook(
     constantRD: normalizeBoolean(raw.constantRD),
     completed: normalizeBoolean(raw.completed),
     enrichment: normalizeBookEnrichment(raw.enrichment),
+    readingScope: normalizeBookReadingScope(raw.readingScope),
   };
 }
 

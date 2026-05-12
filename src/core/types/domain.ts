@@ -4,4 +4,5 @@ export type * from './books';
 export type * from './enrichment';
 export type * from './planner-settings';
 export type * from './project';
+export type * from './reading-scope';
 export type * from './source-settings';

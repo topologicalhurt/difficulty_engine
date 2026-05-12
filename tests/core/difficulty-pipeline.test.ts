@@ -276,6 +276,140 @@ describe('latent difficulty pipeline', () => {
     );
   });
 
+  it('skips trusted learned non-core sections without mutating source chapters', () => {
+    const snapshot = computeSnapshot(
+      project(
+        {},
+        {
+          library: {
+            books: {
+              scoped: book('scoped', 'Scoped Technical Book', 5, {
+                pages: 600,
+                enrichment: {
+                  chapters: [
+                    'Preface',
+                    'Contents',
+                    'Foundations',
+                    'Core Methods',
+                    'Applications',
+                    'Appendix A Reference Tables',
+                    'Bibliography',
+                    'Index',
+                  ],
+                  description: 'Dense technical material with examples.',
+                  olSubjects: ['technical methods'],
+                  tocSource: 'pdf',
+                },
+              }),
+            },
+          },
+        },
+      ),
+    );
+
+    expect(snapshot.difficultyModel.scoped.physicalPages).toBe(600);
+    expect(snapshot.difficultyModel.scoped.effectiveReadingPages).toBeLessThan(
+      600,
+    );
+    expect(snapshot.schedulePlan.byId.scoped.pages).toBe(
+      snapshot.difficultyModel.scoped.effectiveReadingPages,
+    );
+    expect(
+      snapshot.difficultyModel.scoped.difficultyEvidence.join(' '),
+    ).toContain('Effective reading pages');
+  });
+
+  it('uses intro/expert title cues only inside a same-topic cohort', () => {
+    const snapshot = computeSnapshot(
+      project(
+        { diffMapMode: 'raw' },
+        {
+          library: {
+            books: {
+              lie: book('lie', 'Introduction to Lie Theory', 5, {
+                pages: 520,
+                subjects: [
+                  'lie theory',
+                  'lie algebras',
+                  'representation theory',
+                ],
+                enrichment: {
+                  chapters: chapters('lie algebra', 12),
+                  description:
+                    'Lie algebras, representation theory, root systems, and advanced algebraic structure.',
+                  olSubjects: ['lie theory', 'representation theory'],
+                  tocSource: 'manual',
+                },
+              }),
+              workshop: book('workshop', 'Workshop Primer', 5, {
+                pages: 110,
+                subjects: ['basic workshop'],
+                enrichment: {
+                  chapters: chapters('workshop', 4),
+                  description: 'Short practical overview.',
+                  olSubjects: ['basic workshop'],
+                  tocSource: 'manual',
+                },
+              }),
+              introCircuit: book('introCircuit', 'Introduction to Circuit Analysis', 5, {
+                pages: 220,
+                subjects: ['circuit analysis', 'electronics'],
+              }),
+              expertCircuit: book('expertCircuit', 'Expert Circuit Analysis', 5, {
+                pages: 260,
+                subjects: ['circuit analysis', 'electronics'],
+              }),
+            },
+          },
+        },
+      ),
+    );
+
+    expect(snapshot.difficultyModel.lie.scheduleDifficulty).toBeGreaterThan(
+      snapshot.difficultyModel.workshop.scheduleDifficulty,
+    );
+    expect(snapshot.difficultyModel.lie.difficultyEvidence.join(' ')).toContain(
+      'ignored globally',
+    );
+    expect(
+      snapshot.difficultyModel.expertCircuit.scheduleDifficulty,
+    ).toBeGreaterThan(snapshot.difficultyModel.introCircuit.scheduleDifficulty);
+  });
+
+  it('ramps normal books from lighter early sessions toward later load', () => {
+    const snapshot = computeSnapshot(
+      project(
+        {
+          hpd: 4,
+          minPg: 1,
+          maxPg: 120,
+          bmp: 2,
+          gam: 1,
+          par: 1,
+          boostUnused: false,
+          feasibilityMode: 'strict_floor',
+        },
+        {
+          library: {
+            books: {
+              ramp: book('ramp', 'Ramp Practice', 5, {
+                pages: 480,
+                subjects: ['practice ramp'],
+              }),
+            },
+          },
+        },
+      ),
+    );
+    const entries = snapshot.dayPlan.byBook.ramp ?? [];
+
+    expect(entries.length).toBeGreaterThan(2);
+    expect(entries[0].readPages + entries[0].skimPages).toBeLessThan(
+      entries.at(-1)!.readPages + entries.at(-1)!.skimPages,
+    );
+    expect(snapshot.dayPlan.byBookStats.ramp.readingRampStage).toBeDefined();
+  });
+
   it('recalibrates from logged actuals only after enough pages exist', () => {
     const sparse = computeSnapshot(
       project(

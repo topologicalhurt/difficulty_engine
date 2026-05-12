@@ -77,6 +77,9 @@ export interface DayBookStat {
   minFeasibleDays: number;
   maxFeasibleDays: number;
   overlapReasons: string[];
+  readingRampFactor?: number;
+  readingRampStage?: 'early' | 'building' | 'steady';
+  readingRampReason?: string;
   strictMinPg: number;
   effectiveMinPg: number;
   floorRelaxed: boolean;

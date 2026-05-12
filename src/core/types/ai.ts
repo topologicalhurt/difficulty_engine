@@ -52,6 +52,9 @@ export interface AiRecommendationBookContext {
   authors: string[];
   isbn: string | null;
   pages: number;
+  physicalPages: number;
+  effectiveReadingPages: number | null;
+  skippedReadingPages: number | null;
   subjects: string[];
   displayGroup: string;
   scheduleDifficulty: number | null;
@@ -59,8 +62,14 @@ export interface AiRecommendationBookContext {
   latentWorkload?: number | null;
   workloadUncertainty?: number | null;
   evidenceConfidence?: number | null;
+  difficultyEvidence?: string[];
   chapters: string[];
   tocSource: string;
+  readingScope?: {
+    mode: string;
+    skippedSectionTitles: string[];
+    includedSectionTitles: string[];
+  };
   documentStatuses: Array<{
     provider: string;
     contentKind: string;
@@ -74,6 +83,11 @@ export interface AiRecommendationBookContext {
     actualPages: number;
     actualMinutes: number;
   };
+  manualSchedule?: {
+    startSlot?: number;
+    days?: number;
+  };
+  deferredDates: string[];
   owned: boolean;
   ignored: boolean;
   completed: boolean;
@@ -105,11 +119,41 @@ export interface AiRecommendationContext {
     scheduleAlgorithm: string;
     prerequisiteMode: string;
     bookOrderPolicy: string;
+    learnerProfileMode?: string;
+    learnerAdaptivityStrength?: number;
+    targetChallenge?: number;
+    relativePacingStrength?: number;
+    feasibilityMode?: string;
+    dailyBookMode?: string;
+  };
+  readingScopeSettings?: {
+    defaultMode: string;
+    skipKinds: string[];
+  };
+  planSummary?: {
+    totalHours: number;
+    remainingHours: number;
+    spanWeeks: number;
+    peakBooks: number;
+    hardInfeasibleBooks: number;
+    blockedBooks: number;
   };
   diagnostics: {
     warns: string[];
     fails: string[];
   };
+}
+
+export interface AutopilotProposal {
+  id: string;
+  createdAt: string;
+  mode: 'confidence_first';
+  summary: string;
+  constraintPatch: Record<string, unknown>;
+  readingScopeSettingsPatch: Record<string, unknown>;
+  bookPatches: Record<string, Record<string, unknown>>;
+  reasons: string[];
+  unchangedReasons: string[];
 }
 
 export interface AiRecommendationRequest {

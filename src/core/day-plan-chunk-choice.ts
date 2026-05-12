@@ -4,6 +4,7 @@ import type { PlanningState } from './internal-types';
 import type { PlannerProjectV1 } from './types';
 import { clamp, safeNumber } from './utils';
 import { marginalMinutesForTenths } from './day-plan-work';
+import { readingRampForState } from './reading-ramp';
 
 function todayChunkBounds(
   state: PlanningState,
@@ -41,7 +42,15 @@ function todayChunkBounds(
       preferredMinTenths,
       Math.max(preferredMinTenths, maxTenths),
     );
-    let desiredTotal = Math.min(target, remainingUniverse, maxTenths);
+    const ramp = readingRampForState(state, project);
+    state.readingRampFactor = ramp.factor;
+    state.readingRampStage = ramp.stage;
+    state.readingRampReason = ramp.reason;
+    const rampedTarget = Math.max(
+      preferredMinTenths,
+      Math.round(target * ramp.factor),
+    );
+    let desiredTotal = Math.min(rampedTarget, remainingUniverse, maxTenths);
     const leftover = remainingUniverse - desiredTotal;
     if (
       leftover > 0 &&
@@ -57,7 +66,7 @@ function todayChunkBounds(
       desiredTotal += leftover;
     }
     const minTotal =
-      remainingUniverse <= target || desiredTotal === remainingUniverse
+        remainingUniverse <= rampedTarget || desiredTotal === remainingUniverse
         ? desiredTotal
         : Math.min(preferredMinTenths, desiredTotal);
     if (minTotal > maxTenths) return null;
@@ -91,13 +100,24 @@ function todayChunkBounds(
     maxTotal = Math.min(maxTenths, remainingUniverse - daysAfter * minTenths);
   }
   if (minTotal > maxTotal) return null;
+  const ramp = readingRampForState(state, project);
+  state.readingRampFactor = ramp.factor;
+  state.readingRampStage = ramp.stage;
+  state.readingRampReason = ramp.reason;
+  const practicalRangeShare =
+    ramp.stage === 'early' ? 0 : ramp.stage === 'building' ? 0.45 : 1;
+  const desiredTotal = clamp(
+    Math.round(minTotal + (maxTotal - minTotal) * practicalRangeShare),
+    minTotal,
+    maxTotal,
+  );
   return {
     current,
     daysInclToday,
     minTotal,
     maxTotal,
     remainingUniverse,
-    desiredTotal: minTotal,
+    desiredTotal,
   };
 }
 

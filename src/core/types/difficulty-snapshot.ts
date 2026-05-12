@@ -9,6 +9,11 @@ export interface DifficultyBreakdown {
   subjectClusterId: string | null;
   subjectClusterConfidence: number;
   metadataConfidence: number;
+  physicalPages?: number;
+  effectiveReadingPages?: number;
+  skippedReadingPages?: number;
+  readingScopeConfidence?: number;
+  readingScopeReason?: string | null;
   graphBurden: number;
   graphWorkloadLift: number;
   learnerCalibrationLift: number;

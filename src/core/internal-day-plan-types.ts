@@ -50,6 +50,9 @@ export interface PlanningState {
     | 'parallel_slot'
     | 'insufficient_evidence';
   overlapReasons: string[];
+  readingRampFactor?: number;
+  readingRampStage?: 'early' | 'building' | 'steady';
+  readingRampReason?: string;
   usedMinutes: number;
   usedTenths: number;
   usedDays: number;
