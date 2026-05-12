@@ -259,7 +259,7 @@ describe('AI recommendations store flow', () => {
     store.commands.updateAiLocalSettings({ provider: 'anthropic' });
     expect(store.selectors.getState().ui.aiConnection).toMatchObject({
       provider: 'anthropic',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5',
     });
 
     store.commands.updateAiLocalSettings({ model: 'gpt latest' });

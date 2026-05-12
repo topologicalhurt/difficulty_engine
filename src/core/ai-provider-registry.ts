@@ -49,7 +49,7 @@ export const AI_PROVIDER_REGISTRY: readonly AiProviderDefinition[] = [
     provider: 'anthropic',
     label: 'Anthropic / Claude',
     endpointFamily: 'messages',
-    defaultModel: 'claude-sonnet-4-6',
+    defaultModel: 'claude-haiku-4-5',
     models: [
       {
         id: 'claude-sonnet-4-6',
@@ -106,6 +106,98 @@ export function aiModelOptions(provider?: AiRecommendationProviderKey): string[]
   return AI_PROVIDER_REGISTRY.filter(
     (definition) => !provider || definition.provider === provider,
   ).flatMap((definition) => definition.models.map((model) => model.id));
+}
+
+function levenshteinDistance(left: string, right: string): number {
+  const previous = Array.from(
+    { length: right.length + 1 },
+    (_, index) => index,
+  );
+  const current = Array.from({ length: right.length + 1 }, () => 0);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    current[0] = leftIndex;
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      current[rightIndex] = Math.min(
+        previous[rightIndex] + 1,
+        current[rightIndex - 1] + 1,
+        previous[rightIndex - 1] +
+          (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1),
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[right.length] ?? 0;
+}
+
+export function rankedAiModelMatches(
+  query: string,
+  provider?: AiRecommendationProviderKey,
+): Array<{
+  provider: AiRecommendationProviderKey;
+  model: string;
+  label: string;
+}> {
+  const compactInput = compactModelText(query);
+  const candidates = AI_PROVIDER_REGISTRY.filter(
+    (definition) => !provider || definition.provider === provider,
+  ).flatMap((definition) =>
+    definition.models.map((model) => ({
+      provider: definition.provider,
+      model: model.id,
+      label: model.label,
+      aliases: model.aliases,
+    })),
+  );
+  if (!compactInput) {
+    return candidates.slice(0, 6).map(({ provider, model, label }) => ({
+      provider,
+      model,
+      label,
+    }));
+  }
+  return candidates
+    .map((candidate) => {
+      const aliases = [
+        candidate.model,
+        candidate.label,
+        ...candidate.aliases,
+      ].map(compactModelText);
+      const exact = aliases.some((alias) => alias === compactInput);
+      const prefix = aliases.some((alias) => alias.startsWith(compactInput));
+      const contains = aliases.some((alias) => alias.includes(compactInput));
+      const distance = Math.min(
+        ...aliases.map((alias) =>
+          levenshteinDistance(
+            compactInput,
+            alias.slice(0, Math.max(compactInput.length, 1)),
+          ),
+        ),
+      );
+      let score = distance + 6;
+      if (exact) score = 0;
+      else if (prefix) score = distance;
+      else if (contains) score = distance + 2;
+      return { candidate, score };
+    })
+    .sort(
+      (left, right) =>
+        left.score - right.score ||
+        left.candidate.provider.localeCompare(right.candidate.provider) ||
+        left.candidate.model.localeCompare(right.candidate.model),
+    )
+    .slice(0, 6)
+    .map(({ candidate }) => ({
+      provider: candidate.provider,
+      model: candidate.model,
+      label: candidate.label,
+    }));
+}
+
+export function bestAiModelMatch(
+  query: string,
+  provider?: AiRecommendationProviderKey,
+): ReturnType<typeof rankedAiModelMatches>[number] | null {
+  return rankedAiModelMatches(query, provider)[0] ?? null;
 }
 
 export function aiModelBelongsToProvider(

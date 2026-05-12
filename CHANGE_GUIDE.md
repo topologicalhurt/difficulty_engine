@@ -34,7 +34,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 - Owner: selectors first, then Svelte shell/components under `src/ui/svelte/` or focused tab/panel helpers under `src/ui/`.
 - Data flow: UI receives view models and callbacks; UI must not read raw project/snapshot state.
-- Shared primitives: use `button`, `selectInput`, `inputField`, `badge`, `renderProgressBar`, and formatter helpers from `src/ui/format.ts`, including `formatCssPercent` for style percentages.
+- Shared primitives: use `panel`/`card`, `button`, `selectInput`, `inputField`, `autocompleteTextInputControl`, `badge`, `renderProgressBar`, and formatter helpers from `src/ui/format.ts`, including `formatCssPercent` for style percentages.
 - Tests: update selector tests for data shape and browser smoke only when interaction or mount behavior changes.
 - Avoid: local formatting, local control factories, hidden full-tab rerenders, or domain calculations in render functions.
 
@@ -87,7 +87,8 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 ## Canonical Patterns
 
 - UI shell: `src/ui/svelte/AppShell.svelte`
-- UI controls: `src/ui/dom.ts`
+- UI panels and controls: `src/ui/dom.ts` and `src/ui/form-controls.ts`
+- AI provider/model choices: `src/core/ai-provider-registry.ts`
 - UI formatting: `src/ui/format.ts`
 - Guide content: `src/content/info/readme.ts`
 - Number formatting: `src/core/number-format.ts`

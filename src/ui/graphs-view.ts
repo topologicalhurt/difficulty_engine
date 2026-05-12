@@ -48,14 +48,6 @@ export function renderGraphsView(
   return el(
     'div',
     { className: 'stack-layout' },
-    card(
-      'Graphs',
-      el(
-        'div',
-        { className: 'muted-copy' },
-        'Explore prerequisites, co-study links, topic overlap, weekly load, occupancy, and the difficulty ladder.',
-      ),
-    ),
     renderGraphOptions(state, store),
     renderGraphPanels(selectGraphRenderModel(state)),
     el(

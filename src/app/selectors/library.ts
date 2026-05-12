@@ -6,10 +6,7 @@ import {
   selectBookRelationSelectorSummary,
   type RelationSelectorView,
 } from './library-relations';
-import {
-  selectProgressByBook,
-  type BookProgressView,
-} from './progress';
+import { selectProgressByBook, type BookProgressView } from './progress';
 
 export interface BadgeView {
   label: string;
@@ -55,6 +52,13 @@ export interface LibraryViewModel {
   editor: BookEditorViewModel;
   orderPolicy: string;
   listWidthPx: number;
+  enrichmentProgress: {
+    total: number;
+    loading: number;
+    ready: number;
+    failed: number;
+    idle: number;
+  };
 }
 
 export function enrichmentBadgeView(
@@ -170,6 +174,17 @@ export function selectLibraryViewModel(state: AppState): LibraryViewModel {
   const selectedBook = state.ui.selectedBookId
     ? state.project.library.books[state.ui.selectedBookId]
     : undefined;
+  const enrichmentEntries = Object.values(state.enrichment.byBookId);
+  const total = Object.keys(state.project.library.books).length;
+  const loading = enrichmentEntries.filter(
+    (entry) => entry.status === 'loading',
+  ).length;
+  const ready = enrichmentEntries.filter(
+    (entry) => entry.status === 'success' || entry.status === 'stale',
+  ).length;
+  const failed = enrichmentEntries.filter(
+    (entry) => entry.status === 'failed',
+  ).length;
   return {
     selectedBook,
     readingList: readingListViewModelFromProgress(state, progressByBook),
@@ -180,6 +195,13 @@ export function selectLibraryViewModel(state: AppState): LibraryViewModel {
     ),
     orderPolicy: state.project.constraints.bookOrderPolicy,
     listWidthPx: state.ui.libraryListWidthPx,
+    enrichmentProgress: {
+      total,
+      loading,
+      ready,
+      failed,
+      idle: Math.max(0, total - loading - ready - failed),
+    },
   };
 }
 

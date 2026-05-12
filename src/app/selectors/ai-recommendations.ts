@@ -2,6 +2,7 @@ import type { AiRecommendationProviderKey, AppState } from '../../core/types';
 import {
   aiModelOptions,
   aiProviderOptions,
+  rankedAiModelMatches,
   resolveAiModelInput,
 } from '../../core/ai-provider-registry';
 
@@ -17,6 +18,11 @@ export interface AiRecommendationViewModel {
   proposal: AppState['ui']['aiProposal'];
   maxSuggestions: number;
   providerOptions: AiProviderOption[];
+  modelSuggestions: Array<{
+    provider: AiRecommendationProviderKey;
+    model: string;
+    label: string;
+  }>;
   requestDisabled: boolean;
   applyDisabled: boolean;
   contextSummary: string;
@@ -47,6 +53,13 @@ export function selectAiRecommendationViewModel(
     proposal: state.ui.aiProposal,
     maxSuggestions: state.project.aiRecommendationSettings.maxSuggestions,
     providerOptions: aiProviderOptions(),
+    modelSuggestions: rankedAiModelMatches(state.ui.aiConnection.model).map(
+      (item) => ({
+        provider: item.provider,
+        model: item.model,
+        label: item.label,
+      }),
+    ),
     requestDisabled:
       state.ui.aiStatus.state === 'loading' ||
       !state.ui.aiPrompt.trim() ||

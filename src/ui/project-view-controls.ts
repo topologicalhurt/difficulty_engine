@@ -1,5 +1,9 @@
 import { el } from './dom';
-import { checkboxControl, textInputControl } from './form-controls';
+import {
+  checkboxControl,
+  numberInputControl,
+  textInputControl,
+} from './form-controls';
 
 export function sourceCheckbox(
   checked: boolean,
@@ -47,15 +51,21 @@ export function projectNumberInput(
   max: string,
   focusKey: string,
 ): HTMLInputElement {
-  const input = projectTextInput(
-    String(value),
-    (next) => onInput(Number(next)),
+  const input = numberInputControl({
+    value,
+    min,
+    max,
+    step: 1,
     focusKey,
-    '',
-    'number',
-  );
-  input.min = min;
-  input.max = max;
-  input.step = '1';
+    onChange: onInput,
+    onEmpty: (target) => {
+      target.value = String(value);
+    },
+    onKeyDown: (event) => {
+      if (event.key === 'Enter') {
+        (event.currentTarget as HTMLInputElement).blur();
+      }
+    },
+  });
   return input;
 }

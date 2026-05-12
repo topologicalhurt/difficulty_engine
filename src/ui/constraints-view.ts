@@ -78,14 +78,6 @@ export function renderConstraintsView(
   return el(
     'div',
     { className: 'stack-layout settings-shell' },
-    card(
-      'Planner settings',
-      el(
-        'div',
-        { className: 'muted-copy' },
-        'Tune how the planner estimates difficulty, pacing, and scheduling behavior.',
-      ),
-    ),
     el(
       'div',
       { className: 'settings-layout-grid' },
