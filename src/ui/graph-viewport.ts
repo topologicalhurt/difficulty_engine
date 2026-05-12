@@ -1,4 +1,4 @@
-import { button, card, el } from './dom';
+import { button, el, panel } from './dom';
 import { formatPercent } from './format';
 
 type GraphViewportState = {
@@ -128,8 +128,9 @@ export function renderInteractiveGraphCard(
   attachPanZoom(frame, content, id, refresh);
   refresh();
 
-  return card(
+  return panel(
     title,
+    { id: `graph:${id}`, className: 'graph-panel' },
     el(
       'div',
       { className: 'toolbar-row' },
