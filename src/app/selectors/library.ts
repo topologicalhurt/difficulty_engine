@@ -1,4 +1,7 @@
 import type { AppState, BookRecord, EnrichmentStatus } from '../../core/types';
+import { effectiveReadingPagesForBook } from '../../core/effective-pages';
+import { readingScopeSettingsForProject } from '../../core/reading-scope';
+import { classifyReadingSections } from '../../core/section-classifier';
 import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 import { compactItems, round1 } from '../../core/utils';
 import {
@@ -30,6 +33,7 @@ export interface ReadingListItemView {
 export interface BookEditorViewModel {
   book: BookRecord | undefined;
   allBooks: BookRecord[];
+  readingScope: BookReadingScopeView | null;
   enrichmentStatus: EnrichmentStatus | 'idle';
   enrichmentError: string | null;
   incomingRelations: string[];
@@ -44,6 +48,18 @@ export interface BookEditorViewModel {
     dependents: RelationSelectorView;
     coStudy: RelationSelectorView;
   };
+}
+
+export interface BookReadingScopeView {
+  effectivePages: number;
+  physicalPages: number;
+  skippedPages: number;
+  bindingReason: string | null;
+  sections: Array<{
+    title: string;
+    kind: string;
+    skipped: boolean;
+  }>;
 }
 
 export interface LibraryViewModel {
@@ -227,6 +243,7 @@ function bookEditorViewModelFromProgress(
     return {
       book,
       allBooks,
+      readingScope: null,
       enrichmentStatus: 'idle',
       enrichmentError: null,
       incomingRelations: [],
@@ -250,10 +267,26 @@ function bookEditorViewModelFromProgress(
     book,
     allBooks,
   );
+  const readingScopeSettings = readingScopeSettingsForProject(state.project);
+  const effectivePages = effectiveReadingPagesForBook(book, readingScopeSettings);
+  const readingScope: BookReadingScopeView = {
+    effectivePages: effectivePages.effectivePages,
+    physicalPages: effectivePages.physicalPages,
+    skippedPages: effectivePages.skippedPages,
+    bindingReason: effectivePages.bindingReason,
+    sections: classifyReadingSections(book, readingScopeSettings).map(
+      (section) => ({
+        title: section.title,
+        kind: section.kind,
+        skipped: section.skipped,
+      }),
+    ),
+  };
 
   return {
     book,
     allBooks,
+    readingScope,
     enrichmentStatus: enrichmentEntry?.status ?? 'idle',
     enrichmentError: enrichmentEntry?.error ?? null,
     incomingRelations: relationSummary.incomingRelations,

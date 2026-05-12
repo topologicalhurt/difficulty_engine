@@ -115,7 +115,7 @@ export function renderBookInspector(
       el('h3', { className: 'inspector-title', text: model.bookTitle }),
       el('div', {
         className: 'muted-copy',
-        text: `${formatPages(model.pages)} pages · ${formatOneDecimal(model.difficulty.scheduleDifficulty)} schedule difficulty · ${formatOneDecimal(model.difficulty.latentWorkload)} latent workload`,
+        text: `${formatPages(model.difficulty.effectiveReadingPages ?? model.pages)} effective pages (${formatPages(model.difficulty.physicalPages ?? model.pages)} source) · ${formatOneDecimal(model.difficulty.scheduleDifficulty)} schedule difficulty · ${formatOneDecimal(model.difficulty.latentWorkload)} latent workload`,
       }),
       model.progress ? renderProgressBar(model.progress) : null,
       el(
@@ -177,6 +177,16 @@ export function renderBookInspector(
         className: 'muted-copy',
         text: `Final ${formatOneDecimal(model.schedule.finalPagesPerDay)} pg/day · feasible ${formatOneDecimal(model.schedule.feasibleMinPagesPerDay)}-${formatOneDecimal(model.schedule.feasibleMaxPagesPerDay)} · binding ${model.schedule.pacingBindingReason}`,
       }),
+      el('div', {
+        className: 'muted-copy',
+        text: `Reading ramp ${model.dayStats.readingRampStage ?? 'steady'} (${formatOneDecimal((model.dayStats.readingRampFactor ?? 1) * 100)}%) · ${model.dayStats.readingRampReason ?? 'No nonlinear ramp applied.'}`,
+      }),
+      model.difficulty.readingScopeReason
+        ? el('div', {
+            className: 'muted-copy',
+            text: model.difficulty.readingScopeReason,
+          })
+        : null,
       el(
         'div',
         { className: 'stack-list compact-stack' },

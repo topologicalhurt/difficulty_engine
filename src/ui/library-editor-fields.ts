@@ -1,6 +1,11 @@
-import type { BookRecord } from '../core/types';
-import { el } from './dom';
-import { inputField, textAreaControl } from './form-controls';
+import type { BookReadingScopeView } from '../app/selectors/library';
+import type {
+  BookReadingScopeMode,
+  BookRecord,
+  PlannerStore,
+} from '../core/types';
+import { badge, el } from './dom';
+import { inputField, selectInput, textAreaControl } from './form-controls';
 import { joinCsv, parseCsv } from './format';
 import { checkboxInput, numberInput, textInput } from './library-controls';
 
@@ -221,5 +226,70 @@ export function renderBookEvidenceFields(
       }),
       'Used by the inference engine as generic corpus evidence.',
     ),
+  );
+}
+
+export function renderBookReadingScopeFields(
+  book: BookRecord,
+  readingScope: BookReadingScopeView | null,
+  store: PlannerStore,
+): HTMLElement {
+  const analysis = readingScope;
+  const sections = readingScope?.sections ?? [];
+  return el(
+    'div',
+    { className: 'stack-layout compact-stack' },
+    inputField(
+      'Reading scope',
+      selectInput(
+        book.readingScope?.mode ?? 'project',
+        [
+          { value: 'project', label: 'Use project default' },
+          { value: 'skip_non_core', label: 'Skip learned non-core sections' },
+          { value: 'include_all', label: 'Include every learned section' },
+        ],
+        {
+          focusKey: `book:${book.id}:readingScope`,
+          onChange: (event) => {
+            if (event.target instanceof HTMLSelectElement) {
+              store.commands.updateBookReadingScope(book.id, {
+                mode: event.target.value as BookReadingScopeMode,
+              });
+            }
+          },
+        },
+      ),
+      'Controls whether TOC/front matter/appendix/reference sections reduce this book’s effective reading workload.',
+    ),
+    el(
+      'div',
+      { className: 'badge-row' },
+      analysis
+        ? badge(`${analysis.effectivePages}/${analysis.physicalPages} effective pages`)
+        : badge(`${book.pages}/${book.pages} effective pages`),
+      analysis?.skippedPages ? badge(`${analysis.skippedPages} skipped`, 'warn') : null,
+      analysis?.bindingReason ? badge('scope diagnostic', 'neutral') : null,
+    ),
+    analysis?.bindingReason
+      ? el('div', { className: 'muted-copy', text: analysis.bindingReason })
+      : null,
+    sections.length
+      ? el(
+          'div',
+          { className: 'stack-list compact-stack' },
+          ...sections.slice(0, 8).map((section) =>
+            el(
+              'div',
+              { className: 'stack-row' },
+              badge(section.skipped ? 'skipped' : 'kept', section.skipped ? 'warn' : 'success'),
+              el('span', { text: section.title }),
+              el('span', { className: 'muted-copy', text: section.kind }),
+            ),
+          ),
+        )
+      : el('div', {
+          className: 'muted-copy',
+          text: 'No learned chapter/section titles yet.',
+        }),
   );
 }

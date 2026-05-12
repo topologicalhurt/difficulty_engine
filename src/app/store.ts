@@ -15,11 +15,13 @@ import { createLibraryCommands } from './store-library-commands';
 import { createProjectCommands } from './store-project-commands';
 import { createQbittorrentCommands } from './store-qbittorrent-commands';
 import { createMetadataCommands } from './store-metadata-commands';
+import { createReadingScopeCommands } from './store-reading-scope-commands';
 import { createStoreRuntime } from './store-runtime';
 import { createCatalogSearchRunner } from './store-search';
 import { createSearchCommands } from './store-search-commands';
 import { createUiCommands } from './store-ui-commands';
 import { createAiRecommendationCommands } from './store-ai-recommendations';
+import { createAutopilotCommands } from './store-autopilot-commands';
 
 export function createPlannerStore(
   options: CreatePlannerStoreOptions,
@@ -88,12 +90,14 @@ export function createPlannerStore(
       ...createDocumentCommands(context, options),
       ...createConstraintCommands(context),
       ...createLibraryCommands(context),
+      ...createReadingScopeCommands(context),
       ...createCalendarCommands(context),
       ...createSearchCommands(context),
       ...createProjectCommands(context),
       ...createMetadataCommands(context, options),
       ...createQbittorrentCommands(context, options),
       ...createAiRecommendationCommands(context, options),
+      ...createAutopilotCommands(context, options),
       ...enrichmentCommands,
     },
     subscriptions: {

@@ -2,11 +2,13 @@ import type {
   AppState,
   DocumentSourceKey,
   MetadataSourceKey,
+  ReadingScopeSettings,
 } from '../../core/types';
 import {
   DEFAULT_QBITTORRENT_BRIDGE_ALLOWED_ORIGINS,
   DEFAULT_QBITTORRENT_WEB_UI_URL,
 } from '../../core/defaults';
+import { readingScopeSettingsForProject } from '../../core/reading-scope';
 
 type SourceProviderDefinition = {
   label: string;
@@ -97,6 +99,7 @@ export interface ProjectViewModel {
   importExportText: string;
   importExportDirty: boolean;
   sourceSettings: AppState['project']['sourceSettings'];
+  readingScopeSettings: ReadingScopeSettings;
   sourceProviders: ProjectSourceProviderRow[];
   contentPreferenceLabel: string;
   qbittorrentConnection: AppState['ui']['qbittorrentConnection'];
@@ -122,6 +125,7 @@ export function selectProjectViewModel(state: AppState): ProjectViewModel {
     importExportText: state.ui.importExportText,
     importExportDirty: state.ui.importExportDirty,
     sourceSettings: state.project.sourceSettings,
+    readingScopeSettings: readingScopeSettingsForProject(state.project),
     sourceProviders,
     contentPreferenceLabel:
       state.project.sourceSettings.contentPreference.join(' -> '),

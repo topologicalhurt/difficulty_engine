@@ -5,6 +5,7 @@ import {
   renderBookEvidenceFields,
   renderBookFlagFields,
   renderBookMetadataFields,
+  renderBookReadingScopeFields,
 } from './library-editor-fields';
 import {
   renderBookDetailToolbar,
@@ -86,6 +87,10 @@ export function renderBookEditorPanel(
     ),
     renderBookFlagFields(book, update),
     renderBookEvidenceFields(book, update),
+    card(
+      'Reading scope',
+      renderBookReadingScopeFields(book, model.readingScope, store),
+    ),
     renderBookPlanningInspector(book, model),
     renderBookDocumentsPanel(state, book, store),
     renderRelationChips('Outgoing relations', model.outgoingRelations),

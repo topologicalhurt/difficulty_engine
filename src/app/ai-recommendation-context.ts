@@ -5,6 +5,7 @@ import type {
   AppState,
   BookRecord,
 } from '../core/types';
+import { readingScopeSettingsForProject } from '../core/reading-scope';
 
 const FNV1A_OFFSET_BASIS = 2166136261;
 const FNV1A_PRIME = 16777619;
@@ -34,12 +35,20 @@ function compactBook(
   state: AppState,
 ): AiRecommendationBookContext {
   const difficulty = state.snapshot.difficultyModel[book.id];
+  const manualSchedule = state.project.manualOverrides.schedule[book.id];
+  const deferredDates = Object.entries(state.project.manualOverrides.deferred)
+    .filter(([, ids]) => ids.includes(book.id))
+    .map(([date]) => date)
+    .sort();
   return {
     id: book.id,
     title: book.title,
     authors: book.authors,
     isbn: book.isbn,
     pages: book.pages,
+    physicalPages: difficulty?.physicalPages ?? book.pages,
+    effectiveReadingPages: difficulty?.effectiveReadingPages ?? null,
+    skippedReadingPages: difficulty?.skippedReadingPages ?? null,
     subjects: [...book.subjects, ...book.enrichment.olSubjects],
     displayGroup: book.displayGroup,
     scheduleDifficulty: difficulty?.scheduleDifficulty ?? null,
@@ -47,8 +56,16 @@ function compactBook(
     latentWorkload: difficulty?.latentWorkload ?? null,
     workloadUncertainty: difficulty?.workloadUncertainty ?? null,
     evidenceConfidence: difficulty?.evidenceConfidence ?? null,
+    difficultyEvidence: difficulty?.difficultyEvidence ?? [],
     chapters: [...book.enrichment.chapters],
     tocSource: book.enrichment.tocSource,
+    readingScope: book.readingScope
+      ? {
+          mode: book.readingScope.mode,
+          skippedSectionTitles: [...book.readingScope.skippedSectionTitles],
+          includedSectionTitles: [...book.readingScope.includedSectionTitles],
+        }
+      : undefined,
     documentStatuses: (book.documents ?? []).map((document) => ({
       provider: document.provider,
       contentKind: document.contentKind,
@@ -58,6 +75,13 @@ function compactBook(
       seeders: document.availability.seeders,
     })),
     progress: actualProgress(state, book.id),
+    manualSchedule: manualSchedule
+      ? {
+          startSlot: manualSchedule.ds,
+          days: manualSchedule.days,
+        }
+      : undefined,
+    deferredDates,
     owned: book.owned,
     ignored: book.ignored,
     completed: book.completed,
@@ -86,6 +110,7 @@ function compactRelations(state: AppState): AiRecommendationRelationContext[] {
 export function buildAiRecommendationContext(
   state: AppState,
 ): AiRecommendationContext {
+  const readingScopeSettings = readingScopeSettingsForProject(state.project);
   const books = Object.values(state.project.library.books)
     .sort(
       (left, right) =>
@@ -106,6 +131,25 @@ export function buildAiRecommendationContext(
       scheduleAlgorithm: state.project.constraints.schedAlgo,
       prerequisiteMode: state.project.constraints.prereqMode,
       bookOrderPolicy: state.project.constraints.bookOrderPolicy,
+      learnerProfileMode: state.project.constraints.learnerProfileMode,
+      learnerAdaptivityStrength:
+        state.project.constraints.learnerAdaptivityStrength,
+      targetChallenge: state.project.constraints.targetChallenge,
+      relativePacingStrength: state.project.constraints.relativePacingStrength,
+      feasibilityMode: state.project.constraints.feasibilityMode,
+      dailyBookMode: state.project.constraints.dailyBookMode,
+    },
+    readingScopeSettings: {
+      defaultMode: readingScopeSettings.defaultMode,
+      skipKinds: [...readingScopeSettings.skipKinds],
+    },
+    planSummary: {
+      totalHours: state.snapshot.scheduleStats.totalHours,
+      remainingHours: state.snapshot.scheduleStats.remainingHours,
+      spanWeeks: state.snapshot.scheduleStats.spanWeeks,
+      peakBooks: state.snapshot.scheduleStats.peakBooks,
+      hardInfeasibleBooks: state.snapshot.scheduleStats.hardInfeasibleBooks,
+      blockedBooks: state.snapshot.scheduleStats.blockedBooks,
     },
     diagnostics: {
       warns: [...state.snapshot.diagnostics.warns],

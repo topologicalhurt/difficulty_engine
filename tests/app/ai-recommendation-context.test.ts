@@ -75,6 +75,11 @@ describe('AI recommendation context', () => {
       actualPages: 12,
       actualMinutes: 45,
     });
+    expect(context.books[0]?.effectiveReadingPages).toBeGreaterThan(0);
+    expect(context.books[0]?.difficultyEvidence?.length).toBeGreaterThan(0);
+    expect(context.planSummary?.peakBooks).toBeGreaterThan(0);
+    expect(context.readingScopeSettings?.defaultMode).toBe('skip_non_core');
+    expect(context.constraints.learnerProfileMode).toBe('balanced_adaptive');
     expect(context.relations.length).toBeGreaterThan(0);
     const serializedContext = JSON.stringify(context);
     expect(serializedContext).not.toContain('/private/output/data/documents');
