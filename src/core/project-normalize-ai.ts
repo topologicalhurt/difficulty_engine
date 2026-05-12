@@ -42,13 +42,10 @@ export function normalizeAiConnectionSettings(
       120000,
       true,
     ),
-    maxOutputTokens: normalizeNumber(
-      raw.maxOutputTokens,
-      defaults.maxOutputTokens,
-      256,
-      8000,
-      true,
-    ),
+    maxOutputTokens:
+      raw.maxOutputTokens == null || raw.maxOutputTokens === ''
+        ? null
+        : normalizeNumber(raw.maxOutputTokens, 1800, 256, 200000, true),
   };
 }
 

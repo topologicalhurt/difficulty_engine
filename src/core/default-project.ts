@@ -107,7 +107,7 @@ export function createDefaultAiConnectionSettings(): AiConnectionSettings {
     endpointUrl: '',
     apiKey: '',
     timeoutMs: 60000,
-    maxOutputTokens: 1800,
+    maxOutputTokens: null,
   };
 }
 

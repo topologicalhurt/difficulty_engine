@@ -2,7 +2,10 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { draftNumberInputControl } from '../../src/ui/form-controls';
+import {
+  draftNumberInputControl,
+  optionalDraftNumberInputControl,
+} from '../../src/ui/form-controls';
 
 describe('form controls', () => {
   it('allows clearing a draft number before committing on blur', () => {
@@ -37,5 +40,21 @@ describe('form controls', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
     expect(onCommit).toHaveBeenCalledWith(2048);
+  });
+
+  it('commits null for optional draft numbers left empty', () => {
+    const onCommit = vi.fn();
+    const input = optionalDraftNumberInputControl({
+      value: null,
+      focusKey: 'test:optional-number',
+      onCommit,
+      emptyLabel: 'Unlimited',
+    });
+
+    expect(input.value).toBe('');
+    expect(input.placeholder).toBe('Unlimited');
+    input.dispatchEvent(new FocusEvent('blur'));
+
+    expect(onCommit).toHaveBeenCalledWith(null);
   });
 });

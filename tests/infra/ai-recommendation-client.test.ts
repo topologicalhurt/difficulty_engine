@@ -32,6 +32,7 @@ function request(
         prerequisiteMode: 'strict',
         bookOrderPolicy: 'auto',
       },
+      diagnostics: { warns: [], fails: [] },
     },
   };
 }
@@ -39,7 +40,7 @@ function request(
 describe('AI recommendation client', () => {
   it('calls OpenAI Responses API shape and parses JSON text', async () => {
     const fetchImpl = vi.fn(
-      async () =>
+      async (_url: Parameters<typeof fetch>[0], _init?: RequestInit) =>
         new Response(
           JSON.stringify({
             output_text: JSON.stringify({
@@ -64,6 +65,9 @@ describe('AI recommendation client', () => {
         headers: expect.objectContaining({ authorization: 'Bearer secret' }),
       }),
     );
+    expect(
+      JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)),
+    ).not.toHaveProperty('max_output_tokens');
     expect(result.books).toEqual([{ title: 'Book A' }]);
   });
 
@@ -126,7 +130,7 @@ describe('AI recommendation client', () => {
 
   it('calls Anthropic Messages API shape and parses JSON text content', async () => {
     const fetchImpl = vi.fn(
-      async () =>
+      async (_url: Parameters<typeof fetch>[0], _init?: RequestInit) =>
         new Response(
           JSON.stringify({
             content: [
@@ -159,7 +163,37 @@ describe('AI recommendation client', () => {
         }),
       }),
     );
+    expect(
+      JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)),
+    ).not.toHaveProperty('max_tokens');
     expect(result.books).toEqual([{ title: 'Book B' }]);
+  });
+
+  it('sends provider token caps only when explicitly configured', async () => {
+    const fetchImpl = vi.fn(
+      async (_url: Parameters<typeof fetch>[0], _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            output_text: JSON.stringify({
+              summary: 'ok',
+              books: [],
+              warnings: [],
+            }),
+          }),
+        ),
+    );
+    const client = createAiRecommendationClient({
+      fetchImpl,
+      logger: silentLogger,
+    });
+    const capped = request('openai');
+    capped.connection.maxOutputTokens = 4096;
+
+    await client.recommend(capped);
+
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject(
+      { max_output_tokens: 4096 },
+    );
   });
 
   it('reports empty HTTP responses without leaking JSON.parse errors', async () => {

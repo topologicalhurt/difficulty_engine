@@ -12,7 +12,7 @@ export interface AiConnectionSettings {
   endpointUrl: string;
   apiKey: string;
   timeoutMs: number;
-  maxOutputTokens: number;
+  maxOutputTokens: number | null;
 }
 
 export interface AiRecommendationStatus {
@@ -56,14 +56,42 @@ export interface AiRecommendationBookContext {
   displayGroup: string;
   scheduleDifficulty: number | null;
   displayDifficulty: number | null;
+  latentWorkload?: number | null;
+  workloadUncertainty?: number | null;
+  evidenceConfidence?: number | null;
+  chapters: string[];
+  tocSource: string;
+  documentStatuses: Array<{
+    provider: string;
+    contentKind: string;
+    status: string;
+    matchScore: number;
+    progress: number;
+    seeders: number | null;
+  }>;
+  progress: {
+    completed: boolean;
+    actualPages: number;
+    actualMinutes: number;
+  };
   owned: boolean;
+  ignored: boolean;
+  completed: boolean;
 }
 
 export interface AiRecommendationRelationContext {
   from: string;
   to: string;
-  type: 'prerequisite' | 'co-study';
+  type:
+    | 'prerequisite'
+    | 'co-study'
+    | 'reference'
+    | 'manual-block'
+    | 'manual-allow-overlap';
   confidence: number;
+  score?: number;
+  reasons?: string[];
+  sources?: string[];
 }
 
 export interface AiRecommendationContext {
@@ -77,6 +105,10 @@ export interface AiRecommendationContext {
     scheduleAlgorithm: string;
     prerequisiteMode: string;
     bookOrderPolicy: string;
+  };
+  diagnostics: {
+    warns: string[];
+    fails: string[];
   };
 }
 

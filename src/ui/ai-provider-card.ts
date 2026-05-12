@@ -8,8 +8,8 @@ import { card, el } from './dom';
 import {
   autocompleteTextInputControl,
   checkboxControl,
-  draftNumberInputControl,
   inputField,
+  optionalDraftNumberInputControl,
   selectInput,
   textInputControl,
 } from './form-controls';
@@ -144,7 +144,7 @@ export function renderAiProviderCard(
       ),
       inputField(
         'Output token cap',
-        draftNumberInputControl({
+        optionalDraftNumberInputControl({
           value: connection.maxOutputTokens,
           focusKey: 'ai:maxOutputTokens',
           onCommit: (maxOutputTokens) =>
@@ -152,10 +152,10 @@ export function renderAiProviderCard(
               maxOutputTokens,
             }),
           min: 256,
-          max: 8000,
           step: 128,
+          emptyLabel: 'Unlimited / provider default',
         }),
-        'Caps response size so requests stay bounded.',
+        'Leave empty to send the full request and let the provider/model decide.',
       ),
     ),
   );

@@ -57,6 +57,15 @@ function requestPayload(request: AiRecommendationRequest): string {
   });
 }
 
+function withOptionalTokenCap<T extends Record<string, unknown>>(
+  body: T,
+  maxOutputTokens: number | null,
+  field: string,
+): T {
+  if (maxOutputTokens == null) return body;
+  return { ...body, [field]: maxOutputTokens };
+}
+
 function safeAiEndpointUrl(value: string, fallback: string): string {
   const trimmed = value.trim();
   if (!trimmed) return fallback;
@@ -114,12 +123,17 @@ export function createAiRecommendationClient(
               'x-api-key': connection.apiKey,
               'anthropic-version': ANTHROPIC_VERSION,
             },
-            body: JSON.stringify({
-              model: connection.model,
-              max_tokens: connection.maxOutputTokens,
-              system: systemPrompt(),
-              messages: [{ role: 'user', content: input }],
-            }),
+            body: JSON.stringify(
+              withOptionalTokenCap(
+                {
+                  model: connection.model,
+                  system: systemPrompt(),
+                  messages: [{ role: 'user', content: input }],
+                },
+                connection.maxOutputTokens,
+                'max_tokens',
+              ),
+            ),
           })) as AnthropicResponse;
           return parseAnthropicRecommendation(response);
         }
@@ -134,12 +148,17 @@ export function createAiRecommendationClient(
             'content-type': 'application/json',
             authorization: `Bearer ${connection.apiKey}`,
           },
-          body: JSON.stringify({
-            model: connection.model,
-            instructions: systemPrompt(),
-            input,
-            max_output_tokens: connection.maxOutputTokens,
-          }),
+          body: JSON.stringify(
+            withOptionalTokenCap(
+              {
+                model: connection.model,
+                instructions: systemPrompt(),
+                input,
+              },
+              connection.maxOutputTokens,
+              'max_output_tokens',
+            ),
+          ),
         })) as OpenAiResponse;
         return parseOpenAiRecommendation(response);
       } catch (error) {

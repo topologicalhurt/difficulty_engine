@@ -6,11 +6,28 @@ import type {
   BookRecord,
 } from '../core/types';
 
-const CONTEXT_BOOK_LIMIT = 80;
-const CONTEXT_RELATION_LIMIT = 160;
-const CONTEXT_SUBJECT_LIMIT = 8;
 const FNV1A_OFFSET_BASIS = 2166136261;
 const FNV1A_PRIME = 16777619;
+
+function actualProgress(
+  state: AppState,
+  bookId: string,
+): AiRecommendationBookContext['progress'] {
+  return Object.values(state.project.manualOverrides.actuals).reduce<
+    AiRecommendationBookContext['progress']
+  >(
+    (total, byBook) => {
+      const entry = byBook[bookId];
+      if (!entry) return total;
+      return {
+        completed: total.completed || Boolean(entry.done),
+        actualPages: total.actualPages + Math.max(0, entry.pages ?? 0),
+        actualMinutes: total.actualMinutes + Math.max(0, entry.minutes ?? 0),
+      };
+    },
+    { completed: false, actualPages: 0, actualMinutes: 0 },
+  );
+}
 
 function compactBook(
   book: BookRecord,
@@ -23,37 +40,46 @@ function compactBook(
     authors: book.authors,
     isbn: book.isbn,
     pages: book.pages,
-    subjects: [...book.subjects, ...book.enrichment.olSubjects].slice(
-      0,
-      CONTEXT_SUBJECT_LIMIT,
-    ),
+    subjects: [...book.subjects, ...book.enrichment.olSubjects],
     displayGroup: book.displayGroup,
     scheduleDifficulty: difficulty?.scheduleDifficulty ?? null,
     displayDifficulty: difficulty?.displayDifficulty ?? null,
+    latentWorkload: difficulty?.latentWorkload ?? null,
+    workloadUncertainty: difficulty?.workloadUncertainty ?? null,
+    evidenceConfidence: difficulty?.evidenceConfidence ?? null,
+    chapters: [...book.enrichment.chapters],
+    tocSource: book.enrichment.tocSource,
+    documentStatuses: (book.documents ?? []).map((document) => ({
+      provider: document.provider,
+      contentKind: document.contentKind,
+      status: document.status,
+      matchScore: document.matchScore,
+      progress: document.availability.progress,
+      seeders: document.availability.seeders,
+    })),
+    progress: actualProgress(state, book.id),
     owned: book.owned,
+    ignored: book.ignored,
+    completed: book.completed,
   };
 }
 
 function compactRelations(state: AppState): AiRecommendationRelationContext[] {
   return state.snapshot.relations
-    .filter(
-      (
-        relation,
-      ): relation is typeof relation & { type: 'prerequisite' | 'co-study' } =>
-        relation.type === 'prerequisite' || relation.type === 'co-study',
-    )
     .sort(
       (left, right) =>
         left.from.localeCompare(right.from) ||
         left.to.localeCompare(right.to) ||
         left.type.localeCompare(right.type),
     )
-    .slice(0, CONTEXT_RELATION_LIMIT)
-    .map((relation) => ({
+    .map((relation): AiRecommendationRelationContext => ({
       from: relation.from,
       to: relation.to,
       type: relation.type,
       confidence: relation.confidence,
+      score: relation.score,
+      reasons: relation.reasons,
+      sources: relation.sources,
     }));
 }
 
@@ -66,7 +92,6 @@ export function buildAiRecommendationContext(
         left.planOrder - right.planOrder ||
         left.title.localeCompare(right.title),
     )
-    .slice(0, CONTEXT_BOOK_LIMIT)
     .map((book) => compactBook(book, state));
   return {
     books,
@@ -81,6 +106,10 @@ export function buildAiRecommendationContext(
       scheduleAlgorithm: state.project.constraints.schedAlgo,
       prerequisiteMode: state.project.constraints.prereqMode,
       bookOrderPolicy: state.project.constraints.bookOrderPolicy,
+    },
+    diagnostics: {
+      warns: [...state.snapshot.diagnostics.warns],
+      fails: [...state.snapshot.diagnostics.fails],
     },
   };
 }

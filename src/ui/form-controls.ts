@@ -58,6 +58,13 @@ export interface DraftNumberControlOptions
   onCommit: (value: number) => void;
 }
 
+export interface OptionalDraftNumberControlOptions
+  extends Omit<NumberControlOptions, 'value' | 'onChange'> {
+  value: number | null;
+  onCommit: (value: number | null) => void;
+  emptyLabel?: string;
+}
+
 export interface FileControlOptions {
   className?: string;
   accept?: string;
@@ -183,6 +190,46 @@ export function draftNumberInputControl(
     const next = Number(raw);
     if (!Number.isFinite(next)) {
       input.value = String(options.value);
+      return;
+    }
+    options.onCommit(next);
+  }
+  if (options.min != null) input.min = String(options.min);
+  if (options.max != null) input.max = String(options.max);
+  if (options.step != null) input.step = String(options.step);
+  return input;
+}
+
+export function optionalDraftNumberInputControl(
+  options: OptionalDraftNumberControlOptions,
+): HTMLInputElement {
+  const input = el('input', {
+    className: options.className ?? 'text-input',
+    type: 'number',
+    value: options.value == null ? '' : String(options.value),
+    focusKey: options.focusKey,
+    title: options.title,
+    ariaLabel: options.ariaLabel,
+    placeholder: options.emptyLabel ?? '',
+    onClick: options.onClick,
+    onFocus: options.onFocus,
+    onBlur: () => commitDraft(),
+    onKeyDown: (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      commitDraft();
+    },
+    onChange: () => commitDraft(),
+  });
+  function commitDraft(): void {
+    const raw = input.value.trim();
+    if (!raw) {
+      options.onCommit(null);
+      return;
+    }
+    const next = Number(raw);
+    if (!Number.isFinite(next)) {
+      input.value = options.value == null ? '' : String(options.value);
       return;
     }
     options.onCommit(next);

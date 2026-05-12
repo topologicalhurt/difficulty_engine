@@ -11,7 +11,6 @@ import type {
   AiRecommendationProposal,
 } from './types';
 
-const PROMPT_MAX_CHARS = 1800;
 const TEXT_FIELD_MAX_CHARS = 220;
 const RATIONALE_MAX_CHARS = 520;
 const MAX_SUBJECTS = 10;
@@ -19,11 +18,11 @@ const MAX_RELATION_REFS = 16;
 const MAX_WARNINGS = 6;
 
 export function sanitizeAiPrompt(value: string): string {
-  return normalizeString(value).replace(/\s+/g, ' ').slice(0, PROMPT_MAX_CHARS);
+  return normalizeString(value).replace(/\s+/g, ' ');
 }
 
 export function normalizeAiPromptDraft(value: string): string {
-  return String(value ?? '').slice(0, PROMPT_MAX_CHARS);
+  return String(value ?? '');
 }
 
 function truncateText(value: unknown, maxChars = TEXT_FIELD_MAX_CHARS): string {
