@@ -25,6 +25,7 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 - Search can add metadata, subjects, descriptions, page counts, and identifiers.
 - Enrichment refreshes metadata and can also look for document or table-of-contents evidence when enabled.
 - TOC sourcing prefers trusted local evidence first: manual chapters, completed text/EPUB/OCR text, local PDF outline or embedded text, optional local OCR, then online provider snippets.
+- qBittorrent acquisition is PDF-only: the app selects a matching PDF at the torrent root or one folder down, and blocks qBittorrent text/EPUB/OCR side files.
 - Manual prerequisites and co-study links are useful when you know something the metadata does not.
 - Document badges tell you whether metadata, a sourced file, or a usable table of contents has been found.
 

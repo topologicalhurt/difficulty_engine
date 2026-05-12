@@ -71,20 +71,20 @@ describe('qBittorrent selected file gate', () => {
       matchScore: 1,
     };
 
-    const acquired = await provider.acquire(candidate, {
-      book: {
-        ...EXAMPLE_BOOK,
-        title: 'Linear Algebra Done Right',
-        sourcePath: null,
-      },
-      policy: {
-        ...defaultDocumentAcquisitionPolicy(),
-        enabled: true,
-        sourceSettings,
-      },
-    });
-
-    expect(acquired).toBeNull();
+    await expect(
+      provider.acquire(candidate, {
+        book: {
+          ...EXAMPLE_BOOK,
+          title: 'Linear Algebra Done Right',
+          sourcePath: null,
+        },
+        policy: {
+          ...defaultDocumentAcquisitionPolicy(),
+          enabled: true,
+          sourceSettings,
+        },
+      }),
+    ).rejects.toThrow('none passed the title, author, or ISBN trust checks');
     expect(priorityCalls).toEqual(['0:0']);
     expect(resumeCalls).toEqual([]);
   });
@@ -182,7 +182,7 @@ describe('qBittorrent selected file gate', () => {
     expect(resumeCalls).toHaveLength(1);
   });
 
-  it('keeps a tracked torrent queued while qBittorrent loads file metadata', async () => {
+  it('waits for qBittorrent file metadata before creating a document ref', async () => {
     const priorityCalls: string[] = [];
     const resumeCalls: string[] = [];
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
@@ -244,27 +244,21 @@ describe('qBittorrent selected file gate', () => {
       peers: 4,
     };
 
-    const acquired = await provider.acquire(candidate, {
-      book: {
-        ...EXAMPLE_BOOK,
-        title: 'Functional Analysis',
-        authors: ['Elias Stein'],
-        sourcePath: null,
-      },
-      policy: {
-        ...defaultDocumentAcquisitionPolicy(),
-        enabled: true,
-        sourceSettings,
-      },
-    });
-
-    const ref = acquired?.documentRef;
-    expect(ref?.torrentHash).toBe('pendinghash');
-    expect(ref?.fileIndex).toBeUndefined();
-    expect(ref?.status).toBe('queued');
-    expect(ref?.availability?.reason).toContain(
-      'has not exposed its file list yet',
-    );
+    await expect(
+      provider.acquire(candidate, {
+        book: {
+          ...EXAMPLE_BOOK,
+          title: 'Functional Analysis',
+          authors: ['Elias Stein'],
+          sourcePath: null,
+        },
+        policy: {
+          ...defaultDocumentAcquisitionPolicy(),
+          enabled: true,
+          sourceSettings,
+        },
+      }),
+    ).rejects.toThrow('Torrent metadata is not available yet');
     expect(priorityCalls).toEqual([]);
     expect(resumeCalls).toEqual([]);
   });

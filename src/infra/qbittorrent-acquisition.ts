@@ -18,11 +18,9 @@ import {
   basename,
   contentTypeFromPath,
   joinStoragePath,
-  PDF_MIME,
-  sourceContentKindFromPath,
-  TEXT_MIME,
 } from './qbittorrent-file-kinds';
 import { isoTimestamp } from './cache-time';
+import { qbittorrentPdfRejectionSummary } from './qbittorrent-pdf-eligibility';
 
 async function selectedTorrentFile(
   client: QBittorrentClient,
@@ -33,6 +31,7 @@ async function selectedTorrentFile(
   selected: TorrentFile | null;
   fileCount: number;
   eligibleFileCount: number;
+  rejectionReason?: string;
 }> {
   if (!info.hash) return { selected: null, fileCount: 0, eligibleFileCount: 0 };
   const files = await client.torrentFiles(info.hash).catch(() => []);
@@ -42,7 +41,12 @@ async function selectedTorrentFile(
       .map((file) => file.index)
       .filter((index): index is number => index != null);
     await client.setFilePriority(info.hash, allIndexes, 0);
-    return { selected: null, fileCount: files.length, eligibleFileCount: 0 };
+    return {
+      selected: null,
+      fileCount: files.length,
+      eligibleFileCount: 0,
+      rejectionReason: `No eligible top-surface PDF was found in this torrent: ${qbittorrentPdfRejectionSummary(files)}`,
+    };
   }
   const selected =
     rankedFiles.find((file) =>
@@ -63,6 +67,8 @@ async function selectedTorrentFile(
       selected: null,
       fileCount: files.length,
       eligibleFileCount: rankedFiles.length,
+      rejectionReason:
+        'Top-surface PDFs were present, but none passed the title, author, or ISBN trust checks.',
     };
   }
   if (selectedIndex != null) {
@@ -84,16 +90,9 @@ async function selectedTorrentFile(
 async function readCompletedDocument(
   client: QBittorrentClient,
   storagePath: string,
-  contentType: string,
   status: string,
 ): Promise<{ text?: string; bytes?: Uint8Array }> {
   if (status !== 'complete') return {};
-  if (contentType === TEXT_MIME) {
-    return {
-      text: await client.readTextDocument(storagePath).catch(() => undefined),
-    };
-  }
-  if (contentType !== PDF_MIME) return {};
   const text = await client
     .readTextDocument(storagePath)
     .catch(() => undefined);
@@ -101,11 +100,6 @@ async function readCompletedDocument(
   return {
     bytes: await client.readByteDocument(storagePath).catch(() => undefined),
   };
-}
-
-function pendingMetadataReason(info: TorrentInfo): string {
-  const state = info.state ? ` (${info.state})` : '';
-  return `Torrent is tracked but qBittorrent has not exposed its file list yet${state}. Refresh after metadata loads to select the exact file.`;
 }
 
 export async function acquireTorrentDocument(
@@ -125,7 +119,6 @@ export async function acquireTorrentDocument(
   let storagePath =
     info?.content_path ?? info?.save_path ?? savePath ?? candidate.title;
   let selected: TorrentFile | null = null;
-  let metadataPending = false;
   if (info?.hash) {
     const selection = await selectedTorrentFile(
       client,
@@ -134,8 +127,12 @@ export async function acquireTorrentDocument(
       request,
     );
     selected = selection.selected;
-    metadataPending = !selected && selection.fileCount === 0;
-    if (!selected && !metadataPending) return null;
+    if (!selected) {
+      throw new Error(
+        selection.rejectionReason ??
+          'No trusted top-surface PDF was selected from this candidate.',
+      );
+    }
     if (selected?.index != null) {
       storagePath = joinStoragePath(
         info.save_path ?? savePath,
@@ -146,11 +143,10 @@ export async function acquireTorrentDocument(
   }
 
   const contentType = contentTypeFromPath(storagePath ?? candidate.sourceUrl);
-  const status = metadataPending ? 'queued' : documentStatus(info, selected);
+  const status = documentStatus(info, selected);
   const { text, bytes } = await readCompletedDocument(
     client,
     storagePath,
-    contentType,
     status,
   );
   const completedFileExists =
@@ -161,19 +157,13 @@ export async function acquireTorrentDocument(
   const fileName = basename(storagePath);
   const progress = selected?.progress ?? info?.progress ?? 0;
   const availability = torrentAvailability(info);
-  const contentKind = sourceContentKindFromPath(
-    storagePath,
-    candidate.contentKind,
-  );
+  const contentKind = 'pdf';
   const refStatus =
     status === 'complete' && !completedFileExists
       ? 'failed'
       : text || bytes
         ? 'complete'
-        : status === 'complete' &&
-            (contentKind === 'text' || contentKind === 'ocr_text')
-          ? 'unreadable'
-          : status;
+        : status;
 
   return {
     candidateId: candidate.id,
@@ -208,9 +198,7 @@ export async function acquireTorrentDocument(
         progress,
         state: availability.state,
         reason:
-          metadataPending && info
-            ? pendingMetadataReason(info)
-            : refStatus === 'failed'
+          refStatus === 'failed'
               ? 'Completed torrent file is missing from the configured data folder.'
               : status === 'stalled'
                 ? 'Torrent is stalled or has no active download progress.'

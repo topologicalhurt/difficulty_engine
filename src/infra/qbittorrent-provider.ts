@@ -186,6 +186,8 @@ async function localTorrentCandidates(
     .filter((torrent) => torrent.category === category)
     .map((torrent): DocumentCandidate | null => {
       const title = torrent.name || torrent.content_path || request.book.title;
+      const contentKind = contentKindFromUrl(torrent.content_path || title);
+      if (contentKind !== 'unknown' && contentKind !== 'pdf') return null;
       const matchScore = bookMatchScore(title, request);
       if (matchScore < MIN_TORRENT_MATCH_SCORE) return null;
       if (!torrentHasRequiredAuthorEvidence(torrent, request)) return null;
@@ -199,7 +201,7 @@ async function localTorrentCandidates(
         provider: 'qbittorrent',
         title,
         sourceUrl,
-        contentKind: contentKindFromUrl(torrent.content_path || title),
+        contentKind,
         accessBasis: 'user_owned' as const,
         confidence: Math.min(0.98, 0.55 + matchScore * 0.35),
         matchScore,

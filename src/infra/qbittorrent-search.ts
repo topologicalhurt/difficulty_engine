@@ -286,8 +286,13 @@ function blockedCandidate(
   const seeders = Math.max(0, result.nbSeeders ?? 0);
   const peers = Math.max(0, result.nbLeechers ?? 0);
   const matchScore = bookMatchScore(title, request);
+  const contentKind = contentKindFromUrl(title || url);
   const retryableAsUserOwned =
-    reasons.includes('unknown access basis') &&
+    reasons.some((reason) =>
+      ['unknown access basis', 'unallowed plugin/site'].includes(reason),
+    ) &&
+    !reasons.includes('qBittorrent document acquisition requires PDF files') &&
+    !reasons.includes('plugin error') &&
     sourceCanBeManuallyAdded(url) &&
     seeders >= MIN_PLUGIN_SEEDERS &&
     matchScore >= MIN_USER_OWNED_RETRY_SCORE &&
@@ -298,7 +303,7 @@ function blockedCandidate(
     provider: 'qbittorrent',
     title,
     sourceUrl: url || result.descrLink || title,
-    contentKind: contentKindFromUrl(title || url),
+    contentKind,
     confidence: Math.min(0.9, 0.28 + matchScore * 0.5),
     blockedReasons: reasons,
     searchIntent: meta.intent,
@@ -336,6 +341,7 @@ export function classifySearchResults(
   const blockedCandidates: BookDocumentBlockedCandidateOption[] = [];
   results.forEach((result, index) => {
     const title = result.fileName || request.book.title;
+    const detectedContentKind = contentKindFromUrl(title || sourceUrl(result));
     const seeders = Math.max(0, result.nbSeeders ?? 0);
     const matchScore = bookMatchScore(title, request);
     const pluginName =
@@ -351,6 +357,9 @@ export function classifySearchResults(
     const reasons = [
       searchResultLooksLikePluginError(result) ? 'plugin error' : '',
       BAD_FILE_NAME_PATTERN.test(title) ? 'solution/manual/sample file' : '',
+      detectedContentKind !== 'unknown' && detectedContentKind !== 'pdf'
+        ? 'qBittorrent document acquisition requires PDF files'
+        : '',
       seeders < MIN_PLUGIN_SEEDERS ? 'zero seeders' : '',
       matchScore < MIN_TORRENT_MATCH_SCORE ? 'weak title match' : '',
       !hasRequiredAuthorEvidence(result, request) ? 'author mismatch' : '',
@@ -372,7 +381,7 @@ export function classifySearchResults(
       provider: 'qbittorrent',
       title,
       sourceUrl: sourceUrl(result),
-      contentKind: contentKindFromUrl(title || sourceUrl(result)),
+      contentKind: detectedContentKind,
       accessBasis,
       confidence: Math.min(
         0.96,

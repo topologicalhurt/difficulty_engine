@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { EXAMPLE_BOOK } from '../../src/core/defaults';
+import { EXAMPLE_BOOK, createDefaultSourceSettings } from '../../src/core/defaults';
 import type { SourceContentKind } from '../../src/core/types';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
 import {
+  classifySearchResults,
   qbittorrentSearchPatterns,
   qbittorrentSearchQueries,
   sortSearchCandidates,
@@ -111,5 +112,63 @@ describe('qBittorrent search patterns and ordering', () => {
         },
       ]),
     );
+  });
+
+  it('keeps known non-PDF qBittorrent hits blocked from acquisition', () => {
+    const sourceSettings = {
+      ...createDefaultSourceSettings(),
+      qbittorrent: {
+        userProvidedTorrents: true,
+        searchPlugins: true,
+        allowedPlugins: ['fixture'],
+        allowedSites: [],
+        categories: ['all'],
+        maxResults: 100,
+        requireKnownAccessBasis: true,
+      },
+    };
+    const request = {
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Fixture Book',
+        authors: ['Author Name'],
+        sourcePath: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+        sourceSettings,
+      },
+    };
+
+    const result = classifySearchResults(
+      [
+        {
+          fileName: 'Fixture Book Author Name.txt',
+          fileUrl: 'magnet:?xt=urn:btih:fixture',
+          nbSeeders: 5,
+          nbLeechers: 0,
+          siteUrl: 'https://fixture.test',
+        },
+      ],
+      [
+        {
+          name: 'fixture',
+          fullName: 'Fixture',
+          enabled: true,
+          url: 'https://fixture.test',
+          supportedCategories: [],
+        },
+      ],
+      request,
+      'test',
+      { plugin: 'fixture' },
+    );
+
+    expect(result.candidates).toEqual([]);
+    expect(result.blockedCandidates[0]?.blockedReasons).toContain(
+      'qBittorrent document acquisition requires PDF files',
+    );
+    expect(result.blockedCandidates[0]?.retryableAsUserOwned).toBe(false);
   });
 });

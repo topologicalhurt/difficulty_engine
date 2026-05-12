@@ -2,9 +2,7 @@ import type {
   DocumentAcquisitionRequest,
   DocumentCandidate,
 } from './document-acquisition';
-import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import type { TorrentFile, TorrentInfo } from './qbittorrent-types';
-import { contentKindPriorityForPreference } from './document-content-priority';
 import {
   authorAppearsInText,
   bookMatchDecision,
@@ -12,12 +10,15 @@ import {
   normalizedIsbnText,
 } from '../core/matchers';
 import { SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA } from './document-candidate-quality';
+import {
+  BAD_QBITTORRENT_FILE_NAME_PATTERN,
+  qbittorrentPdfEligibility,
+} from './qbittorrent-pdf-eligibility';
 
 export const MIN_PLUGIN_SEEDERS = 1;
 export const MIN_TORRENT_MATCH_SCORE = 0.34;
 export const MIN_SELECTED_FILE_MATCH_SCORE = 0.34;
-export const BAD_FILE_NAME_PATTERN =
-  /\b(?:sample|preview|solution|solutions|answer|answers|instructor|slides|cover|front\s*matter|copyright)\b/i;
+export const BAD_FILE_NAME_PATTERN = BAD_QBITTORRENT_FILE_NAME_PATTERN;
 
 export function normalizedBookIsbn(value: string | null | undefined): string {
   return normalizedIsbnText(value);
@@ -45,7 +46,7 @@ export function fileMatchScore(
   request: DocumentAcquisitionRequest,
 ): number {
   const name = file.name ?? '';
-  if (BAD_FILE_NAME_PATTERN.test(name)) return 0;
+  if (!qbittorrentPdfEligibility(file).eligible) return 0;
   return bookMatchScore(name, request);
 }
 
@@ -65,25 +66,14 @@ export function rankedTorrentFiles(
   files: TorrentFile[],
   request: DocumentAcquisitionRequest,
 ): TorrentFile[] {
-  const priorityFor = contentKindPriorityForPreference(
-    request.policy.contentPreference,
-  );
   return [...files]
-    .filter(
-      (file) =>
-        file.index != null && contentKindFromUrl(file.name ?? '') !== 'unknown',
-    )
-    .filter((file) => !BAD_FILE_NAME_PATTERN.test(file.name ?? ''))
+    .filter((file) => qbittorrentPdfEligibility(file).eligible)
     .sort((left, right) => {
       const matchDelta =
         fileMatchScore(right, request) - fileMatchScore(left, request);
       if (Math.abs(matchDelta) > SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA) {
         return matchDelta;
       }
-      const kindDelta =
-        priorityFor(contentKindFromUrl(left.name ?? '')) -
-        priorityFor(contentKindFromUrl(right.name ?? ''));
-      if (kindDelta !== 0) return kindDelta;
       if (matchDelta !== 0) return matchDelta;
       const availabilityDelta =
         (right.availability ?? 0) - (left.availability ?? 0);
@@ -117,8 +107,7 @@ function candidateCanTrustSingleFile(
   const name = file.name ?? '';
   if (eligibleFileCount !== 1) return false;
   if ((candidate.matchScore ?? 0) < 0.8) return false;
-  if (contentKindFromUrl(name) === 'unknown') return false;
-  if (BAD_FILE_NAME_PATTERN.test(name)) return false;
+  if (!qbittorrentPdfEligibility(file).eligible) return false;
   return (
     isbnAppearsInText(request.book.isbn, name) ||
     authorAppearsInText(request.book.authors, name) ||

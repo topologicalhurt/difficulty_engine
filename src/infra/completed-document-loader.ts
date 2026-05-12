@@ -29,6 +29,7 @@ function canReuseDocument(
 ): boolean {
   if (!sourceEnabledForDocumentProvider(document, settings)) return false;
   if (!REUSABLE_DOCUMENT_STATUSES.has(document.status)) return false;
+  if (document.provider === 'qbittorrent') return document.contentKind === 'pdf';
   return TEXT_KINDS.has(document.contentKind) || document.contentKind === 'pdf';
 }
 

@@ -174,12 +174,13 @@ describe('qBittorrent document provider', () => {
     expect(candidates[0]?.accessBasis).toBe('user_provided');
 
     const acquired = await provider.acquire(candidates[0], { book, policy });
-    expect(acquired?.contentType).toBe('text/plain');
-    expect(acquired?.storagePath).toContain('.txt');
+    expect(acquired?.contentType).toBe('application/pdf');
+    expect(acquired?.storagePath).toContain('.pdf');
     expect(acquired?.accessBasis).toBe('user_provided');
     expect(acquired?.documentRef?.status).toBe('downloading');
+    expect(acquired?.documentRef?.contentKind).toBe('pdf');
     expect(addCalls).toBe(0);
-    expect(priorityCalls).toEqual(['0|1:0', '2:7']);
+    expect(priorityCalls).toEqual(['1|2:0', '0:7']);
   });
 
   it('selects the best matching file inside multi-file torrents and rejects bundled noise', async () => {
@@ -416,7 +417,7 @@ describe('qBittorrent document provider', () => {
           status: 'Stopped',
           results: [
             {
-              fileName: 'Fixture Book Author Name.epub',
+              fileName: 'Fixture Book Author Name.pdf',
               fileUrl: 'magnet:?xt=urn:btih:fixture',
               siteUrl: 'https://archive.org/details/fixture-book',
               accessBasis: 'open_access',
@@ -481,7 +482,7 @@ describe('qBittorrent document provider', () => {
       expect.objectContaining({
         provider: 'qbittorrent',
         sourceUrl: 'magnet:?xt=urn:btih:fixture',
-        contentKind: 'epub',
+        contentKind: 'pdf',
         accessBasis: 'open_access',
       }),
     ]);

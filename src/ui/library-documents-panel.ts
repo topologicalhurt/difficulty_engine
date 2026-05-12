@@ -73,6 +73,7 @@ function documentActions(
   const status = displayDocumentStatus(document);
   const canRead =
     status === 'complete' &&
+    document.provider !== 'qbittorrent' &&
     (document.contentKind === 'text' || document.contentKind === 'ocr_text');
   let deleteContent = false;
   return el(

@@ -19,7 +19,7 @@ function qbitPolicy(): ReturnType<typeof defaultDocumentAcquisitionPolicy> {
 }
 
 describe('qBittorrent file selection', () => {
-  it('selects text before a PDF when both files match the same book', () => {
+  it('selects only top-surface PDFs even when matching text is present', () => {
     const selected = preferredTorrentFile(
       [
         {
@@ -41,9 +41,7 @@ describe('qBittorrent file selection', () => {
       },
     );
 
-    expect(selected?.name).toBe(
-      'Fixture Book Exact Edition extracted text.txt',
-    );
+    expect(selected?.name).toBe('Fixture Book Exact Edition.pdf');
   });
 
   it('does not let weak preferred-kind files outrank a strong PDF match', () => {
@@ -69,5 +67,30 @@ describe('qBittorrent file selection', () => {
     );
 
     expect(selected?.name).toBe('Linear Algebra Done Right 4th Edition.pdf');
+  });
+
+  it('rejects nested PDFs below the first folder level', () => {
+    const selected = preferredTorrentFile(
+      [
+        {
+          index: 0,
+          name: 'Fixture Book/Extras/Fixture Book.pdf',
+          size: 10_000,
+          progress: 1,
+        },
+        {
+          index: 1,
+          name: 'Fixture Book/Fixture Book.pdf',
+          size: 10_000,
+          progress: 1,
+        },
+      ],
+      {
+        book: { ...EXAMPLE_BOOK, title: 'Fixture Book' },
+        policy: qbitPolicy(),
+      },
+    );
+
+    expect(selected?.name).toBe('Fixture Book/Fixture Book.pdf');
   });
 });
