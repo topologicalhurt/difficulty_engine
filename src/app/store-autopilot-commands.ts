@@ -91,7 +91,16 @@ export function createAutopilotCommands(
     applyAutopilotProposal(): void {
       const state = context.getState();
       const proposal = state.ui.autopilotProposal;
-      if (!proposal) return;
+      if (!proposal) {
+        context.commitUi('autopilot.propose', {
+          banner: {
+            tone: 'warn',
+            message: 'Generate an autopilot proposal before applying.',
+          },
+        });
+        return;
+      }
+      const stillInfeasible = proposal.optimization.status === 'infeasible';
       const nextProject: PlannerProjectV1 = {
         ...state.project,
         constraints: {
@@ -109,8 +118,10 @@ export function createAutopilotCommands(
         {
           autopilotProposal: null,
           banner: {
-            tone: 'success',
-            message: 'Applied optimized autopilot settings.',
+            tone: stillInfeasible ? 'warn' : 'success',
+            message: stillInfeasible
+              ? 'Applied best available autopilot settings, but hard constraints still need relaxation.'
+              : 'Applied optimized autopilot settings.',
           },
         },
       );

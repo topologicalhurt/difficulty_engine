@@ -38,6 +38,7 @@ describe('autopilot proposal flow', () => {
     });
     const store = makeStore({ initialProject });
 
+    store.commands.updateAutopilotDraft({ settingsPolicy: 'fresh_optimal' });
     await store.commands.solveProjectForMe();
 
     expect(store.selectors.getProject().constraints.learnerProfileMode).toBe(
@@ -116,6 +117,95 @@ describe('autopilot proposal flow', () => {
     expect(proposal?.optimizationInput.hardConstraints).toContain(
       'automatic parallel cap <= 1',
     );
+  });
+
+  it('can solve from scratch instead of preserving current planner knobs', async () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        constraints: {
+          propLiftCap: 9,
+          compressExp: 3,
+          autoRD: true,
+          hpd: 2,
+          par: 2,
+        },
+      }),
+    });
+
+    store.commands.updateAutopilotDraft({
+      settingsPolicy: 'fresh_optimal',
+      dailyHours: 2,
+      hardParallelCap: 2,
+    });
+    await store.commands.solveProjectForMe();
+
+    const proposal = store.selectors.getState().ui.autopilotProposal;
+    expect(proposal?.wizard.settingsPolicy).toBe('fresh_optimal');
+    expect(proposal?.constraintPatch.propLiftCap).not.toBe(9);
+    expect(proposal?.constraintPatch.compressExp).not.toBe(3);
+    expect(proposal?.constraintPatch.autoRD).toBe(false);
+  });
+
+  it('preserves current planner knobs when requested', async () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        constraints: {
+          propLiftCap: 9,
+          compressExp: 3,
+          autoRD: true,
+          hpd: 2,
+          par: 2,
+        },
+      }),
+    });
+
+    store.commands.updateAutopilotDraft({
+      settingsPolicy: 'respect_current',
+      dailyHours: 2,
+      hardParallelCap: 2,
+    });
+    await store.commands.solveProjectForMe();
+
+    const proposal = store.selectors.getState().ui.autopilotProposal;
+    expect(proposal?.wizard.settingsPolicy).toBe('respect_current');
+    expect(proposal?.constraintPatch.propLiftCap).toBeUndefined();
+    expect(proposal?.constraintPatch.compressExp).toBeUndefined();
+    expect(proposal?.constraintPatch.autoRD).toBeUndefined();
+  });
+
+  it('applies the best available proposal even when constraints remain infeasible', async () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          a: makeBook({ id: 'a', title: 'Autopilot A', pages: 600 }),
+        },
+        constraints: {
+          hpd: 3,
+          par: 2,
+          minPg: 80,
+          feasibilityMode: 'strict_floor',
+        },
+      }),
+    });
+
+    store.commands.updateAutopilotDraft({
+      deadlinePolicy: 'strict',
+      targetEndDate: '2026-01-06',
+      hardParallelCap: 1,
+      dailyHours: 0.25,
+      floorPolicy: 'strict_floor',
+    });
+    await store.commands.solveProjectForMe();
+
+    const proposal = store.selectors.getState().ui.autopilotProposal;
+    expect(proposal?.optimization.status).toBe('infeasible');
+    store.commands.applyAutopilotProposal();
+
+    const state = store.selectors.getState();
+    expect(state.project.constraints.hpd).toBe(0.25);
+    expect(state.project.constraints.par).toBe(1);
+    expect(state.ui.autopilotProposal).toBeNull();
+    expect(state.ui.banner?.tone).toBe('warn');
   });
 
   it('derives default wizard values from the loaded project constraints', () => {

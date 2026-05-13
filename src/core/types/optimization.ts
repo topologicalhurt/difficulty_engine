@@ -12,6 +12,7 @@ export type AutopilotConfidencePosture =
   | 'conservative'
   | 'balanced'
   | 'aggressive';
+export type AutopilotSettingsPolicy = 'respect_current' | 'fresh_optimal';
 export type AutopilotProofStatus =
   | 'optimal'
   | 'window_optimal'
@@ -20,6 +21,7 @@ export type AutopilotProofStatus =
 
 export interface AutopilotWizardState {
   goal: AutopilotGoal;
+  settingsPolicy: AutopilotSettingsPolicy;
   deadlinePolicy: AutopilotDeadlinePolicy;
   targetEndDate: string;
   latenessToleranceDays: number;

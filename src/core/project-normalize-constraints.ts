@@ -269,5 +269,7 @@ export function normalizeUiPreferences(
           .filter(Boolean),
       ),
     ).sort(),
+    backupsEnabled:
+      input.backupsEnabled == null ? true : normalizeBoolean(input.backupsEnabled),
   };
 }

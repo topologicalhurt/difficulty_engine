@@ -2,6 +2,7 @@ import type {
   AutopilotConfidencePosture,
   AutopilotDeadlinePolicy,
   AutopilotGoal,
+  AutopilotSettingsPolicy,
   FeasibilityMode,
   PlannerOptimizationObjectiveBreakdown,
   PlannerOptimizationPlan,
@@ -24,6 +25,11 @@ const GOAL_OPTIONS: SelectOption[] = [
   { value: 'fast_survey', label: 'Fast survey' },
   { value: 'deep_mastery', label: 'Deep mastery' },
   { value: 'custom', label: 'Custom weighting' },
+];
+
+const SETTINGS_POLICY_OPTIONS: SelectOption[] = [
+  { value: 'respect_current', label: 'Respect current settings' },
+  { value: 'fresh_optimal', label: 'Solve from scratch' },
 ];
 
 const DEADLINE_OPTIONS: SelectOption[] = [
@@ -151,6 +157,16 @@ export function renderAutopilotCard(
               if (value) updateDraft({ goal: value });
             },
           }),
+        ),
+        inputField(
+          'Settings policy',
+          selectInput(draft.settingsPolicy, SETTINGS_POLICY_OPTIONS, {
+            onChange: (event) => {
+              const value = optionValue<AutopilotSettingsPolicy>(event);
+              if (value) updateDraft({ settingsPolicy: value });
+            },
+          }),
+          'Respect current settings keeps planner knobs fixed except explicit wizard inputs; solve from scratch resets planner knobs to the solver baseline before optimizing.',
         ),
       ),
       wizardCard(
@@ -335,7 +351,6 @@ export function renderAutopilotCard(
           }),
           button('Apply proposal', {
             className: 'primary-button',
-            disabled: proposal.optimization.status !== 'ready',
             onClick: () => store.commands.applyAutopilotProposal(),
           }),
         )

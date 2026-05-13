@@ -12,6 +12,7 @@ import {
 } from './default-source-settings';
 import type {
   AiConnectionSettings,
+  AiRelationshipWizardState,
   AiRecommendationSettings,
   AutopilotWizardState,
   BookRecord,
@@ -98,6 +99,8 @@ export const DEFAULT_CONSTRAINTS: ConstraintSet = createDefaultConstraints();
 export function createDefaultAiRecommendationSettings(): AiRecommendationSettings {
   return {
     maxSuggestions: 4,
+    dagDepth: 3,
+    workMode: 'both',
     includeExistingContext: true,
   };
 }
@@ -109,8 +112,19 @@ export function createDefaultAiConnectionSettings(): AiConnectionSettings {
     model: defaultAiModel('openai'),
     endpointUrl: '',
     apiKey: '',
-    timeoutMs: 60000,
+    timeoutMs: 300000,
     maxOutputTokens: null,
+    reasoningMode: 'provider_default',
+  };
+}
+
+export function createDefaultAiRelationshipWizardState(): AiRelationshipWizardState {
+  return {
+    goal: 'confidence_first',
+    progressionStyle: 'layered',
+    strictness: 'rebalance_soft',
+    preserveManualRelations: true,
+    notes: '',
   };
 }
 
@@ -133,6 +147,7 @@ export function createDefaultAutopilotWizardState(
 ): AutopilotWizardState {
   return {
     goal: 'confidence_first',
+    settingsPolicy: 'respect_current',
     deadlinePolicy: 'soft',
     targetEndDate: targetEndDateKey(constraints.sd, constraints.tl),
     latenessToleranceDays: 7,
@@ -157,6 +172,7 @@ const DEFAULT_UI_PREFERENCES: UiPreferences = {
   },
   libraryListWidthPx: 460,
   dismissedWarningCodes: [],
+  backupsEnabled: true,
 };
 
 export function createDefaultUiPreferences(): UiPreferences {
@@ -206,15 +222,30 @@ export const DEFAULT_UI_STATE: UiState = {
   },
   aiPrompt: '',
   aiConnection: createDefaultAiConnectionSettings(),
+  aiSettingsRevision: 0,
   aiStatus: {
     state: 'idle',
     message: 'Enter a goal, then ask the recommender for a proposed addition.',
   },
   aiProposal: null,
+  aiClarificationStatus: {
+    state: 'idle',
+    message: 'Ask clarifying questions before requesting recommendations.',
+  },
+  aiClarificationMessages: [],
+  aiClarificationAnswers: {},
+  aiRelationshipStatus: {
+    state: 'idle',
+    message:
+      'Tune the relationship wizard, then request a progression proposal.',
+  },
+  aiRelationshipWizard: createDefaultAiRelationshipWizardState(),
+  aiRelationshipProposal: null,
   autopilotDraft: createDefaultAutopilotWizardState(),
   autopilotProposal: null,
   debugUi: false,
   banner: null,
+  dialog: null,
 };
 
 export const EMPTY_PROJECT: PlannerProjectV1 = {
