@@ -29,6 +29,12 @@ const BIBLIOGRAPHY_EXACT = new Set([
   'symbol glossary',
 ]);
 
+const INDEX_REFERENCE_PATTERN =
+  /^(?:(?:author|name|subject|symbol|notation)\s+index|index(?:\s+(?:of\s+)?(?:symbols?|names?|terms?|topics?|notation))?)$/;
+
+const SOLUTIONS_REFERENCE_PATTERN =
+  /^(?:solution manual|solutions? manual|answer key|solutions?|answers?|solutions?\s+(?:to\s+)?(?:exercises?|problems?)|(?:exercise|problem)\s+(?:solutions?|answers?)|reference tables?|notation(?:\s+and\s+conventions?)?|errata)$/;
+
 function titleKey(title: string): string {
   return normalizeText(title).replace(/\b(chapter|section|part)\b/g, '').trim();
 }
@@ -65,18 +71,17 @@ export function classifyReadingSection(
       reason: 'Appendix marker.',
     };
   }
-  if (BIBLIOGRAPHY_EXACT.has(normalized) || /^(index|bibliography)\b/.test(normalized)) {
+  if (
+    BIBLIOGRAPHY_EXACT.has(normalized) ||
+    INDEX_REFERENCE_PATTERN.test(normalized)
+  ) {
     return {
       kind: 'bibliography_index',
       confidence: 0.9,
       reason: 'Back-matter reference section.',
     };
   }
-  if (
-    /\b(solution manual|solutions?|answers?|reference tables?|notation|errata)\b/.test(
-      normalized,
-    )
-  ) {
+  if (SOLUTIONS_REFERENCE_PATTERN.test(normalized)) {
     return {
       kind: 'solutions_reference',
       confidence: 0.82,

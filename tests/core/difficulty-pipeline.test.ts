@@ -355,7 +355,7 @@ describe('latent difficulty pipeline', () => {
                 pages: 220,
                 subjects: ['circuit analysis', 'electronics'],
               }),
-              expertCircuit: book('expertCircuit', 'Expert Circuit Analysis', 5, {
+              expertCircuit: book('expertCircuit', 'Advanced Circuit Analysis', 5, {
                 pages: 260,
                 subjects: ['circuit analysis', 'electronics'],
               }),

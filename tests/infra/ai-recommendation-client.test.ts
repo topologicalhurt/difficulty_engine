@@ -165,7 +165,7 @@ describe('AI recommendation client', () => {
     );
     expect(
       JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)),
-    ).not.toHaveProperty('max_tokens');
+    ).toMatchObject({ max_tokens: 4096 });
     expect(result.books).toEqual([{ title: 'Book B' }]);
   });
 

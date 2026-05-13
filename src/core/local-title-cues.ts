@@ -2,7 +2,11 @@ import type { CorpusSnapshot, TopicIndex } from './internal-types';
 import { tokenizeWords } from './text';
 import { clamp, round2 } from './utils';
 
-const INTRO_TITLE_CUES = new Set([
+function cueSet(values: string[]): Set<string> {
+  return new Set(values.flatMap(tokenizeWords));
+}
+
+const INTRO_TITLE_CUES = cueSet([
   'beginner',
   'elementary',
   'foundations',
@@ -11,7 +15,7 @@ const INTRO_TITLE_CUES = new Set([
   'primer',
 ]);
 
-const ADVANCED_TITLE_CUES = new Set([
+const ADVANCED_TITLE_CUES = cueSet([
   'advanced',
   'expert',
   'graduate',

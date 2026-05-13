@@ -17,6 +17,7 @@ import { isLoopbackHost } from './url-security';
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
+const ANTHROPIC_DEFAULT_MAX_TOKENS = 4096;
 const DEFAULT_TIMEOUT_MS = 60000;
 
 interface CreateAiRecommendationClientOptions {
@@ -64,6 +65,16 @@ function withOptionalTokenCap<T extends Record<string, unknown>>(
 ): T {
   if (maxOutputTokens == null) return body;
   return { ...body, [field]: maxOutputTokens };
+}
+
+function withAnthropicTokenCap<T extends Record<string, unknown>>(
+  body: T,
+  maxOutputTokens: number | null,
+): T & { max_tokens: number } {
+  return {
+    ...body,
+    max_tokens: maxOutputTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
+  };
 }
 
 function safeAiEndpointUrl(value: string, fallback: string): string {
@@ -124,14 +135,13 @@ export function createAiRecommendationClient(
               'anthropic-version': ANTHROPIC_VERSION,
             },
             body: JSON.stringify(
-              withOptionalTokenCap(
+              withAnthropicTokenCap(
                 {
                   model: connection.model,
                   system: systemPrompt(),
                   messages: [{ role: 'user', content: input }],
                 },
                 connection.maxOutputTokens,
-                'max_tokens',
               ),
             ),
           })) as AnthropicResponse;
