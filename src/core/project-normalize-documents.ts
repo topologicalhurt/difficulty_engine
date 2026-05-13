@@ -157,10 +157,14 @@ function normalizeCandidateOption(
 
 function normalizeSearchIntent(value: unknown): QbittorrentSearchIntent {
   return value === 'isbn_exact' ||
+    value === 'canonical_title' ||
+    value === 'dehyphenated_title' ||
     value === 'core_title' ||
+    value === 'title_without_subtitle' ||
     value === 'core_title_author' ||
     value === 'author_topic' ||
     value === 'hyphenated_title' ||
+    value === 'distinctive_tokens' ||
     value === 'broad_recall'
     ? value
     : 'broad_recall';

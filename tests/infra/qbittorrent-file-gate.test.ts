@@ -182,7 +182,7 @@ describe('qBittorrent selected file gate', () => {
     expect(resumeCalls).toHaveLength(1);
   });
 
-  it('waits for qBittorrent file metadata before creating a document ref', async () => {
+  it('keeps a queued ref while qBittorrent file metadata is pending', async () => {
     const priorityCalls: string[] = [];
     const resumeCalls: string[] = [];
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
@@ -244,8 +244,7 @@ describe('qBittorrent selected file gate', () => {
       peers: 4,
     };
 
-    await expect(
-      provider.acquire(candidate, {
+    const acquired = await provider.acquire(candidate, {
         book: {
           ...EXAMPLE_BOOK,
           title: 'Functional Analysis',
@@ -257,8 +256,20 @@ describe('qBittorrent selected file gate', () => {
           enabled: true,
           sourceSettings,
         },
+      });
+
+    expect(acquired?.documentRef).toEqual(
+      expect.objectContaining({
+        provider: 'qbittorrent',
+        torrentHash: 'pendinghash',
+        contentKind: 'pdf',
+        status: 'queued',
       }),
-    ).rejects.toThrow('Torrent metadata is not available yet');
+    );
+    expect(acquired?.documentRef).not.toHaveProperty('fileIndex');
+    expect(acquired?.documentRef?.availability.reason).toContain(
+      'file metadata',
+    );
     expect(priorityCalls).toEqual([]);
     expect(resumeCalls).toEqual([]);
   });

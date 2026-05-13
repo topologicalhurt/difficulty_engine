@@ -106,6 +106,54 @@ export async function acquireTorrentDocument(
       request,
     );
     selected = selection.selected;
+    if (!selected && selection.fileCount === 0) {
+      const now = isoTimestamp();
+      const pendingName = `${basename(candidate.title) || 'pending'}.pdf`;
+      const pendingStoragePath = joinStoragePath(
+        info.save_path ?? savePath,
+        pendingName,
+      );
+      const availability = torrentAvailability(info);
+      return {
+        candidateId: candidate.id,
+        provider: 'qbittorrent',
+        sourceUrl: candidate.sourceUrl,
+        storagePath: pendingStoragePath,
+        contentType: 'application/pdf',
+        accessBasis: candidate.accessBasis ?? 'user_provided',
+        confidence: candidate.confidence,
+        acquiredAt: now,
+        documentRef: {
+          id: documentRefId(info.hash, undefined, pendingStoragePath),
+          provider: 'qbittorrent',
+          sourceUrl: candidate.sourceUrl,
+          torrentHash: info.hash,
+          fileName: pendingName,
+          storagePath: pendingStoragePath,
+          contentKind: 'pdf',
+          contentType: 'application/pdf',
+          accessBasis: candidate.accessBasis ?? 'user_provided',
+          status: 'queued',
+          matchScore: candidate.matchScore ?? candidate.confidence,
+          availability: {
+            ...availability,
+            seeders: candidate.seeders ?? availability.seeders,
+            peers: candidate.peers ?? availability.peers,
+            reason:
+              'Torrent is tracked, but qBittorrent has not exposed file metadata yet.',
+          },
+          provenance: {
+            provider: 'qbittorrent',
+            sourceUrl: candidate.sourceUrl,
+            fetchedAt: now,
+            confidence: candidate.confidence,
+            strategy: 'pending_file_metadata',
+          },
+          createdAt: now,
+          updatedAt: now,
+        },
+      };
+    }
     if (!selected) {
       throw new Error(
         selection.rejectionReason ??

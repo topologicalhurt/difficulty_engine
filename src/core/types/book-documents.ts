@@ -68,10 +68,14 @@ export interface BookDocumentCandidateOption {
 
 export type QbittorrentSearchIntent =
   | 'isbn_exact'
+  | 'canonical_title'
+  | 'dehyphenated_title'
   | 'core_title'
+  | 'title_without_subtitle'
   | 'core_title_author'
   | 'author_topic'
   | 'hyphenated_title'
+  | 'distinctive_tokens'
   | 'broad_recall';
 
 export interface BookDocumentBlockedCandidateOption {

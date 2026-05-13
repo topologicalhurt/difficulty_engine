@@ -23,7 +23,6 @@ import {
   qbittorrentSearchPluginsEnabled,
   qbittorrentUserTorrentsEnabled,
 } from '../core/source-settings-policy';
-import { authorAppearsInText, isbnAppearsInText } from '../core/matchers';
 import { acquireTorrentDocument } from './qbittorrent-acquisition';
 import {
   QBittorrentClient,
@@ -32,14 +31,12 @@ import {
 } from './qbittorrent-client';
 import { pluginSearchCandidates } from './qbittorrent-plugin-search';
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
-import {
-  bookMatchScore,
-  MIN_TORRENT_MATCH_SCORE,
-  torrentAvailability,
-} from './qbittorrent-selection';
 import { documentCandidateQualityScore } from './document-candidate-quality';
 import { contentKindPriorityForPreference } from './document-content-priority';
-import type { TorrentInfo } from './qbittorrent-types';
+import {
+  candidateFromLiveTorrent,
+  readQbittorrentLiveInventory,
+} from './qbittorrent-live-inventory';
 
 type QBittorrentProvider = DocumentAcquisitionProvider & {
   listPlugins(): Promise<QbittorrentPluginInfo[]>;
@@ -159,73 +156,15 @@ function userProvidedTorrentCandidate(
   };
 }
 
-function torrentEvidenceText(torrent: TorrentInfo): string {
-  return [torrent.name, torrent.content_path, torrent.magnet_uri].join(' ');
-}
-
-function torrentHasRequiredAuthorEvidence(
-  torrent: TorrentInfo,
-  request: DocumentAcquisitionRequest,
-): boolean {
-  if (!request.book.authors.length) return true;
-  const evidenceText = torrentEvidenceText(torrent);
-  return (
-    isbnAppearsInText(request.book.isbn, evidenceText) ||
-    authorAppearsInText(request.book.authors, evidenceText)
-  );
-}
-
 async function localTorrentCandidates(
   client: QBittorrentClient,
   request: DocumentAcquisitionRequest,
 ): Promise<DocumentCandidate[]> {
-  await client.login();
-  const torrents = await client.listTorrents();
+  const inventory = await readQbittorrentLiveInventory(client);
   const category = client.torrentCategory();
-  return torrents
+  return inventory.torrents
     .filter((torrent) => torrent.category === category)
-    .map((torrent): DocumentCandidate | null => {
-      const title = torrent.name || torrent.content_path || request.book.title;
-      const contentKind = contentKindFromUrl(torrent.content_path || title);
-      if (contentKind !== 'unknown' && contentKind !== 'pdf') return null;
-      const matchScore = bookMatchScore(title, request);
-      if (matchScore < MIN_TORRENT_MATCH_SCORE) return null;
-      if (!torrentHasRequiredAuthorEvidence(torrent, request)) return null;
-      const sourceUrl =
-        torrent.magnet_uri ||
-        (torrent.hash ? `magnet:?xt=urn:btih:${torrent.hash}` : '');
-      if (!sourceUrl) return null;
-      const availability = torrentAvailability(torrent);
-      const candidate = {
-        id: `qbittorrent-local:${request.book.id}:${torrent.hash ?? title}`,
-        provider: 'qbittorrent',
-        title,
-        sourceUrl,
-        contentKind,
-        accessBasis: 'user_owned' as const,
-        confidence: Math.min(0.98, 0.55 + matchScore * 0.35),
-        matchScore,
-        seeders: availability.seeders,
-        peers: availability.peers,
-        sizeBytes: availability.sizeBytes ?? undefined,
-        qualityReason:
-          availability.etaSeconds != null
-            ? `${availability.seeders ?? 0} seeder(s), ETA ${Math.round(
-                availability.etaSeconds / 60,
-              )}m.`
-            : `${availability.seeders ?? 0} seeder(s), ${Math.round(
-                availability.progress * 100,
-              )}% tracked.`,
-        availability,
-      };
-      return {
-        ...candidate,
-        qualityScore: documentCandidateQualityScore(
-          candidate,
-          contentKindPriorityForPreference(request.policy.contentPreference),
-        ),
-      };
-    })
+    .map((torrent) => candidateFromLiveTorrent(torrent, request))
     .filter((candidate): candidate is DocumentCandidate => Boolean(candidate));
 }
 

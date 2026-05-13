@@ -34,7 +34,7 @@ import { contentKindPriorityForPreference } from './document-content-priority';
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import type { SearchResult } from './qbittorrent-types';
 
-const MAX_QBITTORRENT_SEARCH_PATTERNS = 7;
+const MAX_QBITTORRENT_SEARCH_PATTERNS = 10;
 const MIN_USER_OWNED_RETRY_SCORE = 0.55;
 
 // Search plugins are literal-string matchers more often than semantic searchers.
@@ -82,6 +82,10 @@ function dehyphenatedSearchText(value: string): string {
 function titleCore(title: string, fallback: string): string {
   const withoutDetail = title.replace(TITLE_TRAILING_DETAIL_PATTERN, '');
   return dehyphenatedSearchText(withoutDetail || fallback || title);
+}
+
+function titleWithoutSubtitle(title: string): string {
+  return dehyphenatedSearchText(title.replace(TITLE_TRAILING_DETAIL_PATTERN, ''));
 }
 
 function sharesSearchToken(left: string, right: string): boolean {
@@ -180,6 +184,10 @@ function distinctiveTitleTokens(title: string): string[] {
     .slice(0, 4);
 }
 
+function distinctiveTokenQuery(title: string): string {
+  return distinctiveTitleTokens(title).join(' ');
+}
+
 function pushQuery(
   queries: QbittorrentSearchQuery[],
   seen: Set<string>,
@@ -198,7 +206,10 @@ export function qbittorrentSearchQueries(
   const isbn = normalizedBookIsbn(request.book.isbn);
   const seen = new Set<string>();
   const queries: QbittorrentSearchQuery[] = [];
+  const canonicalTitle = compactSearchText(request.book.title);
   const coreTitle = titleCore(request.book.title, request.book.short);
+  const withoutSubtitle = titleWithoutSubtitle(request.book.title);
+  const dehyphenatedTitle = dehyphenatedSearchText(request.book.title);
   const hyphenatedTitle = compactSearchText(
     request.book.title.replace(SEARCH_NOISE_WORD_PATTERN, ' '),
   );
@@ -208,7 +219,12 @@ export function qbittorrentSearchQueries(
   const topicPhrase = distinctiveTitleTokens(coreTitle).slice(-2).join(' ');
 
   pushQuery(queries, seen, 'isbn_exact', isbn);
+  if (!canonicalTitle.includes('-')) {
+    pushQuery(queries, seen, 'canonical_title', canonicalTitle);
+  }
   pushQuery(queries, seen, 'core_title', coreTitle);
+  pushQuery(queries, seen, 'title_without_subtitle', withoutSubtitle);
+  pushQuery(queries, seen, 'dehyphenated_title', dehyphenatedTitle);
   if (authorPhrase) {
     pushQuery(
       queries,
@@ -226,6 +242,12 @@ export function qbittorrentSearchQueries(
   if (hyphenatedTitle.includes('-')) {
     pushQuery(queries, seen, 'hyphenated_title', hyphenatedTitle);
   }
+  pushQuery(
+    queries,
+    seen,
+    'distinctive_tokens',
+    distinctiveTokenQuery(coreTitle),
+  );
   for (const title of titles) pushQuery(queries, seen, 'broad_recall', title);
 
   return queries.slice(0, MAX_QBITTORRENT_SEARCH_PATTERNS);

@@ -79,6 +79,7 @@ describe('qBittorrent search patterns and ordering', () => {
       'practical electronics for inventors',
       'practical electronics for inventors scherz',
       'scherz electronics inventors',
+      'practical electronics inventors',
       'practical electronics',
     ]);
     expect(patterns.join(' ')).not.toMatch(/4th|Edition/i);

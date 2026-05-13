@@ -42,7 +42,7 @@ export function createDefaultSourceSettings(): SourceSettings {
       allowedPlugins: [],
       allowedSites: [...QBITTORRENT_OPEN_SOURCE_SITES],
       categories: ['all'],
-      maxResults: 100,
+      maxResults: 150,
       requireKnownAccessBasis: true,
     },
     contentPreference: [...DEFAULT_CONTENT_PREFERENCE],
