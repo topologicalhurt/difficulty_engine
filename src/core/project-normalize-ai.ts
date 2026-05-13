@@ -7,6 +7,8 @@ import type {
   AiConnectionSettings,
   AiRecommendationProviderKey,
   AiRecommendationSettings,
+  AiRecommendationWorkMode,
+  AiReasoningMode,
 } from './types';
 import {
   normalizeBoolean,
@@ -16,6 +18,22 @@ import {
 
 function normalizeProvider(value: unknown): AiRecommendationProviderKey {
   return value === 'anthropic' ? 'anthropic' : 'openai';
+}
+
+function normalizeReasoningMode(value: unknown): AiReasoningMode {
+  return value === 'none' ||
+    value === 'low' ||
+    value === 'medium' ||
+    value === 'high' ||
+    value === 'xhigh'
+    ? value
+    : 'provider_default';
+}
+
+function normalizeWorkMode(value: unknown): AiRecommendationWorkMode {
+  return value === 'new_books' || value === 'plan' || value === 'both'
+    ? value
+    : 'both';
 }
 
 export function normalizeAiConnectionSettings(
@@ -39,13 +57,14 @@ export function normalizeAiConnectionSettings(
       raw.timeoutMs,
       defaults.timeoutMs,
       1000,
-      120000,
+      900000,
       true,
     ),
     maxOutputTokens:
       raw.maxOutputTokens == null || raw.maxOutputTokens === ''
         ? null
         : normalizeNumber(raw.maxOutputTokens, 1800, 256, 200000, true),
+    reasoningMode: normalizeReasoningMode(raw.reasoningMode),
   };
 }
 
@@ -62,9 +81,11 @@ export function normalizeAiRecommendationSettings(
       raw.maxSuggestions,
       defaults.maxSuggestions,
       1,
-      8,
+      20,
       true,
     ),
+    dagDepth: normalizeNumber(raw.dagDepth, defaults.dagDepth, 0, 12, true),
+    workMode: normalizeWorkMode(raw.workMode),
     includeExistingContext:
       raw.includeExistingContext == null
         ? defaults.includeExistingContext

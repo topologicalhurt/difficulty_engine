@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createDefaultAiConnectionSettings } from '../../src/core/defaults';
+import {
+  createDefaultAiConnectionSettings,
+  createDefaultAiRecommendationSettings,
+} from '../../src/core/defaults';
 import type { AiRecommendationRequest } from '../../src/core/types';
 import { createAiRecommendationClient } from '../../src/infra/ai-recommendation-client';
 import { silentLogger } from '../app/store-test-utils';
@@ -20,6 +23,8 @@ function request(
       model: provider === 'anthropic' ? 'claude-test' : 'gpt-test',
     },
     maxSuggestions: 1,
+    settings: createDefaultAiRecommendationSettings(),
+    clarifications: [],
     context: {
       books: [],
       relations: [],
@@ -193,6 +198,33 @@ describe('AI recommendation client', () => {
 
     expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject(
       { max_output_tokens: 4096 },
+    );
+  });
+
+  it('sends OpenAI reasoning effort when a thinking mode is selected', async () => {
+    const fetchImpl = vi.fn(
+      async (_url: Parameters<typeof fetch>[0], _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            output_text: JSON.stringify({
+              summary: 'ok',
+              books: [],
+              warnings: [],
+            }),
+          }),
+        ),
+    );
+    const client = createAiRecommendationClient({
+      fetchImpl,
+      logger: silentLogger,
+    });
+    const thoughtful = request('openai');
+    thoughtful.connection.reasoningMode = 'high';
+
+    await client.recommend(thoughtful);
+
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject(
+      { reasoning: { effort: 'high' } },
     );
   });
 

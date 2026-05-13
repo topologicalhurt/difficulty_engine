@@ -88,6 +88,23 @@ function proposalDiffView(books: AiRecommendedBook[]): HTMLElement {
   );
 }
 
+function projectSettingsView(
+  proposal: NonNullable<AppState['ui']['aiProposal']>,
+): HTMLElement | null {
+  if (!proposal.projectSettings.length) return null;
+  return el(
+    'div',
+    { className: 'ai-diff-view' },
+    el('div', { className: 'diff-pane-label', text: 'Project setting suggestions' }),
+    ...proposal.projectSettings.map((setting) =>
+      proposalDiffLine(
+        '~',
+        `${setting.key}: ${setting.currentValue || 'current'} -> ${setting.suggestedValue} (${formatOneDecimal(setting.confidence * 10)}/10)${setting.rationale ? ` - ${setting.rationale}` : ''}`,
+      ),
+    ),
+  );
+}
+
 export function renderAiProposalCard(
   state: AppState,
   store: PlannerStore,
@@ -123,6 +140,7 @@ export function renderAiProposalCard(
       { className: 'search-results' },
       ...viewModel.proposal.books.map((book) => proposalBookCard(book)),
     ),
+    projectSettingsView(viewModel.proposal),
     proposalDiffView(viewModel.proposal.books),
     el(
       'div',

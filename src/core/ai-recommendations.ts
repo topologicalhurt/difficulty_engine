@@ -6,6 +6,7 @@ import {
 } from './project-normalize-primitives';
 import type {
   AiRecommendedBook,
+  AiProjectSettingSuggestion,
   AiRecommendationProviderKey,
   AiRecommendationProviderResponse,
   AiRecommendationProposal,
@@ -16,6 +17,7 @@ const RATIONALE_MAX_CHARS = 520;
 const MAX_SUBJECTS = 10;
 const MAX_RELATION_REFS = 16;
 const MAX_WARNINGS = 6;
+const MAX_PROJECT_SETTING_SUGGESTIONS = 8;
 
 export function sanitizeAiPrompt(value: string): string {
   return normalizeString(value).replace(/\s+/g, ' ');
@@ -71,6 +73,28 @@ function normalizeBookProposal(
   };
 }
 
+function normalizeProjectSettingSuggestion(
+  rawValue: unknown,
+): AiProjectSettingSuggestion | null {
+  const raw =
+    rawValue && typeof rawValue === 'object'
+      ? (rawValue as Record<string, unknown>)
+      : {};
+  const key = truncateText(raw.key ?? raw.setting, 80);
+  const suggestedValue = truncateText(
+    raw.suggestedValue ?? raw.value ?? raw.recommendation,
+    120,
+  );
+  if (!key || !suggestedValue) return null;
+  return {
+    key,
+    currentValue: truncateText(raw.currentValue, 120),
+    suggestedValue,
+    confidence: normalizeNumber(raw.confidence, 0.5, 0, 1),
+    rationale: truncateText(raw.rationale, RATIONALE_MAX_CHARS),
+  };
+}
+
 export function normalizeAiRecommendationProposal(
   response: AiRecommendationProviderResponse,
   meta: {
@@ -91,6 +115,9 @@ export function normalizeAiRecommendationProposal(
     0,
     MAX_WARNINGS,
   );
+  const rawProjectSettings = Array.isArray(response.projectSettings)
+    ? response.projectSettings
+    : [];
   return {
     id: `${meta.createdAt}-${meta.contextDigest}`,
     provider: meta.provider,
@@ -100,6 +127,10 @@ export function normalizeAiRecommendationProposal(
       truncateText(response.summary, RATIONALE_MAX_CHARS) ||
       'Review the proposed reading-list addition.',
     books,
+    projectSettings: rawProjectSettings
+      .map((entry) => normalizeProjectSettingSuggestion(entry))
+      .filter((entry): entry is AiProjectSettingSuggestion => Boolean(entry))
+      .slice(0, MAX_PROJECT_SETTING_SUGGESTIONS),
     warnings,
     createdAt: meta.createdAt,
     contextDigest: meta.contextDigest,

@@ -1,8 +1,13 @@
 import type { AppState, AppView, PlannerStoreEvent, UiState } from './app';
 import type {
   AiConnectionSettings,
+  AiClarificationProviderResponse,
+  AiClarificationRequest,
   AiRecommendationProviderResponse,
   AiRecommendationRequest,
+  AiRecommendationSettings,
+  AiRelationshipProviderResponse,
+  AiRelationshipRequest,
   BookSearchSuggestion,
   BookDocumentBlockedCandidateOption,
   BookDocumentCandidateOption,
@@ -18,6 +23,7 @@ import type {
   ReadingScopeSettings,
   SourceSettings,
   AutopilotWizardState,
+  AiRelationshipWizardState,
 } from './domain';
 import type { EngineSnapshot } from './snapshot';
 
@@ -80,6 +86,12 @@ export interface AiRecommendationProvider {
   recommend(
     request: AiRecommendationRequest,
   ): Promise<AiRecommendationProviderResponse>;
+  clarifyRecommendation?(
+    request: AiClarificationRequest,
+  ): Promise<AiClarificationProviderResponse>;
+  reorganizeRelationships?(
+    request: AiRelationshipRequest,
+  ): Promise<AiRelationshipProviderResponse>;
 }
 
 export interface LocalIntegrationSettingsAdapter {
@@ -151,6 +163,7 @@ export interface PlannerStoreCommands {
   selectBook(bookId: string | null): void;
   selectCalendarEntry(dateKey: string, bookId: string): void;
   setBanner(banner: UiState['banner']): void;
+  setDialog(dialog: UiState['dialog']): void;
   setGanttView(ganttView: UiState['ganttView']): void;
   setGanttZoom(ganttZoom: number): void;
   setPlanColorMode(planColorMode: UiState['planColorMode']): void;
@@ -159,6 +172,7 @@ export interface PlannerStoreCommands {
     open: boolean,
   ): void;
   setLibraryListWidth(widthPx: number): void;
+  setProjectBackupsEnabled(enabled: boolean): void;
   dismissWarningCode(code: string): void;
   restoreDismissedWarnings(): void;
   toggleConstraintAdvancedGroup(group: string): void;
@@ -236,10 +250,21 @@ export interface PlannerStoreCommands {
   ): Promise<void>;
   clearProjectMetadata(options?: { deleteContent?: boolean }): Promise<void>;
   updateAiLocalSettings(patch: Partial<AiConnectionSettings>): void;
+  updateAiRecommendationSettings(
+    patch: Partial<AiRecommendationSettings>,
+  ): void;
   setAiRecommendationPrompt(prompt: string): void;
+  setAiClarificationAnswer(messageIndex: number, answer: string): void;
+  requestAiClarification(): Promise<void>;
+  requestAiWorkspaceProposal(): Promise<void>;
+  clearAiClarification(): void;
   requestAiRecommendations(): Promise<void>;
   clearAiRecommendation(): void;
   applyAiRecommendation(): void;
+  updateAiRelationshipWizard(patch: Partial<AiRelationshipWizardState>): void;
+  requestAiRelationshipReorganization(): Promise<void>;
+  clearAiRelationshipProposal(): void;
+  applyAiRelationshipProposal(): void;
   updateAutopilotDraft(patch: Partial<AutopilotWizardState>): void;
   solveProjectForMe(): Promise<void>;
   applyAutopilotProposal(): void;

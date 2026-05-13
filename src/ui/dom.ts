@@ -11,6 +11,8 @@ export interface ElementProps {
   type?: string;
   checked?: boolean;
   placeholder?: string;
+  name?: string;
+  autocomplete?: string;
   disabled?: boolean;
   open?: boolean;
   min?: string;
@@ -60,6 +62,9 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   if (props.placeholder != null)
     (node as HTMLInputElement | HTMLTextAreaElement).placeholder =
       props.placeholder;
+  if (props.name) (node as HTMLInputElement).name = props.name;
+  if (props.autocomplete)
+    node.setAttribute('autocomplete', props.autocomplete);
   if (props.disabled != null)
     (node as HTMLButtonElement | HTMLInputElement).disabled = props.disabled;
   if (props.open != null) (node as HTMLDetailsElement).open = props.open;

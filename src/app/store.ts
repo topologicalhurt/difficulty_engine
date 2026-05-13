@@ -21,6 +21,8 @@ import { createCatalogSearchRunner } from './store-search';
 import { createSearchCommands } from './store-search-commands';
 import { createUiCommands } from './store-ui-commands';
 import { createAiRecommendationCommands } from './store-ai-recommendations';
+import { createAiRelationshipCommands } from './store-ai-relationships';
+import { createAiWorkflowCommands } from './store-ai-workflow';
 import { createAutopilotCommands } from './store-autopilot-commands';
 
 export function createPlannerStore(
@@ -70,6 +72,26 @@ export function createPlannerStore(
   });
   refreshBookEnrichment = enrichmentCommands.refreshBookEnrichment;
 
+  const aiRecommendationCommands = createAiRecommendationCommands(
+    context,
+    options,
+  );
+  const aiRelationshipCommands = createAiRelationshipCommands(context, options);
+  const aiWorkflowCommands = createAiWorkflowCommands(
+    context,
+    {
+      requestAiClarification: aiRecommendationCommands.requestAiClarification,
+      requestAiRecommendations:
+        aiRecommendationCommands.requestAiRecommendations,
+      requestAiRelationshipReorganization:
+        aiRelationshipCommands.requestAiRelationshipReorganization,
+    },
+    {
+      hasClarificationProvider:
+        Boolean(options.aiRecommendationProvider?.clarifyRecommendation),
+    },
+  );
+
   const store: PlannerStore = {
     selectors: {
       getState(): AppState {
@@ -96,7 +118,9 @@ export function createPlannerStore(
       ...createProjectCommands(context),
       ...createMetadataCommands(context, options),
       ...createQbittorrentCommands(context, options),
-      ...createAiRecommendationCommands(context, options),
+      ...aiRecommendationCommands,
+      ...aiRelationshipCommands,
+      ...aiWorkflowCommands,
       ...createAutopilotCommands(context, options),
       ...enrichmentCommands,
     },

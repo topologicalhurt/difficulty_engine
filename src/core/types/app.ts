@@ -1,5 +1,8 @@
 import type {
   AiConnectionSettings,
+  AiClarificationMessage,
+  AiRelationshipProposal,
+  AiRelationshipWizardState,
   AiRecommendationProposal,
   AiRecommendationStatus,
   AutopilotWizardState,
@@ -80,8 +83,15 @@ export interface UiState {
   documentCandidates: DocumentCandidateBrowserState;
   aiPrompt: string;
   aiConnection: AiConnectionSettings;
+  aiSettingsRevision: number;
   aiStatus: AiRecommendationStatus;
   aiProposal: AiRecommendationProposal | null;
+  aiClarificationStatus: AiRecommendationStatus;
+  aiClarificationMessages: AiClarificationMessage[];
+  aiClarificationAnswers: Record<string, string>;
+  aiRelationshipStatus: AiRecommendationStatus;
+  aiRelationshipWizard: AiRelationshipWizardState;
+  aiRelationshipProposal: AiRelationshipProposal | null;
   autopilotDraft: AutopilotWizardState;
   autopilotProposal: AutopilotProposal | null;
   debugUi: boolean;
@@ -89,6 +99,22 @@ export interface UiState {
     tone: 'info' | 'success' | 'warn' | 'error';
     message: string;
   } | null;
+  dialog: UiDialogState | null;
+}
+
+export interface UiDialogAction {
+  id: string;
+  label: string;
+  tone?: 'primary' | 'secondary' | 'danger';
+}
+
+export interface UiDialogState {
+  id: string;
+  title: string;
+  body: string;
+  detail?: string;
+  tone?: 'info' | 'success' | 'warn' | 'error';
+  actions: UiDialogAction[];
 }
 
 export interface AppState {

@@ -12,6 +12,15 @@ function aiProvider(): AiRecommendationProvider {
   return {
     recommend: vi.fn(async (request) => ({
       summary: `Using ${request.context.books.length} existing book(s).`,
+      projectSettings: [
+        {
+          key: 'constraints.tl',
+          currentValue: '18',
+          suggestedValue: '24',
+          confidence: 0.9,
+          rationale: 'The stated deadline expectation benefits from a longer timeline.',
+        },
+      ],
       books: [
         {
           proposalId: 'rec-foundations',
@@ -80,6 +89,12 @@ describe('AI recommendations store flow', () => {
         prompt: 'recommend electronics next steps',
         model: 'gpt-test',
         maxSuggestions: 4,
+        settings: expect.objectContaining({
+          maxSuggestions: 4,
+          dagDepth: 3,
+          workMode: 'both',
+        }),
+        clarifications: [],
         context: expect.objectContaining({
           books: expect.arrayContaining([
             expect.objectContaining({
@@ -91,6 +106,12 @@ describe('AI recommendations store flow', () => {
       }),
     );
     expect(store.selectors.getState().ui.aiProposal?.books).toHaveLength(2);
+    expect(
+      store.selectors.getState().ui.aiProposal?.projectSettings[0],
+    ).toMatchObject({
+      key: 'constraints.tl',
+      suggestedValue: '24',
+    });
 
     store.commands.applyAiRecommendation();
     const books = store.selectors.getProject().library.books;
@@ -169,6 +190,7 @@ describe('AI recommendations store flow', () => {
         },
       ],
       warnings: [],
+      projectSettings: [],
       createdAt: '2026-01-01T00:00:00.000Z',
       contextDigest: 'test-digest',
     };
@@ -206,6 +228,7 @@ describe('AI recommendations store flow', () => {
         },
       ],
       warnings: [],
+      projectSettings: [],
       createdAt: '2026-01-01T00:00:00.000Z',
       contextDigest: 'test-digest',
     };
@@ -253,7 +276,7 @@ describe('AI recommendations store flow', () => {
     );
   });
 
-  it('switches provider defaults and canonicalizes maintained model aliases', () => {
+  it('switches provider defaults without rewriting model typing drafts', () => {
     const store = makeStore();
 
     store.commands.updateAiLocalSettings({ provider: 'anthropic' });
@@ -264,14 +287,14 @@ describe('AI recommendations store flow', () => {
 
     store.commands.updateAiLocalSettings({ model: 'gpt latest' });
     expect(store.selectors.getState().ui.aiConnection).toMatchObject({
-      provider: 'openai',
-      model: 'gpt-5.2',
+      provider: 'anthropic',
+      model: 'gpt latest',
     });
 
     store.commands.updateAiLocalSettings({ model: 'Claude-sonnet' });
     expect(store.selectors.getState().ui.aiConnection).toMatchObject({
       provider: 'anthropic',
-      model: 'claude-sonnet-4-6',
+      model: 'Claude-sonnet',
     });
   });
 

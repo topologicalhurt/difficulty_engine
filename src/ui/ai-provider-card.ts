@@ -3,11 +3,17 @@ import {
   bestAiModelMatch,
   defaultAiModel,
 } from '../core/ai-provider-registry';
-import type { AppState, PlannerStore } from '../core/types';
-import { card, el } from './dom';
+import type { AiReasoningMode, AppState, PlannerStore } from '../core/types';
+import {
+  browserPasswordManagerAvailable,
+  recallAiApiKey,
+  rememberAiApiKey,
+} from './ai-api-key-vault';
+import { button, card, el } from './dom';
 import {
   autocompleteTextInputControl,
   checkboxControl,
+  draftNumberInputControl,
   inputField,
   optionalDraftNumberInputControl,
   selectInput,
@@ -15,6 +21,17 @@ import {
 } from './form-controls';
 
 const apiKeyLockedByStore = new WeakMap<PlannerStore, boolean>();
+const AI_REASONING_MODE_OPTIONS: Array<{
+  value: AiReasoningMode;
+  label: string;
+}> = [
+  { value: 'provider_default', label: 'Provider default' },
+  { value: 'none', label: 'None' },
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'xhigh', label: 'Extra high' },
+];
 
 export function renderAiProviderCard(
   state: AppState,
@@ -76,22 +93,26 @@ export function renderAiProviderCard(
             label: suggestion.label,
             detail: suggestion.provider,
           })),
-          onInput: (model) => {
-            const match = bestAiModelMatch(model);
-            store.commands.updateAiLocalSettings({
-              model,
-              ...(match &&
-              match.provider !== connection.provider &&
-              model.trim().length >= 4
-                ? { provider: match.provider }
-                : {}),
-            });
-          },
+          onInput: (model) => store.commands.updateAiLocalSettings({ model }),
           onAccept: acceptModel,
         }),
         viewModel.modelSuggestion
-          ? `Nearest maintained model: ${viewModel.modelSuggestion}`
-          : 'Use a maintained model id or provider alias.',
+          ? `Nearest maintained model: ${viewModel.modelSuggestion}. Press Tab or Enter to accept.`
+          : 'Type freely; maintained model suggestions are accepted only with Tab, Enter, or click.',
+      ),
+      inputField(
+        'Thinking mode',
+        selectInput(connection.reasoningMode, AI_REASONING_MODE_OPTIONS, {
+          className: 'select-input',
+          onChange: (event) => {
+            if (event.target instanceof HTMLSelectElement) {
+              store.commands.updateAiLocalSettings({
+                reasoningMode: event.target.value as AiReasoningMode,
+              });
+            }
+          },
+        }),
+        'OpenAI models receive this as reasoning effort; other providers receive it as request context.',
       ),
       inputField(
         'Endpoint override',
@@ -114,12 +135,73 @@ export function renderAiProviderCard(
             type: 'password',
             value: connection.apiKey,
             focusKey: 'ai:apiKey',
+            name: 'password',
+            autocomplete: 'current-password',
             placeholder: 'Stored only for this app session',
             className: apiKeyLocked ? 'text-input locked-input' : 'text-input',
             disabled: apiKeyLocked,
             onInput: (apiKey) =>
               store.commands.updateAiLocalSettings({ apiKey }),
           }),
+          textInputControl({
+            className: 'hidden-file-input',
+            type: 'text',
+            name: 'username',
+            autocomplete: 'username',
+            value: `difficulty-engine-ai:${connection.provider}`,
+            focusKey: 'ai:apiKeyUsername',
+            onInput: () => undefined,
+          }),
+          el(
+            'div',
+            { className: 'toolbar-row' },
+            button('Recall saved key', {
+              className: 'ghost-button',
+              disabled: !browserPasswordManagerAvailable(),
+              onClick: async () => {
+                try {
+                  const apiKey = await recallAiApiKey(connection);
+                  store.commands.updateAiLocalSettings({ apiKey });
+                  store.commands.setBanner({
+                    tone: 'success',
+                    message: 'AI API key recalled from the browser password manager.',
+                  });
+                } catch (error) {
+                  store.commands.setBanner({
+                    tone: 'warn',
+                    message:
+                      error instanceof Error
+                        ? error.message
+                        : 'Could not recall AI API key.',
+                  });
+                }
+              },
+            }),
+            button('Remember key', {
+              className: 'ghost-button',
+              disabled:
+                !browserPasswordManagerAvailable() ||
+                !connection.apiKey.trim(),
+              onClick: async () => {
+                try {
+                  await rememberAiApiKey(connection);
+                  store.commands.setBanner({
+                    tone: 'success',
+                    message:
+                      'AI API key handed to the browser password manager.',
+                  });
+                } catch (error) {
+                  store.commands.setBanner({
+                    tone: 'warn',
+                    message:
+                      error instanceof Error
+                        ? error.message
+                        : 'Could not save AI API key with the browser.',
+                  });
+                }
+              },
+            }),
+          ),
           connection.apiKey.trim()
             ? el(
                 'label',
@@ -156,6 +238,21 @@ export function renderAiProviderCard(
           emptyLabel: 'Unlimited / provider default',
         }),
         'Leave empty to send the full request and let the provider/model decide.',
+      ),
+      inputField(
+        'Request timeout',
+        draftNumberInputControl({
+          value: Math.round(connection.timeoutMs / 1000),
+          focusKey: 'ai:timeoutSeconds',
+          min: 30,
+          max: 900,
+          step: 30,
+          onCommit: (timeoutSeconds) =>
+            store.commands.updateAiLocalSettings({
+              timeoutMs: timeoutSeconds * 1000,
+            }),
+        }),
+        'Seconds before cancelling provider calls. Relationship planning uses a longer safe minimum for large contexts.',
       ),
     ),
   );

@@ -42,8 +42,14 @@ export function selectActiveTabRenderKeys(
         state.snapshot,
         state.ui.aiPrompt,
         state.ui.aiConnection,
+        state.ui.aiClarificationStatus,
+        state.ui.aiClarificationMessages,
+        state.ui.aiClarificationAnswers,
         state.ui.aiStatus,
         state.ui.aiProposal,
+        state.ui.aiRelationshipStatus,
+        state.ui.aiRelationshipWizard,
+        state.ui.aiRelationshipProposal,
       ];
     case 'graphs':
       return [

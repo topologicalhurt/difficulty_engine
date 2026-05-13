@@ -1,4 +1,8 @@
-import type { AiRecommendationProviderResponse } from '../core/types';
+import type {
+  AiClarificationProviderResponse,
+  AiRecommendationProviderResponse,
+  AiRelationshipProviderResponse,
+} from '../core/types';
 
 export interface OpenAiResponse {
   output_text?: string;
@@ -46,11 +50,53 @@ function parseRecommendationJson(
     return {
       summary: parsed.summary,
       books: parsed.books,
+      projectSettings: parsed.projectSettings,
       warnings: parsed.warnings,
     };
   } catch {
     throw new Error(
       'AI provider returned text that was not valid recommendation JSON.',
+    );
+  }
+}
+
+function parseRelationshipJson(text: string): AiRelationshipProviderResponse {
+  const jsonText = extractJsonText(text);
+  if (!jsonText.trim()) {
+    throw new Error('AI provider returned an empty relationship body.');
+  }
+  try {
+    const parsed = JSON.parse(jsonText) as AiRelationshipProviderResponse;
+    return {
+      summary: parsed.summary,
+      stages: parsed.stages,
+      relations: parsed.relations,
+      warnings: parsed.warnings,
+    };
+  } catch {
+    throw new Error(
+      'AI provider returned text that was not valid relationship JSON.',
+    );
+  }
+}
+
+function parseClarificationJson(text: string): AiClarificationProviderResponse {
+  const jsonText = extractJsonText(text);
+  if (!jsonText.trim()) {
+    throw new Error('AI provider returned an empty clarification body.');
+  }
+  try {
+    const parsed = JSON.parse(jsonText) as AiClarificationProviderResponse;
+    return {
+      question: parsed.question,
+      questions: parsed.questions,
+      ready: parsed.ready,
+      refinedPrompt: parsed.refinedPrompt,
+      warnings: parsed.warnings,
+    };
+  } catch {
+    throw new Error(
+      'AI provider returned text that was not valid clarification JSON.',
     );
   }
 }
@@ -133,6 +179,30 @@ function parseProviderText(
   return parseRecommendationJson(text);
 }
 
+function parseProviderRelationshipText(
+  text: string,
+  response: unknown,
+): AiRelationshipProviderResponse {
+  if (!text.trim()) {
+    throw new Error(
+      `AI provider returned no relationship text.${responseShape(response)}`,
+    );
+  }
+  return parseRelationshipJson(text);
+}
+
+function parseProviderClarificationText(
+  text: string,
+  response: unknown,
+): AiClarificationProviderResponse {
+  if (!text.trim()) {
+    throw new Error(
+      `AI provider returned no clarification text.${responseShape(response)}`,
+    );
+  }
+  return parseClarificationJson(text);
+}
+
 export async function parseAiHttpResponse(
   response: Response,
 ): Promise<unknown> {
@@ -153,4 +223,28 @@ export function parseAnthropicRecommendation(
   response: AnthropicResponse,
 ): AiRecommendationProviderResponse {
   return parseProviderText(textContent(response).join('\n'), response);
+}
+
+export function parseOpenAiRelationship(
+  response: OpenAiResponse,
+): AiRelationshipProviderResponse {
+  return parseProviderRelationshipText(textContent(response).join('\n'), response);
+}
+
+export function parseAnthropicRelationship(
+  response: AnthropicResponse,
+): AiRelationshipProviderResponse {
+  return parseProviderRelationshipText(textContent(response).join('\n'), response);
+}
+
+export function parseOpenAiClarification(
+  response: OpenAiResponse,
+): AiClarificationProviderResponse {
+  return parseProviderClarificationText(textContent(response).join('\n'), response);
+}
+
+export function parseAnthropicClarification(
+  response: AnthropicResponse,
+): AiClarificationProviderResponse {
+  return parseProviderClarificationText(textContent(response).join('\n'), response);
 }

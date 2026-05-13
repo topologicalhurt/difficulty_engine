@@ -6,9 +6,19 @@ import type {
 } from './optimization';
 
 export type AiRecommendationProviderKey = 'openai' | 'anthropic';
+export type AiReasoningMode =
+  | 'provider_default'
+  | 'none'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'xhigh';
+export type AiRecommendationWorkMode = 'new_books' | 'plan' | 'both';
 
 export interface AiRecommendationSettings {
   maxSuggestions: number;
+  dagDepth: number;
+  workMode: AiRecommendationWorkMode;
   includeExistingContext: boolean;
 }
 
@@ -20,6 +30,7 @@ export interface AiConnectionSettings {
   apiKey: string;
   timeoutMs: number;
   maxOutputTokens: number | null;
+  reasoningMode: AiReasoningMode;
 }
 
 export interface AiRecommendationStatus {
@@ -41,6 +52,14 @@ export interface AiRecommendedBook {
   coStudyIds: string[];
 }
 
+export interface AiProjectSettingSuggestion {
+  key: string;
+  currentValue: string;
+  suggestedValue: string;
+  confidence: number;
+  rationale: string;
+}
+
 export interface AiRecommendationProposal {
   id: string;
   provider: AiRecommendationProviderKey;
@@ -48,9 +67,74 @@ export interface AiRecommendationProposal {
   prompt: string;
   summary: string;
   books: AiRecommendedBook[];
+  projectSettings: AiProjectSettingSuggestion[];
   warnings: string[];
   createdAt: string;
   contextDigest: string;
+}
+
+export type AiRelationshipGoal =
+  | 'confidence_first'
+  | 'deadline_first'
+  | 'deep_mastery'
+  | 'survey_first'
+  | 'custom';
+export type AiRelationshipProgressionStyle =
+  | 'layered'
+  | 'linear'
+  | 'parallel_tracks'
+  | 'project_first';
+export type AiRelationshipStrictness =
+  | 'preserve_existing'
+  | 'rebalance_soft'
+  | 'rebuild_from_scratch';
+
+export interface AiRelationshipWizardState {
+  goal: AiRelationshipGoal;
+  progressionStyle: AiRelationshipProgressionStyle;
+  strictness: AiRelationshipStrictness;
+  preserveManualRelations: boolean;
+  notes: string;
+}
+
+export interface AiRelationshipStageProposal {
+  label: string;
+  bookIds: string[];
+  rationale: string;
+}
+
+export interface AiRelationshipEdgeProposal {
+  from: string;
+  to: string;
+  type: 'prerequisite' | 'co-study';
+  confidence: number;
+  rationale: string;
+}
+
+export interface AiRelationshipProposal {
+  id: string;
+  provider: AiRecommendationProviderKey;
+  model: string;
+  summary: string;
+  stages: AiRelationshipStageProposal[];
+  relations: AiRelationshipEdgeProposal[];
+  warnings: string[];
+  createdAt: string;
+  contextDigest: string;
+  wizard: AiRelationshipWizardState;
+}
+
+export interface AiClarificationMessage {
+  role: 'assistant' | 'user';
+  text: string;
+}
+
+export interface AiClarificationProviderResponse {
+  question?: unknown;
+  questions?: unknown;
+  ready?: unknown;
+  refinedPrompt?: unknown;
+  warnings?: unknown;
 }
 
 export interface AiRecommendationBookContext {
@@ -132,6 +216,8 @@ export interface AiRecommendationContext {
     relativePacingStrength?: number;
     feasibilityMode?: string;
     dailyBookMode?: string;
+    requestedDagDepth?: number;
+    aiWorkMode?: AiRecommendationWorkMode;
   };
   readingScopeSettings?: {
     defaultMode: string;
@@ -172,12 +258,45 @@ export interface AiRecommendationRequest {
   model: string;
   connection: AiConnectionSettings;
   maxSuggestions: number;
+  settings: AiRecommendationSettings;
+  clarifications: AiClarificationMessage[];
   context: AiRecommendationContext;
+  signal?: AbortSignal;
+}
+
+export interface AiRelationshipRequest {
+  provider: AiRecommendationProviderKey;
+  model: string;
+  connection: AiConnectionSettings;
+  context: AiRecommendationContext;
+  wizard: AiRelationshipWizardState;
+  settings: AiRecommendationSettings;
+  clarifications: AiClarificationMessage[];
+  prompt: string;
+  signal?: AbortSignal;
+}
+
+export interface AiClarificationRequest {
+  prompt: string;
+  provider: AiRecommendationProviderKey;
+  model: string;
+  connection: AiConnectionSettings;
+  settings: AiRecommendationSettings;
+  context: AiRecommendationContext;
+  messages: AiClarificationMessage[];
   signal?: AbortSignal;
 }
 
 export interface AiRecommendationProviderResponse {
   summary?: unknown;
   books?: unknown;
+  projectSettings?: unknown;
+  warnings?: unknown;
+}
+
+export interface AiRelationshipProviderResponse {
+  summary?: unknown;
+  stages?: unknown;
+  relations?: unknown;
   warnings?: unknown;
 }

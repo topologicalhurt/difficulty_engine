@@ -32,6 +32,12 @@ export const AI_PROVIDER_REGISTRY: readonly AiProviderDefinition[] = [
     defaultModel: 'gpt-5-mini',
     models: [
       {
+        id: 'gpt-5.5',
+        label: 'GPT-5.5',
+        costTier: 'high',
+        aliases: ['gpt55', 'gpt 5.5', 'gpt latest', 'latest gpt'],
+      },
+      {
         id: 'gpt-5-mini',
         label: 'GPT-5 mini',
         costTier: 'low',
@@ -41,7 +47,7 @@ export const AI_PROVIDER_REGISTRY: readonly AiProviderDefinition[] = [
         id: 'gpt-5.2',
         label: 'GPT-5.2',
         costTier: 'medium',
-        aliases: ['gpt52', 'gpt 5.2', 'gpt latest'],
+        aliases: ['gpt52', 'gpt 5.2'],
       },
     ],
   },

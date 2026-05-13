@@ -23,6 +23,7 @@ describe('AI recommendation view model', () => {
       },
     });
 
+    expect(viewModel.modelOptions).toContain('gpt-5.5');
     expect(viewModel.modelOptions).toContain('gpt-5-mini');
     expect(viewModel.modelOptions).toContain('claude-sonnet-4-6');
     expect(viewModel.apiKeyIndicator).toBe(

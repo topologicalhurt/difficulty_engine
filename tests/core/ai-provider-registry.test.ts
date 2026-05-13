@@ -21,7 +21,7 @@ describe('AI provider registry', () => {
     });
     expect(resolveAiModelInput('gpt latest', 'anthropic')).toMatchObject({
       provider: 'openai',
-      model: 'gpt-5.2',
+      model: 'gpt-5.5',
       confidence: 'alias',
     });
   });
@@ -31,7 +31,7 @@ describe('AI provider registry', () => {
       'claude-sonnet-4-6',
     );
     expect(rankedAiModelMatches('gpt-').map((item) => item.model)).toContain(
-      'gpt-5-mini',
+      'gpt-5.5',
     );
   });
 });

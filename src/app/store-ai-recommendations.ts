@@ -1,14 +1,21 @@
 import {
   aiModelBelongsToProvider,
   defaultAiModel,
-  resolveAiModelInput,
 } from '../core/ai-provider-registry';
+import {
+  normalizeAiClarificationAnswer,
+  normalizeAiClarificationMessages,
+  normalizeAiClarificationResponse,
+} from '../core/ai-clarifications';
 import {
   normalizeAiRecommendationProposal,
   normalizeAiPromptDraft,
   sanitizeAiPrompt,
 } from '../core/ai-recommendations';
-import { normalizeAiConnectionSettings } from '../core/project-normalize-ai';
+import {
+  normalizeAiConnectionSettings,
+  normalizeAiRecommendationSettings,
+} from '../core/project-normalize-ai';
 import type {
   CreatePlannerStoreOptions,
   PlannerStoreCommands,
@@ -27,7 +34,11 @@ export function createAiRecommendationCommands(
 ): Pick<
   PlannerStoreCommands,
   | 'updateAiLocalSettings'
+  | 'updateAiRecommendationSettings'
   | 'setAiRecommendationPrompt'
+  | 'setAiClarificationAnswer'
+  | 'requestAiClarification'
+  | 'clearAiClarification'
   | 'requestAiRecommendations'
   | 'clearAiRecommendation'
   | 'applyAiRecommendation'
@@ -42,23 +53,17 @@ export function createAiRecommendationCommands(
     updateAiLocalSettings(patch): void {
       const state = context.getState();
       const requestWasLoading = state.ui.aiStatus.state === 'loading';
-      if (requestWasLoading) activeRequestSequence += 1;
+      const clarificationWasLoading =
+        state.ui.aiClarificationStatus.state === 'loading';
+      if (requestWasLoading || clarificationWasLoading) {
+        activeRequestSequence += 1;
+      }
       const patchedConnection = {
         ...state.ui.aiConnection,
         ...patch,
       };
       if (patch.provider && patch.model == null) {
         patchedConnection.model = defaultAiModel(patch.provider);
-      }
-      if (typeof patch.model === 'string') {
-        const resolution = resolveAiModelInput(
-          patch.model,
-          patchedConnection.provider,
-        );
-        if (resolution.confidence !== 'none') {
-          patchedConnection.provider = resolution.provider;
-          patchedConnection.model = resolution.model;
-        }
       }
       if (
         patch.provider &&
@@ -71,6 +76,7 @@ export function createAiRecommendationCommands(
       services.localSettings?.saveAiConnection(nextConnection);
       context.commitUi('ai.localSettings', {
         aiConnection: nextConnection,
+        aiSettingsRevision: state.ui.aiSettingsRevision + 1,
         aiStatus: requestWasLoading
           ? {
               state: 'idle',
@@ -81,21 +87,241 @@ export function createAiRecommendationCommands(
               ...state.ui.aiStatus,
               message: 'AI provider settings updated.',
             },
+        aiRelationshipProposal: null,
+        aiClarificationStatus:
+          clarificationWasLoading
+            ? {
+                state: 'idle',
+                message:
+                  'AI provider settings changed. Ask clarifying questions again.',
+              }
+            : state.ui.aiClarificationStatus,
+        aiRelationshipStatus:
+          state.ui.aiRelationshipStatus.state === 'loading'
+            ? {
+                state: 'idle',
+                message:
+                  'AI provider settings changed. Request a relationship proposal again.',
+              }
+            : state.ui.aiRelationshipStatus,
+      });
+    },
+    updateAiRecommendationSettings(patch): void {
+      const state = context.getState();
+      activeRequestSequence += 1;
+      const nextProject = {
+        ...state.project,
+        aiRecommendationSettings: normalizeAiRecommendationSettings({
+          ...state.project.aiRecommendationSettings,
+          ...patch,
+        }),
+      };
+      context.commitProject('ai.recommendationSettings', nextProject, {
+        aiProposal: null,
+        aiStatus: {
+          state: 'idle',
+          message: 'AI recommendation settings updated.',
+        },
+        aiClarificationStatus:
+          state.ui.aiClarificationStatus.state === 'loading'
+            ? {
+                state: 'idle',
+                message:
+                  'AI recommendation settings changed. Ask clarifying questions again.',
+              }
+            : state.ui.aiClarificationStatus,
+        aiClarificationAnswers: {},
+        aiRelationshipProposal: null,
+        aiRelationshipStatus: {
+          ...state.ui.aiRelationshipStatus,
+          message: 'AI recommendation settings updated.',
+        },
       });
     },
     setAiRecommendationPrompt(prompt: string): void {
       const state = context.getState();
       const requestWasLoading = state.ui.aiStatus.state === 'loading';
-      if (requestWasLoading) activeRequestSequence += 1;
+      const clarificationWasLoading =
+        state.ui.aiClarificationStatus.state === 'loading';
+      if (requestWasLoading || clarificationWasLoading) {
+        activeRequestSequence += 1;
+      }
       context.commitUi('ai.prompt', {
         aiPrompt: normalizeAiPromptDraft(prompt),
-        aiProposal: requestWasLoading ? null : state.ui.aiProposal,
         aiStatus: requestWasLoading
           ? {
               state: 'idle',
               message: 'Prompt changed. Request recommendations again.',
             }
-          : state.ui.aiStatus,
+          : {
+              state: 'idle',
+              message: 'Prompt changed. Generate again to refresh output.',
+            },
+        aiProposal: null,
+        aiRelationshipProposal: null,
+        aiRelationshipStatus: {
+          state: 'idle',
+          message: 'Prompt changed. Generate again to refresh the plan proposal.',
+        },
+        aiClarificationMessages: [],
+        aiClarificationAnswers: {},
+        aiClarificationStatus: clarificationWasLoading
+          ? {
+              state: 'idle',
+              message: 'Prompt changed. Ask clarifying questions again.',
+            }
+          : {
+              state: 'idle',
+              message: 'Prompt changed. Generate again to refresh clarification.',
+            },
+      });
+    },
+    setAiClarificationAnswer(messageIndex: number, answer: string): void {
+      const state = context.getState();
+      context.commitUi('ai.clarificationAnswer', {
+        aiClarificationAnswers: {
+          ...state.ui.aiClarificationAnswers,
+          [String(messageIndex)]: normalizeAiClarificationAnswer(answer),
+        },
+      });
+    },
+    async requestAiClarification(): Promise<void> {
+      const state = context.getState();
+      const prompt = sanitizeAiPrompt(state.ui.aiPrompt);
+      if (!prompt) {
+        context.commitUi('ai.clarificationRequest', {
+          aiClarificationStatus: {
+            state: 'failed',
+            message: 'Enter a recommendation prompt before clarifying.',
+          },
+        });
+        return;
+      }
+      const provider = services.aiRecommendationProvider;
+      if (!provider?.clarifyRecommendation) {
+        context.commitUi('ai.clarificationRequest', {
+          aiClarificationStatus: {
+            state: 'failed',
+            message:
+              'AI clarification is not available because this host did not provide a clarification-capable AI provider.',
+          },
+        });
+        return;
+      }
+      if (!state.ui.aiConnection.enabled) {
+        context.commitUi('ai.clarificationRequest', {
+          aiClarificationStatus: {
+            state: 'failed',
+            message: 'Enable the AI provider before asking clarifying questions.',
+          },
+        });
+        return;
+      }
+      if (!state.ui.aiConnection.apiKey.trim()) {
+        context.commitUi('ai.clarificationRequest', {
+          aiClarificationStatus: {
+            state: 'failed',
+            message: 'Add a local AI API key before asking clarifying questions.',
+          },
+        });
+        return;
+      }
+      const messages = normalizeAiClarificationMessages(
+        state.ui.aiClarificationMessages,
+      );
+      const requestSequence = (activeRequestSequence += 1);
+      const recommendationContext = buildAiRecommendationContext(state);
+      const requestContextDigest = contextDigest(recommendationContext);
+      const requestSettingsRevision = state.ui.aiSettingsRevision;
+      context.commitUi('ai.clarificationRequest', {
+        aiClarificationStatus: {
+          state: 'loading',
+          message: 'Checking whether the AI needs clarification cards...',
+        },
+        aiClarificationMessages: messages,
+        aiClarificationAnswers: {},
+      });
+      try {
+        const response = await provider.clarifyRecommendation({
+          prompt,
+          provider: state.ui.aiConnection.provider,
+          model: state.ui.aiConnection.model,
+          connection: state.ui.aiConnection,
+          settings: state.project.aiRecommendationSettings,
+          context: recommendationContext,
+          messages,
+        });
+        if (!isActiveRequest(requestSequence)) return;
+        const currentState = context.getState();
+        const currentContextDigest = contextDigest(
+          buildAiRecommendationContext(currentState),
+        );
+        if (
+          currentContextDigest !== requestContextDigest ||
+          currentState.ui.aiSettingsRevision !== requestSettingsRevision
+        ) {
+          context.commitUi('ai.clarificationRequest', {
+            aiClarificationStatus: {
+              state: 'idle',
+              message: 'Planner context changed. Ask clarifying questions again.',
+            },
+          });
+          return;
+        }
+        const normalized = normalizeAiClarificationResponse(response);
+        const nextMessages = normalizeAiClarificationMessages([
+          ...messages,
+          ...normalized.questions.map((question) => ({
+            role: 'assistant' as const,
+            text: question,
+          })),
+        ]);
+        context.commitUi('ai.clarificationRequest', {
+          aiPrompt: normalized.refinedPrompt ?? currentState.ui.aiPrompt,
+          aiClarificationMessages: nextMessages,
+          aiClarificationAnswers: {},
+          dialog: normalized.questions.length
+            ? {
+                id: 'ai.clarification',
+                title: 'AI rapid-fire questions',
+                body: `${normalized.questions.length} clarification card(s) are ready.`,
+                detail:
+                  'Answer them in the AI tab, then generate the book or plan proposal.',
+                tone: 'info',
+                actions: [{ id: 'close', label: 'Answer cards' }],
+              }
+            : currentState.ui.dialog,
+          aiClarificationStatus: {
+            state: normalized.ready ? 'ready' : 'idle',
+            message: normalized.ready
+              ? 'Clarification complete. Request recommendations when ready.'
+              : normalized.questions.length
+                ? 'Answer the rapid-fire clarification cards, then proceed with a proposal.'
+                : 'No further clarification question was returned.',
+          },
+        });
+      } catch (error) {
+        if (!isActiveRequest(requestSequence)) return;
+        context.commitUi('ai.clarificationRequest', {
+          aiClarificationStatus: {
+            state: 'failed',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'AI clarification request failed.',
+          },
+        });
+      }
+    },
+    clearAiClarification(): void {
+      activeRequestSequence += 1;
+      context.commitUi('ai.clarificationClear', {
+        aiClarificationStatus: {
+          state: 'idle',
+          message: 'Ask clarifying questions before requesting recommendations.',
+        },
+        aiClarificationMessages: [],
+        aiClarificationAnswers: {},
       });
     },
     async requestAiRecommendations(): Promise<void> {
@@ -140,6 +366,16 @@ export function createAiRecommendationCommands(
         });
         return;
       }
+      if (state.project.aiRecommendationSettings.workMode === 'plan') {
+        context.commitUi('ai.request', {
+          aiStatus: {
+            state: 'failed',
+            message:
+              'AI work mode is set to plan only. Switch to new books or both to request book recommendations.',
+          },
+        });
+        return;
+      }
       const requestSequence = (activeRequestSequence += 1);
       const recommendationContext = buildAiRecommendationContext(state);
       const requestContextDigest = contextDigest(recommendationContext);
@@ -157,6 +393,8 @@ export function createAiRecommendationCommands(
           model: state.ui.aiConnection.model,
           connection: state.ui.aiConnection,
           maxSuggestions: state.project.aiRecommendationSettings.maxSuggestions,
+          settings: state.project.aiRecommendationSettings,
+          clarifications: state.ui.aiClarificationMessages,
           context: recommendationContext,
         });
         if (!isActiveRequest(requestSequence)) return;
@@ -185,10 +423,10 @@ export function createAiRecommendationCommands(
         });
         context.commitUi('ai.request', {
           aiProposal: proposal,
-          aiStatus: proposal.books.length
+          aiStatus: proposal.books.length || proposal.projectSettings.length
             ? {
                 state: 'ready',
-                message: `${proposal.books.length} recommendation(s) ready for review.`,
+                message: `${proposal.books.length} book recommendation(s) and ${proposal.projectSettings.length} project setting suggestion(s) ready for review.`,
               }
             : {
                 state: 'failed',

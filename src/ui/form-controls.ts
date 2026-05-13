@@ -14,6 +14,8 @@ export interface TextControlOptions {
   type?: string;
   listId?: string;
   disabled?: boolean;
+  name?: string;
+  autocomplete?: string;
 }
 
 export interface AutocompleteOption {
@@ -109,6 +111,8 @@ export function textInputControl(
     list: options.listId,
     placeholder: options.placeholder ?? '',
     disabled: options.disabled,
+    name: options.name,
+    autocomplete: options.autocomplete,
     onInput: (event) => {
       if (event.target instanceof HTMLInputElement) {
         options.onInput(event.target.value);
@@ -126,7 +130,7 @@ export function autocompleteTextInputControl(
     className: `${options.className ?? 'text-input'} autocomplete-input`,
   });
   input.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' || !best) return;
+    if ((event.key !== 'Enter' && event.key !== 'Tab') || !best) return;
     event.preventDefault();
     options.onAccept(best.value);
   });

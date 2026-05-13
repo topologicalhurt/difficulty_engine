@@ -138,6 +138,8 @@ export function buildAiRecommendationContext(
       relativePacingStrength: state.project.constraints.relativePacingStrength,
       feasibilityMode: state.project.constraints.feasibilityMode,
       dailyBookMode: state.project.constraints.dailyBookMode,
+      requestedDagDepth: state.project.aiRecommendationSettings.dagDepth,
+      aiWorkMode: state.project.aiRecommendationSettings.workMode,
     },
     readingScopeSettings: {
       defaultMode: readingScopeSettings.defaultMode,
