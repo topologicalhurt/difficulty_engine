@@ -21,7 +21,11 @@ import {
 import { selectorMetricSnapshot } from './selectors/memo';
 
 type ScheduledRender =
-  | { kind: 'animation-frame'; id: number }
+  | {
+      kind: 'animation-frame';
+      id: number;
+      fallbackId: ReturnType<typeof globalThis.setTimeout>;
+    }
   | { kind: 'timeout'; id: ReturnType<typeof globalThis.setTimeout> };
 
 async function resolveInitialProject(
@@ -151,9 +155,16 @@ export async function mountPlannerApp(
 
   function scheduleRender(callback: () => void): ScheduledRender {
     if (typeof globalThis.requestAnimationFrame === 'function') {
+      let flushed = false;
+      const flushOnce = (): void => {
+        if (flushed) return;
+        flushed = true;
+        callback();
+      };
       return {
         kind: 'animation-frame',
-        id: globalThis.requestAnimationFrame(callback),
+        id: globalThis.requestAnimationFrame(flushOnce),
+        fallbackId: globalThis.setTimeout(flushOnce, 50),
       };
     }
     return {
@@ -165,6 +176,7 @@ export async function mountPlannerApp(
   function cancelRender(render: ScheduledRender): void {
     if (render.kind === 'animation-frame') {
       globalThis.cancelAnimationFrame(render.id);
+      globalThis.clearTimeout(render.fallbackId);
       return;
     }
     globalThis.clearTimeout(render.id);

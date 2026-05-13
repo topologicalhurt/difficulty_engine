@@ -5,6 +5,7 @@ import type {
   RelationEvidence,
 } from '../../core/types';
 import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
+import { memoizeSelector } from './memo';
 
 type GraphState = Pick<AppState, 'project' | 'snapshot'>;
 
@@ -54,6 +55,11 @@ export interface GraphRenderModel {
   researchChains: ResearchChainView[];
 }
 
+interface VisibleGraphContext {
+  ids: string[];
+  set: Set<string>;
+}
+
 export function visibleGraphBookIds(state: GraphState): string[] {
   return Object.values(state.project.library.books)
     .filter((book) => !(state.project.constraints.excComp && book.completed))
@@ -64,6 +70,11 @@ export function visibleGraphBookIds(state: GraphState): string[] {
       ),
     )
     .map((book) => book.id);
+}
+
+function visibleGraphContext(state: GraphState): VisibleGraphContext {
+  const ids = visibleGraphBookIds(state);
+  return { ids, set: new Set(ids) };
 }
 
 function hasAlternatePath(
@@ -97,7 +108,14 @@ function transitiveReduction(edges: RelationEvidence[]): RelationEvidence[] {
 export function visiblePrerequisiteEdges(
   state: GraphState,
 ): RelationEvidence[] {
-  const visibleIds = new Set(visibleGraphBookIds(state));
+  const visibleIds = visibleGraphContext(state).set;
+  return visiblePrerequisiteEdgesForSet(state, visibleIds);
+}
+
+function visiblePrerequisiteEdgesForSet(
+  state: GraphState,
+  visibleIds: ReadonlySet<string>,
+): RelationEvidence[] {
   const edges = state.snapshot.relations
     .filter((relation) => relation.type === 'prerequisite')
     .filter(
@@ -114,7 +132,14 @@ export function visiblePrerequisiteEdges(
 }
 
 export function visibleReferenceEdges(state: GraphState): RelationEvidence[] {
-  const visibleIds = new Set(visibleGraphBookIds(state));
+  const visibleIds = visibleGraphContext(state).set;
+  return visibleReferenceEdgesForSet(state, visibleIds);
+}
+
+function visibleReferenceEdgesForSet(
+  state: GraphState,
+  visibleIds: ReadonlySet<string>,
+): RelationEvidence[] {
   return state.snapshot.relations
     .filter((relation) => relation.type === 'reference')
     .filter(
@@ -125,7 +150,15 @@ export function visibleReferenceEdges(state: GraphState): RelationEvidence[] {
 
 export function visibleCoStudyEdges(state: GraphState): RelationEvidence[] {
   if (!state.project.constraints.mutualEnabled) return [];
-  const visibleIds = new Set(visibleGraphBookIds(state));
+  const visibleIds = visibleGraphContext(state).set;
+  return visibleCoStudyEdgesForSet(state, visibleIds);
+}
+
+function visibleCoStudyEdgesForSet(
+  state: GraphState,
+  visibleIds: ReadonlySet<string>,
+): RelationEvidence[] {
+  if (!state.project.constraints.mutualEnabled) return [];
   return state.snapshot.relations
     .filter((relation) => relation.type === 'co-study')
     .filter(
@@ -138,7 +171,15 @@ export function visibleCoStudyGroups(
   state: GraphState,
 ): Array<{ id: string; ids: string[] }> {
   if (!state.project.constraints.mutualEnabled) return [];
-  const visibleIds = new Set(visibleGraphBookIds(state));
+  const visibleIds = visibleGraphContext(state).set;
+  return visibleCoStudyGroupsForSet(state, visibleIds);
+}
+
+function visibleCoStudyGroupsForSet(
+  state: GraphState,
+  visibleIds: ReadonlySet<string>,
+): Array<{ id: string; ids: string[] }> {
+  if (!state.project.constraints.mutualEnabled) return [];
   return state.snapshot.coStudyMeta.groups
     .map((group) => ({
       id: group.id,
@@ -150,7 +191,14 @@ export function visibleCoStudyGroups(
 export function visibleOverlapClusters(
   state: GraphState,
 ): OverlapClusterSummary[] {
-  const visibleIds = new Set(visibleGraphBookIds(state));
+  const visibleIds = visibleGraphContext(state).set;
+  return visibleOverlapClustersForSet(state, visibleIds);
+}
+
+function visibleOverlapClustersForSet(
+  state: GraphState,
+  visibleIds: ReadonlySet<string>,
+): OverlapClusterSummary[] {
   return state.snapshot.overlapClusters
     .map((cluster) => ({
       ...cluster,
@@ -182,7 +230,8 @@ function overlapExplorerClusters(
         label: topicLabels.slice(0, 3).join(', ') || cluster.id,
         topicLabels,
         bookIds: cluster.bookIds,
-        overlapScore: cluster.bookIds.length * Math.max(1, cluster.topicIds.length),
+        overlapScore:
+          cluster.bookIds.length * Math.max(1, cluster.topicIds.length),
         timeSaved,
         confidence,
       };
@@ -200,8 +249,19 @@ export function visibleDisplayGroupPartitions(
   state: GraphState,
 ): DisplayGroupPartition[] {
   if (!state.project.constraints.part) return [];
+  return visibleDisplayGroupPartitionsForIds(
+    state,
+    visibleGraphContext(state).ids,
+  );
+}
+
+function visibleDisplayGroupPartitionsForIds(
+  state: GraphState,
+  visibleIds: readonly string[],
+): DisplayGroupPartition[] {
+  if (!state.project.constraints.part) return [];
   const groups: Record<string, string[]> = {};
-  visibleGraphBookIds(state).forEach((id) => {
+  visibleIds.forEach((id) => {
     const book = state.project.library.books[id];
     const label = book?.displayGroup || 'Ungrouped';
     if (!groups[label]) groups[label] = [];
@@ -212,52 +272,62 @@ export function visibleDisplayGroupPartitions(
     .sort((left, right) => compareText(left.label, right.label));
 }
 
-export function selectGraphRenderModel(state: AppState): GraphRenderModel {
-  const visibleIds = visibleGraphBookIds(state);
-  const visibleSet = new Set(visibleIds);
-  const nodes = state.snapshot.sortedBooks
-    .slice()
-    .filter((book) => visibleSet.has(book.id))
-    .sort((left, right) =>
+const selectGraphRenderModelMemo = memoizeSelector(
+  'graph.renderModel',
+  (state: AppState) => [state.project, state.snapshot],
+  (state: AppState): GraphRenderModel => {
+    const visible = visibleGraphContext(state);
+    const nodes = state.snapshot.sortedBooks
+      .slice()
+      .filter((book) => visible.set.has(book.id))
+      .sort((left, right) =>
         compareChain(
           compareNumberAsc(left.dep, right.dep),
           compareText(left.short, right.short),
           compareText(left.id, right.id),
         ),
-    )
-    .map((book) => ({
-      id: book.id,
-      short: book.short,
-      title: book.title,
-      displayGroup: book.displayGroup,
-      dep: book.dep,
-    }));
-  const overlapClusters = visibleOverlapClusters(state);
-  const overlapExplorer = {
-    clusters: overlapExplorerClusters(state, overlapClusters),
-    bookRows: nodes,
-    emptyStateReason: overlapClusters.length
-      ? null
-      : 'No strong shared-topic intersections are available for the current graph filters.',
-  };
-  return {
-    visibleIds,
-    nodes,
-    books: visibleIds
-      .map((id) => state.project.library.books[id])
-      .filter(Boolean),
-    prerequisiteEdges: visiblePrerequisiteEdges(state),
-    coStudyEdges: visibleCoStudyEdges(state),
-    referenceEdges: visibleReferenceEdges(state),
-    coStudyGroups: visibleCoStudyGroups(state),
-    displayGroupPartitions: visibleDisplayGroupPartitions(state),
-    overlapClusters,
-    overlapExplorer,
-    researchChains: state.snapshot.schedulePlan.exclusionState.rdChains.map(
-      (chain) => ({
-        ids: chain.ids,
-        label: chain.label,
-      }),
-    ),
-  };
+      )
+      .map((book) => ({
+        id: book.id,
+        short: book.short,
+        title: book.title,
+        displayGroup: book.displayGroup,
+        dep: book.dep,
+      }));
+    const overlapClusters = visibleOverlapClustersForSet(state, visible.set);
+    const overlapExplorer = {
+      clusters: overlapExplorerClusters(state, overlapClusters),
+      bookRows: nodes,
+      emptyStateReason: overlapClusters.length
+        ? null
+        : 'No strong shared-topic intersections are available for the current graph filters.',
+    };
+    return {
+      visibleIds: visible.ids,
+      nodes,
+      books: visible.ids
+        .map((id) => state.project.library.books[id])
+        .filter(Boolean),
+      prerequisiteEdges: visiblePrerequisiteEdgesForSet(state, visible.set),
+      coStudyEdges: visibleCoStudyEdgesForSet(state, visible.set),
+      referenceEdges: visibleReferenceEdgesForSet(state, visible.set),
+      coStudyGroups: visibleCoStudyGroupsForSet(state, visible.set),
+      displayGroupPartitions: visibleDisplayGroupPartitionsForIds(
+        state,
+        visible.ids,
+      ),
+      overlapClusters,
+      overlapExplorer,
+      researchChains: state.snapshot.schedulePlan.exclusionState.rdChains.map(
+        (chain) => ({
+          ids: chain.ids,
+          label: chain.label,
+        }),
+      ),
+    };
+  },
+);
+
+export function selectGraphRenderModel(state: AppState): GraphRenderModel {
+  return selectGraphRenderModelMemo(state);
 }

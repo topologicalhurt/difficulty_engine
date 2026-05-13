@@ -19,6 +19,7 @@ function projectWithTitle(title: string): PlannerProjectV1 {
 
 describe('project persistence save queue', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -93,5 +94,27 @@ describe('project persistence save queue', () => {
     releaseSave();
     await unmount;
     expect(saves).toEqual(['Persist Me']);
+  });
+
+  it('flushes UI renders through a timer fallback when animation frames stall', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const container = document.createElement('div');
+    const handle = await mountPlannerApp({
+      container,
+      initialProject: makeProject(),
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    handle.store.commands.setActiveView('graphs');
+    vi.advanceTimersByTime(51);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(container.textContent).toContain('Graph options');
+    await handle.unmount();
   });
 });
