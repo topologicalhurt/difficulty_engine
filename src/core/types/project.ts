@@ -37,6 +37,7 @@ export interface UiPreferences {
   };
   libraryListWidthPx: number;
   dismissedWarningCodes: string[];
+  backupsEnabled: boolean;
 }
 
 export interface PlannerProjectV1 {

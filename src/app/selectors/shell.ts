@@ -58,6 +58,7 @@ export interface ShellViewModel {
   activeView: AppView;
   activeDescription: string;
   banner: AppState['ui']['banner'];
+  dialog: AppState['ui']['dialog'];
   stats: Array<{ label: string; value: string }>;
   tabs: Array<{ id: AppView; label: string; active: boolean }>;
 }
@@ -79,6 +80,7 @@ const selectShellViewModelMemo = memoizeSelector(
     state.ui.activeView,
     state.ui.debugUi,
     state.ui.banner,
+    state.ui.dialog,
     state.project.library.books,
     state.snapshot.relations,
     state.snapshot.renderModel.warnings,
@@ -96,6 +98,7 @@ const selectShellViewModelMemo = memoizeSelector(
       activeView: activeView.id,
       activeDescription: activeView.description,
       banner: state.ui.banner,
+      dialog: state.ui.dialog,
       stats: [
         {
           label: 'books',

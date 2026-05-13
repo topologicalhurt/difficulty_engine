@@ -29,9 +29,11 @@ const DEFAULT_TARGET_URL = 'http://127.0.0.1:8080';
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, '..');
 const DEFAULT_DATA_ROOT = resolve(REPO_ROOT, 'output', 'data', 'documents');
+const DEFAULT_BACKUP_ROOT = resolve(REPO_ROOT, 'output', 'backups');
 const DEFAULT_TIMEOUT_MS = 30_000;
 const PROXY_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
 const DOCUMENT_JSON_BODY_LIMIT_BYTES = 16 * 1024;
+const PROJECT_BACKUP_BODY_LIMIT_BYTES = 20 * 1024 * 1024;
 const DOCUMENT_TEXT_READ_LIMIT_BYTES = 8 * 1024 * 1024;
 const DOCUMENT_BYTE_READ_LIMIT_BYTES = 32 * 1024 * 1024;
 const DOCUMENT_PDF_TEXT_FILE_LIMIT_BYTES = 80 * 1024 * 1024;
@@ -371,10 +373,40 @@ async function listDocuments(dataRoot, startPath = '') {
   return files;
 }
 
-async function readJsonBody(req) {
-  const raw = await readBody(req, DOCUMENT_JSON_BODY_LIMIT_BYTES);
+async function readJsonBody(req, maxBytes = DOCUMENT_JSON_BODY_LIMIT_BYTES) {
+  const raw = await readBody(req, maxBytes);
   if (!raw.length) return {};
   return JSON.parse(raw.toString('utf8'));
+}
+
+function safeBackupPrefix(storageKey) {
+  return String(storageKey || 'project')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .slice(0, 80) || 'project';
+}
+
+async function writeProjectBackup(backupRoot, storageKey, projectJson) {
+  if (typeof projectJson !== 'string' || !projectJson.trim()) {
+    throw new Error('Project backup payload is empty.');
+  }
+  const parsed = JSON.parse(projectJson);
+  if (!parsed || parsed.version !== 1) {
+    throw new Error('Project backup payload is not a PlannerProjectV1 file.');
+  }
+  const root = resolve(backupRoot);
+  await mkdir(root, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filePath = resolve(
+    root,
+    `${safeBackupPrefix(storageKey)}-${timestamp}.json`,
+  );
+  if (!isWithinRoot(root, filePath)) {
+    throw new Error('Resolved backup path escaped the backup root.');
+  }
+  await writeFile(filePath, projectJson, 'utf8');
+  return filePath;
 }
 
 function openFile(filePath, mode = 'open') {
@@ -740,6 +772,7 @@ export function createQbittorrentBridgeServer({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   allowedOrigins = DEFAULT_ALLOWED_ORIGINS,
   openDocument = openFile,
+  backupRoot = DEFAULT_BACKUP_ROOT,
 } = {}) {
   let sessionCookie = '';
   const cleanTargetBaseUrl = trimBaseUrl(targetBaseUrl);
@@ -780,6 +813,27 @@ export function createQbittorrentBridgeServer({
         )
       )
         return;
+    }
+    if (pathname === '/project-backups/write' && req.method === 'POST') {
+      try {
+        const body = await readJsonBody(req, PROJECT_BACKUP_BODY_LIMIT_BYTES);
+        const backupPath = await writeProjectBackup(
+          backupRoot,
+          body.storageKey,
+          body.projectJson,
+        );
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ ok: true, path: backupPath }));
+      } catch (error) {
+        writeBridgeError(
+          req,
+          res,
+          400,
+          error instanceof Error ? error.message : String(error),
+          cleanAllowedOrigins,
+        );
+      }
+      return;
     }
     if (!pathname.startsWith('/api/v2/')) {
       res.statusCode = 302;

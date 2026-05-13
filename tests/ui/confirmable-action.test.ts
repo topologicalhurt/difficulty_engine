@@ -17,9 +17,10 @@ describe('confirmable UI actions', () => {
     });
 
     expect(action).not.toHaveBeenCalled();
-    expect(store.selectors.getState().ui.banner?.message).toBe(
-      'Confirm this action.',
-    );
+    expect(store.selectors.getState().ui.dialog).toMatchObject({
+      id: 'danger',
+      body: 'Confirm this action.',
+    });
 
     now += 500;
     runConfirmableAction(store, {

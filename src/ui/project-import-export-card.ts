@@ -128,6 +128,21 @@ export function renderImportExportCard(
       },
     }),
     el('hr', { className: 'section-divider' }),
+    el('h3', { text: 'Backups' }),
+    el(
+      'label',
+      { className: 'inline-control muted-copy' },
+      checkboxControl({
+        checked: store.selectors.getProject().uiPreferences.backupsEnabled,
+        onChange: (checked) =>
+          store.commands.setProjectBackupsEnabled(checked),
+      }),
+      el('span', {
+        text:
+          'Save backups before project overwrites. The local bridge also writes JSON snapshots to output/backups when available.',
+      }),
+    ),
+    el('hr', { className: 'section-divider' }),
     el('h3', { text: 'Project metadata maintenance' }),
     el('p', {
       className: 'muted-copy',

@@ -311,6 +311,48 @@ body.difficulty-engine-standalone #app {
   transform: translateY(0);
 }
 
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(93, 144, 255, 0.16), transparent 34%),
+    rgba(2, 6, 18, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.dialog-card {
+  width: min(620px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid rgba(151, 169, 202, 0.28);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(145deg, rgba(17, 26, 45, 0.98), rgba(9, 14, 28, 0.98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+}
+
+.dialog-card h2,
+.dialog-card p {
+  margin: 0;
+}
+
+.dialog-eyebrow {
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+}
+
 .split-layout {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
@@ -484,6 +526,57 @@ body.difficulty-engine-standalone #app {
 .planner-layout {
   display: grid;
   gap: 18px;
+}
+
+.ai-output-section {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-output-section > h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.ai-output-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.ai-clarification-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.ai-clarification-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(111, 211, 163, 0.22);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(135deg, rgba(111, 211, 163, 0.12), transparent 55%),
+    rgba(8, 16, 28, 0.78);
+  box-shadow: var(--shadow-soft);
+}
+
+.ai-clarification-card > p {
+  margin: 0;
+}
+
+.epoch-book-card {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.epoch-book-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(111, 211, 163, 0.35);
 }
 
 .stats-grid {

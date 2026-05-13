@@ -22,11 +22,13 @@ export function createUiCommands(
   | 'selectBook'
   | 'selectCalendarEntry'
   | 'setBanner'
+  | 'setDialog'
   | 'setGanttView'
   | 'setGanttZoom'
   | 'setPlanColorMode'
   | 'setPlanSectionOpen'
   | 'setLibraryListWidth'
+  | 'setProjectBackupsEnabled'
   | 'dismissWarningCode'
   | 'restoreDismissedWarnings'
   | 'toggleConstraintAdvancedGroup'
@@ -72,6 +74,9 @@ export function createUiCommands(
     setBanner(banner: UiState['banner']): void {
       context.commitUi('ui.banner', { banner });
     },
+    setDialog(dialog: UiState['dialog']): void {
+      context.commitUi('ui.dialog', { dialog });
+    },
     setGanttView(ganttView: UiState['ganttView']): void {
       commitUiPreference('ui.ganttView', { ganttView }, { ganttView });
     },
@@ -107,6 +112,20 @@ export function createUiCommands(
         'ui.libraryListWidth',
         { libraryListWidthPx },
         { libraryListWidthPx },
+      );
+    },
+    setProjectBackupsEnabled(enabled: boolean): void {
+      commitUiPreference(
+        'ui.projectBackups',
+        { backupsEnabled: enabled },
+        {
+          banner: {
+            tone: enabled ? 'success' : 'warn',
+            message: enabled
+              ? 'Project backups enabled.'
+              : 'Project backups disabled.',
+          },
+        },
       );
     },
     dismissWarningCode(code: string): void {

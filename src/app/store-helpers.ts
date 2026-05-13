@@ -1,5 +1,6 @@
 import {
   DEFAULT_UI_STATE,
+  createDefaultAiRelationshipWizardState,
   createDefaultAutopilotWizardState,
 } from '../core/defaults';
 import { serializeProject } from '../core/project-file';
@@ -113,14 +114,29 @@ export function buildUi(
       ui.documentCandidates ?? DEFAULT_UI_STATE.documentCandidates,
     aiPrompt: ui.aiPrompt ?? DEFAULT_UI_STATE.aiPrompt,
     aiConnection: ui.aiConnection ?? DEFAULT_UI_STATE.aiConnection,
+    aiSettingsRevision:
+      ui.aiSettingsRevision ?? DEFAULT_UI_STATE.aiSettingsRevision,
     aiStatus: ui.aiStatus ?? DEFAULT_UI_STATE.aiStatus,
     aiProposal: ui.aiProposal ?? DEFAULT_UI_STATE.aiProposal,
+    aiClarificationStatus:
+      ui.aiClarificationStatus ?? DEFAULT_UI_STATE.aiClarificationStatus,
+    aiClarificationMessages:
+      ui.aiClarificationMessages ?? DEFAULT_UI_STATE.aiClarificationMessages,
+    aiClarificationAnswers:
+      ui.aiClarificationAnswers ?? DEFAULT_UI_STATE.aiClarificationAnswers,
+    aiRelationshipStatus:
+      ui.aiRelationshipStatus ?? DEFAULT_UI_STATE.aiRelationshipStatus,
+    aiRelationshipWizard:
+      ui.aiRelationshipWizard ?? createDefaultAiRelationshipWizardState(),
+    aiRelationshipProposal:
+      ui.aiRelationshipProposal ?? DEFAULT_UI_STATE.aiRelationshipProposal,
     autopilotDraft:
       ui.autopilotDraft ?? createDefaultAutopilotWizardState(project.constraints),
     autopilotProposal:
       ui.autopilotProposal ?? DEFAULT_UI_STATE.autopilotProposal,
     debugUi: ui.debugUi ?? DEFAULT_UI_STATE.debugUi,
     banner: ui.banner ?? DEFAULT_UI_STATE.banner,
+    dialog: ui.dialog ?? DEFAULT_UI_STATE.dialog,
   };
 }
 

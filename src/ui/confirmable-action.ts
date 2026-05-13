@@ -1,4 +1,5 @@
 import type { PlannerStore } from '../core/types';
+import { registerDialogAction } from './dialog-actions';
 
 const DEFAULT_CONFIRMATION_WINDOW_MS = 6000;
 
@@ -28,6 +29,7 @@ export function runConfirmableAction(
   const deadline = pendingConfirmations(store).get(options.id) ?? 0;
   if (deadline >= now) {
     pendingConfirmations(store).delete(options.id);
+    store.commands.setDialog(null);
     options.action();
     return;
   }
@@ -35,5 +37,15 @@ export function runConfirmableAction(
     options.id,
     now + (options.windowMs ?? DEFAULT_CONFIRMATION_WINDOW_MS),
   );
-  store.commands.setBanner({ tone: 'warn', message: options.message });
+  registerDialogAction(store, options.id, 'confirm', options.action);
+  store.commands.setDialog({
+    id: options.id,
+    title: 'Confirm action',
+    body: options.message,
+    tone: 'warn',
+    actions: [
+      { id: 'cancel', label: 'Cancel', tone: 'secondary' },
+      { id: 'confirm', label: 'Confirm', tone: 'danger' },
+    ],
+  });
 }

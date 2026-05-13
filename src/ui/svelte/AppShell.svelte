@@ -1,6 +1,7 @@
 <script>
   import { selectShellViewModel } from '../../app/selectors/shell';
   import { renderActiveTabBody } from '../active-tab-host';
+  import AppDialog from './AppDialog.svelte';
 
   let { appState, store } = $props();
 
@@ -109,4 +110,5 @@
   >
     Saved
   </div>
+  <AppDialog dialog={viewModel.dialog} {store} />
 </div>

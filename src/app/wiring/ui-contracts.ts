@@ -2,6 +2,22 @@ import type { WiringContract } from './contract-types';
 
 export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
   {
+    id: 'ui.dialog',
+    surface: 'global',
+    control: 'Foreground dialog',
+    command: 'setDialog',
+    projectReads: [],
+    projectWrites: [],
+    uiReads: ['dialog'],
+    uiWrites: ['dialog'],
+    snapshotEffects: [],
+    renderEffects: ['shell dialog'],
+    recomputePolicy: 'ui_only',
+    testIds: ['tests/app/wiring-contracts.test.ts'],
+    notes:
+      'Shared fixed flashcard dialog state for confirmations and AI clarification prompts.',
+  },
+  {
     id: 'readingScope.book',
     surface: 'library',
     control: 'Per-book reading scope',
@@ -359,6 +375,22 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/library-view.test.ts'],
     notes:
       'Persisted library split width is display-only and does not recompute planner truth.',
+  },
+  {
+    id: 'ui.projectBackups',
+    surface: 'project',
+    control: 'Project backups toggle',
+    command: 'setProjectBackupsEnabled',
+    projectReads: ['uiPreferences.backupsEnabled'],
+    projectWrites: ['uiPreferences.backupsEnabled'],
+    uiReads: [],
+    uiWrites: ['banner', 'importExportText'],
+    snapshotEffects: [],
+    renderEffects: ['project'],
+    recomputePolicy: 'persistence_only',
+    testIds: ['tests/infra/persistence.test.ts'],
+    notes:
+      'Backups are enabled by default and can be explicitly disabled per project.',
   },
   {
     id: 'ui.dismissWarningCode',

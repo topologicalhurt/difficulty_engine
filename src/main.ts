@@ -10,6 +10,7 @@ import {
   loadRuntimeDebugUi,
 } from './infra/runtime-env';
 import { createDefaultAiConnectionSettings } from './core/defaults';
+import { DEFAULT_QBITTORRENT_BRIDGE_URL } from './core/default-source-settings';
 import { normalizeAiConnectionSettings } from './core/project-normalize-ai';
 import type { LocalIntegrationSettingsAdapter } from './core/types';
 
@@ -50,7 +51,9 @@ async function boot(): Promise<void> {
 
   await mountPlannerApp({
     container: root,
-    persistence: createLocalStoragePersistence(STORAGE_KEY),
+    persistence: createLocalStoragePersistence(STORAGE_KEY, {
+      backupEndpoint: `${DEFAULT_QBITTORRENT_BRIDGE_URL}/project-backups/write`,
+    }),
     localSettings: withRuntimeAiConnection(localSettings),
     enrichmentProvider: createEnrichmentClient({
       logger: consoleLogger,

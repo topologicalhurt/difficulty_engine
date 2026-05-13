@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ interface BridgeModule {
     timeoutMs?: number;
     allowedOrigins?: string[];
     openDocument?: (filePath: string, mode: 'open' | 'reveal') => void;
+    backupRoot?: string;
   }): Server;
 }
 
@@ -113,6 +114,45 @@ describe('qBittorrent browser bridge', () => {
     } finally {
       await close(bridge);
       await close(upstream);
+    }
+  });
+
+  it('writes project backups only inside the configured backup root', async () => {
+    const backupRoot = await mkdtemp(join(tmpdir(), 'difficulty-backups-'));
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({ backupRoot });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const response = await fetch(`${bridgeBaseUrl}/project-backups/write`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Origin: 'null',
+        },
+        body: JSON.stringify({
+          storageKey: '../unsafe/key',
+          projectJson: JSON.stringify({
+            version: 1,
+            library: { books: {} },
+            manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+            constraints: {},
+            aiRecommendationSettings: {},
+            sourceSettings: {},
+            enrichmentCache: {},
+            uiPreferences: {},
+          }),
+        }),
+      });
+      const payload = (await response.json()) as { path: string };
+      const files = await readdir(backupRoot);
+
+      expect(response.status).toBe(200);
+      expect(relative(backupRoot, payload.path).startsWith('..')).toBe(false);
+      expect(files).toHaveLength(1);
+    } finally {
+      await close(bridge);
+      await rm(backupRoot, { recursive: true, force: true });
     }
   });
 

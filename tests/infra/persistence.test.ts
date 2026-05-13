@@ -57,15 +57,15 @@ describe('local project persistence', () => {
     expect(loaded?.library.books.backup?.title).toBe('Backup Book');
   });
 
-  it('backs up the previous valid project before overwriting it', () => {
+  it('backs up the previous valid project before overwriting it', async () => {
     const firstProject = projectWithBook('first', 'First Book');
     const secondProject = projectWithBook('second', 'Second Book');
     const storage = memoryStorage();
     vi.stubGlobal('localStorage', storage);
     const persistence = createLocalStoragePersistence(STORAGE_KEY);
 
-    persistence.save(firstProject);
-    persistence.save(secondProject);
+    await persistence.save(firstProject);
+    await persistence.save(secondProject);
 
     const primary = JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}');
     const backup = JSON.parse(storage.getItem(`${STORAGE_KEY}.backup`) ?? '{}');
@@ -73,7 +73,7 @@ describe('local project persistence', () => {
     expect(backup.library.books.first.title).toBe('First Book');
   });
 
-  it('does not replace an existing backup with corrupt primary data', () => {
+  it('does not replace an existing backup with corrupt primary data', async () => {
     const backupProject = projectWithBook('backup', 'Backup Book');
     const nextProject = projectWithBook('next', 'Next Book');
     const storage = memoryStorage({
@@ -82,9 +82,29 @@ describe('local project persistence', () => {
     });
     vi.stubGlobal('localStorage', storage);
 
-    createLocalStoragePersistence(STORAGE_KEY).save(nextProject);
+    await createLocalStoragePersistence(STORAGE_KEY).save(nextProject);
 
     const backup = JSON.parse(storage.getItem(`${STORAGE_KEY}.backup`) ?? '{}');
     expect(backup.library.books.backup.title).toBe('Backup Book');
+  });
+
+  it('skips local and folder backups when project backups are disabled', async () => {
+    const firstProject = projectWithBook('first', 'First Book');
+    const secondProject = projectWithBook('second', 'Second Book');
+    firstProject.uiPreferences.backupsEnabled = false;
+    secondProject.uiPreferences.backupsEnabled = false;
+    const storage = memoryStorage();
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal('localStorage', storage);
+    const persistence = createLocalStoragePersistence(STORAGE_KEY, {
+      backupEndpoint: 'http://127.0.0.1:8787/project-backups/write',
+      fetchImpl,
+    });
+
+    await persistence.save(firstProject);
+    await persistence.save(secondProject);
+
+    expect(storage.getItem(`${STORAGE_KEY}.backup`)).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
