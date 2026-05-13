@@ -83,6 +83,15 @@ Baseline captured after Pass 0 of the maintainability campaign.
 - Duplicate top-level symbols: none detected
 - Selector/performance change: memoized graph and Library view models on their real project/snapshot/UI/enrichment inputs, reused one graph visibility context per render-model build to avoid repeated full-library scans, and added a timer fallback so UI renders cannot get stuck behind a stalled animation frame.
 
+## 2026-05-13 Pass 9
+
+- Source files: 345
+- Total source lines: 43,071
+- Files over 250 lines: 34
+- Files over 500 lines: 0
+- Duplicate top-level symbols: none detected
+- Release hygiene change: documented the `tools/` branch-maintenance helper and README gate policy; final `npm run stabilize`, `npm run perf:ci`, `npm run toc:audit`, and `npm run qbit:search-audit` passed.
+
 ## Tracking Rules
 
 - Update this file after architecture-focused cleanup passes that materially change file counts, near-limit modules, or duplicate-symbol output.

@@ -66,6 +66,8 @@ npm install
 npm run build
 npm run dev
 npm run check
+npm run stabilize
+npm run perf:ci
 npm run toc:audit
 npm run qbit:search-audit
 npm run test:e2e
@@ -75,6 +77,13 @@ python3 scripts/audit_source.py
 The production artifact is written to `dist/difficulty_engine.html`.
 
 For AI-assisted or large maintenance edits, follow `CHANGE_GUIDE.md` first. It lists the canonical owners for controls, formatting, matching, document ranking, source masks, and wiring so new code does not reimplement local copies of existing patterns.
+
+Use `npm run stabilize` as the normal pre-merge gate. It runs the change-safety
+map, lint/type/Svelte/test checks, the standalone build, source audit,
+architecture report, and the browser smoke script. Run `npm run perf:ci`,
+`npm run toc:audit`, and `npm run qbit:search-audit` after selector/worker,
+document/TOC, or qBittorrent changes respectively. Repository-only git helpers
+live under `tools/` and are documented there.
 
 The Info tab renders its guide from a Markdown README source with the shared Markdown renderer; update that content instead of scattering explanatory cards through tab views.
 
