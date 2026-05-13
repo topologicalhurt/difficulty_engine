@@ -52,6 +52,13 @@ The “solve this for me” autopilot is an optimization preview, not a silent m
 
 AI recommendations receive full non-secret planner context: books, relations, constraints, reading scope, progress summaries, plan summaries, difficulty evidence, document status labels, warnings, and the active learner profile. Requests must not include API keys, qBittorrent credentials, local filesystem paths, bridge settings, or full document text.
 
+AI apply paths are separated by design:
+
+- Book recommender proposals can add books, remove books, and place books in the reading order.
+- Relationship proposals can reorder existing books and update prerequisite/co-study links.
+- Autopilot applies planner constraint settings only.
+- AI project setting suggestions are advisory until a dedicated settings command applies them.
+
 ## Commands
 
 ```bash
@@ -60,6 +67,7 @@ npm run build
 npm run dev
 npm run check
 npm run toc:audit
+npm run qbit:search-audit
 npm run test:e2e
 python3 scripts/audit_source.py
 ```
@@ -71,6 +79,8 @@ For AI-assisted or large maintenance edits, follow `CHANGE_GUIDE.md` first. It l
 The Info tab renders its guide from a Markdown README source with the shared Markdown renderer; update that content instead of scattering explanatory cards through tab views.
 
 Large-project computes may use the worker-backed `PlannerComputeAdapter`. Store commands must still commit project changes synchronously so persistence and embedded hosts never wait on worker results before seeing the latest project state.
+
+Project saves are triggered by `project-changed` events. Local persistence keeps a known-good backup when backups are enabled, so project-mutating commands must not bypass the store runtime.
 
 ## TOC sourcing
 

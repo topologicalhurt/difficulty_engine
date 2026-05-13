@@ -187,6 +187,8 @@ def main() -> int:
             "Document content priority: `src/infra/document-content-priority.ts`",
             "Document candidate quality: `src/infra/document-candidate-quality.ts`",
             "Guide content: `src/content/info/readme.ts`",
+            "Apply domains are strict",
+            "Architecture baseline metrics: `docs/architecture-metrics.md`",
             "Add Or Change Worker Compute Or Persistence",
             "If the change creates a new helper",
         ]
@@ -425,6 +427,26 @@ def main() -> int:
         failures.append("Missing manual change guide: CHANGE_GUIDE.md")
     if not (ROOT / "scripts" / "change_safety_report.py").exists():
         failures.append("Missing change safety report script: scripts/change_safety_report.py")
+    if not (ROOT / "docs" / "architecture-metrics.md").exists():
+        failures.append("Missing architecture metrics baseline: docs/architecture-metrics.md")
+
+    recommender_apply = SRC / "app" / "store-ai-apply.ts"
+    if recommender_apply.exists():
+        apply_text = read_text(recommender_apply)
+        if "bookProposal.prerequisiteIds" in apply_text or "bookProposal.coStudyIds" in apply_text:
+            failures.append(
+                "Book recommender apply must not rewrite relationship fields; use relationship proposals."
+            )
+        if "constraintPatch" in apply_text or "projectSettings" in apply_text:
+            failures.append(
+                "Book recommender apply must not apply planner setting suggestions."
+            )
+
+    autopilot_commands = SRC / "app" / "store-autopilot-commands.ts"
+    if autopilot_commands.exists():
+        autopilot_text = read_text(autopilot_commands)
+        if "readingScopeSettings:" in autopilot_text or "library:" in autopilot_text:
+            failures.append("Autopilot apply must patch planner constraints only.")
 
     print("Source files:", len(source_files))
     print("Built HTML:", DIST_FILE.relative_to(ROOT) if DIST_FILE.exists() else "missing")

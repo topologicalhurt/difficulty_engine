@@ -35,7 +35,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Owner: selectors first, then Svelte shell/components under `src/ui/svelte/` or focused tab/panel helpers under `src/ui/`.
 - Data flow: UI receives view models and callbacks; UI must not read raw project/snapshot state.
 - Shared primitives: use `panel`/`card`, `button`, `selectInput`, `inputField`, `autocompleteTextInputControl`, `badge`, `renderProgressBar`, and formatter helpers from `src/ui/format.ts`, including `formatCssPercent` for style percentages.
-- Tests: update selector tests for data shape and browser smoke only when interaction or mount behavior changes.
+- Tests: update selector tests for data shape. Use Browser Use smoke coverage for changed standalone-app interactions such as panels, graph controls, Library document actions, Info guide links, AI workflow, and Plan navigation.
 - Avoid: local formatting, local control factories, hidden full-tab rerenders, or domain calculations in render functions.
 
 ### Add Or Change Scheduler Or DAG Logic
@@ -72,9 +72,11 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 - Owner: `src/app/ai-recommendation-context.ts` for serialized context, `src/core/autopilot.ts` for optimization input/objective/proposal policy, and `src/app/store-autopilot-commands.ts` for wizard/apply/clear commands.
 - Contract: AI context includes all non-secret planner state needed for recommendations; autopilot always previews before mutation and proof labels must state their exact scope.
+- Apply domains are strict: book recommender AI may only add/remove/reorder books, relationship proposals may only update `planOrder`/`manualPrereqs`/`manualCoStudy`, and autopilot apply may only patch planner constraints.
+- Project setting suggestions returned by AI remain advisory unless a focused planner-settings command applies them.
 - Secrets: never serialize API keys, qBittorrent credentials, bridge settings, local filesystem paths, or full document text.
-- Tests: AI context digest/serialization tests, autopilot wizard/proposal/apply tests, and objective/proof-status tests.
-- Avoid: hidden project mutation during proposal, prompt count ceilings that omit books/relations, UI-only autopilot logic, or claiming global optimality without a proven exact backend.
+- Tests: AI context digest/serialization tests, AI apply-domain contract tests, autopilot wizard/proposal/apply tests, and objective/proof-status tests.
+- Avoid: hidden project mutation during proposal, prompt count ceilings that omit books/relations, applying AI project-setting suggestions through the recommender, UI-only autopilot logic, or claiming global optimality without a proven exact backend.
 
 ### Add Or Change Worker Compute Or Persistence
 
@@ -142,6 +144,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Wiring contracts: `src/app/wiring/`
 - App test builders: `tests/app/store-test-utils.ts`
 - Core test engine helpers: `tests/core/engine-test-utils.ts`
+- Architecture baseline metrics: `docs/architecture-metrics.md`
 
 ## Stabilization Command
 

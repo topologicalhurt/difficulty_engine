@@ -88,7 +88,15 @@ The planner contract is strict:
 
 AI recommendation context must include all planner-relevant non-secret state: books, relations, constraints, reading scope, progress summaries, plan summaries, difficulty evidence, document status labels, warnings, and active profile policy. It must exclude API keys, qBittorrent credentials, bridge settings, local filesystem paths, and full document text.
 
+AI apply paths are intentionally separated:
+
+- Book recommender AI may only add books, remove books, and update `planOrder`.
+- Relationship proposals may only update `planOrder`, `manualPrereqs`, and `manualCoStudy` for existing books.
+- Project setting suggestions returned by the recommender are advisory until a dedicated planner-settings command applies them.
+
 Autopilot is a proposal system, not a silent mutator. `solveProjectForMe` builds a `PlannerOptimizationInput` from the wizard answers, evaluates a finite policy portfolio, and returns an `AutopilotProposal` with a `PlannerOptimizationResult`, objective breakdown, proof status, binding constraints, Pareto alternatives, patches, reasons, and unchanged reasons. `applyAutopilotProposal` is the only command that mutates project settings from that proposal, and it must preserve progress logs, manual relations, manual overrides, selected books, document metadata, and difficulty locks.
+
+Autopilot apply is constraints-only. Reading-scope patches, book patches, relation patches, and document changes may appear in proposal explanations, but they must not be applied by `applyAutopilotProposal`.
 
 Autopilot proof language is strict: `optimal` means exact only over the declared finite portfolio and deterministic planner model; `window_optimal`, `feasible_with_gap`, and `infeasible` must be used when a broader exact backend cannot prove global optimality. The existing schedule heuristic can warm-start or evaluate candidates, but it must not claim global RCPSP optimality.
 
@@ -106,3 +114,4 @@ Autopilot proof language is strict: `optimal` means exact only over the declared
 - No inline event handlers, runtime monkey-patching, or retired adapter branches remain in the production path.
 - Source audits enforce file-size caps, default-export bans, and stale-runtime removal.
 - Before adding a new helper, search the pattern registry in `CHANGE_GUIDE.md`; new helpers are only acceptable when the existing owner cannot express the concept cleanly.
+- UI-affecting architecture work should include Browser Use smoke coverage against the standalone artifact for the touched surfaces. Browser smoke does not replace unit, selector, store, architecture, or performance tests.

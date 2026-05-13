@@ -139,8 +139,32 @@ describe('source architecture guardrails', () => {
     expect(staleDocs).toEqual([]);
     expect(architecture).toContain('PlannerComputeAdapter');
     expect(architecture).toContain('Svelte');
+    expect(architecture).toContain('Book recommender AI may only add books');
+    expect(architecture).toContain('Autopilot apply is constraints-only');
     expect(changeGuide).toContain('Document content priority');
+    expect(changeGuide).toContain('Apply domains are strict');
+    expect(changeGuide).toContain('Architecture baseline metrics');
     expect(changeGuide).toContain('Add Or Change Worker Compute Or Persistence');
+    expect(existsSync(join(ROOT, 'docs', 'architecture-metrics.md'))).toBe(
+      true,
+    );
+  });
+
+  it('keeps AI and autopilot apply domains separated', () => {
+    const recommenderApply = readFileSync(
+      join(ROOT, 'src', 'app', 'store-ai-apply.ts'),
+      'utf8',
+    );
+    const autopilotCommands = readFileSync(
+      join(ROOT, 'src', 'app', 'store-autopilot-commands.ts'),
+      'utf8',
+    );
+
+    expect(recommenderApply).not.toContain('bookProposal.prerequisiteIds');
+    expect(recommenderApply).not.toContain('bookProposal.coStudyIds');
+    expect(recommenderApply).not.toContain('projectSettings');
+    expect(autopilotCommands).not.toContain('readingScopeSettings:');
+    expect(autopilotCommands).not.toContain('library:');
   });
 
   it('keeps core, infra, and app layer imports one-directional', () => {
