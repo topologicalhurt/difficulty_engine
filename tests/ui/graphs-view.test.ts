@@ -41,6 +41,10 @@ describe('graphs view', () => {
     expect(first.querySelector('.card-body')?.hasAttribute('hidden')).toBe(
       true,
     );
+    expect((first.querySelector('.card-body') as HTMLElement | null)?.style.display)
+      .toBe('none');
+    expect(first.dataset.collapsed).toBe('true');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
     const second = renderInteractiveGraphCard(
       'fixture-graph',
       'Fixture Graph',
@@ -51,5 +55,7 @@ describe('graphs view', () => {
     expect(second.querySelector('.card-body')?.hasAttribute('hidden')).toBe(
       true,
     );
+    expect((second.querySelector('.card-body') as HTMLElement | null)?.style.display)
+      .toBe('none');
   });
 });

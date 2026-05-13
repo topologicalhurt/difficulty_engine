@@ -103,6 +103,26 @@ export interface PanelOptions {
 
 const collapsedPanels = new Map<string, boolean>();
 
+function setPanelCollapsed(
+  section: HTMLElement,
+  body: HTMLElement,
+  toggle: HTMLButtonElement | null,
+  title: string,
+  collapsed: boolean,
+): void {
+  body.hidden = collapsed;
+  body.style.display = collapsed ? 'none' : '';
+  section.classList.toggle('collapsed', collapsed);
+  section.dataset.collapsed = String(collapsed);
+  if (!toggle) return;
+  toggle.textContent = collapsed ? 'Show' : 'Hide';
+  toggle.setAttribute('aria-expanded', String(!collapsed));
+  toggle.setAttribute(
+    'aria-label',
+    `${collapsed ? 'Show' : 'Hide'} ${title}`,
+  );
+}
+
 export function panel(
   title: string,
   options: PanelOptions = {},
@@ -121,32 +141,26 @@ export function panel(
     },
     ...children,
   );
-  body.hidden = collapsed;
-  const toggle = collapsible
+  const toggle: HTMLButtonElement | null = collapsible
     ? button(collapsed ? 'Show' : 'Hide', {
         className: 'ghost-button compact-button panel-toggle-button',
         ariaLabel: `${collapsed ? 'Show' : 'Hide'} ${title}`,
         onClick: (event) => {
           event.stopPropagation();
           const nextCollapsed = !body.hidden;
-          body.hidden = nextCollapsed;
           collapsedPanels.set(panelId, nextCollapsed);
-          const button = event.currentTarget as HTMLButtonElement;
-          button.textContent = nextCollapsed ? 'Show' : 'Hide';
-          button.setAttribute(
-            'aria-label',
-            `${nextCollapsed ? 'Show' : 'Hide'} ${title}`,
-          );
+          setPanelCollapsed(section, body, toggle, title, nextCollapsed);
         },
       })
     : null;
-  return el(
+  const section = el(
     'section',
     {
       className: `card panel-card${options.className ? ` ${options.className}` : ''}`,
       dataset: {
         panelId,
         collapsible: String(collapsible),
+        collapsed: String(collapsed),
         resizable: options.resizable ?? 'horizontal',
       },
     },
@@ -158,6 +172,8 @@ export function panel(
     ),
     body,
   );
+  setPanelCollapsed(section, body, toggle, title, collapsed);
+  return section;
 }
 
 export function badge(

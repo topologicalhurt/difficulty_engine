@@ -368,6 +368,10 @@ body.difficulty-engine-standalone #app {
   gap: 12px;
 }
 
+.card-body[hidden] {
+  display: none;
+}
+
 .card-body[data-scrollable='true'] {
   overflow: auto;
 }
