@@ -24,6 +24,10 @@ import {
 } from './ai-recommendation-context';
 import { applyAiProposalToProject, hasApplicableAiProposal } from './store-ai-apply';
 import type { StoreCommandContext } from './store-command-context';
+import {
+  aiRequestContextChanged,
+  captureAiRequestContext,
+} from './store-ai-request-context';
 import { createStoreRequestSequencer } from './store-request-sequencer';
 
 export function createAiRecommendationCommands(
@@ -224,9 +228,8 @@ export function createAiRecommendationCommands(
         state.ui.aiClarificationMessages,
       );
       const requestSequence = requests.begin();
-      const recommendationContext = buildAiRecommendationContext(state);
-      const requestContextDigest = contextDigest(recommendationContext);
-      const requestSettingsRevision = state.ui.aiSettingsRevision;
+      const { context: recommendationContext, snapshot: requestSnapshot } =
+        captureAiRequestContext(state, { includePrompt: true });
       context.commitUi('ai.clarificationRequest', {
         aiClarificationStatus: {
           state: 'loading',
@@ -247,13 +250,7 @@ export function createAiRecommendationCommands(
         });
         if (!requests.isCurrent(requestSequence)) return;
         const currentState = context.getState();
-        const currentContextDigest = contextDigest(
-          buildAiRecommendationContext(currentState),
-        );
-        if (
-          currentContextDigest !== requestContextDigest ||
-          currentState.ui.aiSettingsRevision !== requestSettingsRevision
-        ) {
+        if (aiRequestContextChanged(currentState, requestSnapshot)) {
           context.commitUi('ai.clarificationRequest', {
             aiClarificationStatus: {
               state: 'idle',
@@ -371,8 +368,8 @@ export function createAiRecommendationCommands(
         return;
       }
       const requestSequence = requests.begin();
-      const recommendationContext = buildAiRecommendationContext(state);
-      const requestContextDigest = contextDigest(recommendationContext);
+      const { context: recommendationContext, snapshot: requestSnapshot } =
+        captureAiRequestContext(state, { includePrompt: true });
       context.commitUi('ai.request', {
         aiStatus: {
           state: 'loading',
@@ -392,10 +389,7 @@ export function createAiRecommendationCommands(
           context: recommendationContext,
         });
         if (!requests.isCurrent(requestSequence)) return;
-        const currentContextDigest = contextDigest(
-          buildAiRecommendationContext(context.getState()),
-        );
-        if (currentContextDigest !== requestContextDigest) {
+        if (aiRequestContextChanged(context.getState(), requestSnapshot)) {
           context.commitUi('ai.request', {
             aiProposal: null,
             aiStatus: {
@@ -412,7 +406,7 @@ export function createAiRecommendationCommands(
           model: state.ui.aiConnection.model,
           prompt,
           createdAt,
-          contextDigest: requestContextDigest,
+          contextDigest: requestSnapshot.digest,
           maxSuggestions: state.project.aiRecommendationSettings.maxSuggestions,
         });
         context.commitUi('ai.request', {

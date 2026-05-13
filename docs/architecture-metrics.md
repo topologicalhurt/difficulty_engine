@@ -56,6 +56,15 @@ Baseline captured after Pass 0 of the maintainability campaign.
 - Duplicate top-level symbols: none detected
 - Document acquisition change: centralized qBittorrent top-surface PDF selection and trust rejection in `src/infra/qbittorrent-selection.ts`; acquisition now only applies side effects after the pure selector chooses or rejects a trusted PDF.
 
+## 2026-05-13 Pass 6
+
+- Source files: 345
+- Total source lines: 42,972
+- Files over 250 lines: 34
+- Files over 500 lines: 0
+- Duplicate top-level symbols: none detected
+- AI contract change: centralized AI request context capture/stale checks in `src/app/store-ai-request-context.ts`, covering planner digest, provider/model, settings revision, prompt, and clarification state without serializing local API keys.
+
 ## Tracking Rules
 
 - Update this file after architecture-focused cleanup passes that materially change file counts, near-limit modules, or duplicate-symbol output.

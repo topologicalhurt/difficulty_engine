@@ -12,6 +12,10 @@ import {
   contextDigest,
 } from './ai-recommendation-context';
 import { applyAiRelationshipProposalToProject } from './store-ai-relationship-apply';
+import {
+  aiRequestContextChanged,
+  captureAiRequestContext,
+} from './store-ai-request-context';
 import type { StoreCommandContext } from './store-command-context';
 import { createStoreRequestSequencer } from './store-request-sequencer';
 
@@ -93,16 +97,12 @@ export function createAiRelationshipCommands(
         return;
       }
       const requestSequence = requests.begin();
-      const relationshipContext = buildAiRecommendationContext(state);
-      const requestContextDigest = contextDigest(relationshipContext);
+      const { context: relationshipContext, snapshot: requestSnapshot } =
+        captureAiRequestContext(state, {
+          includePrompt: true,
+          includeClarifications: true,
+        });
       const wizard = state.ui.aiRelationshipWizard;
-      const requestProvider = state.ui.aiConnection.provider;
-      const requestModel = state.ui.aiConnection.model;
-      const requestSettingsRevision = state.ui.aiSettingsRevision;
-      const requestPrompt = state.ui.aiPrompt;
-      const requestClarifications = JSON.stringify(
-        state.ui.aiClarificationMessages,
-      );
       context.commitUi('ai.relationshipRequest', {
         aiRelationshipStatus: {
           state: 'loading',
@@ -122,19 +122,8 @@ export function createAiRelationshipCommands(
           prompt: state.ui.aiPrompt,
         });
         if (!requests.isCurrent(requestSequence)) return;
-        const currentContextDigest = contextDigest(
-          buildAiRecommendationContext(context.getState()),
-        );
         const currentState = context.getState();
-        if (
-          currentContextDigest !== requestContextDigest ||
-          currentState.ui.aiSettingsRevision !== requestSettingsRevision ||
-          currentState.ui.aiConnection.provider !== requestProvider ||
-          currentState.ui.aiConnection.model !== requestModel ||
-          currentState.ui.aiPrompt !== requestPrompt ||
-          JSON.stringify(currentState.ui.aiClarificationMessages) !==
-            requestClarifications
-        ) {
+        if (aiRequestContextChanged(currentState, requestSnapshot)) {
           context.commitUi('ai.relationshipRequest', {
             aiRelationshipProposal: null,
             aiRelationshipStatus: {
@@ -150,7 +139,7 @@ export function createAiRelationshipCommands(
           provider: state.ui.aiConnection.provider,
           model: state.ui.aiConnection.model,
           createdAt,
-          contextDigest: requestContextDigest,
+          contextDigest: requestSnapshot.digest,
           wizard,
           project: state.project,
         });
