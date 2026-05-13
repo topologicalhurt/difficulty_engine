@@ -88,6 +88,34 @@ describe('local project persistence', () => {
     expect(backup.library.books.backup.title).toBe('Backup Book');
   });
 
+  it('updates the primary save before waiting on folder backups', async () => {
+    const firstProject = projectWithBook('first', 'First Book');
+    const secondProject = projectWithBook('second', 'Second Book');
+    const storage = memoryStorage({
+      [STORAGE_KEY]: serializeProject(firstProject),
+    });
+    let finishBackup!: () => void;
+    const fetchImpl = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finishBackup = () =>
+            resolve(new Response(JSON.stringify({ ok: true })));
+        }),
+    );
+    vi.stubGlobal('localStorage', storage);
+    const persistence = createLocalStoragePersistence(STORAGE_KEY, {
+      backupEndpoint: 'http://127.0.0.1:8787/project-backups/write',
+      fetchImpl,
+    });
+
+    const savePromise = persistence.save(secondProject);
+    const primary = JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}');
+    expect(primary.library.books.second.title).toBe('Second Book');
+
+    finishBackup();
+    await savePromise;
+  });
+
   it('skips local and folder backups when project backups are disabled', async () => {
     const firstProject = projectWithBook('first', 'First Book');
     const secondProject = projectWithBook('second', 'Second Book');

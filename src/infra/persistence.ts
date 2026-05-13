@@ -73,9 +73,16 @@ export function createLocalStoragePersistence(
         current !== serialized
       ) {
         target.setItem(backupKey, current);
-        await writeBackupFolderSnapshot(current);
       }
       target.setItem(storageKey, serialized);
+      if (
+        backupsEnabled &&
+        current &&
+        parseStoredProject(current) &&
+        current !== serialized
+      ) {
+        await writeBackupFolderSnapshot(current);
+      }
       if (backupsEnabled && !backupExists && !current) {
         target.setItem(backupKey, serialized);
         await writeBackupFolderSnapshot(serialized);

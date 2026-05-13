@@ -41,16 +41,18 @@ export function createAiRelationshipCommands(
           patch,
           state.ui.aiRelationshipWizard,
         ),
-        aiRelationshipProposal: requestWasLoading
-          ? null
-          : state.ui.aiRelationshipProposal,
+        aiRelationshipProposal: null,
         aiRelationshipStatus: requestWasLoading
           ? {
               state: 'idle',
               message:
                 'Relationship wizard changed. Request a new progression proposal.',
             }
-          : state.ui.aiRelationshipStatus,
+          : {
+              state: 'idle',
+              message:
+                'Relationship wizard changed. Request a new progression proposal.',
+            },
       });
     },
     async requestAiRelationshipReorganization(): Promise<void> {

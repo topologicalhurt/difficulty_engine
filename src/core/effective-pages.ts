@@ -39,6 +39,9 @@ function pageRangeForSection(
     ?.slice(index + 1)
     .map((candidate) => candidate?.start)
     .find((start): start is number => start != null && start > range.start);
+  if (range.end == null && !nextStart && index < (ranges?.length ?? 0) - 1) {
+    return null;
+  }
   const rawEnd = range.end ?? (nextStart ? nextStart - 1 : physicalPages);
   const start = Math.max(1, Math.min(physicalPages, Math.round(range.start)));
   const end = Math.max(start, Math.min(physicalPages, Math.round(rawEnd)));
@@ -165,7 +168,9 @@ export function effectiveReadingPagesForBook(
       confidence: averageConfidence(skippedSections),
       bindingReason: rangeBacked.skippedPages
         ? `Skipped ${round1(rangeBacked.skippedPages)} page-ranged non-core page(s) from ${rangeBacked.rangedCount} learned section(s).${rangeBacked.unrangedCount ? ` ${rangeBacked.unrangedCount} skipped section(s) had no page range.` : ''}`
-        : 'Skipped sections were identified, but their page ranges could not reduce workload.',
+        : rangeBacked.unrangedCount
+          ? `Skipped sections were identified, but ${rangeBacked.unrangedCount} skipped section(s) had no page range.`
+          : 'Skipped sections were identified, but their page ranges could not reduce workload.',
     };
   }
 

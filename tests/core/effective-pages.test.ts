@@ -46,4 +46,24 @@ describe('effective reading pages', () => {
         ?.estimatedPages,
     ).toBe(230);
   });
+
+  it('does not let a sparse early page start consume the rest of the book', () => {
+    const book = scopedBook();
+    book.enrichment.chapters = [
+      'Preface',
+      'Core Methods',
+      'Advanced Applications',
+      'Further Core Topics',
+    ];
+    book.enrichment.chapterPageRanges = [{ start: 1, end: null }, null, null, null];
+
+    const result = effectiveReadingPagesForBook(
+      book,
+      createDefaultReadingScopeSettings(),
+    );
+
+    expect(result.skippedPages).toBeLessThan(100);
+    expect(result.skippedSections[0]?.estimatedPages).toBe(0);
+    expect(result.bindingReason).toContain('had no page range');
+  });
 });

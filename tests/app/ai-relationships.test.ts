@@ -156,6 +156,29 @@ describe('AI relationship reorganizer flow', () => {
     );
   });
 
+  it('clears a ready relationship proposal when wizard inputs change', async () => {
+    const provider = aiRelationshipProvider();
+    const store = makeStore({ aiRecommendationProvider: provider });
+
+    store.commands.updateAiLocalSettings({
+      enabled: true,
+      apiKey: 'local-secret',
+      model: 'gpt-test',
+    });
+    await store.commands.requestAiRelationshipReorganization();
+    expect(store.selectors.getState().ui.aiRelationshipProposal).not.toBeNull();
+
+    store.commands.updateAiRelationshipWizard({
+      strictness: 'rebuild_from_scratch',
+    });
+
+    const state = store.selectors.getState();
+    expect(state.ui.aiRelationshipProposal).toBeNull();
+    expect(state.ui.aiRelationshipStatus.message).toContain(
+      'Relationship wizard changed',
+    );
+  });
+
   it('clears old manual links when rebuilding relationships from scratch', async () => {
     const provider = aiRelationshipProvider();
     const store = makeStore({
