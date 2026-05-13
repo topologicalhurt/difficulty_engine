@@ -49,6 +49,7 @@ const OCR_TOC_PAGE_LIMIT = 24;
 const OCR_RENDER_DPI = 220;
 const OCR_TIMEOUT_MS = 90_000;
 const OCR_SIDE_DIR = '.difficulty-engine-ocr';
+const OCR_PSM_MODES = ['6', '4', '1'];
 const TEXT_EXTENSIONS = new Set(['.txt', '.text']);
 const OCR_TEXT_PATTERN = /(?:_djvu\.txt|ocr\.txt)$/i;
 const PDF_EXTENSIONS = new Set(['.pdf']);
@@ -534,6 +535,18 @@ async function ocrSidecarPath(dataRoot, filePath) {
   return join(sidecarDir, `${digest}.toc.txt`);
 }
 
+function ocrMetadataPath(sidecarPath) {
+  return sidecarPath.replace(/\.toc\.txt$/i, '.toc.json');
+}
+
+async function readOcrMetadata(sidecarPath) {
+  const raw = await readFile(ocrMetadataPath(sidecarPath), 'utf8').catch(
+    () => '',
+  );
+  if (!raw.trim()) return undefined;
+  return JSON.parse(raw);
+}
+
 async function ocrStatus(dataRoot, requestPath) {
   const filePath = await assertSupportedDocumentFile(dataRoot, requestPath);
   if (!PDF_EXTENSIONS.has(extname(filePath.toLowerCase()))) {
@@ -547,6 +560,7 @@ async function ocrStatus(dataRoot, requestPath) {
       status: 'complete',
       sidecarPath,
       text: existing,
+      metadata: await readOcrMetadata(sidecarPath).catch(() => undefined),
     };
   }
   const [hasRenderer, hasOcr] = await Promise.all([
@@ -562,6 +576,56 @@ async function ocrStatus(dataRoot, requestPath) {
     };
   }
   return { ok: true, status: 'pending', sidecarPath };
+}
+
+function parseTesseractTsv(value) {
+  const rows = value
+    .split(/\r?\n/)
+    .map((line) => line.split('\t'))
+    .filter((row) => row.length >= 12);
+  const words = [];
+  const confidences = [];
+  for (const row of rows.slice(1)) {
+    const confidence = Number(row[10]);
+    const text = String(row.slice(11).join('\t') || '').trim();
+    if (!text) continue;
+    words.push(text);
+    if (Number.isFinite(confidence) && confidence >= 0) {
+      confidences.push(confidence);
+    }
+  }
+  const averageConfidence = confidences.length
+    ? confidences.reduce((total, item) => total + item, 0) / confidences.length
+    : 0;
+  return {
+    text: words.join(' '),
+    confidence: Math.round(averageConfidence) / 100,
+  };
+}
+
+async function readCommandVersion(command) {
+  const output = await runProcess(command, ['--version'], 5_000).catch(
+    () => Buffer.alloc(0),
+  );
+  return output.toString('utf8').split(/\r?\n/)[0]?.trim() || 'unknown';
+}
+
+async function ocrImage(imagePath) {
+  const attempts = [];
+  for (const psm of OCR_PSM_MODES) {
+    const output = await runProcess(
+      'tesseract',
+      [imagePath, 'stdout', '-l', 'eng', '--psm', psm, 'tsv'],
+      OCR_TIMEOUT_MS,
+    ).catch(() => Buffer.alloc(0));
+    const parsed = parseTesseractTsv(output.toString('utf8'));
+    if (parsed.text) attempts.push({ ...parsed, psm });
+  }
+  return attempts.sort(
+    (left, right) =>
+      right.confidence - left.confidence ||
+      right.text.length - left.text.length,
+  )[0];
 }
 
 async function runOcrForPdf(dataRoot, requestPath) {
@@ -591,17 +655,12 @@ async function runOcrForPdf(dataRoot, requestPath) {
     const images = (await readdir(workDir))
       .filter((entry) => entry.endsWith('.png'))
       .sort((left, right) => left.localeCompare(right));
-    const texts = [];
+    const pages = [];
     for (const image of images) {
-      const output = await runProcess(
-        'tesseract',
-        [join(workDir, image), 'stdout', '-l', 'eng', '--psm', '6'],
-        OCR_TIMEOUT_MS,
-      ).catch(() => Buffer.alloc(0));
-      const text = output.toString('utf8').trim();
-      if (text) texts.push(text);
+      const result = await ocrImage(join(workDir, image));
+      if (result?.text) pages.push({ image, ...result });
     }
-    const combined = texts.join('\n\n').trim();
+    const combined = pages.map((page) => page.text).join('\n\n').trim();
     if (!combined) {
       return {
         ok: true,
@@ -610,12 +669,36 @@ async function runOcrForPdf(dataRoot, requestPath) {
         reason: 'OCR completed but produced no readable text.',
       };
     }
+    const confidence = pages.length
+      ? pages.reduce((total, page) => total + page.confidence, 0) / pages.length
+      : 0;
+    const metadata = {
+      pageRange: { start: 1, end: Math.min(OCR_TOC_PAGE_LIMIT, images.length) },
+      confidence: Math.round(confidence * 100) / 100,
+      psmModes: [...new Set(pages.map((page) => page.psm))],
+      toolVersions: {
+        tesseract: await readCommandVersion('tesseract'),
+        pdftoppm: await readCommandVersion('pdftoppm'),
+      },
+      pages: pages.map((page, index) => ({
+        page: index + 1,
+        image: page.image,
+        psm: page.psm,
+        confidence: page.confidence,
+      })),
+    };
     await writeFile(status.sidecarPath, combined, 'utf8');
+    await writeFile(
+      ocrMetadataPath(status.sidecarPath),
+      JSON.stringify(metadata, null, 2),
+      'utf8',
+    );
     return {
       ok: true,
       status: 'complete',
       sidecarPath: status.sidecarPath,
       text: combined,
+      metadata,
     };
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => undefined);

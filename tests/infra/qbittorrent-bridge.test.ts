@@ -434,6 +434,15 @@ describe('qBittorrent browser bridge', () => {
       'Contents\nChapter 1 Cached OCR',
       'utf8',
     );
+    await writeFile(
+      join(sidecarDir, `${sha256Text(pdfContent)}.toc.json`),
+      JSON.stringify({
+        confidence: 0.91,
+        psmModes: ['6'],
+        pageRange: { start: 1, end: 4 },
+      }),
+      'utf8',
+    );
     const outside = join(tmpdir(), 'outside-book.pdf');
     await writeFile(outside, pdfContent, 'utf8');
     const { createQbittorrentBridgeServer } = await bridgeModule();
@@ -452,6 +461,11 @@ describe('qBittorrent browser bridge', () => {
       expect(await cached.json()).toMatchObject({
         status: 'complete',
         text: 'Contents\nChapter 1 Cached OCR',
+        metadata: {
+          confidence: 0.91,
+          psmModes: ['6'],
+          pageRange: { start: 1, end: 4 },
+        },
       });
       expect(rejected.status).toBe(400);
     } finally {

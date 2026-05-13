@@ -6,6 +6,12 @@ export interface BridgeOcrStatus {
   text?: string;
   sidecarPath?: string;
   reason?: string;
+  metadata?: {
+    pageRange?: { start: number; end: number };
+    confidence?: number;
+    psmModes?: string[];
+    toolVersions?: Record<string, string>;
+  };
 }
 
 export async function bridgeDocumentExists(
@@ -65,6 +71,19 @@ export async function requestBridgeOcrToc(
   const response = await fetchImpl(
     bridgeDocumentEndpoint(baseUrl, '/documents/ocr-toc', storagePath),
     { method: 'POST', signal },
+  );
+  return response.ok ? ((await response.json()) as BridgeOcrStatus) : undefined;
+}
+
+export async function requestBridgeOcrStatus(
+  fetchImpl: typeof fetch,
+  baseUrl: string,
+  storagePath: string,
+  signal?: AbortSignal,
+): Promise<BridgeOcrStatus | undefined> {
+  const response = await fetchImpl(
+    bridgeDocumentEndpoint(baseUrl, '/documents/ocr-status', storagePath),
+    { signal },
   );
   return response.ok ? ((await response.json()) as BridgeOcrStatus) : undefined;
 }
