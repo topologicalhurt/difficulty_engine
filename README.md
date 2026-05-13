@@ -95,13 +95,13 @@ Project saves are triggered by `project-changed` events. Local persistence keeps
 
 TOC extraction prefers trusted local document evidence before online snippets: manual chapters, completed text/EPUB/OCR text, local PDF outline/raw bytes, bridge-backed embedded text, optional bridge OCR, then provider metadata. Bare `Contents` headings are used only to find TOC regions and are not stored as chapters.
 
-`npm run toc:audit` runs synthetic TOC fixtures and any local files under `output/data/documents`. It fails on fixture recall below the target or known garbage chapters, and it labels local misses as needing embedded text/OCR instead of silently accepting noisy PDF bytes.
+`npm run toc:audit` runs synthetic TOC fixtures and any local files under `output/data/documents`. It fails on fixture recall below the target or known garbage chapters, and it labels local misses as needing embedded text/OCR instead of silently accepting noisy PDF bytes. `npm run qbit:toc-corpus-audit -- --scan-backups` is the dry-run real-corpus view: it inspects backup projects, local PDFs, qBittorrent live state, candidate queues, PDF eligibility, and TOC/OCR outcomes without starting downloads.
 
 ## qBittorrent sourcing
 
-qBittorrent searches use staged recall queries rather than one exact title string: ISBN, cleaned core title, core title plus author surnames, author/topic tokens, hyphenated title, and broad title. Enabled plugins are searched as grouped jobs with bounded concurrency, and the Library download box keeps the best candidate queue plus a search trace.
+qBittorrent searches use staged recall queries rather than one exact title string: ISBN, cleaned/dehyphenated title, subtitle-free title, core title plus author surnames, author/topic tokens, hyphenated title, distinctive title tokens, and broad title. Enabled plugins are searched as grouped jobs with bounded concurrency, default raw result limit is 150, and the Library download box keeps the best candidate queue plus a search trace.
 
-Automatic downloads remain strict: unknown-license hits, weak matches, wrong authors, zero-seed rows, solution/manual files, and plugin errors are blocked and shown as diagnostics. An eligible blocked magnet or HTTPS torrent can only be used after an explicit user action.
+Automatic downloads remain strict: unknown-license hits, weak matches, wrong authors, zero-seed rows, solution/manual files, non-PDF qBittorrent files, and plugin errors are blocked and shown as diagnostics. qBittorrent file selection accepts only top-level PDFs or PDFs one folder deep. An eligible blocked magnet or HTTPS torrent can only be used after an explicit user action.
 
 ## Local AI keys
 

@@ -30,18 +30,18 @@ Chapter evidence is a staged document-forensics pipeline, not a permissive regex
 
 1. Manual chapters remain authoritative.
 2. Completed text, EPUB text, and trusted OCR-text documents are parsed directly.
-3. Completed PDFs are inspected locally before network metadata: raw outline titles, raw text-like bytes, bridge-backed embedded text extraction, then optional local OCR.
+3. Completed PDFs are inspected locally before network metadata: raw outline titles, raw text-like bytes, bridge-backed embedded text extraction, then optional local OCR with sidecar confidence metadata.
 4. Online/provider snippets are fallback evidence only and must pass stricter source and chapter gates before they can update project truth.
 
 Every automated TOC attempt must expose strategy, confidence, accepted chapter count, rejected reasons, and evidence anchors when available. Bare TOC headings such as “Contents” are extraction anchors only; they must not be persisted as chapter titles.
 
-Local OCR is bridge-only and opt-in through source settings. Missing Poppler/Tesseract binaries must produce diagnostics rather than app failures. Run `npm run toc:audit` after any matcher, document, qBittorrent, or enrichment change that can affect chapter sourcing.
+Local OCR is bridge-only and opt-in through source settings. Missing Poppler/Tesseract/OCRmyPDF-style local tooling must produce diagnostics rather than app failures. Run `npm run toc:audit` after any matcher, document, qBittorrent, or enrichment change that can affect chapter sourcing. Run `npm run qbit:toc-corpus-audit -- --scan-backups` when validating real qBittorrent/PDF/TOC hit rate; it is dry-run by default and must not start downloads.
 
 ## qBittorrent Search Contract
 
-qBittorrent search is recall-first but policy-gated. The app generates staged query intents from ISBN, cleaned core title, author/topic surnames, hyphenated titles, and broad title recall. Search jobs are grouped across enabled plugins with a four-job concurrency cap so the app stays under qBittorrent's five-running-search limit.
+qBittorrent search is recall-first but policy-gated. The app generates staged query intents from ISBN, cleaned/dehyphenated title, subtitle-free title, author/topic surnames, hyphenated titles, distinctive title tokens, and broad title recall. Search jobs are grouped across enabled plugins with a four-job concurrency cap so the app stays under qBittorrent's five-running-search limit, and raw result collection defaults to 150 rows before the persisted best-10 queue is selected.
 
-Automatic acquisition still requires lawful access basis and title/author/ISBN trust. Unknown-license, zero-seed, wrong-author, weak-title, plugin-error, solution/manual, and unallowed-source rows are persisted as blocked diagnostics under `book.documentAcquisition`, not silently converted into planner truth. Users may explicitly retry an eligible blocked magnet or HTTPS torrent source as user-provided/user-owned evidence from the Library download box.
+Automatic acquisition still requires lawful access basis and title/author/ISBN trust. Unknown-license, zero-seed, wrong-author, weak-title, plugin-error, solution/manual, non-PDF qBittorrent file, and unallowed-source rows are persisted as blocked diagnostics under `book.documentAcquisition`, not silently converted into planner truth. qBittorrent file selection is PDF-only and accepts only top-level PDFs or PDFs one folder deep. Users may explicitly retry an eligible blocked magnet or HTTPS torrent source as user-provided/user-owned evidence from the Library download box.
 
 `src/index.ts`
 : Named public entrypoint for embedders.

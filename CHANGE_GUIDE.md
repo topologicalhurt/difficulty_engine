@@ -93,9 +93,10 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Document priority: content-kind ranking must come from the shared document content-priority helpers.
 - Matching: title/author/ISBN relevance and source queries must reuse `src/core/matchers.ts`; do not add provider-local fuzzy scoring.
 - Provenance: every enrichment/document result must include provider, strategy, confidence, and source details when available.
-- TOC order: manual chapters, completed text/EPUB/OCR text, local PDF raw/embedded extraction, optional local OCR, then online/provider fallback.
+- TOC order: manual chapters, completed text/EPUB/OCR text, local PDF raw/embedded extraction, optional local OCR with sidecar confidence metadata, then online/provider fallback.
 - TOC quality: “Contents” / “Table of Contents” rows are anchors only and must not be persisted as chapters; weak OCR/provider chapters must stay quarantined unless confidence and source priority justify promotion.
-- Tests: provider unit tests plus an enrichment integration test for fallback/failure behavior. Run `npm run toc:audit` whenever chapter sourcing, PDF extraction, OCR, or provider snippet logic changes.
+- qBittorrent live state: reconcile `/torrents/info` and `/torrents/files` through `src/infra/qbittorrent-live-inventory.ts`; do not duplicate hash/path/progress/stall parsing in providers or UI.
+- Tests: provider unit tests plus an enrichment integration test for fallback/failure behavior. Run `npm run toc:audit` whenever chapter sourcing, PDF extraction, OCR, or provider snippet logic changes. Run `npm run qbit:toc-corpus-audit -- --scan-backups` for real-corpus dry-run validation.
 - Avoid: provider-specific logic in core, implicit downloads, or storing local credentials in project JSON.
 
 ### Add Or Change Graphs
@@ -135,6 +136,7 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 - Document candidate quality: `src/infra/document-candidate-quality.ts`
 - qBittorrent search query generation and blocked-hit diagnostics: `src/infra/qbittorrent-search.ts`
 - qBittorrent grouped search execution: `src/infra/qbittorrent-plugin-search.ts`, `src/infra/qbittorrent-plugin-api.ts`
+- qBittorrent live inventory and dry-run corpus audit: `src/infra/qbittorrent-live-inventory.ts`, `src/infra/qbittorrent-toc-corpus-audit.ts`
 - Document content kind and path helpers: `src/infra/qbittorrent-file-kinds.ts`
 - Document text/TOC extraction: `src/infra/document-text-extractor.ts`
 - PDF outline/raw-byte extraction: `src/infra/pdf-outline-titles.ts`
