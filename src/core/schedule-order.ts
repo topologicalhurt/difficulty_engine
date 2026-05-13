@@ -1,97 +1,21 @@
 import { bookOrderPolicy, compareBookPlanOrder } from './book-order';
 import { normalizeSchedAlgo } from './constraint-normalizers';
+import {
+  topologicalOrder,
+  weightedCriticalPathLengths,
+} from './relation-graph-utils';
 import type { PlannerProjectV1, SchedulePlanItem } from './types';
 import { maxOr } from './utils';
-
-function topoSort(
-  ids: string[],
-  prereqById: Record<string, string[]>,
-): string[] {
-  const indegree: Record<string, number> = {};
-  const outgoing: Record<string, string[]> = {};
-  ids.forEach((id) => {
-    indegree[id] = 0;
-    outgoing[id] = [];
-  });
-  ids.forEach((id) => {
-    (prereqById[id] || []).forEach((parent) => {
-      if (indegree[id] != null && outgoing[parent]) {
-        indegree[id] += 1;
-        outgoing[parent].push(id);
-      }
-    });
-  });
-  const queue = ids.filter((id) => indegree[id] === 0).sort();
-  const order: string[] = [];
-  while (queue.length) {
-    const id = queue.shift();
-    if (!id) break;
-    order.push(id);
-    outgoing[id].forEach((next) => {
-      indegree[next] -= 1;
-      if (indegree[next] === 0) {
-        queue.push(next);
-        queue.sort();
-      }
-    });
-  }
-  ids
-    .filter((id) => !order.includes(id))
-    .sort()
-    .forEach((id) => order.push(id));
-  return order;
-}
-
-function chainLength(
-  id: string,
-  outgoing: Record<string, string[]>,
-  memo: Record<string, number>,
-  itemDays: Record<string, number>,
-): number {
-  if (memo[id] != null) return memo[id];
-  const children = outgoing[id] || [];
-  memo[id] =
-    (itemDays[id] || 1) +
-    (children.length
-      ? Math.max(
-          ...children.map((next) =>
-            chainLength(next, outgoing, memo, itemDays),
-          ),
-        )
-      : 0);
-  return memo[id];
-}
-
-function childMap(
-  ids: string[],
-  prereqById: Record<string, string[]>,
-): Record<string, string[]> {
-  const children: Record<string, string[]> = {};
-  ids.forEach((id) => {
-    children[id] = [];
-  });
-  ids.forEach((id) => {
-    (prereqById[id] || []).forEach((parent) => {
-      if (children[parent]) children[parent].push(id);
-    });
-  });
-  return children;
-}
 
 function criticalPathLengths(
   ids: string[],
   items: SchedulePlanItem[],
   prereqById: Record<string, string[]>,
 ): Record<string, number> {
-  const memo: Record<string, number> = {};
   const itemDays = Object.fromEntries(
     items.map((item) => [item.id, item.baseDays]),
   );
-  const children = childMap(ids, prereqById);
-  ids.forEach((id) => {
-    chainLength(id, children, memo, itemDays);
-  });
-  return memo;
+  return weightedCriticalPathLengths(ids, prereqById, itemDays);
 }
 
 function fastestListOrder(
@@ -156,7 +80,7 @@ export function scheduleOrder(
   project: PlannerProjectV1,
 ): string[] {
   const schedAlgo = normalizeSchedAlgo(project.constraints.schedAlgo);
-  const order = topoSort(ids, prereqById);
+  const order = topologicalOrder(ids, prereqById);
   const itemMap = Object.fromEntries(items.map((item) => [item.id, item]));
   const orderFirst = bookOrderPolicy(project) !== 'auto';
   const orderCompare = (left: string, right: string): number =>

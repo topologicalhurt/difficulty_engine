@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { coStudyComponents } from '../../src/core/schedule-components';
+import {
+  topologicalOrder,
+  weightedCriticalPathLengths,
+} from '../../src/core/relation-graph-utils';
 import { descendantMap } from '../../src/core/schedule-graph';
 import { groupBooks } from '../../src/core/schedule-group-summary';
 import type { SchedulePlanItem } from '../../src/core/types';
@@ -93,6 +97,35 @@ describe('schedule helper modules', () => {
     expect([...descendants.a].sort()).toEqual(['b', 'c', 'd']);
     expect([...descendants.b]).toEqual(['c']);
     expect([...descendants.c]).toEqual([]);
+  });
+
+  it('builds deterministic topological and critical-path graph views', () => {
+    const prereqs = {
+      a: [],
+      b: ['a'],
+      c: ['a'],
+      d: ['b', 'c'],
+    };
+
+    expect(topologicalOrder(['d', 'c', 'b', 'a'], prereqs)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ]);
+    expect(
+      weightedCriticalPathLengths(['a', 'b', 'c', 'd'], prereqs, {
+        a: 1,
+        b: 3,
+        c: 2,
+        d: 4,
+      }),
+    ).toEqual({
+      a: 8,
+      b: 7,
+      c: 6,
+      d: 4,
+    });
   });
 
   it('groups scheduled books by display group with stable in-group ordering', () => {

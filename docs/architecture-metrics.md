@@ -38,6 +38,15 @@ Baseline captured after Pass 0 of the maintainability campaign.
 - Duplicate top-level symbols: none detected
 - Store command change: centralized one-shot async invalidation in `src/app/store-request-sequencer.ts` and tightened wiring tests so each public command has a single wiring owner, with the constraint matrix as the explicit exception.
 
+## 2026-05-13 Pass 4
+
+- Source files: 344
+- Total source lines: 42,909
+- Files over 250 lines: 34
+- Files over 500 lines: 0
+- Duplicate top-level symbols: none detected
+- Core graph change: moved topological ordering, prerequisite child maps, and weighted critical-path length calculation into `src/core/relation-graph-utils.ts` so schedule ordering and descendant selectors share one DAG traversal implementation.
+
 ## Tracking Rules
 
 - Update this file after architecture-focused cleanup passes that materially change file counts, near-limit modules, or duplicate-symbol output.
