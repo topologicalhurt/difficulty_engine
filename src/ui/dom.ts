@@ -108,6 +108,8 @@ export interface PanelOptions {
   bodyClassName?: string;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   resizable?: 'horizontal' | 'none';
   scrollable?: boolean;
 }
@@ -124,6 +126,7 @@ function setPanelCollapsed(
   body.hidden = collapsed;
   body.style.display = collapsed ? 'none' : '';
   section.classList.toggle('collapsed', collapsed);
+  section.classList.toggle('open', !collapsed);
   section.dataset.collapsed = String(collapsed);
   if (!toggle) return;
   toggle.textContent = collapsed ? 'Show' : 'Hide';
@@ -141,9 +144,12 @@ export function panel(
 ): HTMLElement {
   const panelId = options.id ?? title;
   const collapsible = options.collapsible ?? true;
+  const controlledCollapsed = options.open == null ? null : !options.open;
   const collapsed =
     collapsible &&
-    (collapsedPanels.get(panelId) ?? !(options.defaultOpen ?? true));
+    (controlledCollapsed ??
+      collapsedPanels.get(panelId) ??
+      !(options.defaultOpen ?? true));
   const body = el(
     'div',
     {
@@ -159,7 +165,8 @@ export function panel(
         onClick: (event) => {
           event.stopPropagation();
           const nextCollapsed = !body.hidden;
-          collapsedPanels.set(panelId, nextCollapsed);
+          if (options.open == null) collapsedPanels.set(panelId, nextCollapsed);
+          options.onOpenChange?.(!nextCollapsed);
           setPanelCollapsed(section, body, toggle, title, nextCollapsed);
         },
       })

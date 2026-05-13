@@ -65,6 +65,15 @@ Baseline captured after Pass 0 of the maintainability campaign.
 - Duplicate top-level symbols: none detected
 - AI contract change: centralized AI request context capture/stale checks in `src/app/store-ai-request-context.ts`, covering planner digest, provider/model, settings revision, prompt, and clarification state without serializing local API keys.
 
+## 2026-05-13 Pass 7
+
+- Source files: 345
+- Total source lines: 42,974
+- Files over 250 lines: 34
+- Files over 500 lines: 0
+- Duplicate top-level symbols: none detected
+- UI system change: routed plan collapsible cards through the canonical `panel()` primitive so controlled collapse state, panel classes, and toggle behavior use one shared implementation instead of a bespoke card shell.
+
 ## Tracking Rules
 
 - Update this file after architecture-focused cleanup passes that materially change file counts, near-limit modules, or duplicate-symbol output.

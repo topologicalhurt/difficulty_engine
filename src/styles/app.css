@@ -925,13 +925,6 @@ body.difficulty-engine-standalone #app {
   align-self: start;
 }
 
-.collapsible-card-header {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .collapsible-card:not(.open) {
   padding-bottom: 0;
 }

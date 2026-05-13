@@ -22,6 +22,10 @@ describe('plan view', () => {
     expect(view.textContent).toContain('Gantt timeline');
     expect(view.textContent).toContain('Study calendar');
     expect(view.querySelectorAll('.collapsible-card.open')).toHaveLength(0);
+    expect(view.querySelectorAll('.collapsible-card.panel-card')).toHaveLength(2);
+    expect(
+      view.querySelectorAll('.collapsible-card .panel-toggle-button'),
+    ).toHaveLength(2);
   });
 
   it('shows selected calendar logging before other side-panel content', () => {
