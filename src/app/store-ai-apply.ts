@@ -1,4 +1,3 @@
-import { relationReferenceTargets } from '../core/ai-recommendations';
 import { findMatchingBook } from '../core/book-identity';
 import { EXAMPLE_BOOK } from '../core/defaults';
 import type {
@@ -12,7 +11,20 @@ import { nextBookId } from './store-helpers';
 export interface AiProposalApplyResult {
   project: PlannerProjectV1;
   addedIds: string[];
+  removedIds: string[];
   skippedTitles: string[];
+  reordered: boolean;
+}
+
+export function hasApplicableAiProposal(
+  proposal: AiRecommendationProposal | null,
+): proposal is AiRecommendationProposal {
+  return Boolean(
+    proposal &&
+      (proposal.books.length ||
+        proposal.removeBookIds.length ||
+        proposal.bookOrder.length),
+  );
 }
 
 function shortLabel(title: string): string {
@@ -66,18 +78,78 @@ function nextIds(project: PlannerProjectV1, count: number): string[] {
   return ids;
 }
 
-function resolveRelationRefs(
-  refIds: string[],
-  refLookup: Map<string, string>,
-  ownId: string,
+function nextPlanOrder(books: Record<string, BookRecord>): number {
+  return Math.max(-1, ...Object.values(books).map((book) => book.planOrder)) + 1;
+}
+
+function safeRemoveIds(
+  project: PlannerProjectV1,
+  proposal: AiRecommendationProposal,
 ): string[] {
+  const existing = project.library.books;
   return Array.from(
-    new Set(
-      refIds
-        .map((ref) => refLookup.get(ref) ?? ref)
-        .filter((id) => id && id !== ownId),
-    ),
-  ).sort();
+    new Set(proposal.removeBookIds.filter((id) => Boolean(existing[id]))),
+  );
+}
+
+function cleanupRemovedRelationRefs(
+  books: Record<string, BookRecord>,
+  removedIds: Set<string>,
+): Record<string, BookRecord> {
+  if (!removedIds.size) return books;
+  const validIds = new Set(Object.keys(books));
+  const nextBooks = { ...books };
+  Object.values(books).forEach((book) => {
+    const manualPrereqs = book.manualPrereqs.filter(
+      (id) => validIds.has(id) && !removedIds.has(id),
+    );
+    const manualCoStudy = book.manualCoStudy.filter(
+      (id) => validIds.has(id) && !removedIds.has(id),
+    );
+    if (
+      manualPrereqs.length !== book.manualPrereqs.length ||
+      manualCoStudy.length !== book.manualCoStudy.length
+    ) {
+      nextBooks[book.id] = {
+        ...book,
+        manualPrereqs,
+        manualCoStudy,
+      };
+    }
+  });
+  return nextBooks;
+}
+
+function applyBookOrder(
+  books: Record<string, BookRecord>,
+  orderRefs: string[],
+  refLookup: Map<string, string>,
+): { books: Record<string, BookRecord>; reordered: boolean } {
+  if (!orderRefs.length) return { books, reordered: false };
+  const seen = new Set<string>();
+  const orderedIds: string[] = [];
+  orderRefs.forEach((ref) => {
+    const id = refLookup.get(ref) ?? ref;
+    if (!books[id] || seen.has(id)) return;
+    seen.add(id);
+    orderedIds.push(id);
+  });
+  const remainingIds = Object.values(books)
+    .filter((book) => !seen.has(book.id))
+    .sort(
+      (left, right) =>
+        left.planOrder - right.planOrder || left.title.localeCompare(right.title),
+    )
+    .map((book) => book.id);
+  const allIds = [...orderedIds, ...remainingIds];
+  let reordered = false;
+  const nextBooks = { ...books };
+  allIds.forEach((id, planOrder) => {
+    if (nextBooks[id]?.planOrder === planOrder) return;
+    nextBooks[id] = { ...nextBooks[id], planOrder };
+    reordered = true;
+  });
+  return { books: nextBooks, reordered };
 }
 
 export function applyAiProposalToProject(
@@ -87,9 +159,12 @@ export function applyAiProposalToProject(
   const existingBookIds = new Set(Object.keys(project.library.books));
   const refLookup = new Map<string, string>();
   const candidateIds = nextIds(project, proposal.books.length);
-  const books = { ...project.library.books };
+  const removedIds = safeRemoveIds(project, proposal);
+  const removedIdSet = new Set(removedIds);
+  let books: Record<string, BookRecord> = Object.fromEntries(
+    Object.entries(project.library.books).filter(([id]) => !removedIdSet.has(id)),
+  );
   const addedIds: string[] = [];
-  const addedIdSet = new Set<string>();
   const skippedTitles: string[] = [];
 
   proposal.books.forEach((bookProposal) => {
@@ -101,31 +176,14 @@ export function applyAiProposalToProject(
     }
     const id = candidateIds[addedIds.length];
     refLookup.set(bookProposal.proposalId, id);
-    relationReferenceTargets(bookProposal).forEach((ref) => {
-      if (existingBookIds.has(ref)) refLookup.set(ref, ref);
-    });
-    books[id] = bookFromProposal(id, bookProposal, Object.keys(books).length);
+    existingBookIds.forEach((existingId) => refLookup.set(existingId, existingId));
+    books[id] = bookFromProposal(id, bookProposal, nextPlanOrder(books));
     addedIds.push(id);
-    addedIdSet.add(id);
   });
 
-  proposal.books.forEach((bookProposal) => {
-    const id = refLookup.get(bookProposal.proposalId);
-    if (!id || !books[id] || !addedIdSet.has(id)) return;
-    books[id] = {
-      ...books[id],
-      manualPrereqs: resolveRelationRefs(
-        bookProposal.prerequisiteIds,
-        refLookup,
-        id,
-      ),
-      manualCoStudy: resolveRelationRefs(
-        bookProposal.coStudyIds,
-        refLookup,
-        id,
-      ),
-    };
-  });
+  books = cleanupRemovedRelationRefs(books, removedIdSet);
+  const ordered = applyBookOrder(books, proposal.bookOrder, refLookup);
+  books = ordered.books;
 
   return {
     project: {
@@ -133,6 +191,8 @@ export function applyAiProposalToProject(
       library: { books },
     },
     addedIds,
+    removedIds,
     skippedTitles,
+    reordered: ordered.reordered,
   };
 }

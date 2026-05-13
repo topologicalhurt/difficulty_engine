@@ -201,4 +201,69 @@ describe('AI relationship reorganizer flow', () => {
     expect(books['book-2']?.manualCoStudy).toEqual(['book-3']);
     expect(books['book-3']?.manualCoStudy).toEqual(['book-2']);
   });
+
+  it('applies plan proposals only to order and manual relationship fields', async () => {
+    const provider = aiRelationshipProvider();
+    const store = makeStore({
+      initialProject: makeProject({
+        constraints: { tl: 10, hpd: 2 },
+        books: {
+          'book-1': makeBook({
+            id: 'book-1',
+            title: 'Foundations',
+            pages: 111,
+            subjects: ['math'],
+            manualSeedDifficulty: 8,
+            planOrder: 2,
+          }),
+          'book-2': makeBook({
+            id: 'book-2',
+            title: 'Applications',
+            publisher: 'Keep Press',
+            owned: false,
+            planOrder: 0,
+          }),
+          'book-3': makeBook({
+            id: 'book-3',
+            title: 'Lab Track',
+            planOrder: 1,
+          }),
+        },
+      }),
+      aiRecommendationProvider: provider,
+    });
+    const before = store.selectors.getProject();
+    const events: string[] = [];
+    const unsubscribe = store.subscriptions.subscribeEvents((event) => {
+      events.push(event.type);
+    });
+
+    store.commands.updateAiLocalSettings({
+      enabled: true,
+      apiKey: 'local-secret',
+      model: 'gpt-test',
+    });
+    await store.commands.requestAiRelationshipReorganization();
+    store.commands.applyAiRelationshipProposal();
+    unsubscribe();
+
+    const after = store.selectors.getProject();
+    expect(events).toContain('project-changed');
+    expect(after.constraints).toEqual(before.constraints);
+    expect(after.sourceSettings).toEqual(before.sourceSettings);
+    expect(after.library.books['book-1']).toMatchObject({
+      title: 'Foundations',
+      pages: 111,
+      subjects: ['math'],
+      manualSeedDifficulty: 8,
+    });
+    expect(after.library.books['book-2']).toMatchObject({
+      title: 'Applications',
+      publisher: 'Keep Press',
+      owned: false,
+    });
+    expect(after.library.books['book-1']?.planOrder).toBe(0);
+    expect(after.library.books['book-2']?.manualPrereqs).toEqual(['book-1']);
+    expect(store.exportProject()).toContain('"manualPrereqs"');
+  });
 });

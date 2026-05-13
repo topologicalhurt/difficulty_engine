@@ -4,21 +4,6 @@ import { compactJoin } from '../core/utils';
 import { badge, button, card, el } from './dom';
 import { formatOneDecimal, formatPages } from './format';
 
-function relationBadges(book: AiRecommendedBook): HTMLElement {
-  const prereq = book.prerequisiteIds.length
-    ? badge(`prereqs: ${book.prerequisiteIds.join(', ')}`, 'warn')
-    : null;
-  const coStudy = book.coStudyIds.length
-    ? badge(`co-study: ${book.coStudyIds.join(', ')}`, 'success')
-    : null;
-  return el(
-    'div',
-    { className: 'badge-row compact-badge-row' },
-    prereq,
-    coStudy,
-  );
-}
-
 function proposalBookCard(book: AiRecommendedBook): HTMLElement {
   return el(
     'article',
@@ -48,10 +33,9 @@ function proposalBookCard(book: AiRecommendedBook): HTMLElement {
       ? el(
           'div',
           { className: 'badge-row compact-badge-row' },
-          ...book.subjects.map((subject) => badge(subject)),
+        ...book.subjects.map((subject) => badge(subject)),
         )
       : null,
-    relationBadges(book),
     el('p', {
       className: 'muted-copy',
       text: book.rationale || 'No rationale supplied.',
@@ -59,32 +43,38 @@ function proposalBookCard(book: AiRecommendedBook): HTMLElement {
   );
 }
 
-function proposalDiffLine(prefix: '+' | '~', text: string): HTMLElement {
+function proposalDiffLine(prefix: '+' | '-' | '~', text: string): HTMLElement {
   return el(
     'div',
-    { className: `ai-diff-line ai-diff-${prefix === '+' ? 'add' : 'meta'}` },
+    {
+      className: `ai-diff-line ai-diff-${
+        prefix === '+' ? 'add' : prefix === '-' ? 'delete' : 'meta'
+      }`,
+    },
     el('span', { className: 'ai-diff-prefix', text: prefix }),
     el('span', { text }),
   );
 }
 
-function proposalDiffView(books: AiRecommendedBook[]): HTMLElement {
+function proposalDiffView(
+  proposal: NonNullable<AppState['ui']['aiProposal']>,
+): HTMLElement {
   return el(
     'div',
     { className: 'ai-diff-view' },
     el('div', { className: 'diff-pane-label', text: 'Reading list diff' }),
-    ...books.flatMap((book) => [
+    ...proposal.removeBookIds.map((id) =>
+      proposalDiffLine('-', `remove existing book ${id}`),
+    ),
+    ...proposal.books.flatMap((book) => [
       proposalDiffLine(
         '+',
         `${book.title}${book.authors.length ? ` - ${book.authors.join(', ')}` : ''}`,
       ),
-      ...book.prerequisiteIds.map((id) =>
-        proposalDiffLine('~', `adds prerequisite edge from ${id}`),
-      ),
-      ...book.coStudyIds.map((id) =>
-        proposalDiffLine('~', `adds co-study link with ${id}`),
-      ),
     ]),
+    proposal.bookOrder.length
+      ? proposalDiffLine('~', `updates book order: ${proposal.bookOrder.join(' -> ')}`)
+      : null,
   );
 }
 
@@ -141,7 +131,7 @@ export function renderAiProposalCard(
       ...viewModel.proposal.books.map((book) => proposalBookCard(book)),
     ),
     projectSettingsView(viewModel.proposal),
-    proposalDiffView(viewModel.proposal.books),
+    proposalDiffView(viewModel.proposal),
     el(
       'div',
       { className: 'toolbar-row' },

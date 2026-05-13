@@ -27,6 +27,10 @@ describe('autopilot proposal flow', () => {
         }),
       },
       projectPatch: {
+        readingScopeSettings: {
+          defaultMode: 'include_all',
+          skipKinds: [],
+        },
         manualOverrides: {
           schedule: { b: { ds: 2, days: 4 } },
           deferred: {},
@@ -37,6 +41,7 @@ describe('autopilot proposal flow', () => {
       },
     });
     const store = makeStore({ initialProject });
+    const originalProject = store.selectors.getProject();
 
     store.commands.updateAutopilotDraft({ settingsPolicy: 'fresh_optimal' });
     await store.commands.solveProjectForMe();
@@ -55,14 +60,24 @@ describe('autopilot proposal flow', () => {
         .paretoAlternatives.length,
     ).toBeGreaterThan(0);
 
+    const events: string[] = [];
+    const unsubscribe = store.subscriptions.subscribeEvents((event) => {
+      events.push(event.type);
+    });
     store.commands.applyAutopilotProposal();
+    unsubscribe();
     const applied = store.selectors.getProject();
 
     expect(applied.constraints.learnerProfileMode).not.toBe(
-      initialProject.constraints.learnerProfileMode,
+      originalProject.constraints.learnerProfileMode,
     );
-    expect(applied.readingScopeSettings?.defaultMode).toBe('skip_non_core');
-    expect(applied.manualOverrides).toEqual(initialProject.manualOverrides);
+    expect(applied.readingScopeSettings).toEqual(
+      originalProject.readingScopeSettings,
+    );
+    expect(applied.library).toEqual(originalProject.library);
+    expect(applied.manualOverrides).toEqual(originalProject.manualOverrides);
+    expect(events).toContain('project-changed');
+    expect(store.exportProject()).toContain('"constraints"');
     expect(store.selectors.getState().ui.autopilotProposal).toBeNull();
   });
 

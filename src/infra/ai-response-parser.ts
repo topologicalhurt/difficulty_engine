@@ -50,6 +50,8 @@ function parseRecommendationJson(
     return {
       summary: parsed.summary,
       books: parsed.books,
+      removeBookIds: parsed.removeBookIds,
+      bookOrder: parsed.bookOrder,
       projectSettings: parsed.projectSettings,
       warnings: parsed.warnings,
     };

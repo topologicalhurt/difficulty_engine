@@ -1,7 +1,4 @@
-import {
-  aiModelBelongsToProvider,
-  defaultAiModel,
-} from '../core/ai-provider-registry';
+import { aiModelBelongsToProvider, defaultAiModel } from '../core/ai-provider-registry';
 import {
   normalizeAiClarificationAnswer,
   normalizeAiClarificationMessages,
@@ -25,7 +22,7 @@ import {
   buildAiRecommendationContext,
   contextDigest,
 } from './ai-recommendation-context';
-import { applyAiProposalToProject } from './store-ai-apply';
+import { applyAiProposalToProject, hasApplicableAiProposal } from './store-ai-apply';
 import type { StoreCommandContext } from './store-command-context';
 
 export function createAiRecommendationCommands(
@@ -460,7 +457,7 @@ export function createAiRecommendationCommands(
     applyAiRecommendation(): void {
       const state = context.getState();
       const proposal = state.ui.aiProposal;
-      if (!proposal || !proposal.books.length) {
+      if (!hasApplicableAiProposal(proposal)) {
         return;
       }
       if (
@@ -478,17 +475,22 @@ export function createAiRecommendationCommands(
       }
       const result = applyAiProposalToProject(state.project, proposal);
       const addedCount = result.addedIds.length;
+      const removedCount = result.removedIds.length;
+      const selectedBookId = addedCount
+        ? (result.addedIds[0] ?? state.ui.selectedBookId)
+        : result.removedIds.includes(state.ui.selectedBookId ?? '')
+          ? null
+          : state.ui.selectedBookId;
+      const changed = addedCount || removedCount || result.reordered;
       context.commitProject('ai.apply', result.project, {
         aiProposal: null,
-        selectedBookId: addedCount
-          ? (result.addedIds[0] ?? state.ui.selectedBookId)
-          : state.ui.selectedBookId,
+        selectedBookId,
         activeView: 'library',
         banner: {
-          tone: addedCount ? 'success' : 'info',
-          message: addedCount
-            ? `Applied ${addedCount} AI recommendation(s).`
-            : `No new books added; ${result.skippedTitles.length} recommendation(s) already matched the library.`,
+          tone: changed ? 'success' : 'info',
+          message: changed
+            ? `Applied AI recommendation proposal: ${addedCount} added, ${removedCount} removed${result.reordered ? ', order updated' : ''}.`
+            : `No library changes; ${result.skippedTitles.length} recommendation(s) already matched the library.`,
         },
       });
     },

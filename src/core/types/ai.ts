@@ -67,6 +67,8 @@ export interface AiRecommendationProposal {
   prompt: string;
   summary: string;
   books: AiRecommendedBook[];
+  removeBookIds: string[];
+  bookOrder: string[];
   projectSettings: AiProjectSettingSuggestion[];
   warnings: string[];
   createdAt: string;
@@ -290,6 +292,8 @@ export interface AiClarificationRequest {
 export interface AiRecommendationProviderResponse {
   summary?: unknown;
   books?: unknown;
+  removeBookIds?: unknown;
+  bookOrder?: unknown;
   projectSettings?: unknown;
   warnings?: unknown;
 }

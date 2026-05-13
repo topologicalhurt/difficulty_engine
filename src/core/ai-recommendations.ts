@@ -18,6 +18,7 @@ const MAX_SUBJECTS = 10;
 const MAX_RELATION_REFS = 16;
 const MAX_WARNINGS = 6;
 const MAX_PROJECT_SETTING_SUGGESTIONS = 8;
+const MAX_BOOK_ORDER_REFS = 5000;
 
 export function sanitizeAiPrompt(value: string): string {
   return normalizeString(value).replace(/\s+/g, ' ');
@@ -127,6 +128,14 @@ export function normalizeAiRecommendationProposal(
       truncateText(response.summary, RATIONALE_MAX_CHARS) ||
       'Review the proposed reading-list addition.',
     books,
+    removeBookIds: normalizeStringArray(response.removeBookIds).slice(
+      0,
+      MAX_BOOK_ORDER_REFS,
+    ),
+    bookOrder: normalizeStringArray(response.bookOrder).slice(
+      0,
+      MAX_BOOK_ORDER_REFS,
+    ),
     projectSettings: rawProjectSettings
       .map((entry) => normalizeProjectSettingSuggestion(entry))
       .filter((entry): entry is AiProjectSettingSuggestion => Boolean(entry))

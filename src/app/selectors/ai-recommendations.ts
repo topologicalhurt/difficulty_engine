@@ -126,7 +126,11 @@ export function selectAiRecommendationViewModel(
       !state.ui.aiConnection.enabled ||
       !state.ui.aiConnection.apiKey.trim() ||
       state.project.aiRecommendationSettings.workMode === 'new_books',
-    applyDisabled: !state.ui.aiProposal?.books.length,
+    applyDisabled:
+      !state.ui.aiProposal ||
+      (!state.ui.aiProposal.books.length &&
+        !state.ui.aiProposal.removeBookIds.length &&
+        !state.ui.aiProposal.bookOrder.length),
     contextSummary: `${bookCount} book(s), ${relationCount} relation(s), ${state.project.constraints.schedAlgo} schedule mode.`,
     secretStorageNote:
       'API keys are held in local UI state only and are not exported into the project JSON.',

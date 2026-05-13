@@ -113,7 +113,13 @@ describe('AI recommendations store flow', () => {
       suggestedValue: '24',
     });
 
+    const initialTimeline = store.selectors.getProject().constraints.tl;
+    const events: string[] = [];
+    const unsubscribe = store.subscriptions.subscribeEvents((event) => {
+      events.push(event.type);
+    });
     store.commands.applyAiRecommendation();
+    unsubscribe();
     const books = store.selectors.getProject().library.books;
     const added = Object.values(books).filter(
       (book) =>
@@ -127,9 +133,12 @@ describe('AI recommendations store flow', () => {
     const lab = added.find(
       (book) => book.title === 'Electronics Lab Companion',
     );
-    expect(foundations?.manualPrereqs).toEqual(['book-1']);
-    expect(lab?.manualPrereqs).toEqual([foundations?.id]);
-    expect(lab?.manualCoStudy).toContain('book-2');
+    expect(foundations?.manualPrereqs).toEqual([]);
+    expect(lab?.manualPrereqs).toEqual([]);
+    expect(lab?.manualCoStudy).toEqual([]);
+    expect(store.selectors.getProject().constraints.tl).toBe(initialTimeline);
+    expect(events).toContain('project-changed');
+    expect(store.exportProject()).toContain('Practical Circuit Foundations');
     expect(store.exportProject()).not.toContain('local-secret');
   });
 
@@ -190,6 +199,8 @@ describe('AI recommendations store flow', () => {
         },
       ],
       warnings: [],
+      removeBookIds: [],
+      bookOrder: [],
       projectSettings: [],
       createdAt: '2026-01-01T00:00:00.000Z',
       contextDigest: 'test-digest',
@@ -201,7 +212,7 @@ describe('AI recommendations store flow', () => {
 
     expect(existing?.manualPrereqs).toEqual(['book-0']);
     expect(existing?.manualCoStudy).toEqual(['book-2']);
-    expect(added[0]?.manualPrereqs).toEqual(['book-1']);
+    expect(added[0]?.manualPrereqs).toEqual([]);
     expect(result.skippedTitles).toEqual(['Existing Foundations']);
   });
 
@@ -228,6 +239,8 @@ describe('AI recommendations store flow', () => {
         },
       ],
       warnings: [],
+      removeBookIds: [],
+      bookOrder: [],
       projectSettings: [],
       createdAt: '2026-01-01T00:00:00.000Z',
       contextDigest: 'test-digest',

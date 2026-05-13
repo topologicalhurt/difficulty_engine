@@ -1,5 +1,4 @@
 import { createAutopilotProposal } from '../core/autopilot';
-import { readingScopeSettingsForProject } from '../core/reading-scope';
 import type {
   CreatePlannerStoreOptions,
   PlannerProjectV1,
@@ -106,10 +105,6 @@ export function createAutopilotCommands(
         constraints: {
           ...state.project.constraints,
           ...proposal.constraintPatch,
-        },
-        readingScopeSettings: {
-          ...readingScopeSettingsForProject(state.project),
-          ...proposal.readingScopeSettingsPatch,
         },
       };
       context.commitProject(

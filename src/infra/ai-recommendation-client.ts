@@ -94,10 +94,11 @@ function aiRequestError(
 function systemPrompt(): string {
   return [
     'Recommend books for a study planner. Return JSON only.',
-    'Use this exact shape: {"summary": string, "books": array, "projectSettings": array, "warnings": array}.',
+    'Use this exact shape: {"summary": string, "books": array, "removeBookIds": array, "bookOrder": array, "projectSettings": array, "warnings": array}.',
     'Each book must include title, authors, isbn, pages, subjects, displayGroup, manualSeedDifficulty, rationale, prerequisiteIds, coStudyIds.',
+    'The book recommender may only add books, remove books by existing id, and propose plan order with bookOrder using existing book ids and proposed proposal ids; do not rewrite existing prerequisite or co-study links here.',
     'When deadline, pacing, parallelism, difficulty, or source settings would materially serve the prompt, strongly suggest projectSettings entries with key, currentValue, suggestedValue, confidence, and rationale.',
-    'Use existing book ids for prerequisites when relevant. Use proposal ids for relations among proposed books.',
+    'Use existing book ids and proposal ids in bookOrder to place additions in the intended DAG order.',
     'Honor the requested recommendation count, work mode, and DAG depth. Ask clarifying questions before final recommendations when the clarification transcript shows unresolved ambiguity.',
     'Do not include HTML, markdown fences, or commentary outside JSON.',
   ].join(' ');
