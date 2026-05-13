@@ -40,4 +40,19 @@ describe('active tab rendering', () => {
     expect(root.dataset.activeView).toBe('plan');
     expect(root.textContent).toContain('Quick add');
   });
+
+  it('rebuilds the project tab when an autopilot proposal is generated', () => {
+    const store = makeStore();
+    const root = document.createElement('section');
+
+    store.commands.setActiveView('project');
+    renderActiveTabBody(root, store.selectors.getState(), store);
+    expect(root.textContent).not.toContain('Apply proposal');
+
+    store.commands.solveProjectForMe();
+    renderActiveTabBody(root, store.selectors.getState(), store);
+
+    expect(root.textContent).toContain('Apply proposal');
+    expect(root.textContent).toContain('Confidence-first autopilot');
+  });
 });
