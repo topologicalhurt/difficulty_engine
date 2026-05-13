@@ -18,6 +18,7 @@
     "perf:ci": "node ./scripts/perf.mjs --ci",
     "toc:audit": "vite-node scripts/toc-audit.ts",
     "qbit:search-audit": "vite-node scripts/qbit-search-audit.ts",
+    "qbit:toc-corpus-audit": "vite-node scripts/qbit-toc-corpus-audit.ts",
     "stabilize": "python3 scripts/change_safety_report.py && npm run check && npm run build && python3 scripts/audit_source.py && python3 scripts/architecture_report.py && npm run test:e2e",
     "qbittorrent:launch": "node ./scripts/qbittorrent-launch.mjs",
     "qbittorrent:bridge": "node ./scripts/qbittorrent-bridge.mjs",
