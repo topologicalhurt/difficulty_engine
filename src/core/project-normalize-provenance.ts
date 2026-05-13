@@ -18,6 +18,16 @@ export function normalizeProvenance(
   if (!provider) {
     return undefined;
   }
+  const rawPageRange =
+    raw.pageRange && typeof raw.pageRange === 'object'
+      ? (raw.pageRange as Record<string, unknown>)
+      : null;
+  const pageStart = rawPageRange
+    ? Math.max(1, Math.round(safeNumber(rawPageRange.start, Number.NaN)))
+    : Number.NaN;
+  const pageEnd = rawPageRange
+    ? Math.max(pageStart, Math.round(safeNumber(rawPageRange.end, Number.NaN)))
+    : Number.NaN;
   return {
     provider,
     sourceUrl: normalizeString(raw.sourceUrl) || undefined,
@@ -26,5 +36,9 @@ export function normalizeProvenance(
     strategy: normalizeString(raw.strategy) || undefined,
     inferred: normalizeBoolean(raw.inferred),
     evidenceAnchors: normalizeStringArray(raw.evidenceAnchors).slice(0, 12),
+    pageRange:
+      Number.isFinite(pageStart) && Number.isFinite(pageEnd)
+        ? { start: pageStart, end: pageEnd }
+        : undefined,
   };
 }

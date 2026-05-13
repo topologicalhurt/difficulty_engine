@@ -10,6 +10,7 @@ import { normalizeBookReadingScope } from './project-normalize-reading-scope';
 import type {
   BookEnrichment,
   BookRecord,
+  ChapterPageRange,
   EnrichmentCacheEntry,
   EnrichmentFieldProvenance,
 } from './types';
@@ -43,15 +44,45 @@ function normalizeTocSource(value: unknown): BookEnrichment['tocSource'] {
   return 'none';
 }
 
+function normalizeChapterPageRange(value: unknown): ChapterPageRange | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const start = normalizeNumber(raw.start, Number.NaN, 1, undefined, true);
+  if (!Number.isFinite(start)) return null;
+  const end =
+    raw.end == null || raw.end === ''
+      ? null
+      : normalizeNumber(raw.end, Number.NaN, start, undefined, true);
+  return {
+    start,
+    end: end != null && Number.isFinite(end) ? end : null,
+  };
+}
+
+function normalizeChapterPageRanges(
+  value: unknown,
+  chapterCount: number,
+): BookEnrichment['chapterPageRanges'] {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .slice(0, chapterCount)
+    .map(normalizeChapterPageRange);
+}
+
 export function normalizeBookEnrichment(input: unknown): BookEnrichment {
   const raw =
     input && typeof input === 'object'
       ? (input as Record<string, unknown>)
       : {};
+  const chapters = sanitizeChapterTitles(normalizeStringArray(raw.chapters), {
+    source: 'imported',
+  });
   return {
-    chapters: sanitizeChapterTitles(normalizeStringArray(raw.chapters), {
-      source: 'imported',
-    }),
+    chapters,
+    chapterPageRanges: normalizeChapterPageRanges(
+      raw.chapterPageRanges,
+      chapters.length,
+    ),
     description: normalizeString(raw.description),
     olSubjects: normalizeStringArray(raw.olSubjects),
     tocSource: normalizeTocSource(raw.tocSource),

@@ -1,8 +1,10 @@
 import {
-  extractChapterCandidatesFromText,
+  extractChapterEntriesFromText,
   isLikelyChapterTitle,
   sanitizeChapterTitles,
+  type ChapterTitleEntry,
 } from '../core/chapter-titles';
+import type { ChapterPageRange } from '../core/types';
 import { isPdfDocument } from './qbittorrent-file-kinds';
 import { decodePdfBytes, extractPdfOutlineTitles } from './pdf-outline-titles';
 import {
@@ -28,6 +30,7 @@ export type DocumentExtractionStrategy =
 
 export interface DocumentChapterExtraction {
   chapters: string[];
+  chapterPageRanges?: Array<ChapterPageRange | null>;
   strategy: DocumentExtractionStrategy;
   confidence: number;
   evidenceAnchors: string[];
@@ -40,6 +43,7 @@ export interface TocExtractionAttempt {
   sourceKind: 'pdf_raw_outline' | 'pdf_raw_text' | 'document_text';
   confidence: number;
   chapters: string[];
+  chapterPageRanges?: Array<ChapterPageRange | null>;
   accepted: boolean;
   rejectedReasons: string[];
   evidenceAnchors: string[];
@@ -64,10 +68,12 @@ function extraction(
   confidence: number,
   evidenceAnchors: string[],
   attempts: TocExtractionAttempt[] = [],
+  chapterPageRanges?: Array<ChapterPageRange | null>,
 ): DocumentChapterExtraction | null {
   if (!chapters.length) return null;
   return {
     chapters,
+    chapterPageRanges,
     strategy,
     confidence,
     evidenceAnchors: evidenceAnchors.slice(0, 8),
@@ -92,11 +98,45 @@ function attempt(
     sourceKind,
     confidence: result?.confidence ?? 0,
     chapters: result?.chapters ?? [],
+    chapterPageRanges: result?.chapterPageRanges,
     accepted: Boolean(result),
     rejectedReasons,
     evidenceAnchors: result?.evidenceAnchors ?? [],
     durationMs: elapsedMs(start),
   };
+}
+
+function pageRangesFromEntries(
+  entries: ChapterTitleEntry[],
+): Array<ChapterPageRange | null> {
+  return entries.map((entry, index) => {
+    const pageStart = entry.pageStart;
+    if (!pageStart || pageStart < 1) return null;
+    const nextStart = entries
+      .slice(index + 1)
+      .map((candidate) => candidate.pageStart)
+      .find(
+        (candidateStart): candidateStart is number =>
+          candidateStart != null && candidateStart > pageStart,
+      );
+    return {
+      start: pageStart,
+      end: nextStart ? nextStart - 1 : null,
+    };
+  });
+}
+
+function entriesForChapters(
+  entries: ChapterTitleEntry[],
+  chapters: string[],
+): ChapterTitleEntry[] {
+  const remaining = [...entries];
+  return chapters.map((chapter) => {
+    const index = remaining.findIndex((entry) => entry.title === chapter);
+    if (index < 0) return { title: chapter };
+    const [entry] = remaining.splice(index, 1);
+    return entry ?? { title: chapter };
+  });
 }
 
 function explicitTocRegion(lines: string[], contentsIndex: number): string[] {
@@ -153,20 +193,24 @@ export function extractExplicitTocChapters(
   if (contentsIndex < 0 && !EXPLICIT_CONTENTS_PATTERN.test(region)) {
     return null;
   }
+  const entries = extractChapterEntriesFromText(region, {
+    source: 'structured',
+    limit: 80,
+  });
   const chapters = removeMarkerOnlyDuplicates(
-    extractChapterCandidatesFromText(region, {
-      source: 'structured',
-      limit: 80,
-    }),
+    entries.map((entry) => entry.title),
   );
   if (chapters.length < MIN_EXPLICIT_TOC_CHAPTERS) {
     return null;
   }
+  const chapterEntries = entriesForChapters(entries, chapters);
   return extraction(
     chapters,
     'explicit_toc_region',
     0.64,
     joinedRegionLines.slice(0, 16),
+    [],
+    pageRangesFromEntries(chapterEntries),
   );
 }
 

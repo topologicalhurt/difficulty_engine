@@ -18,8 +18,14 @@ export interface EnrichmentFieldProvenance {
   pageRange?: { start: number; end: number };
 }
 
+export interface ChapterPageRange {
+  start: number;
+  end?: number | null;
+}
+
 export interface BookEnrichment {
   chapters: string[];
+  chapterPageRanges?: Array<ChapterPageRange | null>;
   description: string;
   olSubjects: string[];
   tocSource:

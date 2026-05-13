@@ -59,6 +59,8 @@ export interface BookReadingScopeView {
     title: string;
     kind: string;
     skipped: boolean;
+    pageRange: string | null;
+    estimatedPages: number | null;
   }>;
 }
 
@@ -269,17 +271,27 @@ function bookEditorViewModelFromProgress(
   );
   const readingScopeSettings = readingScopeSettingsForProject(state.project);
   const effectivePages = effectiveReadingPagesForBook(book, readingScopeSettings);
+  const skippedByIndex = new Map(
+    effectivePages.skippedSections.map((section) => [section.index, section]),
+  );
   const readingScope: BookReadingScopeView = {
     effectivePages: effectivePages.effectivePages,
     physicalPages: effectivePages.physicalPages,
     skippedPages: effectivePages.skippedPages,
     bindingReason: effectivePages.bindingReason,
     sections: classifyReadingSections(book, readingScopeSettings).map(
-      (section) => ({
-        title: section.title,
-        kind: section.kind,
-        skipped: section.skipped,
-      }),
+      (section) => {
+        const analyzed = skippedByIndex.get(section.index) ?? section;
+        return {
+          title: analyzed.title,
+          kind: analyzed.kind,
+          skipped: analyzed.skipped,
+          pageRange: analyzed.pageRange
+            ? `${analyzed.pageRange.start}-${analyzed.pageRange.end ?? '?'}`
+            : null,
+          estimatedPages: analyzed.estimatedPages ?? null,
+        };
+      },
     ),
   };
 

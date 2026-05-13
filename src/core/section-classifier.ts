@@ -135,6 +135,7 @@ export function classifyReadingSections(
       skipped,
       confidence: round2(clamp(classified.confidence, 0, 1)),
       reason: classified.reason,
+      pageRange: book.enrichment.chapterPageRanges?.[index] ?? null,
     };
   });
 }

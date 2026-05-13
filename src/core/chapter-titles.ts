@@ -31,6 +31,11 @@ export type ChapterTitleSource =
   | 'provider_snippet'
   | 'manual';
 
+export interface ChapterTitleEntry {
+  title: string;
+  pageStart?: number;
+}
+
 const MAX_CHAPTER_TITLE_LENGTH = 140;
 const MAX_CHAPTER_WORDS = 18;
 const MIN_CHAPTER_TITLE_LENGTH = 2;
@@ -47,6 +52,19 @@ function stripPlainPageSuffix(value: string): string {
   if (wordsIn(body).length >= 2 || FRONT_BACK_MATTER_PATTERN.test(body))
     return body;
   return value;
+}
+
+function numericPageSuffix(value: string): number | undefined {
+  const dotLeader = value.match(/\.{2,}\s*(\d{1,4})\s*$/);
+  if (dotLeader?.[1]) return Number(dotLeader[1]);
+  const plain = value.match(PLAIN_PAGE_SUFFIX_PATTERN);
+  if (!plain?.[2] || !/^\d+$/.test(plain[2])) return undefined;
+  const body = (plain[1] ?? '').trim();
+  if (STRUCTURAL_PREFIX_ONLY_PATTERN.test(body)) return undefined;
+  if (wordsIn(body).length >= 2 || FRONT_BACK_MATTER_PATTERN.test(body)) {
+    return Number(plain[2]);
+  }
+  return undefined;
 }
 
 function normalizeChapterTitle(value: string): string {
@@ -180,8 +198,15 @@ export function sanitizeChapterTitles(
   values: string[],
   options: { limit?: number; source?: ChapterTitleSource } = {},
 ): string[] {
+  return sanitizeChapterEntries(values, options).map((entry) => entry.title);
+}
+
+export function sanitizeChapterEntries(
+  values: string[],
+  options: { limit?: number; source?: ChapterTitleSource } = {},
+): ChapterTitleEntry[] {
   const seen = new Set<string>();
-  const chapters: string[] = [];
+  const chapters: ChapterTitleEntry[] = [];
   const source = options.source ?? 'structured';
   values.forEach((value) => {
     const title = stripPlainPageSuffix(normalizeChapterTitle(value));
@@ -190,15 +215,15 @@ export function sanitizeChapterTitles(
       return;
     }
     seen.add(key);
-    chapters.push(title);
+    chapters.push({ title, pageStart: numericPageSuffix(value) });
   });
   return chapters.slice(0, options.limit ?? 80);
 }
 
-export function extractChapterCandidatesFromText(
+export function extractChapterEntriesFromText(
   text: string,
   options: { limit?: number; source?: ChapterTitleSource } = {},
-): string[] {
+): ChapterTitleEntry[] {
   const input = String(text);
   const parts = input
     .split(UNSTRUCTURED_SPLIT_PATTERN)
@@ -209,8 +234,17 @@ export function extractChapterCandidatesFromText(
   )
     .map((match) => match[0])
     .filter(Boolean);
-  return sanitizeChapterTitles([...parts, ...structuralMatches], {
+  return sanitizeChapterEntries([...parts, ...structuralMatches], {
     limit: options.limit,
     source: options.source ?? 'unstructured',
   });
+}
+
+export function extractChapterCandidatesFromText(
+  text: string,
+  options: { limit?: number; source?: ChapterTitleSource } = {},
+): string[] {
+  return extractChapterEntriesFromText(text, options).map(
+    (entry) => entry.title,
+  );
 }

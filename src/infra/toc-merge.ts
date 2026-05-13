@@ -2,6 +2,7 @@ import { sanitizeChapterTitles } from '../core/chapter-titles';
 import type {
   BookEnrichment,
   BookRecord,
+  ChapterPageRange,
   EnrichmentFieldProvenance,
 } from '../core/types';
 import { compactItems, uniqueCompactStrings } from '../core/utils';
@@ -17,6 +18,7 @@ export interface StrategyCandidate {
   sourceUrl: string;
   confidence: number;
   chapters?: string[];
+  chapterPageRanges?: Array<ChapterPageRange | null>;
   description?: string;
   subjects?: string[];
   pages?: number | null;
@@ -106,6 +108,25 @@ function firstCandidateValue<T>(
   return undefined;
 }
 
+function selectedChapterPageRanges(
+  selected: StrategyCandidate | null | undefined,
+  chapters: string[],
+): Array<ChapterPageRange | null> | undefined {
+  if (!selected?.chapters?.length || !selected.chapterPageRanges?.length) {
+    return undefined;
+  }
+  const remaining = selected.chapters.map((title, index) => ({
+    title,
+    range: selected.chapterPageRanges?.[index] ?? null,
+  }));
+  return chapters.map((chapter) => {
+    const index = remaining.findIndex((entry) => entry.title === chapter);
+    if (index < 0) return null;
+    const [entry] = remaining.splice(index, 1);
+    return entry?.range ?? null;
+  });
+}
+
 export function mergeStrategyCandidates(
   book: BookRecord,
   candidates: StrategyCandidate[],
@@ -127,6 +148,10 @@ export function mergeStrategyCandidates(
   const chapters = candidateChapters.length
     ? candidateChapters
     : sanitizeChapterTitles(book.enrichment.chapters, { source: 'imported' });
+  const chapterPageRanges =
+    candidateChapters.length
+      ? selectedChapterPageRanges(selectedChapterCandidate, chapters)
+      : book.enrichment.chapterPageRanges;
   const pickCandidateValue = <T>(
     select: (candidate: StrategyCandidate) => T | null | undefined,
     accept?: (candidate: StrategyCandidate, value: T) => boolean,
@@ -174,6 +199,7 @@ export function mergeStrategyCandidates(
     },
     enrichment: {
       chapters,
+      chapterPageRanges,
       description,
       olSubjects: subjects,
       tocSource: preferredTocSource(

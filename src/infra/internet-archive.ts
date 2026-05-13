@@ -48,6 +48,7 @@ export interface InternetArchiveCandidate {
   sourceUrl: string;
   confidence: number;
   chapters?: string[];
+  chapterPageRanges?: BookEnrichment['chapterPageRanges'];
   description?: string;
   subjects?: string[];
   tocSource?: BookEnrichment['tocSource'];
@@ -151,6 +152,7 @@ async function archiveCandidateFromDoc(
       });
       return {
         chapters: extraction?.chapters ?? extractArchiveChapters(text),
+        chapterPageRanges: extraction?.chapterPageRanges,
         strategy: extraction?.strategy,
         inferred: extraction?.inferred,
         evidenceAnchors: extraction?.evidenceAnchors,
@@ -173,6 +175,7 @@ async function archiveCandidateFromDoc(
     sourceUrl: `https://archive.org/details/${identifier}`,
     confidence: chapters.length ? 0.78 : 0.46,
     chapters,
+    chapterPageRanges: selected?.chapterPageRanges,
     description: String(metadata.metadata?.description ?? '').trim(),
     subjects: normalizeSubjects(metadata.metadata?.subject),
     tocSource: chapters.length ? 'internet_archive' : 'none',

@@ -27,6 +27,7 @@ export interface SourceDocumentCandidate {
   sourceUrl: string;
   confidence: number;
   chapters?: string[];
+  chapterPageRanges?: BookEnrichment['chapterPageRanges'];
   tocSource?: BookEnrichment['tocSource'];
   strategy?: string;
   inferred?: boolean;
@@ -46,6 +47,7 @@ function candidateFromExtraction(
     sourceUrl,
     confidence: Math.min(confidence, extraction.confidence),
     chapters: extraction.chapters,
+    chapterPageRanges: extraction.chapterPageRanges,
     tocSource: 'pdf',
     strategy: extraction.strategy,
     inferred: extraction.inferred,

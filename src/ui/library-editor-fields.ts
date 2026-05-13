@@ -283,7 +283,16 @@ export function renderBookReadingScopeFields(
               { className: 'stack-row' },
               badge(section.skipped ? 'skipped' : 'kept', section.skipped ? 'warn' : 'success'),
               el('span', { text: section.title }),
-              el('span', { className: 'muted-copy', text: section.kind }),
+              el('span', {
+                className: 'muted-copy',
+                text: [
+                  section.kind,
+                  section.pageRange ? `pp. ${section.pageRange}` : '',
+                  section.estimatedPages
+                    ? `${section.estimatedPages} page(s)`
+                    : '',
+                ].filter(Boolean).join(' · '),
+              }),
             ),
           ),
         )

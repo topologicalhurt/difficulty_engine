@@ -22,6 +22,7 @@ export function existingLocalCandidate(
     sourceUrl: 'local://project',
     confidence: 1,
     chapters,
+    chapterPageRanges: book.enrichment.chapterPageRanges,
     description: book.enrichment.description,
     subjects: [...book.subjects, ...book.enrichment.olSubjects],
     pages: book.pages,

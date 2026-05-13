@@ -231,6 +231,29 @@ describe('document text extraction', () => {
     expect(extraction?.chapters).not.toContain('CHAPTER 1');
   });
 
+  it('preserves TOC page starts as chapter page ranges', () => {
+    const extraction = extractExplicitTocChapters(`
+      Contents
+      Chapter 1 Signals and Systems .......... 1
+      Chapter 2 Filters ..................... 47
+      Appendix A Reference Tables .......... 209
+      Index ................................ 240
+    `);
+
+    expect(extraction?.chapters).toEqual([
+      'Chapter 1 Signals and Systems',
+      'Chapter 2 Filters',
+      'Appendix A Reference Tables',
+      'Index',
+    ]);
+    expect(extraction?.chapterPageRanges).toEqual([
+      { start: 1, end: 46 },
+      { start: 47, end: 208 },
+      { start: 209, end: 239 },
+      { start: 240, end: null },
+    ]);
+  });
+
   it('uses conservative inferred headers only with repeated structural evidence', () => {
     const extraction = inferChapterHeadersFromText(
       [

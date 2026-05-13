@@ -1,3 +1,5 @@
+import type { ChapterPageRange } from './enrichment';
+
 export type ReadingSectionKind =
   | 'core'
   | 'front_matter'
@@ -31,6 +33,8 @@ export interface ReadingSectionDecision {
   skipped: boolean;
   confidence: number;
   reason: string;
+  pageRange?: ChapterPageRange | null;
+  estimatedPages?: number;
 }
 
 export interface EffectiveReadingPages {
