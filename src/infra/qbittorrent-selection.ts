@@ -13,6 +13,7 @@ import { SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA } from './document-candidate-qua
 import {
   BAD_QBITTORRENT_FILE_NAME_PATTERN,
   qbittorrentPdfEligibility,
+  qbittorrentPdfRejectionSummary,
 } from './qbittorrent-pdf-eligibility';
 
 export const MIN_PLUGIN_SEEDERS = 1;
@@ -82,6 +83,46 @@ export function rankedTorrentFiles(
       if (progressDelta !== 0) return progressDelta;
       return String(left.name ?? '').localeCompare(String(right.name ?? ''));
     });
+}
+
+export interface TrustedTorrentFileSelection {
+  selected: TorrentFile | null;
+  fileCount: number;
+  eligibleFileCount: number;
+  rejectionReason?: string;
+}
+
+export function selectTrustedTorrentFile(
+  files: TorrentFile[],
+  candidate: DocumentCandidate,
+  request: DocumentAcquisitionRequest,
+): TrustedTorrentFileSelection {
+  const rankedFiles = rankedTorrentFiles(files, request);
+  if (!rankedFiles.length) {
+    return {
+      selected: null,
+      fileCount: files.length,
+      eligibleFileCount: 0,
+      rejectionReason: `No eligible top-surface PDF was found in this torrent: ${qbittorrentPdfRejectionSummary(files)}`,
+    };
+  }
+  const selected =
+    rankedFiles.find((file) =>
+      selectedTorrentFileIsTrusted(
+        file,
+        candidate,
+        request,
+        rankedFiles.length,
+      ),
+    ) ?? null;
+  return {
+    selected,
+    fileCount: files.length,
+    eligibleFileCount: rankedFiles.length,
+    rejectionReason: selected
+      ? undefined
+      : 'Top-surface PDFs were present, but none passed the title, author, or ISBN trust checks.',
+  };
 }
 
 export function selectedTorrentFileIsTrusted(

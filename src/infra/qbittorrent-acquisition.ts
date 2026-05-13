@@ -9,8 +9,7 @@ import {
   documentRefId,
   documentStatus,
   fileMatchScore,
-  rankedTorrentFiles,
-  selectedTorrentFileIsTrusted,
+  selectTrustedTorrentFile,
   torrentAvailability,
 } from './qbittorrent-selection';
 import type { TorrentFile, TorrentInfo } from './qbittorrent-types';
@@ -20,7 +19,6 @@ import {
   joinStoragePath,
 } from './qbittorrent-file-kinds';
 import { isoTimestamp } from './cache-time';
-import { qbittorrentPdfRejectionSummary } from './qbittorrent-pdf-eligibility';
 
 async function selectedTorrentFile(
   client: QBittorrentClient,
@@ -35,41 +33,22 @@ async function selectedTorrentFile(
 }> {
   if (!info.hash) return { selected: null, fileCount: 0, eligibleFileCount: 0 };
   const files = await client.torrentFiles(info.hash).catch(() => []);
-  const rankedFiles = rankedTorrentFiles(files, request);
-  if (!rankedFiles.length) {
+  const selection = selectTrustedTorrentFile(files, candidate, request);
+  if (!selection.eligibleFileCount) {
     const allIndexes = files
       .map((file) => file.index)
       .filter((index): index is number => index != null);
     await client.setFilePriority(info.hash, allIndexes, 0);
-    return {
-      selected: null,
-      fileCount: files.length,
-      eligibleFileCount: 0,
-      rejectionReason: `No eligible top-surface PDF was found in this torrent: ${qbittorrentPdfRejectionSummary(files)}`,
-    };
+    return selection;
   }
-  const selected =
-    rankedFiles.find((file) =>
-      selectedTorrentFileIsTrusted(
-        file,
-        candidate,
-        request,
-        rankedFiles.length,
-      ),
-    ) ?? null;
+  const selected = selection.selected;
   const selectedIndex = selected?.index;
   if (!selected) {
     const allIndexes = files
       .map((file) => file.index)
       .filter((index): index is number => index != null);
     await client.setFilePriority(info.hash, allIndexes, 0);
-    return {
-      selected: null,
-      fileCount: files.length,
-      eligibleFileCount: rankedFiles.length,
-      rejectionReason:
-        'Top-surface PDFs were present, but none passed the title, author, or ISBN trust checks.',
-    };
+    return selection;
   }
   if (selectedIndex != null) {
     const otherIndexes = files
@@ -82,8 +61,8 @@ async function selectedTorrentFile(
   }
   return {
     selected,
-    fileCount: files.length,
-    eligibleFileCount: rankedFiles.length,
+    fileCount: selection.fileCount,
+    eligibleFileCount: selection.eligibleFileCount,
   };
 }
 

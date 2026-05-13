@@ -5,7 +5,10 @@ import {
   createDefaultSourceSettings,
 } from '../../src/core/defaults';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
-import { preferredTorrentFile } from '../../src/infra/qbittorrent-selection';
+import {
+  preferredTorrentFile,
+  selectTrustedTorrentFile,
+} from '../../src/infra/qbittorrent-selection';
 
 function qbitPolicy(): ReturnType<typeof defaultDocumentAcquisitionPolicy> {
   const sourceSettings = createDefaultSourceSettings();
@@ -92,5 +95,36 @@ describe('qBittorrent file selection', () => {
     );
 
     expect(selected?.name).toBe('Fixture Book/Fixture Book.pdf');
+  });
+
+  it('returns centralized rejection diagnostics for untrusted file sets', () => {
+    const selection = selectTrustedTorrentFile(
+      [
+        {
+          index: 0,
+          name: 'Fixture Book/Extras/Fixture Book.pdf',
+          size: 10_000,
+          progress: 1,
+        },
+      ],
+      {
+        id: 'candidate',
+        provider: 'qbittorrent',
+        title: 'Fixture Book',
+        sourceUrl: 'magnet:?xt=urn:btih:fixture',
+        contentKind: 'pdf',
+        accessBasis: 'user_provided',
+        confidence: 0.9,
+        matchScore: 1,
+      },
+      {
+        book: { ...EXAMPLE_BOOK, title: 'Fixture Book' },
+        policy: qbitPolicy(),
+      },
+    );
+
+    expect(selection.selected).toBeNull();
+    expect(selection.rejectionReason).toContain('No eligible top-surface PDF');
+    expect(selection.rejectionReason).toContain('nested below');
   });
 });

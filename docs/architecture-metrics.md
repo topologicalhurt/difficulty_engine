@@ -47,6 +47,15 @@ Baseline captured after Pass 0 of the maintainability campaign.
 - Duplicate top-level symbols: none detected
 - Core graph change: moved topological ordering, prerequisite child maps, and weighted critical-path length calculation into `src/core/relation-graph-utils.ts` so schedule ordering and descendant selectors share one DAG traversal implementation.
 
+## 2026-05-13 Pass 5
+
+- Source files: 344
+- Total source lines: 42,929
+- Files over 250 lines: 34
+- Files over 500 lines: 0
+- Duplicate top-level symbols: none detected
+- Document acquisition change: centralized qBittorrent top-surface PDF selection and trust rejection in `src/infra/qbittorrent-selection.ts`; acquisition now only applies side effects after the pure selector chooses or rejects a trusted PDF.
+
 ## Tracking Rules
 
 - Update this file after architecture-focused cleanup passes that materially change file counts, near-limit modules, or duplicate-symbol output.
