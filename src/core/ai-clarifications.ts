@@ -80,11 +80,11 @@ export function answeredClarificationMessage(
 export function normalizeAiClarificationResponse(
   response: AiClarificationProviderResponse,
 ): NormalizedAiClarificationResponse {
-  const legacyQuestion = boundedText(response.question);
+  const singleQuestion = boundedText(response.question);
   const questions = (
     Array.isArray(response.questions)
       ? response.questions.map((question) => boundedText(question))
-      : [legacyQuestion]
+      : [singleQuestion]
   )
     .filter(Boolean)
     .slice(0, AI_CLARIFICATION_QUESTION_LIMIT);

@@ -1,155 +1,28 @@
 import type { AppState, AppView, PlannerStoreEvent, UiState } from './app';
 import type {
   AiConnectionSettings,
-  AiClarificationProviderResponse,
-  AiClarificationRequest,
-  AiRecommendationProviderResponse,
-  AiRecommendationRequest,
   AiRecommendationSettings,
-  AiRelationshipProviderResponse,
-  AiRelationshipRequest,
-  BookSearchSuggestion,
-  BookDocumentBlockedCandidateOption,
-  BookDocumentCandidateOption,
-  BookDocumentSearchAttempt,
-  BookDocumentRef,
-  BookEnrichment,
+  AiRelationshipWizardState,
+  AutopilotWizardState,
   BookRecord,
+  BookSearchSuggestion,
   ConstraintSet,
-  EnrichmentFieldProvenance,
   PlannerProjectV1,
   QbittorrentConnectionSettings,
-  QbittorrentPluginInfo,
   ReadingScopeSettings,
   SourceSettings,
-  AutopilotWizardState,
-  AiRelationshipWizardState,
 } from './domain';
 import type { EngineSnapshot } from './snapshot';
-
-export interface Logger {
-  debug(message: string, context?: Record<string, unknown>): void;
-  info(message: string, context?: Record<string, unknown>): void;
-  warn(message: string, context?: Record<string, unknown>): void;
-  error(message: string, context?: Record<string, unknown>): void;
-}
-
-export interface Clock {
-  now(): Date;
-  timelineStart(project: PlannerProjectV1): Date;
-  slotToDate(slot: number, start: Date, project: PlannerProjectV1): Date;
-  dateKey(date: Date): string;
-  totalTimelineSlots(project: PlannerProjectV1): number;
-  realWeeks(project: PlannerProjectV1): number;
-}
-
-export interface PersistenceAdapter {
-  load(): Promise<PlannerProjectV1 | undefined> | PlannerProjectV1 | undefined;
-  save(project: PlannerProjectV1): Promise<void> | void;
-}
-
-export interface EnrichmentRequest {
-  book: BookRecord;
-  sourceSettings: SourceSettings;
-  qbittorrentConnection?: QbittorrentConnectionSettings;
-  signal?: AbortSignal;
-}
-
-export interface EnrichmentResponse {
-  cacheKey: string;
-  bookPatch: Partial<BookRecord>;
-  enrichment: BookEnrichment;
-  provenance: EnrichmentFieldProvenance[];
-}
-
-export interface SearchBooksRequest {
-  query: string;
-  sourceSettings: SourceSettings;
-  offset?: number;
-  limit?: number;
-  signal?: AbortSignal;
-}
-
-export interface SearchBooksResponse {
-  results: BookSearchSuggestion[];
-  hasMore: boolean;
-  nextOffset: number;
-  mode: 'isbn' | 'search';
-}
-
-export interface EnrichmentProvider {
-  fetchBook(request: EnrichmentRequest): Promise<EnrichmentResponse>;
-  searchBooks(request: SearchBooksRequest): Promise<SearchBooksResponse>;
-}
-
-export interface AiRecommendationProvider {
-  recommend(
-    request: AiRecommendationRequest,
-  ): Promise<AiRecommendationProviderResponse>;
-  clarifyRecommendation?(
-    request: AiClarificationRequest,
-  ): Promise<AiClarificationProviderResponse>;
-  reorganizeRelationships?(
-    request: AiRelationshipRequest,
-  ): Promise<AiRelationshipProviderResponse>;
-}
-
-export interface LocalIntegrationSettingsAdapter {
-  loadQbittorrentConnection(): QbittorrentConnectionSettings | undefined;
-  saveQbittorrentConnection(settings: QbittorrentConnectionSettings): void;
-  loadAiConnection(): AiConnectionSettings | undefined;
-  saveAiConnection(settings: AiConnectionSettings): void;
-}
-
-export interface QbittorrentIntegrationService {
-  testConnection(settings: QbittorrentConnectionSettings): Promise<void>;
-  listPlugins(
-    settings: QbittorrentConnectionSettings,
-  ): Promise<QbittorrentPluginInfo[]>;
-  findDocumentCandidates(
-    settings: QbittorrentConnectionSettings,
-    request: EnrichmentRequest,
-  ): Promise<{
-    candidates: BookDocumentCandidateOption[];
-    blockedCandidates: BookDocumentBlockedCandidateOption[];
-    searchAttempts: BookDocumentSearchAttempt[];
-  }>;
-  acquireDocumentCandidate(
-    settings: QbittorrentConnectionSettings,
-    request: EnrichmentRequest,
-    candidateId: string,
-    candidates: BookDocumentCandidateOption[],
-  ): Promise<BookDocumentRef | null>;
-  deleteTorrent(
-    settings: QbittorrentConnectionSettings,
-    hash: string,
-    deleteFiles: boolean,
-  ): Promise<void>;
-}
-
-export interface PlannerEngine {
-  computeSnapshot(project: PlannerProjectV1): EngineSnapshot;
-}
-
-export interface PlannerComputeAdapter {
-  readonly mode: 'sync' | 'worker';
-  shouldDefer?(project: PlannerProjectV1): boolean;
-  compute(project: PlannerProjectV1): Promise<EngineSnapshot>;
-  cancelCurrent(): void;
-  destroy?(): void;
-}
-
-export interface PlannerPerformanceSample {
-  bookCount: number;
-  relationCount: number;
-  visibleDomNodes: number;
-  snapshotMs: number;
-  selectorMs: number;
-  renderMs: number;
-  workerMs: number;
-  longTaskCount: number;
-  timestamp: number;
-}
+import type {
+  AiRecommendationProvider,
+  Clock,
+  EnrichmentProvider,
+  LocalIntegrationSettingsAdapter,
+  Logger,
+  PlannerComputeAdapter,
+  PlannerEngine,
+  QbittorrentIntegrationService,
+} from './services';
 
 export interface PlannerStoreSelectors {
   getState(): AppState;
@@ -167,10 +40,7 @@ export interface PlannerStoreCommands {
   setGanttView(ganttView: UiState['ganttView']): void;
   setGanttZoom(ganttZoom: number): void;
   setPlanColorMode(planColorMode: UiState['planColorMode']): void;
-  setPlanSectionOpen(
-    section: keyof UiState['planSections'],
-    open: boolean,
-  ): void;
+  setPlanSectionOpen(section: keyof UiState['planSections'], open: boolean): void;
   setLibraryListWidth(widthPx: number): void;
   setProjectBackupsEnabled(enabled: boolean): void;
   dismissWarningCode(code: string): void;
@@ -198,9 +68,7 @@ export interface PlannerStoreCommands {
     id: string,
     patch: Partial<BookRecord['readingScope']>,
   ): void;
-  updateReadingScopeSettings(
-    patch: Partial<ReadingScopeSettings>,
-  ): void;
+  updateReadingScopeSettings(patch: Partial<ReadingScopeSettings>): void;
   moveBook(id: string, direction: 'up' | 'down'): void;
   removeBook(id: string): void;
   deferCalendarEntry(dateKey: string, bookId: string): void;
@@ -296,28 +164,4 @@ export interface CreatePlannerStoreOptions {
   qbittorrentService?: QbittorrentIntegrationService;
   logger: Logger;
   clock: Clock;
-}
-
-export interface MountPlannerAppOptions {
-  container: HTMLElement;
-  initialProject?: PlannerProjectV1;
-  persistence?: PersistenceAdapter;
-  enrichmentProvider: EnrichmentProvider;
-  aiRecommendationProvider?: AiRecommendationProvider;
-  localSettings?: LocalIntegrationSettingsAdapter;
-  qbittorrentService?: QbittorrentIntegrationService;
-  logger: Logger;
-  clock: Clock;
-  computeMode?: 'auto' | 'sync' | 'worker';
-  debugUi?: boolean;
-  performance?: {
-    workerThresholdBooks?: number;
-    collectMetrics?: boolean;
-  };
-  onPerformanceSample?: (sample: PlannerPerformanceSample) => void;
-}
-
-export interface PlannerAppHandle {
-  store: PlannerStore;
-  unmount(): Promise<void>;
 }

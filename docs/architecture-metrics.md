@@ -20,6 +20,15 @@ Baseline captured after Pass 0 of the maintainability campaign.
   - `src/infra/qbittorrent-search.ts` - 434 lines
   - `src/app/wiring/ui-contracts.ts` - 426 lines
 
+## 2026-05-13 Pass 2
+
+- Source files: 343
+- Total source lines: 42,900
+- Files over 250 lines: 34
+- Files over 500 lines: 0
+- Duplicate top-level symbols: none detected
+- Type boundary change: split mixed service/store/mount contracts out of `src/core/types/interfaces.ts` into focused type modules exported by the canonical `src/core/types.ts` barrel.
+
 ## Tracking Rules
 
 - Update this file after architecture-focused cleanup passes that materially change file counts, near-limit modules, or duplicate-symbol output.

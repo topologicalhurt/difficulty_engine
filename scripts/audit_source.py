@@ -366,7 +366,7 @@ def main() -> int:
         )
         if "CONSTRAINT_FIELDS.map" not in contracts_text:
             failures.append("Wiring registry must derive constraint contracts from CONSTRAINT_FIELDS.")
-        interfaces_text = read_text(SRC / "core" / "types" / "interfaces.ts")
+        interfaces_text = read_text(SRC / "core" / "types" / "store.ts")
         commands_block_match = re.search(
             r"export interface PlannerStoreCommands \{(?P<body>.*?)\n\}",
             interfaces_text,
