@@ -245,7 +245,6 @@ export interface AutopilotProposal {
   mode: AutopilotGoal;
   summary: string;
   constraintPatch: Record<string, unknown>;
-  readingScopeSettingsPatch: Record<string, unknown>;
   bookPatches: Record<string, Record<string, unknown>>;
   reasons: string[];
   unchangedReasons: string[];

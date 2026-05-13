@@ -61,7 +61,6 @@ export interface PlannerOptimizationPlan {
   label: string;
   summary: string;
   constraintPatch: Partial<ConstraintSet>;
-  readingScopeSettingsPatch: Record<string, unknown>;
   objectiveBreakdown: PlannerOptimizationObjectiveBreakdown;
   finishDate: string | null;
   spanWeeks: number;

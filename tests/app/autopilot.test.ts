@@ -289,4 +289,48 @@ describe('autopilot proposal flow', () => {
     expect(calls).toBeGreaterThan(0);
     expect(store.selectors.getState().ui.autopilotProposal).not.toBeNull();
   });
+
+  it('optimizes and applies only planner settings, not reading scope', async () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    const evaluatedScopeModes: Array<string | undefined> = [];
+    const computeAdapter: PlannerComputeAdapter = {
+      mode: 'worker',
+      shouldDefer: () => true,
+      async compute(project) {
+        evaluatedScopeModes.push(project.readingScopeSettings?.defaultMode);
+        return engine.computeSnapshot(project);
+      },
+      cancelCurrent: () => undefined,
+    };
+    const store = makeStore({
+      computeAdapter,
+      initialProject: makeProject({
+        books: {
+          a: makeBook({ id: 'a', title: 'Autopilot A' }),
+          b: makeBook({ id: 'b', title: 'Autopilot B' }),
+        },
+        projectPatch: {
+          readingScopeSettings: {
+            defaultMode: 'include_all',
+            skipKinds: [],
+          },
+        },
+      }),
+    });
+    const originalScopeSettings =
+      store.selectors.getProject().readingScopeSettings;
+
+    store.commands.updateAutopilotDraft({ settingsPolicy: 'fresh_optimal' });
+    await store.commands.solveProjectForMe();
+    store.commands.applyAutopilotProposal();
+
+    expect(evaluatedScopeModes.length).toBeGreaterThan(0);
+    expect(new Set(evaluatedScopeModes)).toEqual(new Set(['include_all']));
+    expect(store.selectors.getProject().readingScopeSettings).toEqual(
+      originalScopeSettings,
+    );
+  });
 });

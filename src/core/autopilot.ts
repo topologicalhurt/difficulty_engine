@@ -229,7 +229,6 @@ function planFromCandidate(
     label: spec.label,
     summary: spec.summary,
     constraintPatch: spec.patch,
-    readingScopeSettingsPatch: { defaultMode: 'skip_non_core' },
     objectiveBreakdown,
     finishDate: finishDateKey(snapshot),
     spanWeeks: round1(snapshot.scheduleStats.spanWeeks),
@@ -352,7 +351,6 @@ export async function createAutopilotProposal(
     mode: wizard.goal,
     summary: `${bestPlan.label} is the recommended plan under ${wizard.deadlinePolicy} deadline policy.`,
     constraintPatch: bestPlan.constraintPatch,
-    readingScopeSettingsPatch: bestPlan.readingScopeSettingsPatch,
     bookPatches: {},
     reasons: [
       `Solved ${evaluatedPlans.length} candidate policies with lexicographic objectives: ${SOFT_OBJECTIVE_ORDER.join(' -> ')}.`,

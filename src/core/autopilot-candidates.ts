@@ -1,6 +1,5 @@
 import { createDefaultConstraints } from './default-project';
 import { horizonMonthsFromEndDate } from './planning-window';
-import { readingScopeSettingsForProject } from './reading-scope';
 import type {
   AutopilotGoal,
   AutopilotWizardState,
@@ -147,10 +146,6 @@ export function applyAutopilotCandidate(
     constraints: {
       ...project.constraints,
       ...patch,
-    },
-    readingScopeSettings: {
-      ...readingScopeSettingsForProject(project),
-      defaultMode: 'skip_non_core',
     },
   };
 }

@@ -342,7 +342,6 @@ export function renderAutopilotCard(
             text: JSON.stringify(
               {
                 constraints: proposal.constraintPatch,
-                readingScope: proposal.readingScopeSettingsPatch,
                 proofScope: proposal.optimization.proofScope,
               },
               null,
