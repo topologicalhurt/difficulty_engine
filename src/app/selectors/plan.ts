@@ -1,4 +1,9 @@
-import { plannerClock, studyDateFromSlot } from '../../core/time';
+import {
+  localDateKey,
+  parseLocalDateKey,
+  plannerClock,
+  studyDateFromSlot,
+} from '../../core/time';
 import {
   formatWholeNumber,
   formatWholePercent,
@@ -44,11 +49,32 @@ export interface GanttViewModel {
   weekCount: number;
 }
 
+export interface CurrentEpochBookView {
+  id: string;
+  short: string;
+  displayGroup: string;
+  minutes: number;
+  pages: number;
+  selected: boolean;
+  done: boolean;
+}
+
+export interface CurrentEpochViewModel {
+  title: string;
+  dateKey: string | null;
+  label: string;
+  modeLabel: string;
+  capacity: number;
+  books: CurrentEpochBookView[];
+  hint: string;
+}
+
 export interface PlanViewModel {
   selectedBookId: string | null;
   selectedCalendarEntry: AppState['ui']['selectedCalendarEntry'];
   emptyDayPolicy: AppState['project']['constraints']['emptyDayPolicy'];
   stats: StatCardView[];
+  currentEpoch: CurrentEpochViewModel;
   gantt: GanttViewModel;
   calendarWeeks: CalendarWeek[];
   colors: PlanColorMetadata;
@@ -142,6 +168,46 @@ function selectGantt(state: AppState): GanttViewModel {
   };
 }
 
+function selectCurrentEpoch(state: AppState): CurrentEpochViewModel {
+  const dates = Object.keys(state.snapshot.dayPlan.byDate).sort();
+  const todayKey = localDateKey();
+  const dateKey =
+    dates.find((candidate) => candidate >= todayKey) ??
+    (dates.length ? dates[dates.length - 1] : null);
+  const entries = dateKey ? (state.snapshot.dayPlan.byDate[dateKey] ?? []) : [];
+  const modeLabel =
+    state.project.constraints.dailyBookMode === 'daily_cohort'
+      ? 'Fixed N-book learning epoch'
+      : 'Rotating eligible pool';
+  const title =
+    dateKey === todayKey
+      ? 'Current epoch'
+      : dateKey && dateKey > todayKey
+        ? 'Next study epoch'
+        : 'Last planned epoch';
+  return {
+    title,
+    dateKey,
+    label: dateKey
+      ? formatPlanFullDate(parseLocalDateKey(dateKey))
+      : 'No planned study date',
+    modeLabel,
+    capacity: state.project.constraints.par,
+    books: entries.map((entry) => ({
+      id: entry.bookId,
+      short: entry.short,
+      displayGroup: entry.displayGroup,
+      minutes: entry.mins,
+      pages: entry.readPages + entry.skimPages,
+      selected: state.ui.selectedBookId === entry.bookId,
+      done: entry.done,
+    })),
+    hint: entries.length
+      ? `${entries.length}/${state.project.constraints.par} active book slot(s) for this epoch.`
+      : 'No active books are scheduled for this date.',
+  };
+}
+
 function selectPlanBookJumpOptions(state: AppState): Array<{
   id: string;
   label: string;
@@ -176,6 +242,7 @@ const selectPlanViewModelMemo = memoizeSelector(
       selectedCalendarEntry: state.ui.selectedCalendarEntry,
       emptyDayPolicy: state.project.constraints.emptyDayPolicy,
       stats: selectPlanStats(state, progress.overall),
+      currentEpoch: selectCurrentEpoch(state),
       gantt: selectGantt(state),
       calendarWeeks: buildCalendarWeeks(state),
       colors: selectPlanColors(state),

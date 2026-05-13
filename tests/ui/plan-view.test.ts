@@ -38,6 +38,16 @@ describe('plan view', () => {
     expect(sidePanel?.firstElementChild?.textContent).toContain('Log progress');
   });
 
+  it('shows the current or next study epoch in the Plan side panel', () => {
+    const store = makeStore();
+    const view = renderPlanView(store.selectors.getState(), store);
+
+    expect(view.textContent).toMatch(
+      /Current epoch|Next study epoch|Last planned epoch/,
+    );
+    expect(view.textContent).toContain('active book slot');
+  });
+
   it('wires Plan jump controls to book selection', () => {
     const store = makeStore();
     const view = renderPlanView(store.selectors.getState(), store);

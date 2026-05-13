@@ -2,6 +2,7 @@ import { selectPlanViewModel, type StatCardView } from '../app/selectors/plan';
 import type { AppState, PlannerStore } from '../core/types';
 import { el } from './dom';
 import { renderSelectedCalendarLogPanel } from './calendar-log-panel';
+import { renderCurrentEpochPanel } from './current-epoch-panel';
 import { renderLibrarySearchPanel } from './library-search-panel';
 import { renderCalendar } from './plan-calendar';
 import { renderGantt } from './plan-gantt';
@@ -65,6 +66,7 @@ export function renderPlanView(
         'div',
         { className: 'planner-side-column' },
         renderSelectedCalendarLogPanel(viewModel, store),
+        renderCurrentEpochPanel(viewModel, store),
         renderWarningCenter(
           viewModel.warnings,
           viewModel.hiddenWarningCount,
