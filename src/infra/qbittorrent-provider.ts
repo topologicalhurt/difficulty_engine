@@ -43,7 +43,10 @@ import type { TorrentInfo } from './qbittorrent-types';
 
 type QBittorrentProvider = DocumentAcquisitionProvider & {
   listPlugins(): Promise<QbittorrentPluginInfo[]>;
-  findCandidateSearch(request: DocumentAcquisitionRequest): Promise<{
+  findCandidateSearch(
+    request: DocumentAcquisitionRequest,
+    customQuery?: string,
+  ): Promise<{
     candidates: DocumentCandidate[];
     blockedCandidates: BookDocumentBlockedCandidateOption[];
     searchAttempts: BookDocumentSearchAttempt[];
@@ -275,7 +278,10 @@ export function createQBittorrentProvider(
         request.book.documentAcquisition,
       );
     },
-    async findCandidateSearch(request: DocumentAcquisitionRequest): Promise<{
+    async findCandidateSearch(
+      request: DocumentAcquisitionRequest,
+      customQuery?: string,
+    ): Promise<{
       candidates: DocumentCandidate[];
       blockedCandidates: BookDocumentBlockedCandidateOption[];
       searchAttempts: BookDocumentSearchAttempt[];
@@ -287,7 +293,7 @@ export function createQBittorrentProvider(
       const search = qbittorrentSearchPluginsEnabled(
         request.policy.sourceSettings,
       )
-        ? await pluginSearchCandidates(client, request)
+        ? await pluginSearchCandidates(client, request, customQuery)
         : { candidates: [], blockedCandidates: [], searchAttempts: [] };
       const localCandidates = await localTorrentCandidates(
         client,
@@ -337,6 +343,7 @@ export function createQBittorrentIntegrationService(
     async findDocumentCandidates(
       settings: QbittorrentConnectionSettings,
       request: EnrichmentRequest,
+      searchQuery?: string,
     ): Promise<{
       candidates: BookDocumentCandidateOption[];
       blockedCandidates: BookDocumentBlockedCandidateOption[];
@@ -347,6 +354,7 @@ export function createQBittorrentIntegrationService(
       );
       const search = await provider.findCandidateSearch(
         acquisitionRequest(request, settings),
+        searchQuery,
       );
       return {
         candidates: search.candidates.map(candidateOption),

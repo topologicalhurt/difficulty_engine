@@ -142,7 +142,7 @@ describe('library view', () => {
     expect(text).toContain('Delete metadata');
     expect(
       view.querySelector(
-        'input[placeholder="Paste magnet link or HTTPS .torrent URL"]',
+        'input[placeholder="Paste magnet/HTTPS .torrent URL or type custom search"]',
       ),
     ).toBeTruthy();
   });

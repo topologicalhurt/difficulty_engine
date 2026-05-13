@@ -243,12 +243,16 @@ export function createDocumentCommands(
         });
       }
     },
-    async refreshBookDocumentCandidates(bookId): Promise<void> {
+    async refreshBookDocumentCandidates(
+      bookId: string,
+      searchQuery?: string,
+    ): Promise<void> {
       const state = context.getState();
       const book = state.project.library.books[bookId];
       if (!book) return;
       const sequence = candidateRequests.begin();
       const contextKey = bookCandidateContextKey(book);
+      const normalizedSearchQuery = searchQuery?.trim();
       context.commitUi('document.candidates', {
         documentCandidates: {
           bookId,
@@ -269,6 +273,7 @@ export function createDocumentCommands(
             sourceSettings: state.project.sourceSettings,
             qbittorrentConnection: state.ui.qbittorrentConnection,
           },
+          normalizedSearchQuery || undefined,
         );
         if (!candidateRequests.isCurrent(sequence)) return;
         const currentBook = context.getState().project.library.books[bookId];

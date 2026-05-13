@@ -15,7 +15,11 @@ import {
   getPendingBooleanOption,
   setPendingBooleanOption,
 } from './pending-action-options';
-
+import {
+  blockedCandidateCanBeAdded,
+  documentSourceForRefresh,
+  seedersLabel,
+} from './document-source-actions';
 function statusTone(
   status: BookDocumentRef['status'],
 ): 'neutral' | 'success' | 'warn' | 'danger' {
@@ -34,10 +38,7 @@ function displayDocumentStatus(
 }
 
 function documentSummary(document: BookDocumentRef): string {
-  const seeders =
-    document.availability.seeders == null
-      ? 'unknown seeders'
-      : `${document.availability.seeders} seeders`;
+  const seeders = seedersLabel(document.availability.seeders, document.availability);
   const progress = formatPercent(document.availability.progress);
   const eta =
     document.availability.etaSeconds == null
@@ -109,6 +110,15 @@ function documentActions(
         onClick: () =>
           void store.commands.readBookDocument(book.id, document.id),
       }),
+      button('Refresh status', {
+        className: 'ghost-button',
+        disabled: !documentSourceForRefresh(document),
+        onClick: () =>
+          void store.commands.addBookTorrentSource(
+            book.id,
+            documentSourceForRefresh(document),
+          ),
+      }),
       button('Remove', {
         className: 'ghost-button danger-button',
         onClick: () =>
@@ -155,8 +165,19 @@ function renderCandidateBrowser(
       textInputControl({
         value: manualValue,
         focusKey: `document-manual-source:${book.id}`,
-        placeholder: 'Paste magnet link or HTTPS .torrent URL',
+        placeholder: 'Paste magnet/HTTPS .torrent URL or type custom search',
         onInput: (value) => store.commands.setBookDocumentManualSource(value),
+      }),
+      button('Search qBittorrent', {
+        className: 'ghost-button',
+        disabled:
+          (activeForBook && browser.status === 'loading') ||
+          !manualValue.trim(),
+        onClick: () =>
+          void store.commands.refreshBookDocumentCandidates(
+            book.id,
+            manualValue,
+          ),
       }),
       button('Use manual source', {
         className: 'ghost-button',
@@ -244,9 +265,7 @@ function renderBlockedCandidates(
           el('div', {
             className: 'muted-copy',
             text: [
-              candidate.seeders == null
-                ? 'unknown seeders'
-                : `${candidate.seeders} seeders`,
+              seedersLabel(candidate.seeders, candidate.availability),
               candidate.matchScore == null
                 ? null
                 : `match ${formatOneDecimal(candidate.matchScore * 10)}/10`,
@@ -257,15 +276,20 @@ function renderBlockedCandidates(
               .join(' · '),
           }),
           el('div', { className: 'muted-copy', text: candidate.sourceUrl }),
-          candidate.retryableAsUserOwned
-            ? button('Use as user-owned source', {
-                className: 'ghost-button',
-                onClick: () =>
-                  void store.commands.addBookTorrentSource(
-                    book.id,
-                    candidate.sourceUrl,
-                  ),
-              })
+          blockedCandidateCanBeAdded(candidate)
+            ? button(
+                candidate.retryableAsUserOwned
+                  ? 'Use as user-owned source'
+                  : 'Add blocked result',
+                {
+                  className: 'ghost-button',
+                  onClick: () =>
+                    void store.commands.addBookTorrentSource(
+                      book.id,
+                      candidate.sourceUrl,
+                    ),
+                },
+              )
             : null,
         ),
       ),
@@ -462,7 +486,7 @@ export function renderBookDocumentsPanel(
                 : null,
               documentActions(book, document, store),
             );
-          }),
+          })
         )
       : emptyState(
           'No offline documents yet',

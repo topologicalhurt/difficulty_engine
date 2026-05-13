@@ -106,6 +106,44 @@ function sourceCanBeManuallyAdded(value: string): boolean {
   }
 }
 
+function numberFromSearchResult(
+  result: SearchResult,
+  keys: string[],
+): number | null {
+  const raw = result as Record<string, unknown>;
+  for (const key of keys) {
+    const value = raw[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return Math.max(0, value);
+    }
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return Math.max(0, parsed);
+    }
+  }
+  return null;
+}
+
+function seedersFromSearchResult(result: SearchResult): number | null {
+  return numberFromSearchResult(result, [
+    'nbSeeders',
+    'seeders',
+    'seeds',
+    'num_seeds',
+    'numSeeds',
+  ]);
+}
+
+function peersFromSearchResult(result: SearchResult): number | null {
+  return numberFromSearchResult(result, [
+    'nbLeechers',
+    'leechers',
+    'peers',
+    'num_leechs',
+    'numLeechs',
+  ]);
+}
+
 function searchResultEvidenceText(result: SearchResult): string {
   return [
     result.fileName,
@@ -190,6 +228,12 @@ function pushQuery(
   if (!compact || seen.has(compact)) return;
   seen.add(compact);
   queries.push({ intent, pattern: compact });
+}
+
+export function customQbittorrentSearchQuery(
+  pattern: string,
+): QbittorrentSearchQuery {
+  return { intent: 'custom_query', pattern: compactSearchText(pattern) };
 }
 
 export function qbittorrentSearchQueries(
@@ -283,8 +327,9 @@ function blockedCandidate(
   const title = result.fileName || request.book.title;
   const url = sourceUrl(result);
   if (!url && !title) return null;
-  const seeders = Math.max(0, result.nbSeeders ?? 0);
-  const peers = Math.max(0, result.nbLeechers ?? 0);
+  const seeders = seedersFromSearchResult(result);
+  const peers = peersFromSearchResult(result);
+  const numericSeeders = seeders ?? 0;
   const matchScore = bookMatchScore(title, request);
   const contentKind = contentKindFromUrl(title || url);
   const retryableAsUserOwned =
@@ -294,7 +339,7 @@ function blockedCandidate(
     !reasons.includes('qBittorrent document acquisition requires PDF files') &&
     !reasons.includes('plugin error') &&
     sourceCanBeManuallyAdded(url) &&
-    seeders >= MIN_PLUGIN_SEEDERS &&
+    numericSeeders >= MIN_PLUGIN_SEEDERS &&
     matchScore >= MIN_USER_OWNED_RETRY_SCORE &&
     hasRequiredAuthorEvidence(result, request) &&
     !BAD_FILE_NAME_PATTERN.test(title);
@@ -342,7 +387,9 @@ export function classifySearchResults(
   results.forEach((result, index) => {
     const title = result.fileName || request.book.title;
     const detectedContentKind = contentKindFromUrl(title || sourceUrl(result));
-    const seeders = Math.max(0, result.nbSeeders ?? 0);
+    const seeders = seedersFromSearchResult(result);
+    const peers = peersFromSearchResult(result);
+    const numericSeeders = seeders ?? 0;
     const matchScore = bookMatchScore(title, request);
     const pluginName =
       meta.plugin || searchResultPluginName(result, allowedPlugins);
@@ -360,7 +407,7 @@ export function classifySearchResults(
       detectedContentKind !== 'unknown' && detectedContentKind !== 'pdf'
         ? 'qBittorrent document acquisition requires PDF files'
         : '',
-      seeders < MIN_PLUGIN_SEEDERS ? 'zero seeders' : '',
+      numericSeeders < MIN_PLUGIN_SEEDERS ? 'zero seeders' : '',
       matchScore < MIN_TORRENT_MATCH_SCORE ? 'weak title match' : '',
       !hasRequiredAuthorEvidence(result, request) ? 'author mismatch' : '',
       !sourceUrl(result) ? 'missing source URL' : '',
@@ -385,14 +432,14 @@ export function classifySearchResults(
       accessBasis,
       confidence: Math.min(
         0.96,
-        0.42 + matchScore * 0.42 + Math.min(0.12, seeders / 100),
+        0.42 + matchScore * 0.42 + Math.min(0.12, numericSeeders / 100),
       ),
       matchScore,
       seeders,
-      peers: Math.max(0, result.nbLeechers ?? 0),
+      peers,
       availability: {
         seeders,
-        peers: Math.max(0, result.nbLeechers ?? 0),
+        peers,
         progress: 0,
         state: 'search-result',
       },
@@ -405,7 +452,7 @@ export function classifySearchResults(
         candidate,
         contentKindPriorityForPreference(request.policy.contentPreference),
       ),
-      qualityReason: `${seeders} seeder(s), match ${Math.round(matchScore * 100)}%.`,
+      qualityReason: `${numericSeeders} seeder(s), match ${Math.round(matchScore * 100)}%.`,
     });
   });
   return { candidates, blockedCandidates };

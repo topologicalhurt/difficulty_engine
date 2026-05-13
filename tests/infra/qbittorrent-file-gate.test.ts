@@ -244,21 +244,24 @@ describe('qBittorrent selected file gate', () => {
       peers: 4,
     };
 
-    await expect(
-      provider.acquire(candidate, {
-        book: {
-          ...EXAMPLE_BOOK,
-          title: 'Functional Analysis',
-          authors: ['Elias Stein'],
-          sourcePath: null,
-        },
-        policy: {
-          ...defaultDocumentAcquisitionPolicy(),
-          enabled: true,
-          sourceSettings,
-        },
-      }),
-    ).rejects.toThrow('Torrent metadata is not available yet');
+    const acquired = await provider.acquire(candidate, {
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Functional Analysis',
+        authors: ['Elias Stein'],
+        sourcePath: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+        sourceSettings,
+      },
+    });
+
+    expect(acquired?.documentRef?.status).toBe('queued');
+    expect(acquired?.documentRef?.availability.reason).toContain(
+      'has not exposed its file list yet',
+    );
     expect(priorityCalls).toEqual([]);
     expect(resumeCalls).toEqual([]);
   });
