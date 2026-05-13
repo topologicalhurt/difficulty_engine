@@ -5,9 +5,10 @@ import type {
   PlannerProjectV1,
   PlannerStoreCommands,
 } from '../core/types';
+import { documentGreylistKey } from '../core/document-acquisition-state';
 import { bridgeEndpoint } from '../infra/document-bridge-url';
 import type { StoreCommandContext } from './store-command-context';
-import { documentGreylistKey } from '../core/document-acquisition-state';
+import { createStoreRequestSequencer } from './store-request-sequencer';
 import {
   bookCandidateContextKey,
   deleteDocumentContent,
@@ -60,8 +61,8 @@ export function createDocumentCommands(
   | 'readBookDocument'
   | 'closeBookDocumentReader'
 > {
-  let documentReadSequence = 0;
-  let candidateRequestSequence = 0;
+  const documentReads = createStoreRequestSequencer();
+  const candidateRequests = createStoreRequestSequencer();
 
   async function openOrRevealBookDocument(
     bookId: string,
@@ -246,7 +247,7 @@ export function createDocumentCommands(
       const state = context.getState();
       const book = state.project.library.books[bookId];
       if (!book) return;
-      const sequence = (candidateRequestSequence += 1);
+      const sequence = candidateRequests.begin();
       const contextKey = bookCandidateContextKey(book);
       context.commitUi('document.candidates', {
         documentCandidates: {
@@ -269,7 +270,7 @@ export function createDocumentCommands(
             qbittorrentConnection: state.ui.qbittorrentConnection,
           },
         );
-        if (sequence !== candidateRequestSequence) return;
+        if (!candidateRequests.isCurrent(sequence)) return;
         const currentBook = context.getState().project.library.books[bookId];
         if (
           !currentBook ||
@@ -299,7 +300,7 @@ export function createDocumentCommands(
           },
         });
       } catch (error) {
-        if (sequence !== candidateRequestSequence) return;
+        if (!candidateRequests.isCurrent(sequence)) return;
         context.commitUi('document.candidates', {
           documentCandidates: {
             bookId,
@@ -425,7 +426,7 @@ export function createDocumentCommands(
       const state = context.getState();
       const resolved = bookDocument(state.project, bookId, documentId);
       if (!resolved) return;
-      const requestSequence = (documentReadSequence += 1);
+      const requestSequence = documentReads.begin();
       context.commitUi('ui.documentReader', {
         documentReader: {
           bookId,
@@ -445,7 +446,7 @@ export function createDocumentCommands(
         );
         if (!response.ok) throw new Error(await response.text());
         const text = await response.text();
-        if (requestSequence !== documentReadSequence) return;
+        if (!documentReads.isCurrent(requestSequence)) return;
         context.commitUi('ui.documentReader', {
           documentReader: {
             bookId,
@@ -457,7 +458,7 @@ export function createDocumentCommands(
           },
         });
       } catch (error) {
-        if (requestSequence !== documentReadSequence) return;
+        if (!documentReads.isCurrent(requestSequence)) return;
         context.commitUi('ui.documentReader', {
           documentReader: {
             bookId,
@@ -474,7 +475,7 @@ export function createDocumentCommands(
       }
     },
     closeBookDocumentReader(): void {
-      documentReadSequence += 1;
+      documentReads.invalidate();
       context.commitUi('ui.documentReader', {
         documentReader: {
           bookId: null,

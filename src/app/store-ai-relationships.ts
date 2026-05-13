@@ -13,6 +13,7 @@ import {
 } from './ai-recommendation-context';
 import { applyAiRelationshipProposalToProject } from './store-ai-relationship-apply';
 import type { StoreCommandContext } from './store-command-context';
+import { createStoreRequestSequencer } from './store-request-sequencer';
 
 export function createAiRelationshipCommands(
   context: StoreCommandContext,
@@ -24,17 +25,13 @@ export function createAiRelationshipCommands(
   | 'clearAiRelationshipProposal'
   | 'applyAiRelationshipProposal'
 > {
-  let activeRequestSequence = 0;
-
-  function isActiveRequest(sequence: number): boolean {
-    return sequence === activeRequestSequence;
-  }
+  const requests = createStoreRequestSequencer();
 
   return {
     updateAiRelationshipWizard(patch): void {
       const state = context.getState();
       const requestWasLoading = state.ui.aiRelationshipStatus.state === 'loading';
-      if (requestWasLoading) activeRequestSequence += 1;
+      if (requestWasLoading) requests.invalidate();
       context.commitUi('ai.relationshipWizard', {
         aiRelationshipWizard: normalizeAiRelationshipWizard(
           patch,
@@ -95,7 +92,7 @@ export function createAiRelationshipCommands(
         });
         return;
       }
-      const requestSequence = (activeRequestSequence += 1);
+      const requestSequence = requests.begin();
       const relationshipContext = buildAiRecommendationContext(state);
       const requestContextDigest = contextDigest(relationshipContext);
       const wizard = state.ui.aiRelationshipWizard;
@@ -124,7 +121,7 @@ export function createAiRelationshipCommands(
           clarifications: state.ui.aiClarificationMessages,
           prompt: state.ui.aiPrompt,
         });
-        if (!isActiveRequest(requestSequence)) return;
+        if (!requests.isCurrent(requestSequence)) return;
         const currentContextDigest = contextDigest(
           buildAiRecommendationContext(context.getState()),
         );
@@ -172,7 +169,7 @@ export function createAiRelationshipCommands(
                 },
         });
       } catch (error) {
-        if (!isActiveRequest(requestSequence)) return;
+        if (!requests.isCurrent(requestSequence)) return;
         context.commitUi('ai.relationshipRequest', {
           aiRelationshipStatus: {
             state: 'failed',
@@ -185,7 +182,7 @@ export function createAiRelationshipCommands(
       }
     },
     clearAiRelationshipProposal(): void {
-      activeRequestSequence += 1;
+      requests.invalidate();
       context.commitUi('ai.relationshipClear', {
         aiRelationshipProposal: null,
         aiRelationshipStatus: {

@@ -5,6 +5,7 @@ import type {
   PlannerStoreCommands,
 } from '../core/types';
 import type { StoreCommandContext } from './store-command-context';
+import { createStoreRequestSequencer } from './store-request-sequencer';
 
 export function createAutopilotCommands(
   context: StoreCommandContext,
@@ -16,10 +17,10 @@ export function createAutopilotCommands(
   | 'applyAutopilotProposal'
   | 'clearAutopilotProposal'
 > {
-  let autopilotRequestSeq = 0;
+  const requests = createStoreRequestSequencer();
   return {
     updateAutopilotDraft(patch): void {
-      autopilotRequestSeq += 1;
+      requests.invalidate();
       const state = context.getState();
       context.commitUi('autopilot.draft', {
         autopilotDraft: {
@@ -30,7 +31,7 @@ export function createAutopilotCommands(
       });
     },
     async solveProjectForMe(): Promise<void> {
-      const requestSeq = ++autopilotRequestSeq;
+      const requestSeq = requests.begin();
       const state = context.getState();
       const projectRevision = state.performance.projectRevision;
       const draft = state.ui.autopilotDraft;
@@ -61,7 +62,7 @@ export function createAutopilotCommands(
         );
         const latest = context.getState();
         if (
-          requestSeq !== autopilotRequestSeq ||
+          !requests.isCurrent(requestSeq) ||
           latest.performance.projectRevision !== projectRevision
         ) {
           return;
@@ -74,7 +75,7 @@ export function createAutopilotCommands(
           },
         });
       } catch (error) {
-        if (requestSeq !== autopilotRequestSeq) return;
+        if (!requests.isCurrent(requestSeq)) return;
         context.commitUi('autopilot.propose', {
           autopilotProposal: null,
           banner: {
@@ -122,7 +123,7 @@ export function createAutopilotCommands(
       );
     },
     clearAutopilotProposal(): void {
-      autopilotRequestSeq += 1;
+      requests.invalidate();
       context.commitUi('autopilot.clear', {
         autopilotProposal: null,
       });

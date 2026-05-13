@@ -24,6 +24,7 @@ import {
 } from './ai-recommendation-context';
 import { applyAiProposalToProject, hasApplicableAiProposal } from './store-ai-apply';
 import type { StoreCommandContext } from './store-command-context';
+import { createStoreRequestSequencer } from './store-request-sequencer';
 
 export function createAiRecommendationCommands(
   context: StoreCommandContext,
@@ -40,11 +41,7 @@ export function createAiRecommendationCommands(
   | 'clearAiRecommendation'
   | 'applyAiRecommendation'
 > {
-  let activeRequestSequence = 0;
-
-  function isActiveRequest(sequence: number): boolean {
-    return sequence === activeRequestSequence;
-  }
+  const requests = createStoreRequestSequencer();
 
   return {
     updateAiLocalSettings(patch): void {
@@ -53,7 +50,7 @@ export function createAiRecommendationCommands(
       const clarificationWasLoading =
         state.ui.aiClarificationStatus.state === 'loading';
       if (requestWasLoading || clarificationWasLoading) {
-        activeRequestSequence += 1;
+        requests.invalidate();
       }
       const patchedConnection = {
         ...state.ui.aiConnection,
@@ -105,7 +102,7 @@ export function createAiRecommendationCommands(
     },
     updateAiRecommendationSettings(patch): void {
       const state = context.getState();
-      activeRequestSequence += 1;
+      requests.invalidate();
       const nextProject = {
         ...state.project,
         aiRecommendationSettings: normalizeAiRecommendationSettings({
@@ -141,7 +138,7 @@ export function createAiRecommendationCommands(
       const clarificationWasLoading =
         state.ui.aiClarificationStatus.state === 'loading';
       if (requestWasLoading || clarificationWasLoading) {
-        activeRequestSequence += 1;
+        requests.invalidate();
       }
       context.commitUi('ai.prompt', {
         aiPrompt: normalizeAiPromptDraft(prompt),
@@ -226,7 +223,7 @@ export function createAiRecommendationCommands(
       const messages = normalizeAiClarificationMessages(
         state.ui.aiClarificationMessages,
       );
-      const requestSequence = (activeRequestSequence += 1);
+      const requestSequence = requests.begin();
       const recommendationContext = buildAiRecommendationContext(state);
       const requestContextDigest = contextDigest(recommendationContext);
       const requestSettingsRevision = state.ui.aiSettingsRevision;
@@ -248,7 +245,7 @@ export function createAiRecommendationCommands(
           context: recommendationContext,
           messages,
         });
-        if (!isActiveRequest(requestSequence)) return;
+        if (!requests.isCurrent(requestSequence)) return;
         const currentState = context.getState();
         const currentContextDigest = contextDigest(
           buildAiRecommendationContext(currentState),
@@ -298,7 +295,7 @@ export function createAiRecommendationCommands(
           },
         });
       } catch (error) {
-        if (!isActiveRequest(requestSequence)) return;
+        if (!requests.isCurrent(requestSequence)) return;
         context.commitUi('ai.clarificationRequest', {
           aiClarificationStatus: {
             state: 'failed',
@@ -311,7 +308,7 @@ export function createAiRecommendationCommands(
       }
     },
     clearAiClarification(): void {
-      activeRequestSequence += 1;
+      requests.invalidate();
       context.commitUi('ai.clarificationClear', {
         aiClarificationStatus: {
           state: 'idle',
@@ -373,7 +370,7 @@ export function createAiRecommendationCommands(
         });
         return;
       }
-      const requestSequence = (activeRequestSequence += 1);
+      const requestSequence = requests.begin();
       const recommendationContext = buildAiRecommendationContext(state);
       const requestContextDigest = contextDigest(recommendationContext);
       context.commitUi('ai.request', {
@@ -394,7 +391,7 @@ export function createAiRecommendationCommands(
           clarifications: state.ui.aiClarificationMessages,
           context: recommendationContext,
         });
-        if (!isActiveRequest(requestSequence)) return;
+        if (!requests.isCurrent(requestSequence)) return;
         const currentContextDigest = contextDigest(
           buildAiRecommendationContext(context.getState()),
         );
@@ -431,7 +428,7 @@ export function createAiRecommendationCommands(
               },
         });
       } catch (error) {
-        if (!isActiveRequest(requestSequence)) return;
+        if (!requests.isCurrent(requestSequence)) return;
         context.commitUi('ai.request', {
           aiStatus: {
             state: 'failed',
@@ -444,7 +441,7 @@ export function createAiRecommendationCommands(
       }
     },
     clearAiRecommendation(): void {
-      activeRequestSequence += 1;
+      requests.invalidate();
       context.commitUi('ai.clear', {
         aiProposal: null,
         aiStatus: {

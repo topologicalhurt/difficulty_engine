@@ -57,6 +57,23 @@ describe('wiring contracts', () => {
     });
   });
 
+  it('assigns each public command to one wiring owner', () => {
+    const store = makeStore();
+    const allowedMultiContractCommands = new Set(['updateConstraint']);
+    Object.keys(store.commands).forEach((command) => {
+      const contracts = WIRING_CONTRACTS.filter(
+        (contract) => contract.command === command,
+      );
+      if (allowedMultiContractCommands.has(command)) {
+        expect(
+          contracts.every((contract) => contract.id.startsWith('constraint.')),
+        ).toBe(true);
+        return;
+      }
+      expect(contracts.map((contract) => contract.id)).toHaveLength(1);
+    });
+  });
+
   it('classifies UI-only commands separately from snapshot-mutating commands', () => {
     const uiOnly = WIRING_CONTRACTS.filter(
       (contract) => contract.recomputePolicy === 'ui_only',

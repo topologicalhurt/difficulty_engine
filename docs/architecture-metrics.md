@@ -29,6 +29,15 @@ Baseline captured after Pass 0 of the maintainability campaign.
 - Duplicate top-level symbols: none detected
 - Type boundary change: split mixed service/store/mount contracts out of `src/core/types/interfaces.ts` into focused type modules exported by the canonical `src/core/types.ts` barrel.
 
+## 2026-05-13 Pass 3
+
+- Source files: 344
+- Total source lines: 42,916
+- Files over 250 lines: 34
+- Files over 500 lines: 0
+- Duplicate top-level symbols: none detected
+- Store command change: centralized one-shot async invalidation in `src/app/store-request-sequencer.ts` and tightened wiring tests so each public command has a single wiring owner, with the constraint matrix as the explicit exception.
+
 ## Tracking Rules
 
 - Update this file after architecture-focused cleanup passes that materially change file counts, near-limit modules, or duplicate-symbol output.

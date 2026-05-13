@@ -9,6 +9,7 @@ import type {
   QbittorrentConnectionSettings,
 } from '../core/types';
 import type { StoreCommandContext } from './store-command-context';
+import { createStoreRequestSequencer } from './store-request-sequencer';
 import {
   applySourceSettingsPatch,
   commitQbittorrentConnectionPatch,
@@ -25,29 +26,22 @@ export function createQbittorrentCommands(
   | 'refreshQbittorrentPlugins'
   | 'setQbittorrentPluginEnabled'
 > {
-  let requestSequence = 0;
-  const invalidatePendingRequests = (): void => {
-    requestSequence += 1;
-  };
-  const beginRequest = (): number => {
-    requestSequence += 1;
-    return requestSequence;
-  };
+  const requests = createStoreRequestSequencer();
   const connectionFingerprint = (
     settings: QbittorrentConnectionSettings,
   ): string => JSON.stringify(normalizeQbittorrentConnectionSettings(settings));
   const requestIsCurrent = (sequence: number, fingerprint: string): boolean =>
-    sequence === requestSequence &&
+    requests.isCurrent(sequence) &&
     connectionFingerprint(context.getState().ui.qbittorrentConnection) ===
       fingerprint;
 
   return {
     updateQbittorrentLocalSettings(patch): void {
-      invalidatePendingRequests();
+      requests.invalidate();
       commitQbittorrentConnectionPatch(context, services, patch);
     },
     prepareQbittorrentQuickStart(): void {
-      invalidatePendingRequests();
+      requests.invalidate();
       const state = context.getState();
       const nextConnection = normalizeQbittorrentConnectionSettings({
         ...state.ui.qbittorrentConnection,
@@ -112,7 +106,7 @@ export function createQbittorrentCommands(
         });
         return;
       }
-      const sequence = beginRequest();
+      const sequence = requests.begin();
       const fingerprint = connectionFingerprint(connection);
       context.commitUi('project.qbittorrentTest', {
         qbittorrentStatus: {
@@ -180,7 +174,7 @@ export function createQbittorrentCommands(
         });
         return;
       }
-      const sequence = beginRequest();
+      const sequence = requests.begin();
       const fingerprint = connectionFingerprint(connection);
       context.commitUi('project.qbittorrentPlugins', {
         qbittorrentStatus: {
