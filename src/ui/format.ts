@@ -7,11 +7,15 @@ import {
 import { groupColor } from '../core/display-colors';
 import { compactStrings } from '../core/utils';
 
-export { formatCssPercent, formatOneDecimal };
+export { formatCssPercent, formatOneDecimal, formatWholeNumber };
 
 export const round0 = formatWholeNumber;
 export const formatPercent = formatRatioPercent;
 export const formatPages = formatWholeNumber;
+
+export function formatHours(value: number | undefined | null): string {
+  return `${formatOneDecimal(value)}h`;
+}
 
 export function colorForGroup(group: string): string {
   return groupColor(group);

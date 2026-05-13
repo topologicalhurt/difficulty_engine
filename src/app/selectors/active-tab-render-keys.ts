@@ -63,6 +63,7 @@ export function selectActiveTabRenderKeys(
         state.ui.importExportDirty,
         state.ui.qbittorrentConnection,
         state.ui.qbittorrentStatus,
+        state.ui.autopilotDraft,
         state.ui.autopilotProposal,
       ];
     case 'info':

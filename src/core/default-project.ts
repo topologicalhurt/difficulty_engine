@@ -13,6 +13,7 @@ import {
 import type {
   AiConnectionSettings,
   AiRecommendationSettings,
+  AutopilotWizardState,
   BookRecord,
   ConstraintSet,
   ReadingScopeSettings,
@@ -21,6 +22,7 @@ import type {
   UiPreferences,
 } from './types';
 import { localDateKey } from './time';
+import { targetEndDateKey } from './planning-window';
 
 export const DEFAULT_DISPLAY_GROUPS: Record<string, number> = {
   Core: 1,
@@ -126,6 +128,25 @@ export function createDefaultReadingScopeSettings(): ReadingScopeSettings {
   };
 }
 
+export function createDefaultAutopilotWizardState(
+  constraints = createDefaultConstraints(),
+): AutopilotWizardState {
+  return {
+    goal: 'confidence_first',
+    deadlinePolicy: 'soft',
+    targetEndDate: targetEndDateKey(constraints.sd, constraints.tl),
+    latenessToleranceDays: 7,
+    confidencePosture: 'conservative',
+    scaryBookText: '',
+    scaryBookIds: [],
+    avoidEarlyBookText: '',
+    avoidEarlyBookIds: [],
+    hardParallelCap: constraints.par,
+    dailyHours: constraints.hpd,
+    floorPolicy: 'practical',
+  };
+}
+
 const DEFAULT_UI_PREFERENCES: UiPreferences = {
   ganttView: 'plan',
   ganttZoom: 1,
@@ -190,6 +211,7 @@ export const DEFAULT_UI_STATE: UiState = {
     message: 'Enter a goal, then ask the recommender for a proposed addition.',
   },
   aiProposal: null,
+  autopilotDraft: createDefaultAutopilotWizardState(),
   autopilotProposal: null,
   debugUi: false,
   banner: null,

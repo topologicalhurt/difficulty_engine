@@ -1,3 +1,10 @@
+import type {
+  AutopilotGoal,
+  AutopilotWizardState,
+  PlannerOptimizationInput,
+  PlannerOptimizationResult,
+} from './optimization';
+
 export type AiRecommendationProviderKey = 'openai' | 'anthropic';
 
 export interface AiRecommendationSettings {
@@ -147,13 +154,16 @@ export interface AiRecommendationContext {
 export interface AutopilotProposal {
   id: string;
   createdAt: string;
-  mode: 'confidence_first';
+  mode: AutopilotGoal;
   summary: string;
   constraintPatch: Record<string, unknown>;
   readingScopeSettingsPatch: Record<string, unknown>;
   bookPatches: Record<string, Record<string, unknown>>;
   reasons: string[];
   unchangedReasons: string[];
+  wizard: AutopilotWizardState;
+  optimizationInput: PlannerOptimizationInput;
+  optimization: PlannerOptimizationResult;
 }
 
 export interface AiRecommendationRequest {

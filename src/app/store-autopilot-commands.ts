@@ -9,25 +9,84 @@ import type { StoreCommandContext } from './store-command-context';
 
 export function createAutopilotCommands(
   context: StoreCommandContext,
-  options: Pick<CreatePlannerStoreOptions, 'clock'>,
+  options: Pick<CreatePlannerStoreOptions, 'clock' | 'engine' | 'computeAdapter'>,
 ): Pick<
   PlannerStoreCommands,
-  'solveProjectForMe' | 'applyAutopilotProposal' | 'clearAutopilotProposal'
+  | 'updateAutopilotDraft'
+  | 'solveProjectForMe'
+  | 'applyAutopilotProposal'
+  | 'clearAutopilotProposal'
 > {
+  let autopilotRequestSeq = 0;
   return {
-    solveProjectForMe(): void {
+    updateAutopilotDraft(patch): void {
+      autopilotRequestSeq += 1;
       const state = context.getState();
-      const proposal = createAutopilotProposal(
-        state.project,
-        options.clock.now().toISOString(),
-      );
+      context.commitUi('autopilot.draft', {
+        autopilotDraft: {
+          ...state.ui.autopilotDraft,
+          ...patch,
+        },
+        autopilotProposal: null,
+      });
+    },
+    async solveProjectForMe(): Promise<void> {
+      const requestSeq = ++autopilotRequestSeq;
+      const state = context.getState();
+      const projectRevision = state.performance.projectRevision;
+      const draft = state.ui.autopilotDraft;
       context.commitUi('autopilot.propose', {
-        autopilotProposal: proposal,
+        autopilotProposal: null,
         banner: {
           tone: 'info',
-          message: 'Autopilot proposal is ready for review.',
+          message: 'Optimizing autopilot proposal...',
         },
       });
+      try {
+        const proposal = await createAutopilotProposal(
+          state.project,
+          state.snapshot,
+          async (project) => {
+            if (
+              options.computeAdapter &&
+              options.computeAdapter.mode === 'worker' &&
+              (options.computeAdapter.shouldDefer?.(project) ?? true)
+            ) {
+              return options.computeAdapter.compute(project);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            return options.engine.computeSnapshot(project);
+          },
+          options.clock.now().toISOString(),
+          draft,
+        );
+        const latest = context.getState();
+        if (
+          requestSeq !== autopilotRequestSeq ||
+          latest.performance.projectRevision !== projectRevision
+        ) {
+          return;
+        }
+        context.commitUi('autopilot.propose', {
+          autopilotProposal: proposal,
+          banner: {
+            tone: 'info',
+            message: 'Autopilot proposal is ready for review.',
+          },
+        });
+      } catch (error) {
+        if (requestSeq !== autopilotRequestSeq) return;
+        context.commitUi('autopilot.propose', {
+          autopilotProposal: null,
+          banner: {
+            tone: 'error',
+            message:
+              error instanceof Error
+                ? `Autopilot failed: ${error.message}`
+                : 'Autopilot failed.',
+          },
+        });
+      }
     },
     applyAutopilotProposal(): void {
       const state = context.getState();
@@ -51,12 +110,13 @@ export function createAutopilotCommands(
           autopilotProposal: null,
           banner: {
             tone: 'success',
-            message: 'Applied confidence-first autopilot settings.',
+            message: 'Applied optimized autopilot settings.',
           },
         },
       );
     },
     clearAutopilotProposal(): void {
+      autopilotRequestSeq += 1;
       context.commitUi('autopilot.clear', {
         autopilotProposal: null,
       });

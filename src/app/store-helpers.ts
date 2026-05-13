@@ -1,4 +1,7 @@
-import { DEFAULT_UI_STATE } from '../core/defaults';
+import {
+  DEFAULT_UI_STATE,
+  createDefaultAutopilotWizardState,
+} from '../core/defaults';
 import { serializeProject } from '../core/project-file';
 import type {
   AppState,
@@ -112,7 +115,12 @@ export function buildUi(
     aiConnection: ui.aiConnection ?? DEFAULT_UI_STATE.aiConnection,
     aiStatus: ui.aiStatus ?? DEFAULT_UI_STATE.aiStatus,
     aiProposal: ui.aiProposal ?? DEFAULT_UI_STATE.aiProposal,
+    autopilotDraft:
+      ui.autopilotDraft ?? createDefaultAutopilotWizardState(project.constraints),
+    autopilotProposal:
+      ui.autopilotProposal ?? DEFAULT_UI_STATE.autopilotProposal,
     debugUi: ui.debugUi ?? DEFAULT_UI_STATE.debugUi,
+    banner: ui.banner ?? DEFAULT_UI_STATE.banner,
   };
 }
 

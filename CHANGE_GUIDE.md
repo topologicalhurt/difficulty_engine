@@ -70,11 +70,11 @@ For tests, use shared builders before writing another local fixture: `tests/app/
 
 ### Add Or Change AI Context Or Autopilot
 
-- Owner: `src/app/ai-recommendation-context.ts` for serialized context, `src/core/autopilot.ts` for proposal policy, and `src/app/store-autopilot-commands.ts` for apply/clear commands.
-- Contract: AI context includes all non-secret planner state needed for recommendations; autopilot always previews before mutation.
+- Owner: `src/app/ai-recommendation-context.ts` for serialized context, `src/core/autopilot.ts` for optimization input/objective/proposal policy, and `src/app/store-autopilot-commands.ts` for wizard/apply/clear commands.
+- Contract: AI context includes all non-secret planner state needed for recommendations; autopilot always previews before mutation and proof labels must state their exact scope.
 - Secrets: never serialize API keys, qBittorrent credentials, bridge settings, local filesystem paths, or full document text.
-- Tests: AI context digest/serialization tests and autopilot proposal/apply tests.
-- Avoid: hidden project mutation during proposal, prompt count ceilings that omit books/relations, or UI-only autopilot logic.
+- Tests: AI context digest/serialization tests, autopilot wizard/proposal/apply tests, and objective/proof-status tests.
+- Avoid: hidden project mutation during proposal, prompt count ceilings that omit books/relations, UI-only autopilot logic, or claiming global optimality without a proven exact backend.
 
 ### Add Or Change Worker Compute Or Persistence
 

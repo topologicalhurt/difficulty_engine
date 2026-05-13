@@ -4,6 +4,7 @@ import {
   parseProject,
   serializeProject,
 } from '../core/project-file';
+import { createDefaultAutopilotWizardState } from '../core/defaults';
 import type {
   PlannerProjectV1,
   PlannerStoreCommands,
@@ -41,6 +42,8 @@ export function createProjectCommands(
         importExportText: serializeProject(nextProject),
         importExportDirty: false,
         selectedBookId: Object.keys(nextProject.library.books)[0] ?? null,
+        autopilotDraft: createDefaultAutopilotWizardState(nextProject.constraints),
+        autopilotProposal: null,
         banner: { tone: 'success', message: 'Project imported successfully.' },
       });
     },
@@ -50,6 +53,8 @@ export function createProjectCommands(
         importExportText: serializeProject(nextProject),
         importExportDirty: false,
         selectedBookId: Object.keys(nextProject.library.books)[0] ?? null,
+        autopilotDraft: createDefaultAutopilotWizardState(nextProject.constraints),
+        autopilotProposal: null,
         banner: { tone: 'success', message: 'Project loaded successfully.' },
       });
     },
@@ -60,6 +65,8 @@ export function createProjectCommands(
         importExportDirty: false,
         selectedBookId: null,
         activeView: 'library',
+        autopilotDraft: createDefaultAutopilotWizardState(nextProject.constraints),
+        autopilotProposal: null,
         banner: { tone: 'warn', message: 'Started a fresh project.' },
       });
     },

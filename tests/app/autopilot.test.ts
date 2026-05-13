@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { makeBook, makeProject, makeStore } from './store-test-utils';
+import { createPlannerEngine } from '../../src/core/engine';
+import { targetEndDateKey } from '../../src/core/planning-window';
+import type { PlannerComputeAdapter } from '../../src/core/types';
+import { plannerClock } from '../../src/core/time';
+import {
+  makeBook,
+  makeProject,
+  makeStore,
+  silentLogger,
+} from './store-test-utils';
 
 describe('autopilot proposal flow', () => {
-  it('proposes before mutating and applies confidence-first settings', () => {
+  it('proposes before mutating and applies confidence-first settings', async () => {
     const initialProject = makeProject({
       books: {
         a: makeBook({
@@ -29,7 +38,7 @@ describe('autopilot proposal flow', () => {
     });
     const store = makeStore({ initialProject });
 
-    store.commands.solveProjectForMe();
+    await store.commands.solveProjectForMe();
 
     expect(store.selectors.getProject().constraints.learnerProfileMode).toBe(
       initialProject.constraints.learnerProfileMode,
@@ -37,13 +46,142 @@ describe('autopilot proposal flow', () => {
     expect(store.selectors.getState().ui.autopilotProposal?.mode).toBe(
       'confidence_first',
     );
+    expect(
+      store.selectors.getState().ui.autopilotProposal?.optimization.proofStatus,
+    ).toMatch(/^(optimal|infeasible)$/);
+    expect(
+      store.selectors.getState().ui.autopilotProposal?.optimization
+        .paretoAlternatives.length,
+    ).toBeGreaterThan(0);
 
     store.commands.applyAutopilotProposal();
     const applied = store.selectors.getProject();
 
-    expect(applied.constraints.learnerProfileMode).toBe('confidence_builder');
+    expect(applied.constraints.learnerProfileMode).not.toBe(
+      initialProject.constraints.learnerProfileMode,
+    );
     expect(applied.readingScopeSettings?.defaultMode).toBe('skip_non_core');
     expect(applied.manualOverrides).toEqual(initialProject.manualOverrides);
     expect(store.selectors.getState().ui.autopilotProposal).toBeNull();
+  });
+
+  it('proves optimality over the bounded portfolio for a feasible simple plan', async () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          a: makeBook({ id: 'a', title: 'Autopilot A', pages: 30 }),
+        },
+        constraints: {
+          minPg: 1,
+          maxPg: 40,
+          hpd: 4,
+          par: 1,
+          feasibilityMode: 'practical',
+        },
+      }),
+    });
+
+    await store.commands.solveProjectForMe();
+
+    expect(
+      store.selectors.getState().ui.autopilotProposal?.optimization.proofStatus,
+    ).toBe('optimal');
+  });
+
+  it('uses wizard answers as optimization parameters before generating', async () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          a: makeBook({ id: 'a', title: 'Autopilot A' }),
+          b: makeBook({ id: 'b', title: 'Autopilot B' }),
+        },
+      }),
+    });
+
+    store.commands.updateAutopilotDraft({
+      goal: 'deadline_first',
+      deadlinePolicy: 'strict',
+      targetEndDate: '2026-03-01',
+      hardParallelCap: 1,
+      dailyHours: 1,
+      floorPolicy: 'strict_floor',
+    });
+    await store.commands.solveProjectForMe();
+
+    const proposal = store.selectors.getState().ui.autopilotProposal;
+    expect(proposal?.wizard.goal).toBe('deadline_first');
+    expect(proposal?.wizard.deadlinePolicy).toBe('strict');
+    expect(proposal?.constraintPatch.par).toBe(1);
+    expect(proposal?.constraintPatch.hpd).toBe(1);
+    expect(proposal?.optimizationInput.hardConstraints).toContain(
+      'automatic parallel cap <= 1',
+    );
+  });
+
+  it('derives default wizard values from the loaded project constraints', () => {
+    const project = makeProject({
+      constraints: {
+        sd: '2026-02-10',
+        tl: 6,
+        hpd: 5,
+        par: 4,
+      },
+    });
+    const store = makeStore({ initialProject: project });
+
+    const draft = store.selectors.getState().ui.autopilotDraft;
+    expect(draft.dailyHours).toBe(5);
+    expect(draft.hardParallelCap).toBe(4);
+    expect(draft.targetEndDate).toBe(targetEndDateKey('2026-02-10', 6));
+  });
+
+  it('resets wizard defaults when a project is loaded after mount', () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        constraints: { hpd: 2, par: 2, sd: '2026-01-01', tl: 2 },
+      }),
+    });
+    const nextProject = makeProject({
+      constraints: { hpd: 6, par: 5, sd: '2026-04-01', tl: 4 },
+    });
+
+    store.commands.loadProject(nextProject);
+
+    const draft = store.selectors.getState().ui.autopilotDraft;
+    expect(draft.dailyHours).toBe(6);
+    expect(draft.hardParallelCap).toBe(5);
+    expect(draft.targetEndDate).toBe(targetEndDateKey('2026-04-01', 4));
+    expect(store.selectors.getState().ui.autopilotProposal).toBeNull();
+  });
+
+  it('uses the worker compute adapter for deferred optimization candidates', async () => {
+    const engine = createPlannerEngine({
+      clock: plannerClock,
+      logger: silentLogger,
+    });
+    let calls = 0;
+    const computeAdapter: PlannerComputeAdapter = {
+      mode: 'worker',
+      shouldDefer: () => true,
+      async compute(project) {
+        calls += 1;
+        return engine.computeSnapshot(project);
+      },
+      cancelCurrent: () => undefined,
+    };
+    const store = makeStore({
+      computeAdapter,
+      initialProject: makeProject({
+        books: {
+          a: makeBook({ id: 'a', title: 'Autopilot A' }),
+          b: makeBook({ id: 'b', title: 'Autopilot B' }),
+        },
+      }),
+    });
+
+    await store.commands.solveProjectForMe();
+
+    expect(calls).toBeGreaterThan(0);
+    expect(store.selectors.getState().ui.autopilotProposal).not.toBeNull();
   });
 });

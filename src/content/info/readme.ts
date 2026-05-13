@@ -73,7 +73,7 @@ This guide walks through the normal way to use Difficulty Engine. You do not nee
 - Local qBittorrent credentials are stored locally and are not exported.
 - Source toggles control which providers can contribute metadata, documents, and table-of-contents evidence.
 - Local OCR fallback is opt-in and only works through the local bridge when Poppler/Tesseract are installed.
-- Solve everything for me creates a confidence-first preview. It only changes settings after you review and apply the proposal.
+- Solve everything for me asks a few goal/deadline/confidence questions, evaluates a bounded optimization portfolio, and shows a recommended plan plus alternatives. It only changes settings after you review and apply the proposal.
 - Diagnostics are hidden in normal builds. Use the debug build when you need detailed engine evidence.
 
 ## Terms

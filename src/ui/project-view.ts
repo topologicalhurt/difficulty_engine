@@ -15,7 +15,7 @@ export function renderProjectView(
   return el(
     'div',
     { className: 'stack-layout' },
-    renderAutopilotCard(state, store),
+    renderAutopilotCard(viewModel, store),
     renderProjectReadingScopeCard(viewModel, store),
     renderImportExportCard(viewModel, store),
     renderSourceProvidersCard(viewModel, store),

@@ -78,7 +78,7 @@ export function selectInput(
 ): HTMLSelectElement {
   const select = el(
     'select',
-    props,
+    { className: props.className ?? 'select-input', ...props },
     ...options.map((option) =>
       el('option', { value: option.value, text: option.label }),
     ),

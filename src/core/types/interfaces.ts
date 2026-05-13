@@ -17,6 +17,7 @@ import type {
   QbittorrentPluginInfo,
   ReadingScopeSettings,
   SourceSettings,
+  AutopilotWizardState,
 } from './domain';
 import type { EngineSnapshot } from './snapshot';
 
@@ -239,7 +240,8 @@ export interface PlannerStoreCommands {
   requestAiRecommendations(): Promise<void>;
   clearAiRecommendation(): void;
   applyAiRecommendation(): void;
-  solveProjectForMe(): void;
+  updateAutopilotDraft(patch: Partial<AutopilotWizardState>): void;
+  solveProjectForMe(): Promise<void>;
   applyAutopilotProposal(): void;
   clearAutopilotProposal(): void;
   refreshBookEnrichment(bookId: string): Promise<void>;

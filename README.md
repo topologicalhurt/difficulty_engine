@@ -48,7 +48,7 @@ This split is intentional. Display compression can make the UI easier to read, b
 
 ## Autopilot And AI Context
 
-The “solve this for me” autopilot is confidence-first and preview-only. It proposes conservative settings, useful reading-scope skips, and prerequisite-aware pacing changes, then waits for explicit apply. It must preserve manual progress, manual relations, manual schedule/defer overrides, and difficulty locks.
+The “solve this for me” autopilot is an optimization preview, not a silent mutator. The Project tab asks for goal, deadline, confidence, and hard-constraint answers, evaluates a bounded policy portfolio, shows the recommended plan plus Pareto alternatives, then waits for explicit apply. Proof labels are scoped: `optimal` means exact over the declared portfolio and deterministic planner model, not unbounded global RCPSP optimality. It must preserve manual progress, manual relations, manual schedule/defer overrides, and difficulty locks.
 
 AI recommendations receive full non-secret planner context: books, relations, constraints, reading scope, progress summaries, plan summaries, difficulty evidence, document status labels, warnings, and the active learner profile. Requests must not include API keys, qBittorrent credentials, local filesystem paths, bridge settings, or full document text.
 

@@ -388,6 +388,15 @@ body.difficulty-engine-standalone #app {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.responsive-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.two-column-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
 .flag-grid {
   display: grid;
   gap: 12px;
@@ -1309,6 +1318,26 @@ body.difficulty-engine-standalone #app {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.autopilot-wizard-card {
+  align-content: start;
+}
+
+.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.compact-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.compact-table td:last-child {
+  text-align: right;
+  color: var(--muted);
 }
 
 .compact-search-input {

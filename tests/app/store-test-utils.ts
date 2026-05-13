@@ -15,6 +15,7 @@ import type {
   EnrichmentProvider,
   AiRecommendationProvider,
   Logger,
+  PlannerComputeAdapter,
   PlannerProjectV1,
   SearchBooksResponse,
   SourceSettings,
@@ -38,6 +39,7 @@ interface TestStoreOptions {
   initialProject?: PlannerProjectV1;
   enrichmentProvider?: EnrichmentProvider;
   aiRecommendationProvider?: AiRecommendationProvider;
+  computeAdapter?: PlannerComputeAdapter;
   debugUi?: boolean;
 }
 
@@ -165,6 +167,7 @@ export function makeStore(
   return createPlannerStore({
     initialProject: options.initialProject ?? makeProject(),
     engine: createPlannerEngine({ clock: plannerClock, logger: silentLogger }),
+    computeAdapter: options.computeAdapter,
     enrichmentProvider:
       options.enrichmentProvider ?? makeTestEnrichmentProvider(),
     aiRecommendationProvider: options.aiRecommendationProvider,

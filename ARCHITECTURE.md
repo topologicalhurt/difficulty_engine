@@ -88,7 +88,9 @@ The planner contract is strict:
 
 AI recommendation context must include all planner-relevant non-secret state: books, relations, constraints, reading scope, progress summaries, plan summaries, difficulty evidence, document status labels, warnings, and active profile policy. It must exclude API keys, qBittorrent credentials, bridge settings, local filesystem paths, and full document text.
 
-Autopilot is a proposal system, not a silent mutator. `solveProjectForMe` creates an `AutopilotProposal` with patches, reasons, unchanged reasons, and binding-constraint notes. `applyAutopilotProposal` is the only command that mutates project settings from that proposal, and it must preserve progress logs, manual relations, manual overrides, selected books, document metadata, and difficulty locks.
+Autopilot is a proposal system, not a silent mutator. `solveProjectForMe` builds a `PlannerOptimizationInput` from the wizard answers, evaluates a finite policy portfolio, and returns an `AutopilotProposal` with a `PlannerOptimizationResult`, objective breakdown, proof status, binding constraints, Pareto alternatives, patches, reasons, and unchanged reasons. `applyAutopilotProposal` is the only command that mutates project settings from that proposal, and it must preserve progress logs, manual relations, manual overrides, selected books, document metadata, and difficulty locks.
+
+Autopilot proof language is strict: `optimal` means exact only over the declared finite portfolio and deterministic planner model; `window_optimal`, `feasible_with_gap`, and `infeasible` must be used when a broader exact backend cannot prove global optimality. The existing schedule heuristic can warm-start or evaluate candidates, but it must not claim global RCPSP optimality.
 
 ## Guardrails
 

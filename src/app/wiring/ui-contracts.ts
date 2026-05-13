@@ -34,6 +34,22 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
       'Global reading scope defaults apply only to books that inherit project scope.',
   },
   {
+    id: 'autopilot.draft',
+    surface: 'project/plan',
+    control: 'Autopilot wizard answers',
+    command: 'updateAutopilotDraft',
+    projectReads: [],
+    projectWrites: [],
+    uiReads: ['autopilotDraft'],
+    uiWrites: ['autopilotDraft', 'autopilotProposal'],
+    snapshotEffects: [],
+    renderEffects: ['project'],
+    recomputePolicy: 'ui_only',
+    testIds: ['tests/app/autopilot.test.ts'],
+    notes:
+      'Wizard answers are transient UI state; changing them clears stale proposals.',
+  },
+  {
     id: 'autopilot.propose',
     surface: 'project/plan',
     control: 'Solve everything for me',

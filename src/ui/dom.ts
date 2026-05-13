@@ -13,6 +13,9 @@ export interface ElementProps {
   placeholder?: string;
   disabled?: boolean;
   open?: boolean;
+  min?: string;
+  max?: string;
+  step?: string;
   focusKey?: string;
   dataset?: Record<string, string>;
   role?: string;
@@ -60,6 +63,9 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   if (props.disabled != null)
     (node as HTMLButtonElement | HTMLInputElement).disabled = props.disabled;
   if (props.open != null) (node as HTMLDetailsElement).open = props.open;
+  if (props.min != null) (node as HTMLInputElement).min = props.min;
+  if (props.max != null) (node as HTMLInputElement).max = props.max;
+  if (props.step != null) (node as HTMLInputElement).step = props.step;
   if (props.focusKey) node.dataset.focusKey = props.focusKey;
   if (props.role) node.setAttribute('role', props.role);
   if (props.tabIndex != null) node.tabIndex = props.tabIndex;

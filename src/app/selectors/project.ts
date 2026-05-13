@@ -98,6 +98,13 @@ export type ProjectSourceProviderRow = SourceProviderRow;
 export interface ProjectViewModel {
   importExportText: string;
   importExportDirty: boolean;
+  autopilotDraft: AppState['ui']['autopilotDraft'];
+  autopilotProposal: AppState['ui']['autopilotProposal'];
+  autopilotBookRefs: Array<{
+    id: string;
+    title: string;
+    short: string;
+  }>;
   sourceSettings: AppState['project']['sourceSettings'];
   readingScopeSettings: ReadingScopeSettings;
   sourceProviders: ProjectSourceProviderRow[];
@@ -124,6 +131,13 @@ export function selectProjectViewModel(state: AppState): ProjectViewModel {
   return {
     importExportText: state.ui.importExportText,
     importExportDirty: state.ui.importExportDirty,
+    autopilotDraft: state.ui.autopilotDraft,
+    autopilotProposal: state.ui.autopilotProposal,
+    autopilotBookRefs: Object.values(state.project.library.books).map((book) => ({
+      id: book.id,
+      title: book.title,
+      short: book.short,
+    })),
     sourceSettings: state.project.sourceSettings,
     readingScopeSettings: readingScopeSettingsForProject(state.project),
     sourceProviders,
