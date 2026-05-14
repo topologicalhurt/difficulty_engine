@@ -195,4 +195,88 @@ describe('qBittorrent search hit-rate diagnostics', () => {
       'magnet:?xt=urn:btih:oppenheim',
     ]);
   });
+
+  it('blocks solver bundles and dedupes repeated blocked search rows', async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url.endsWith('/api/v2/auth/login')) {
+        return new Response('Ok.', {
+          status: 200,
+          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
+        });
+      }
+      if (url.endsWith('/api/v2/search/plugins')) {
+        return Response.json([
+          {
+            enabled: true,
+            fullName: 'Allowed Plugin',
+            name: 'allowed',
+            url: 'https://archive.org',
+          },
+        ]);
+      }
+      if (url.endsWith('/api/v2/search/start')) {
+        return Response.json({ id: 92 });
+      }
+      if (url.includes('/api/v2/search/results?')) {
+        return Response.json({
+          status: 'Stopped',
+          results: [
+            {
+              fileName: 'Oppenheim Discrete Time Signal Processing Book+solver.pdf',
+              fileUrl: 'magnet:?xt=urn:btih:solverbundle',
+              siteUrl: 'https://archive.org/details/solverbundle',
+              accessBasis: 'open_access',
+              nbSeeders: 12,
+              nbLeechers: 1,
+              fileSize: 12_000,
+            },
+          ],
+        });
+      }
+      if (url.endsWith('/api/v2/search/delete')) {
+        return new Response('Ok.', { status: 200 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    const sourceSettings = createDefaultSourceSettings();
+    sourceSettings.qbittorrent = {
+      ...sourceSettings.qbittorrent,
+      userProvidedTorrents: false,
+      searchPlugins: true,
+      allowedPlugins: ['allowed'],
+      allowedSites: ['archive.org'],
+      requireKnownAccessBasis: true,
+    };
+    const service = createQBittorrentIntegrationService(
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    const result = await service.findDocumentCandidates(
+      {
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:8787',
+        username: 'user',
+        password: 'pass',
+        savePath: 'output/data/documents',
+        category: 'difficulty-engine',
+        timeoutMs: 10000,
+      },
+      {
+        book: {
+          ...EXAMPLE_BOOK,
+          title: 'Discrete-time Signal Processing',
+          authors: ['Oppenheim'],
+          isbn: null,
+          sourcePath: null,
+        },
+        sourceSettings,
+      },
+    );
+
+    expect(result.candidates).toEqual([]);
+    expect(result.blockedCandidates).toHaveLength(1);
+    expect(result.blockedCandidates[0]?.blockedReasons).toContain(
+      'solution/manual/sample file',
+    );
+  });
 });

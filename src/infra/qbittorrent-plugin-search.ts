@@ -102,6 +102,7 @@ export async function pluginSearchCandidates(
     })),
   ];
   const seenUrls = new Set<string>();
+  const seenBlockedUrls = new Set<string>();
   const candidates: DocumentCandidate[] = [];
   const blockedCandidates: BookDocumentBlockedCandidateOption[] = [];
   const searchAttempts: BookDocumentSearchAttempt[] = [];
@@ -160,7 +161,13 @@ export async function pluginSearchCandidates(
       seenUrls.add(candidate.sourceUrl);
       candidates.push(candidate);
     }
-    blockedCandidates.push(...job.extraction.blockedCandidates);
+    for (const blocked of job.extraction.blockedCandidates) {
+      const key =
+        blocked.sourceUrl || `${blocked.title}:${blocked.blockedReasons.join('|')}`;
+      if (seenBlockedUrls.has(key)) continue;
+      seenBlockedUrls.add(key);
+      blockedCandidates.push(blocked);
+    }
     searchAttempts.push({
       id: `qbittorrent-search-attempt:${request.book.id}:${job.queryIndex}:${job.batchIndex}`,
       provider: 'qbittorrent',
