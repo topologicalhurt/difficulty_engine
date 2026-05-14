@@ -9,11 +9,13 @@ import { bridgeDocumentEndpoint } from './document-bridge-url';
 import { extractDocumentChapters } from './document-text-extractor';
 import {
   requestBridgeEmbeddedPdfText,
+  requestBridgePdfStructure,
   requestBridgeOcrToc,
 } from './qbittorrent-document-api';
 
 const DOCUMENT_TEXT_ENDPOINT = '/documents/read-text';
 const DOCUMENT_BYTES_ENDPOINT = '/documents/read-bytes';
+const MIN_OCR_TOC_CONFIDENCE = 0.65;
 const REUSABLE_DOCUMENT_STATUSES = new Set<BookDocumentRef['status']>([
   'complete',
   'unreadable',
@@ -107,6 +109,15 @@ export async function loadCompletedDocumentRefs(
               request.signal,
             ).catch(() => undefined)
           : undefined;
+      const pdfStructure =
+        document.contentKind === 'pdf'
+          ? await requestBridgePdfStructure(
+              fetchImpl,
+              baseUrl,
+              document.storagePath,
+              request.signal,
+            ).catch(() => undefined)
+          : undefined;
       const extractionWithoutOcr =
         text || embeddedText || bytes
           ? extractDocumentChapters({
@@ -114,6 +125,10 @@ export async function loadCompletedDocumentRefs(
               bytes,
               contentType: document.contentType,
               sourceUrl: document.sourceUrl ?? document.storagePath,
+              pageAnchors:
+                pdfStructure?.status === 'complete'
+                  ? pdfStructure.pageAnchors
+                  : undefined,
             })
           : null;
       const ocr =
@@ -127,7 +142,12 @@ export async function loadCompletedDocumentRefs(
               request.signal,
             ).catch(() => undefined)
           : undefined;
-      const ocrText = ocr?.status === 'complete' ? ocr.text : undefined;
+      const ocrConfidence = ocr?.metadata?.confidence;
+      const ocrText =
+        ocr?.status === 'complete' &&
+        (ocrConfidence == null || ocrConfidence >= MIN_OCR_TOC_CONFIDENCE)
+          ? ocr.text
+          : undefined;
       if (!text && !embeddedText && !bytes && !ocrText) continue;
       acquired.push({
         candidateId: document.id,

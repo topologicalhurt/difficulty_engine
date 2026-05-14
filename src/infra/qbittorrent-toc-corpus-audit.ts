@@ -22,6 +22,7 @@ import { isoTimestamp } from './cache-time';
 export type QbittorrentTocFailureClass =
   | 'toc_ready'
   | 'manual_toc_ready'
+  | 'toc_titles_only'
   | 'pdf_ready_no_toc'
   | 'ocr_needed'
   | 'pdf_candidate_found'
@@ -45,12 +46,14 @@ export interface CorpusAuditLocalDocumentResult {
   contentKind: string;
   strategy: string | null;
   chapterCount: number;
+  trustedChapterPageRangeCount: number;
+  rangeTrustStatus: string | null;
   hasPageRanges: boolean;
   ocrStatus: BridgeOcrStatus['status'] | null;
   ocrConfidence: number | null;
   ocrPageRange: { start: number; end: number } | null;
   matchedBookIds: string[];
-  failureClass: 'toc_ready' | 'ocr_needed' | 'not_matched';
+  failureClass: 'toc_ready' | 'toc_titles_only' | 'ocr_needed' | 'not_matched';
 }
 
 export interface CorpusAuditBookRow {
@@ -94,6 +97,8 @@ export interface CorpusAuditBookRow {
   }>;
   tocSource: string;
   chapterCount: number;
+  trustedChapterPageRangeCount: number;
+  pageRangeTrustStatus: string | null;
   hasChapterPageRanges: boolean;
   failureClass: QbittorrentTocFailureClass;
   diagnostics: string[];
@@ -108,6 +113,8 @@ export interface QbittorrentTocCorpusAudit {
   localDocuments: CorpusAuditLocalDocumentResult[];
   summary: {
     tocReady: number;
+    tocTitlesOnly: number;
+    trustedRangeReady: number;
     pdfCandidates: number;
     ocrNeeded: number;
     blocked: number;
@@ -202,6 +209,7 @@ function classifyBook(row: Omit<CorpusAuditBookRow, 'failureClass'>): {
   if (row.chapterCount > 0) {
     if (!row.hasChapterPageRanges) {
       diagnostics.push('TOC exists but has no trusted chapter page ranges.');
+      return { failureClass: 'toc_titles_only', diagnostics };
     }
     return { failureClass: 'toc_ready', diagnostics };
   }
@@ -281,12 +289,16 @@ export function auditLocalDocument(
     sourceUrl: document.path,
   });
   const chapterCount = extraction?.chapters.length ?? 0;
+  const trustedChapterPageRangeCount =
+    extraction?.trustedChapterPageRangeCount ?? 0;
   return {
     path: document.path,
     name: document.name,
     contentKind,
     strategy: extraction?.strategy ?? null,
     chapterCount,
+    trustedChapterPageRangeCount,
+    rangeTrustStatus: extraction?.pageRangeTrustStatus ?? null,
     hasPageRanges: Boolean(
       extraction?.chapterPageRanges?.some((range) => range?.start),
     ),
@@ -295,8 +307,10 @@ export function auditLocalDocument(
     ocrPageRange: document.ocrStatus?.metadata?.pageRange ?? null,
     matchedBookIds: [],
     failureClass:
-      chapterCount > 0
+      chapterCount > 0 && trustedChapterPageRangeCount > 0
         ? 'toc_ready'
+        : chapterCount > 0
+          ? 'toc_titles_only'
         : contentKind === 'pdf'
           ? 'ocr_needed'
           : 'not_matched',
@@ -350,6 +364,11 @@ export function buildQbittorrentTocCorpusAudit(input: {
         .map(blockedSummary),
       tocSource: book.enrichment.tocSource,
       chapterCount: book.enrichment.chapters.length,
+      trustedChapterPageRangeCount:
+        book.enrichment.chapterPageRanges?.filter((range) => range?.start)
+          .length ?? 0,
+      pageRangeTrustStatus:
+        book.enrichment.provenance?.chapters?.pageRangeTrustStatus ?? null,
       hasChapterPageRanges: Boolean(
         book.enrichment.chapterPageRanges?.some((range) => range?.start),
       ),
@@ -368,6 +387,12 @@ export function buildQbittorrentTocCorpusAudit(input: {
     summary: {
       tocReady: rows.filter((row) =>
         ['toc_ready', 'manual_toc_ready'].includes(row.failureClass),
+      ).length,
+      tocTitlesOnly: rows.filter(
+        (row) => row.failureClass === 'toc_titles_only',
+      ).length,
+      trustedRangeReady: rows.filter(
+        (row) => row.trustedChapterPageRangeCount > 0,
       ).length,
       pdfCandidates: rows.filter(
         (row) => row.failureClass === 'pdf_candidate_found',

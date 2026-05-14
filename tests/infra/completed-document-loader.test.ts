@@ -47,6 +47,7 @@ describe('completed document loader', () => {
               'Chapter 2 Instruments 31',
               'Chapter 3 Repairs 72',
             ].join('\n'),
+            metadata: { confidence: 0.82 },
           }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         );
@@ -117,5 +118,94 @@ describe('completed document loader', () => {
       expect.stringContaining('/documents/ocr-toc?'),
       expect.any(Object),
     );
+  });
+
+  it('quarantines low-confidence OCR sidecars instead of writing TOCs', async () => {
+    const sourceSettings = createDefaultSourceSettings();
+    sourceSettings.metadataSources.openlibrary = false;
+    sourceSettings.metadataSources.googleBooks = false;
+    sourceSettings.metadataSources.internetArchive = false;
+    sourceSettings.documentSources.directUrl = false;
+    sourceSettings.documentSources.internetArchiveText = false;
+    sourceSettings.documentSources.qbittorrent = true;
+    sourceSettings.documentSources.localOcr = true;
+    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href.includes('/documents/read-bytes?')) {
+        return new Response('%PDF-1.4\n1 0 obj\n/Width 1041\nstream', {
+          status: 200,
+          headers: { 'content-type': 'application/pdf' },
+        });
+      }
+      if (href.includes('/documents/extract-text?')) {
+        return Response.json({ ok: true, status: 'complete', text: '' });
+      }
+      if (href.includes('/documents/ocr-toc?')) {
+        return Response.json({
+          ok: true,
+          status: 'complete',
+          text: 'TABLE OF CONTENTS\nChapter 1 Bad OCR 1\nChapter 2 Noise 9',
+          metadata: { confidence: 0.41 },
+        });
+      }
+      return Response.json({ ok: true });
+    }) as typeof fetch;
+    const client = createEnrichmentClient({
+      fetchImpl,
+      logger: silentLogger,
+      documentAcquisitionPolicy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: false,
+      },
+    });
+    const response = await client.fetchBook({
+      book: {
+        ...EXAMPLE_BOOK,
+        id: 'low-ocr',
+        documents: [
+          {
+            id: 'qbittorrent:complete:0',
+            provider: 'qbittorrent',
+            sourceUrl: 'magnet:?xt=urn:btih:complete',
+            torrentHash: 'complete',
+            fileIndex: 0,
+            fileName: 'Practical Electronics for Inventors.pdf',
+            storagePath:
+              'output/data/documents/Practical Electronics for Inventors.pdf',
+            contentKind: 'pdf',
+            contentType: 'application/pdf',
+            accessBasis: 'user_provided',
+            status: 'complete',
+            matchScore: 0.95,
+            availability: {
+              seeders: 7,
+              peers: 1,
+              progress: 1,
+              state: 'uploading',
+            },
+            provenance: {
+              provider: 'qbittorrent',
+              sourceUrl: 'magnet:?xt=urn:btih:complete',
+              fetchedAt: '2026-01-05T00:00:00.000Z',
+              confidence: 0.9,
+            },
+            createdAt: '2026-01-05T00:00:00.000Z',
+            updatedAt: '2026-01-05T00:00:00.000Z',
+          },
+        ],
+      },
+      sourceSettings,
+      qbittorrentConnection: {
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:8787',
+        username: '',
+        password: '',
+        savePath: 'output/data/documents',
+        category: 'difficulty-engine',
+        timeoutMs: 10000,
+      },
+    });
+
+    expect(response.enrichment.chapters).toEqual([]);
   });
 });

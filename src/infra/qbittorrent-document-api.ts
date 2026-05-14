@@ -1,4 +1,5 @@
 import { bridgeDocumentEndpoint } from './document-bridge-url';
+import type { PageAnchorEvidence } from './toc-page-ranges';
 
 export interface BridgeOcrStatus {
   ok: boolean;
@@ -12,6 +13,16 @@ export interface BridgeOcrStatus {
     psmModes?: string[];
     toolVersions?: Record<string, string>;
   };
+}
+
+export interface BridgePdfStructureStatus {
+  ok: boolean;
+  status: 'complete' | 'unavailable' | 'failed';
+  physicalPageCount?: number;
+  pageLabels?: Array<string | null>;
+  pageAnchors?: PageAnchorEvidence[];
+  reason?: string;
+  toolVersions?: Record<string, string>;
 }
 
 export async function bridgeDocumentExists(
@@ -60,6 +71,21 @@ export async function requestBridgeEmbeddedPdfText(
   if (!response.ok) return undefined;
   const payload = (await response.json()) as { text?: string };
   return payload.text?.trim() ? payload.text : undefined;
+}
+
+export async function requestBridgePdfStructure(
+  fetchImpl: typeof fetch,
+  baseUrl: string,
+  storagePath: string,
+  signal?: AbortSignal,
+): Promise<BridgePdfStructureStatus | undefined> {
+  const response = await fetchImpl(
+    bridgeDocumentEndpoint(baseUrl, '/documents/pdf-structure', storagePath),
+    { signal },
+  );
+  return response.ok
+    ? ((await response.json()) as BridgePdfStructureStatus)
+    : undefined;
 }
 
 export async function requestBridgeOcrToc(

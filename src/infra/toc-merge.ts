@@ -12,6 +12,10 @@ import {
   preferredTocSource,
 } from './toc-candidate-ranking';
 import { isoTimestamp } from './cache-time';
+import type {
+  ChapterPageRangeTrust,
+  PageAnchorEvidence,
+} from './toc-page-ranges';
 
 export interface StrategyCandidate {
   provider: EnrichmentFieldProvenance['provider'];
@@ -19,6 +23,11 @@ export interface StrategyCandidate {
   confidence: number;
   chapters?: string[];
   chapterPageRanges?: Array<ChapterPageRange | null>;
+  estimatedChapterPageRanges?: Array<ChapterPageRange | null>;
+  chapterPageRangeTrust?: ChapterPageRangeTrust[];
+  pageAnchors?: PageAnchorEvidence[];
+  trustedChapterPageRangeCount?: number;
+  pageRangeTrustStatus?: ChapterPageRangeTrust;
   description?: string;
   subjects?: string[];
   pages?: number | null;
@@ -67,6 +76,8 @@ function buildProvenance(
       evidenceAnchors: candidate?.evidenceAnchors,
       rejectedReasons: candidate?.rejectedReasons,
       pageRange: candidate?.pageRange,
+      pageRangeTrustStatus: candidate?.pageRangeTrustStatus,
+      trustedChapterPageRangeCount: candidate?.trustedChapterPageRangeCount,
     };
   });
 }

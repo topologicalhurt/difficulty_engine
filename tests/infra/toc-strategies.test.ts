@@ -416,6 +416,37 @@ describe('resolveBookEnrichment', () => {
     ]);
   });
 
+  it('does not copy estimated candidate ranges into planner truth', () => {
+    const book = makeBook();
+    const resolution = mergeStrategyCandidates(book, [
+      {
+        provider: 'direct_url',
+        sourceUrl: 'https://example.test/book.pdf',
+        confidence: 0.8,
+        chapters: [
+          'Chapter 1 Signals',
+          'Chapter 2 Systems',
+          'Chapter 3 Filters',
+        ],
+        estimatedChapterPageRanges: [
+          { start: 1, end: 40 },
+          null,
+          null,
+        ],
+        chapterPageRangeTrust: ['estimated', 'missing', 'missing'],
+        pageRangeTrustStatus: 'estimated',
+        tocSource: 'pdf',
+        strategy: 'explicit_toc_region',
+      },
+    ]);
+
+    expect(resolution.enrichment.chapters).toHaveLength(3);
+    expect(resolution.enrichment.chapterPageRanges).toBeUndefined();
+    expect(
+      resolution.enrichment.provenance?.chapters?.pageRangeTrustStatus,
+    ).toBe('estimated');
+  });
+
   it('keeps stronger existing automated chapters over a tiny weak refresh', () => {
     const book = makeBook();
     book.enrichment.tocSource = 'internet_archive';

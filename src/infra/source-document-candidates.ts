@@ -10,6 +10,10 @@ import { extractDocumentChapters } from './document-text-extractor';
 import type { AcquiredDocument } from './document-acquisition';
 import { isPdfDocument } from './qbittorrent-file-kinds';
 import { isLoopbackHost } from './url-security';
+import type {
+  ChapterPageRangeTrust,
+  PageAnchorEvidence,
+} from './toc-page-ranges';
 
 const DIRECT_DOCUMENT_MAX_BYTES = 8 * 1024 * 1024;
 const RESPONSE_CHUNK_MISSING_LENGTH = -1;
@@ -28,6 +32,11 @@ export interface SourceDocumentCandidate {
   confidence: number;
   chapters?: string[];
   chapterPageRanges?: BookEnrichment['chapterPageRanges'];
+  estimatedChapterPageRanges?: BookEnrichment['chapterPageRanges'];
+  chapterPageRangeTrust?: ChapterPageRangeTrust[];
+  pageAnchors?: PageAnchorEvidence[];
+  trustedChapterPageRangeCount?: number;
+  pageRangeTrustStatus?: ChapterPageRangeTrust;
   tocSource?: BookEnrichment['tocSource'];
   strategy?: string;
   inferred?: boolean;
@@ -42,19 +51,28 @@ function candidateFromExtraction(
   confidence: number,
   extraction: NonNullable<ReturnType<typeof extractDocumentChapters>>,
 ): SourceDocumentCandidate {
+  const rejectedReasons = [
+    ...(extraction.attempts
+      ?.filter((attempt) => !attempt.accepted)
+      .flatMap((attempt) => attempt.rejectedReasons) ?? []),
+    ...(extraction.pageRangeRejectedReasons ?? []),
+  ];
   return {
     provider,
     sourceUrl,
     confidence: Math.min(confidence, extraction.confidence),
     chapters: extraction.chapters,
     chapterPageRanges: extraction.chapterPageRanges,
+    estimatedChapterPageRanges: extraction.estimatedChapterPageRanges,
+    chapterPageRangeTrust: extraction.chapterPageRangeTrust,
+    pageAnchors: extraction.pageAnchors,
+    trustedChapterPageRangeCount: extraction.trustedChapterPageRangeCount,
+    pageRangeTrustStatus: extraction.pageRangeTrustStatus,
     tocSource: 'pdf',
     strategy: extraction.strategy,
     inferred: extraction.inferred,
     evidenceAnchors: extraction.evidenceAnchors,
-    rejectedReasons: extraction.attempts
-      ?.filter((attempt) => !attempt.accepted)
-      .flatMap((attempt) => attempt.rejectedReasons),
+    rejectedReasons,
   };
 }
 

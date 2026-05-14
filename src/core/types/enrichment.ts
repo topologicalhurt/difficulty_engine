@@ -16,6 +16,8 @@ export interface EnrichmentFieldProvenance {
   evidenceAnchors?: string[];
   rejectedReasons?: string[];
   pageRange?: { start: number; end: number };
+  pageRangeTrustStatus?: 'trusted' | 'estimated' | 'missing' | 'conflict';
+  trustedChapterPageRangeCount?: number;
 }
 
 export interface ChapterPageRange {

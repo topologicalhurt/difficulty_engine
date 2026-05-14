@@ -286,6 +286,37 @@ describe('qBittorrent browser bridge', () => {
     }
   });
 
+  it('exposes PDF structure diagnostics without allowing path traversal', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'difficulty-docs-'));
+    const allowed = join(root, 'book.pdf');
+    const outside = join(tmpdir(), 'outside-structure.pdf');
+    await writeFile(allowed, '%PDF fixture', 'utf8');
+    await writeFile(outside, '%PDF outside', 'utf8');
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({ dataRoot: root });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const structure = await fetch(
+        `${bridgeBaseUrl}/documents/pdf-structure?${new URLSearchParams({ path: allowed }).toString()}`,
+      );
+      const rejected = await fetch(
+        `${bridgeBaseUrl}/documents/pdf-structure?${new URLSearchParams({ path: outside }).toString()}`,
+      );
+
+      expect(structure.status).toBe(200);
+      expect((await structure.json()).ok).toBe(true);
+      expect(rejected.status).toBe(400);
+      expect(await rejected.text()).toContain(
+        'outside the configured data folder',
+      );
+    } finally {
+      await close(bridge);
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { force: true });
+    }
+  });
+
   it('reveals and deletes only supported files inside the data root', async () => {
     const root = await mkdtemp(join(tmpdir(), 'difficulty-docs-'));
     const allowed = join(root, 'book.pdf');

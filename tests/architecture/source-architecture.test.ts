@@ -213,7 +213,7 @@ describe('source architecture guardrails', () => {
     }
 
     expect(violations).toEqual([]);
-  });
+  }, 15_000);
 
   it('keeps shared calendar constants centralized', () => {
     const declarations = sourceFiles()

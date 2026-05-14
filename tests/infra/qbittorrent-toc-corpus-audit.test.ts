@@ -163,6 +163,44 @@ describe('qBittorrent TOC corpus audit', () => {
     });
   });
 
+  it('separates title-only TOCs from trusted page-range coverage', () => {
+    const audit = buildQbittorrentTocCorpusAudit({
+      project: project([
+        book('titles-only', {
+          enrichment: {
+            chapters: ['Chapter 1 Signals', 'Chapter 2 Systems'],
+            description: '',
+            olSubjects: [],
+            tocSource: 'pdf',
+          },
+        }),
+        book('trusted-ranges', {
+          enrichment: {
+            chapters: ['Chapter 1 Signals', 'Chapter 2 Systems'],
+            description: '',
+            olSubjects: [],
+            tocSource: 'pdf',
+            chapterPageRanges: [
+              { start: 1, end: 40 },
+              { start: 41, end: null },
+            ],
+          },
+        }),
+      ]),
+      generatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    expect(
+      audit.books.find((row) => row.bookId === 'titles-only')?.failureClass,
+    ).toBe('toc_titles_only');
+    expect(
+      audit.books.find((row) => row.bookId === 'trusted-ranges')
+        ?.trustedChapterPageRangeCount,
+    ).toBe(2);
+    expect(audit.summary.tocTitlesOnly).toBe(1);
+    expect(audit.summary.trustedRangeReady).toBe(1);
+  });
+
   it('scores sparse metadata lower than a book with identifying fields', () => {
     expect(bookMetadataCompleteness(book('full', {
       isbn: '9781111111111',

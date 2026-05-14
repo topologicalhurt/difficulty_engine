@@ -422,6 +422,29 @@ function renderReader(
   );
 }
 
+function renderTocStatus(book: BookRecord): HTMLElement {
+  const chapterCount = book.enrichment.chapters.length;
+  const trustedRangeCount =
+    book.enrichment.chapterPageRanges?.filter((range) => range?.start).length ??
+    0;
+  const trustStatus =
+    book.enrichment.provenance?.chapters?.pageRangeTrustStatus ??
+    (trustedRangeCount ? 'trusted' : chapterCount ? 'missing' : 'missing');
+  const tone =
+    trustedRangeCount > 0
+      ? 'success'
+      : chapterCount > 0
+        ? 'warn'
+        : 'neutral';
+  return el(
+    'div',
+    { className: 'detail-toolbar' },
+    badge(`TOC ${chapterCount || 'none'}`, chapterCount ? 'success' : 'neutral'),
+    badge(`${trustedRangeCount} trusted ranges`, tone),
+    badge(`ranges ${trustStatus}`, tone),
+  );
+}
+
 export function renderBookDocumentsPanel(
   state: AppState,
   book: BookRecord,
@@ -430,6 +453,7 @@ export function renderBookDocumentsPanel(
   const documents = book.documents ?? [];
   return card(
     'Offline documents',
+    renderTocStatus(book),
     documents.length
       ? el(
           'div',

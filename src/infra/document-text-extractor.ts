@@ -22,6 +22,13 @@ import {
   normalizeDocumentLines,
   removeMarkerOnlyDuplicates,
 } from './toc-line-normalization';
+import {
+  pageAnchorsFromStarts,
+  rangesFromPageAnchors,
+  reconcileChapterPageRanges,
+  type ChapterPageRangeTrust,
+  type PageAnchorEvidence,
+} from './toc-page-ranges';
 
 export type DocumentExtractionStrategy =
   | 'pdf_outline'
@@ -31,6 +38,12 @@ export type DocumentExtractionStrategy =
 export interface DocumentChapterExtraction {
   chapters: string[];
   chapterPageRanges?: Array<ChapterPageRange | null>;
+  estimatedChapterPageRanges?: Array<ChapterPageRange | null>;
+  chapterPageRangeTrust?: ChapterPageRangeTrust[];
+  pageAnchors?: PageAnchorEvidence[];
+  trustedChapterPageRangeCount?: number;
+  pageRangeTrustStatus?: ChapterPageRangeTrust;
+  pageRangeRejectedReasons?: string[];
   strategy: DocumentExtractionStrategy;
   confidence: number;
   evidenceAnchors: string[];
@@ -44,6 +57,12 @@ export interface TocExtractionAttempt {
   confidence: number;
   chapters: string[];
   chapterPageRanges?: Array<ChapterPageRange | null>;
+  estimatedChapterPageRanges?: Array<ChapterPageRange | null>;
+  chapterPageRangeTrust?: ChapterPageRangeTrust[];
+  pageAnchors?: PageAnchorEvidence[];
+  trustedChapterPageRangeCount?: number;
+  pageRangeTrustStatus?: ChapterPageRangeTrust;
+  pageRangeRejectedReasons?: string[];
   accepted: boolean;
   rejectedReasons: string[];
   evidenceAnchors: string[];
@@ -69,11 +88,23 @@ function extraction(
   evidenceAnchors: string[],
   attempts: TocExtractionAttempt[] = [],
   chapterPageRanges?: Array<ChapterPageRange | null>,
+  pageAnchors?: PageAnchorEvidence[],
 ): DocumentChapterExtraction | null {
   if (!chapters.length) return null;
+  const anchorRanges = rangesFromPageAnchors(chapters, pageAnchors);
+  const reconciliation = reconcileChapterPageRanges(
+    chapters,
+    anchorRanges ?? chapterPageRanges,
+  );
   return {
     chapters,
-    chapterPageRanges,
+    chapterPageRanges: reconciliation.trustedRanges,
+    estimatedChapterPageRanges: reconciliation.estimatedRanges,
+    chapterPageRangeTrust: reconciliation.trust,
+    pageAnchors,
+    trustedChapterPageRangeCount: reconciliation.trustedCount,
+    pageRangeTrustStatus: reconciliation.status,
+    pageRangeRejectedReasons: reconciliation.rejectedReasons,
     strategy,
     confidence,
     evidenceAnchors: evidenceAnchors.slice(0, 8),
@@ -99,8 +130,14 @@ function attempt(
     confidence: result?.confidence ?? 0,
     chapters: result?.chapters ?? [],
     chapterPageRanges: result?.chapterPageRanges,
+    estimatedChapterPageRanges: result?.estimatedChapterPageRanges,
+    chapterPageRangeTrust: result?.chapterPageRangeTrust,
+    pageAnchors: result?.pageAnchors,
+    trustedChapterPageRangeCount: result?.trustedChapterPageRangeCount,
+    pageRangeTrustStatus: result?.pageRangeTrustStatus,
+    pageRangeRejectedReasons: result?.pageRangeRejectedReasons,
     accepted: Boolean(result),
-    rejectedReasons,
+    rejectedReasons: result?.pageRangeRejectedReasons ?? rejectedReasons,
     evidenceAnchors: result?.evidenceAnchors ?? [],
     durationMs: elapsedMs(start),
   };
@@ -168,13 +205,27 @@ function explicitTocRegion(lines: string[], contentsIndex: number): string[] {
 
 export function extractPdfOutlineChapters(
   bytes: Uint8Array,
+  pageAnchors?: PageAnchorEvidence[],
 ): DocumentChapterExtraction | null {
-  const titles = extractPdfOutlineTitles(bytes);
+  const outlineAnchorTitles = (pageAnchors ?? [])
+    .filter((anchor) => anchor.sourceMethod === 'pdf_outline_destination')
+    .map((anchor) => anchor.chapterTitle);
+  const titles = outlineAnchorTitles.length
+    ? outlineAnchorTitles
+    : extractPdfOutlineTitles(bytes);
   const chapters = removeMarkerOnlyDuplicates(
     sanitizeChapterTitles(titles, { source: 'structured', limit: 80 }),
   );
   if (chapters.length < MIN_PDF_OUTLINE_CHAPTERS) return null;
-  return extraction(chapters, 'pdf_outline', 0.72, titles);
+  return extraction(
+    chapters,
+    'pdf_outline',
+    outlineAnchorTitles.length ? 0.88 : 0.72,
+    titles,
+    [],
+    undefined,
+    pageAnchors,
+  );
 }
 
 export function extractExplicitTocChapters(
@@ -204,6 +255,11 @@ export function extractExplicitTocChapters(
     return null;
   }
   const chapterEntries = entriesForChapters(entries, chapters);
+  const pageAnchors = pageAnchorsFromStarts(
+    chapterEntries,
+    'toc_text_suffix',
+    0.72,
+  );
   return extraction(
     chapters,
     'explicit_toc_region',
@@ -211,6 +267,7 @@ export function extractExplicitTocChapters(
     joinedRegionLines.slice(0, 16),
     [],
     pageRangesFromEntries(chapterEntries),
+    pageAnchors,
   );
 }
 
@@ -303,6 +360,7 @@ export function extractDocumentChapterAttempts(input: {
   text?: string;
   contentType?: string;
   sourceUrl?: string;
+  pageAnchors?: PageAnchorEvidence[];
 }): TocExtractionAttempt[] {
   const attempts: TocExtractionAttempt[] = [];
   const isPdf = Boolean(
@@ -316,7 +374,7 @@ export function extractDocumentChapterAttempts(input: {
         'pdf_outline',
         'pdf_raw_outline',
         start,
-        extractPdfOutlineChapters(input.bytes),
+        extractPdfOutlineChapters(input.bytes, input.pageAnchors),
         ['no_usable_pdf_outline'],
       ),
     );
@@ -349,13 +407,14 @@ export function extractDocumentChapters(input: {
   text?: string;
   contentType?: string;
   sourceUrl?: string;
+  pageAnchors?: PageAnchorEvidence[];
 }): DocumentChapterExtraction | null {
   const isPdf = Boolean(
     input.bytes && isPdfDocument(input.sourceUrl, input.contentType),
   );
   const text = input.text ?? (input.bytes ? decodeBytes(input.bytes) : '');
   if (isPdf && input.bytes) {
-    const outline = extractPdfOutlineChapters(input.bytes);
+    const outline = extractPdfOutlineChapters(input.bytes, input.pageAnchors);
     if (outline) {
       outline.attempts = extractDocumentChapterAttempts(input);
       return outline;

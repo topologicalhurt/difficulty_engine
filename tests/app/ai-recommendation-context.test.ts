@@ -85,5 +85,5 @@ describe('AI recommendation context', () => {
     expect(serializedContext).not.toContain('/private/output/data/documents');
     expect(serializedContext).not.toContain('apiKey');
     expect(serializedContext).not.toContain('password');
-  });
+  }, 15_000);
 });

@@ -252,6 +252,83 @@ describe('document text extraction', () => {
       { start: 209, end: 239 },
       { start: 240, end: null },
     ]);
+    expect(extraction?.pageRangeTrustStatus).toBe('trusted');
+    expect(extraction?.trustedChapterPageRangeCount).toBe(4);
+  });
+
+  it('quarantines sparse page suffixes as estimates instead of planner ranges', () => {
+    const extraction = extractExplicitTocChapters(`
+      Contents
+      Chapter 1 Signals and Systems .......... 1
+      Chapter 2 Filters ..................... 47
+      Chapter 3 Sampling
+      Chapter 4 Transforms
+      Chapter 5 Applications
+    `);
+
+    expect(extraction?.chapters).toHaveLength(5);
+    expect(extraction?.chapterPageRanges).toBeUndefined();
+    expect(extraction?.estimatedChapterPageRanges?.[0]).toEqual({
+      start: 1,
+      end: 46,
+    });
+    expect(extraction?.pageRangeTrustStatus).toBe('estimated');
+  });
+
+  it('quarantines nonmonotonic page suffixes as conflicting ranges', () => {
+    const extraction = extractExplicitTocChapters(`
+      Contents
+      Chapter 1 Signals and Systems .......... 100
+      Chapter 2 Filters ..................... 47
+      Chapter 3 Applications ................ 140
+    `);
+
+    expect(extraction?.chapters).toHaveLength(3);
+    expect(extraction?.chapterPageRanges).toBeUndefined();
+    expect(extraction?.pageRangeTrustStatus).toBe('conflict');
+    expect(extraction?.chapterPageRangeTrust).toEqual([
+      'conflict',
+      'conflict',
+      'conflict',
+    ]);
+  });
+
+  it('uses PDF outline destination anchors as trusted page ranges', () => {
+    const bytes = new TextEncoder().encode(
+      '/Title (Contents) /Title (Chapter 1 Signals) /Title (Chapter 2 Systems) /Title (Chapter 3 Filters)',
+    );
+    const extraction = extractDocumentChapters({
+      bytes,
+      contentType: 'application/pdf',
+      sourceUrl: 'https://example.test/book.pdf',
+      pageAnchors: [
+        {
+          chapterTitle: 'Chapter 1 Signals',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 11,
+        },
+        {
+          chapterTitle: 'Chapter 2 Systems',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 39,
+        },
+        {
+          chapterTitle: 'Chapter 3 Filters',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 84,
+        },
+      ],
+    });
+
+    expect(extraction?.strategy).toBe('pdf_outline');
+    expect(extraction?.chapterPageRanges).toEqual([
+      { start: 11, end: 38 },
+      { start: 39, end: 83 },
+      { start: 84, end: null },
+    ]);
   });
 
   it('uses conservative inferred headers only with repeated structural evidence', () => {

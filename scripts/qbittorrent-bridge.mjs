@@ -44,6 +44,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://[::1]:*',
 ];
 const PDF_TEXT_PAGE_LIMIT = 80;
+const PDF_STRUCTURE_PAGE_LIMIT = 32;
 const PDF_TEXT_TIMEOUT_MS = 20_000;
 const OCR_TOC_PAGE_LIMIT = 24;
 const OCR_RENDER_DPI = 220;
@@ -519,6 +520,103 @@ async function extractPdfText(dataRoot, filePath) {
   return text;
 }
 
+async function extractPdfStructure(filePath) {
+  if (!(await commandAvailable('python3'))) {
+    return {
+      ok: true,
+      status: 'unavailable',
+      reason: 'Install Python 3 and PyMuPDF to enable PDF structure extraction.',
+    };
+  }
+  const script = String.raw`
+import json
+import sys
+
+path = sys.argv[1]
+page_limit = int(sys.argv[2])
+try:
+    import fitz
+except Exception:
+    print(json.dumps({
+        "ok": True,
+        "status": "unavailable",
+        "reason": "Install PyMuPDF to enable PDF outline/link extraction."
+    }))
+    sys.exit(0)
+
+def clean_text(value):
+    return " ".join(str(value or "").split()).strip()
+
+try:
+    doc = fitz.open(path)
+    page_count = len(doc)
+    labels = []
+    for index in range(page_count):
+        try:
+            labels.append(doc[index].get_label() or None)
+        except Exception:
+            labels.append(None)
+    anchors = []
+    for item in doc.get_toc(False):
+        title = clean_text(item[1] if len(item) > 1 else "")
+        page = item[2] if len(item) > 2 else 0
+        if title and isinstance(page, int) and page > 0:
+            anchors.append({
+                "chapterTitle": title,
+                "sourceMethod": "pdf_outline_destination",
+                "confidence": 0.92,
+                "physicalPage": page,
+                "printedPage": (labels[page - 1] if page - 1 < len(labels) else None) or str(page),
+            })
+    for page_index in range(min(page_count, page_limit)):
+        page = doc[page_index]
+        try:
+            links = page.get_links()
+        except Exception:
+            links = []
+        for link in links:
+            target = link.get("page", -1)
+            if target is None or target < 0:
+                continue
+            rect = link.get("from")
+            try:
+                title = clean_text(page.get_textbox(rect))
+            except Exception:
+                title = ""
+            if not title or len(title) > 180:
+                continue
+            anchors.append({
+                "chapterTitle": title,
+                "sourceMethod": "toc_link",
+                "confidence": 0.86,
+                "physicalPage": int(target) + 1,
+                "printedPage": (labels[target] if target < len(labels) else None) or str(int(target) + 1),
+                "bbox": {
+                    "x": round(float(rect.x0), 2),
+                    "y": round(float(rect.y0), 2),
+                    "width": round(float(rect.x1 - rect.x0), 2),
+                    "height": round(float(rect.y1 - rect.y0), 2),
+                } if rect else None,
+            })
+    print(json.dumps({
+        "ok": True,
+        "status": "complete",
+        "physicalPageCount": page_count,
+        "pageLabels": labels,
+        "pageAnchors": anchors,
+        "toolVersions": {"pymupdf": getattr(fitz, "__doc__", "PyMuPDF").splitlines()[0]},
+    }))
+except Exception as exc:
+    print(json.dumps({"ok": True, "status": "failed", "reason": str(exc)}))
+`;
+  const output = await runProcess(
+    'python3',
+    ['-c', script, filePath, String(PDF_STRUCTURE_PAGE_LIMIT)],
+    PDF_TEXT_TIMEOUT_MS,
+  );
+  return JSON.parse(output.toString('utf8'));
+}
+
 async function commandAvailable(command) {
   try {
     await runProcess('/usr/bin/env', ['which', command], 5_000);
@@ -773,6 +871,24 @@ async function handleDocumentRequest(
       const text = await extractPdfText(dataRoot, filePath);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ ok: true, status: 'complete', text }));
+      return true;
+    }
+    if (pathname === '/documents/pdf-structure' && req.method === 'GET') {
+      const filePath = await assertSupportedDocumentFile(
+        dataRoot,
+        documentUrlPath(req),
+      );
+      if (!PDF_EXTENSIONS.has(extname(filePath.toLowerCase()))) {
+        throw new Error('PDF structure extraction is only available for PDFs.');
+      }
+      await assertDocumentSize(
+        filePath,
+        DOCUMENT_PDF_TEXT_FILE_LIMIT_BYTES,
+        'PDF document',
+      );
+      const payload = await extractPdfStructure(filePath);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(payload));
       return true;
     }
     if (pathname === '/documents/ocr-status' && req.method === 'GET') {
