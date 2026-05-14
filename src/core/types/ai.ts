@@ -157,6 +157,7 @@ export interface AiRecommendationBookContext {
   evidenceConfidence?: number | null;
   difficultyEvidence?: string[];
   chapters: string[];
+  topics: string[];
   tocSource: string;
   readingScope?: {
     mode: string;

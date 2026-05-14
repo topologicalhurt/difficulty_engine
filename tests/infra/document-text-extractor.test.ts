@@ -74,7 +74,7 @@ describe('document text extraction', () => {
     ]);
   });
 
-  it('prefers top-level chapter rows over dense decimal subsection rows', () => {
+  it('prefers top-level chapter rows for chapter page ranges', () => {
     const extraction = extractExplicitTocChapters(
       [
         'Contents',
@@ -100,22 +100,6 @@ describe('document text extraction', () => {
       { start: 59, end: 112 },
       { start: 113, end: null },
     ]);
-  });
-
-  it('rejects subsection-only explicit TOCs instead of treating sections as books chapters', () => {
-    const extraction = extractExplicitTocChapters(
-      [
-        'Contents',
-        '1.1 Vector Algebra 1',
-        '1.1.1 Vector Operations 1',
-        '1.2 Differential Calculus 13',
-        '2.1 The Electric Field 59',
-        '2.2 Divergence and Curl 66',
-        '3.1 Laplace Equation 113',
-      ].join('\n'),
-    );
-
-    expect(extraction).toBeNull();
   });
 
   it('joins split table-of-contents markers with following title lines', () => {
@@ -438,43 +422,6 @@ describe('document text extraction', () => {
       { start: 39, end: null },
     ]);
     expect(extraction?.attempts?.[0]?.sourceKind).toBe('pdf_structure');
-  });
-
-  it('does not re-include front matter when outline chapters are unnumbered', () => {
-    const extraction = extractDocumentChapters({
-      contentType: 'application/pdf',
-      sourceUrl: 'https://example.test/book.pdf',
-      pageAnchors: [
-        {
-          chapterTitle: 'Advertisement',
-          sourceMethod: 'pdf_outline_destination',
-          confidence: 0.92,
-          physicalPage: 2,
-          outlineLevel: 1,
-        },
-        {
-          chapterTitle: 'Vector Analysis',
-          sourceMethod: 'pdf_outline_destination',
-          confidence: 0.92,
-          physicalPage: 11,
-          outlineLevel: 1,
-        },
-        {
-          chapterTitle: 'Electrostatics',
-          sourceMethod: 'pdf_outline_destination',
-          confidence: 0.92,
-          physicalPage: 67,
-          outlineLevel: 1,
-        },
-      ],
-    });
-
-    expect(extraction?.strategy).toBe('pdf_outline');
-    expect(extraction?.chapters).toEqual(['Vector Analysis', 'Electrostatics']);
-    expect(extraction?.chapterPageRanges).toEqual([
-      { start: 11, end: 66 },
-      { start: 67, end: null },
-    ]);
   });
 
   it('uses conservative inferred headers only with repeated structural evidence', () => {

@@ -140,4 +140,50 @@ describe('pairSignal', () => {
     expect(same.symmetry).toBe(different.symmetry);
     expect(same.coStudyScore).toBeGreaterThan(different.coStudyScore);
   });
+
+  it('feeds section topics into relation evidence without replacing chapters', () => {
+    const intro = {
+      ...book(
+        'intro',
+        'Signal Foundations',
+        3,
+        180,
+        ['Signals'],
+        'A first course in signals.',
+      ),
+      enrichment: {
+        chapters: ['Signals'],
+        topics: ['1.1 Fourier transforms', '1.2 Sampling theorem'],
+        description: 'A first course in signals.',
+        olSubjects: [],
+        tocSource: 'manual' as const,
+      },
+    };
+    const advanced = {
+      ...book(
+        'advanced',
+        'Digital Signal Processing',
+        7,
+        420,
+        ['Digital systems'],
+        'Advanced signal processing.',
+      ),
+      enrichment: {
+        chapters: ['Digital systems'],
+        topics: [
+          '1.1 Fourier transforms',
+          '1.2 Sampling theorem',
+          '2.1 Filter banks',
+        ],
+        description: 'Advanced signal processing.',
+        olSubjects: [],
+        tocSource: 'manual' as const,
+      },
+    };
+
+    const result = signal(intro, advanced);
+
+    expect(result.coverageAB).toBeGreaterThan(0);
+    expect(result.sharedWeight).toBeGreaterThan(0);
+  });
 });

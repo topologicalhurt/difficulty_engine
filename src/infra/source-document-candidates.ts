@@ -32,6 +32,8 @@ export interface SourceDocumentCandidate {
   confidence: number;
   chapters?: string[];
   chapterPageRanges?: BookEnrichment['chapterPageRanges'];
+  topics?: string[];
+  topicPageRanges?: BookEnrichment['topicPageRanges'];
   estimatedChapterPageRanges?: BookEnrichment['chapterPageRanges'];
   chapterPageRangeTrust?: ChapterPageRangeTrust[];
   pageAnchors?: PageAnchorEvidence[];
@@ -63,6 +65,8 @@ function candidateFromExtraction(
     confidence: Math.min(confidence, extraction.confidence),
     chapters: extraction.chapters,
     chapterPageRanges: extraction.chapterPageRanges,
+    topics: extraction.topics,
+    topicPageRanges: extraction.topicPageRanges,
     estimatedChapterPageRanges: extraction.estimatedChapterPageRanges,
     chapterPageRangeTrust: extraction.chapterPageRangeTrust,
     pageAnchors: extraction.pageAnchors,

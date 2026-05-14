@@ -30,6 +30,9 @@ function mergeResponseIntoBook(
         chapters: response.enrichment.chapters.length
           ? (response.enrichment.provenance?.chapters ?? response.provenance[0])
           : currentBook.enrichment.provenance?.chapters,
+        topics: response.enrichment.topics?.length
+          ? (response.enrichment.provenance?.topics ?? response.provenance[0])
+          : currentBook.enrichment.provenance?.topics,
         description: response.enrichment.description
           ? (response.enrichment.provenance?.description ??
             response.provenance[0])

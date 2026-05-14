@@ -9,6 +9,7 @@ const MANUAL_SEED_BLEND_WEIGHT = 0.65;
 const CORPUS_SEED_BLEND_WEIGHT = 1 - MANUAL_SEED_BLEND_WEIGHT;
 const NEUTRAL_SEED_EPSILON = 0.05;
 const CHAPTER_CONFIDENCE_NORMALIZER = 10;
+const TOPIC_STRUCTURE_WEIGHT = 0.35;
 const SUBJECT_CONFIDENCE_NORMALIZER = 8;
 const DESCRIPTION_WORD_NORMALIZER = 120;
 const TOPIC_CONFIDENCE_NORMALIZER = 18;
@@ -69,6 +70,9 @@ function difficultyEvidenceMetadataConfidence(
   book: CorpusBook,
   topicCount: number,
 ): number {
+  const structuralEntryCount =
+    book.chapterProfiles.length +
+    book.topicProfiles.length * TOPIC_STRUCTURE_WEIGHT;
   const subjectConfidence = Math.min(
     1,
     book.subjectTexts.length / SUBJECT_CONFIDENCE_NORMALIZER,
@@ -79,7 +83,7 @@ function difficultyEvidenceMetadataConfidence(
   );
   const chapterConfidence = Math.min(
     1,
-    book.chapterProfiles.length / CHAPTER_CONFIDENCE_NORMALIZER,
+    structuralEntryCount / CHAPTER_CONFIDENCE_NORMALIZER,
   );
   const topicConfidence = Math.min(1, topicCount / TOPIC_CONFIDENCE_NORMALIZER);
   const documentConfidence =
@@ -105,6 +109,7 @@ function exerciseSignal(book: CorpusBook): number {
     book.enrichment.description,
     ...book.subjectTexts,
     ...book.chapterProfiles.map((chapter) => chapter.title),
+    ...book.topicProfiles.map((topic) => topic.title),
   ]
     .join(' ')
     .toLowerCase();
@@ -161,6 +166,9 @@ export function buildDifficultyEvidence(
       const seed = effectiveSeed(book);
       const readingPages = effectivePages[book.id];
       const pageCount = readingPages?.effectivePages ?? book.pages;
+      const structuralEntryCount =
+        book.chapterProfiles.length +
+        book.topicProfiles.length * TOPIC_STRUCTURE_WEIGHT;
       const pageBurden = clamp(
         5 + Math.log2(pageCount / Math.max(1, effectiveMedianPages)) * 1.25,
         1,
@@ -174,7 +182,7 @@ export function buildDifficultyEvidence(
         10,
       );
       const chapterStructure = clamp(
-        4 + Math.min(1, book.chapterProfiles.length / 18) * 1.4,
+        4 + Math.min(1, structuralEntryCount / 18) * 1.4,
         1,
         10,
       );
@@ -235,10 +243,10 @@ export function buildDifficultyEvidence(
         ),
         signal(
           'chapters',
-          'Chapter structure',
+          'Chapter/topic structure',
           chapterStructure,
-          Math.min(1, book.chapterProfiles.length / CHAPTER_CONFIDENCE_NORMALIZER),
-          'TOC/chapter evidence improves confidence and workload shape.',
+          Math.min(1, structuralEntryCount / CHAPTER_CONFIDENCE_NORMALIZER),
+          'TOC chapter and topic evidence improves confidence and workload shape.',
         ),
         signal(
           'practice',

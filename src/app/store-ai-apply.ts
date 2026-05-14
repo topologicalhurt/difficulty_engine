@@ -52,6 +52,7 @@ function bookFromProposal(
     planOrder,
     enrichment: {
       chapters: [],
+      topics: [],
       description: proposal.rationale,
       olSubjects: proposal.subjects,
       tocSource: 'none',

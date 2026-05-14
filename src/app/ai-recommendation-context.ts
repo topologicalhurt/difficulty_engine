@@ -58,6 +58,7 @@ function compactBook(
     evidenceConfidence: difficulty?.evidenceConfidence ?? null,
     difficultyEvidence: difficulty?.difficultyEvidence ?? [],
     chapters: [...book.enrichment.chapters],
+    topics: [...(book.enrichment.topics ?? [])],
     tocSource: book.enrichment.tocSource,
     readingScope: book.readingScope
       ? {

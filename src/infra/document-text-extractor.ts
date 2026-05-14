@@ -33,6 +33,10 @@ import {
   MIN_PDF_OUTLINE_CHAPTERS,
   preferredPdfOutlineAnchors,
 } from './document-outline-anchors';
+import {
+  preferChapterLevelTocEntries,
+  topicLevelTocEntries,
+} from './document-toc-entry-selection';
 
 export type DocumentExtractionStrategy =
   | 'pdf_outline'
@@ -42,6 +46,8 @@ export type DocumentExtractionStrategy =
 export interface DocumentChapterExtraction {
   chapters: string[];
   chapterPageRanges?: Array<ChapterPageRange | null>;
+  topics: string[];
+  topicPageRanges?: Array<ChapterPageRange | null>;
   estimatedChapterPageRanges?: Array<ChapterPageRange | null>;
   chapterPageRangeTrust?: ChapterPageRangeTrust[];
   pageAnchors?: PageAnchorEvidence[];
@@ -65,6 +71,8 @@ export interface TocExtractionAttempt {
   confidence: number;
   chapters: string[];
   chapterPageRanges?: Array<ChapterPageRange | null>;
+  topics: string[];
+  topicPageRanges?: Array<ChapterPageRange | null>;
   estimatedChapterPageRanges?: Array<ChapterPageRange | null>;
   chapterPageRangeTrust?: ChapterPageRangeTrust[];
   pageAnchors?: PageAnchorEvidence[];
@@ -83,9 +91,6 @@ const EARLY_TEXT_LINES = 260;
 const MIN_EXPLICIT_TOC_CHAPTERS = 2;
 const MIN_INFERRED_HEADER_COUNT = 3;
 const MAX_INFERRED_HEADER_COUNT = 80;
-const DECIMAL_SECTION_ENTRY_PATTERN = /^\d{1,3}\.\d+(?:\.\d+)*\s+\S/;
-const TOP_LEVEL_NUMBERED_ENTRY_PATTERN =
-  /^\d{1,3}[.)]?\s+(?!\d)(?![ivxlcdm]+\b)\S/i;
 
 function decodeBytes(bytes: Uint8Array): string {
   return decodePdfBytes(bytes).slice(0, DOCUMENT_TEXT_SCAN_CHARS);
@@ -99,16 +104,24 @@ function extraction(
   attempts: TocExtractionAttempt[] = [],
   chapterPageRanges?: Array<ChapterPageRange | null>,
   pageAnchors?: PageAnchorEvidence[],
+  topics: string[] = [],
+  topicPageRanges?: Array<ChapterPageRange | null>,
 ): DocumentChapterExtraction | null {
-  if (!chapters.length) return null;
+  if (!chapters.length && !topics.length) return null;
   const anchorRanges = rangesFromPageAnchors(chapters, pageAnchors);
   const reconciliation = reconcileChapterPageRanges(
     chapters,
     anchorRanges ?? chapterPageRanges,
   );
+  const topicReconciliation = reconcileChapterPageRanges(
+    topics,
+    topicPageRanges,
+  );
   return {
     chapters,
     chapterPageRanges: reconciliation.trustedRanges,
+    topics,
+    topicPageRanges: topicReconciliation.trustedRanges,
     estimatedChapterPageRanges: reconciliation.estimatedRanges,
     chapterPageRangeTrust: reconciliation.trust,
     pageAnchors,
@@ -140,6 +153,8 @@ function attempt(
     confidence: result?.confidence ?? 0,
     chapters: result?.chapters ?? [],
     chapterPageRanges: result?.chapterPageRanges,
+    topics: result?.topics ?? [],
+    topicPageRanges: result?.topicPageRanges,
     estimatedChapterPageRanges: result?.estimatedChapterPageRanges,
     chapterPageRangeTrust: result?.chapterPageRangeTrust,
     pageAnchors: result?.pageAnchors,
@@ -184,38 +199,6 @@ function entriesForChapters(
     const [entry] = remaining.splice(index, 1);
     return entry ?? { title: chapter };
   });
-}
-
-function topLevelSequenceValue(title: string): number | null {
-  const match = title.match(TOP_LEVEL_NUMBERED_ENTRY_PATTERN);
-  if (!match) return null;
-  const value = title.match(/^(\d{1,3})/)?.[1];
-  return value ? Number(value) : null;
-}
-
-function preferChapterLevelTocEntries(
-  entries: ChapterTitleEntry[],
-): ChapterTitleEntry[] {
-  const decimalSectionCount = entries.filter((entry) =>
-    DECIMAL_SECTION_ENTRY_PATTERN.test(entry.title),
-  ).length;
-  if (decimalSectionCount < MIN_EXPLICIT_TOC_CHAPTERS) return entries;
-  const topLevel = entries.filter(
-    (entry) =>
-      TOP_LEVEL_NUMBERED_ENTRY_PATTERN.test(entry.title) ||
-      NUMBERED_HEADER_PATTERN.test(entry.title),
-  );
-  const sequenceValues = topLevel
-    .map((entry) => topLevelSequenceValue(entry.title))
-    .filter((value): value is number => value != null);
-  if (
-    topLevel.length >= MIN_EXPLICIT_TOC_CHAPTERS &&
-    sequenceValues[0] === 1 &&
-    hasConsistentChapterSequence(topLevel.map((entry) => entry.title))
-  ) {
-    return topLevel;
-  }
-  return entries.length > decimalSectionCount * 0.75 ? [] : entries;
 }
 
 function explicitTocRegion(lines: string[], contentsIndex: number): string[] {
@@ -296,14 +279,26 @@ export function extractExplicitTocChapters(
     source: 'structured',
     limit: 80,
   });
-  const chapterLevelEntries = preferChapterLevelTocEntries(entries);
+  const chapterLevelEntries = preferChapterLevelTocEntries(
+    entries,
+    (title) => NUMBERED_HEADER_PATTERN.test(title),
+    hasConsistentChapterSequence,
+  );
   const chapters = removeMarkerOnlyDuplicates(
     chapterLevelEntries.map((entry) => entry.title),
   );
-  if (chapters.length < MIN_EXPLICIT_TOC_CHAPTERS) {
+  const topicEntries = topicLevelTocEntries(entries, chapterLevelEntries);
+  const topics = removeMarkerOnlyDuplicates(
+    topicEntries.map((entry) => entry.title),
+  );
+  if (
+    chapters.length < MIN_EXPLICIT_TOC_CHAPTERS &&
+    topics.length < MIN_EXPLICIT_TOC_CHAPTERS
+  ) {
     return null;
   }
   const chapterEntries = entriesForChapters(chapterLevelEntries, chapters);
+  const orderedTopicEntries = entriesForChapters(topicEntries, topics);
   const pageAnchors = pageAnchorsFromStarts(
     chapterEntries,
     'toc_text_suffix',
@@ -317,6 +312,8 @@ export function extractExplicitTocChapters(
     [],
     pageRangesFromEntries(chapterEntries),
     pageAnchors,
+    topics,
+    pageRangesFromEntries(orderedTopicEntries),
   );
 }
 
@@ -467,6 +464,11 @@ export function extractDocumentChapters(input: {
   if ((isPdf && input.bytes) || hasPdfStructure) {
     const outline = extractPdfOutlineChapters(input.bytes, input.pageAnchors);
     if (outline) {
+      const explicit = extractExplicitTocChapters(text);
+      if (explicit?.topics?.length) {
+        outline.topics = explicit.topics;
+        outline.topicPageRanges = explicit.topicPageRanges;
+      }
       outline.attempts = extractDocumentChapterAttempts(input);
       return outline;
     }

@@ -28,6 +28,8 @@ export interface ChapterPageRange {
 export interface BookEnrichment {
   chapters: string[];
   chapterPageRanges?: Array<ChapterPageRange | null>;
+  topics?: string[];
+  topicPageRanges?: Array<ChapterPageRange | null>;
   description: string;
   olSubjects: string[];
   tocSource:
@@ -39,7 +41,10 @@ export interface BookEnrichment {
     | 'internet_archive'
     | 'pdf';
   provenance?: Partial<
-    Record<'chapters' | 'description' | 'subjects', EnrichmentFieldProvenance>
+    Record<
+      'chapters' | 'topics' | 'description' | 'subjects',
+      EnrichmentFieldProvenance
+    >
   >;
 }
 

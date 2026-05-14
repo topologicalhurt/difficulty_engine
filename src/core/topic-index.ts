@@ -62,7 +62,13 @@ export function buildTopicIndexForCorpus(corpus: CorpusSnapshot): TopicIndex {
       const current = topicsById[topic.phrase];
       current.sourcePhrases = unique([...current.sourcePhrases, topic.phrase]);
       current.rarityScores.push(topic.rarity);
-      const chapterIdxs = book.chapterProfiles
+      const structuralProfiles = book.chapterProfiles.concat(
+        book.topicProfiles.map((profile) => ({
+          ...profile,
+          idx: book.chapterProfiles.length + profile.idx,
+        })),
+      );
+      const chapterIdxs = structuralProfiles
         .filter((chapter) => chapter.phrases.includes(topic.phrase))
         .map((chapter) => chapter.idx);
       current.coverage.push({

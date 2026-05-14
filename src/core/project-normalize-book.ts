@@ -77,11 +77,19 @@ export function normalizeBookEnrichment(input: unknown): BookEnrichment {
   const chapters = sanitizeChapterTitles(normalizeStringArray(raw.chapters), {
     source: 'imported',
   });
+  const topics = sanitizeChapterTitles(normalizeStringArray(raw.topics), {
+    source: 'imported',
+  });
   return {
     chapters,
     chapterPageRanges: normalizeChapterPageRanges(
       raw.chapterPageRanges,
       chapters.length,
+    ),
+    topics,
+    topicPageRanges: normalizeChapterPageRanges(
+      raw.topicPageRanges,
+      topics.length,
     ),
     description: normalizeString(raw.description),
     olSubjects: normalizeStringArray(raw.olSubjects),
@@ -91,6 +99,9 @@ export function normalizeBookEnrichment(input: unknown): BookEnrichment {
         ? {
             chapters: normalizeProvenance(
               (raw.provenance as Record<string, unknown>).chapters,
+            ),
+            topics: normalizeProvenance(
+              (raw.provenance as Record<string, unknown>).topics,
             ),
             description: normalizeProvenance(
               (raw.provenance as Record<string, unknown>).description,

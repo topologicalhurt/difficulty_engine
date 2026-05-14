@@ -339,6 +339,7 @@ export function metadataClearedBook(
     googleBooksId: null,
     enrichment: {
       chapters: [],
+      topics: [],
       description: '',
       olSubjects: [],
       tocSource: 'none',

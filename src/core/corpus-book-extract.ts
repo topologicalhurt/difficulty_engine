@@ -23,11 +23,15 @@ export function corpusBookFromRecord(
   const sourceChapterTitles = asArray(book.enrichment.chapters)
     .map((chapter) => String(chapter || ''))
     .filter(Boolean);
+  const sourceTopicTitles = asArray(book.enrichment.topics)
+    .map((topic) => String(topic || ''))
+    .filter(Boolean);
   const chapterTitles = readingScopeSettings
     ? classifyReadingSections(book, readingScopeSettings)
         .filter((section) => !section.skipped)
         .map((section) => section.title)
     : sourceChapterTitles;
+  const topicTitles = sourceTopicTitles;
   const subjectTexts = unique([
     ...(book.subjects || []),
     ...(book.enrichment.olSubjects || []),
@@ -50,9 +54,15 @@ export function corpusBookFromRecord(
     words: tokenizeWords(title),
     phrases: phraseCandidates(title),
   }));
+  const topicProfiles = topicTitles.map((title, idx) => ({
+    idx,
+    title,
+    words: tokenizeWords(title),
+    phrases: phraseCandidates(title),
+  }));
 
   sources
-    .concat(chapterTitles)
+    .concat(chapterTitles, topicTitles)
     .filter(Boolean)
     .forEach((source) => {
       const words = tokenizeWords(source);
@@ -73,6 +83,7 @@ export function corpusBookFromRecord(
     pages: Math.max(1, Math.trunc(book.pages || 300) || 300),
     enrichment: deepClone(book.enrichment),
     chapterProfiles,
+    topicProfiles,
     subjectTexts,
     wordCounts,
     phraseCounts,
@@ -96,7 +107,7 @@ export function corpusBookFromRecord(
       book.title,
       book.short,
       subjectTexts,
-      sourceChapterTitles,
+      sourceChapterTitles.concat(sourceTopicTitles),
       book.enrichment.description,
     ),
   };

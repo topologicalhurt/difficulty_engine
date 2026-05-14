@@ -82,6 +82,7 @@ export function bookFromSuggestion(
     googleBooksId: suggestion.googleBooksId ?? null,
     enrichment: {
       chapters: [],
+      topics: [],
       description: suggestion.description,
       olSubjects: suggestion.subjects.slice(0, 20),
       tocSource: 'search',
@@ -186,6 +187,12 @@ export function mergeEnrichmentIntoBook(
       chapters: patch.enrichment?.chapters?.length
         ? patch.enrichment.chapters
         : book.enrichment.chapters,
+      topicPageRanges: patch.enrichment?.topics?.length
+        ? patch.enrichment.topicPageRanges
+        : book.enrichment.topicPageRanges,
+      topics: patch.enrichment?.topics?.length
+        ? patch.enrichment.topics
+        : book.enrichment.topics,
       description: patch.enrichment?.description || book.enrichment.description,
       tocSource: patch.enrichment?.tocSource ?? book.enrichment.tocSource,
       provenance: {

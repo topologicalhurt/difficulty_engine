@@ -2,6 +2,7 @@ import type { BookRecord } from './types';
 
 export interface CorpusBook extends BookRecord {
   chapterProfiles: ChapterProfile[];
+  topicProfiles: ChapterProfile[];
   subjectTexts: string[];
   wordCounts: Record<string, number>;
   phraseCounts: Record<string, number>;

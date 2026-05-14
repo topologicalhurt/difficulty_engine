@@ -484,4 +484,41 @@ describe('project-file boundary', () => {
       'Chapter 1 Foundations',
     ]);
   });
+
+  it('normalizes persisted TOC topics separately from chapters', () => {
+    const project = normalizeProject({
+      version: 1,
+      library: {
+        books: {
+          alpha: {
+            title: 'Alpha',
+            short: 'Alpha',
+            pages: 200,
+            enrichment: {
+              chapters: ['Chapter 1 Foundations'],
+              topics: [
+                '1.1 Core definitions',
+                'This paragraph is descriptive prose, not a useful topic row.',
+              ],
+              topicPageRanges: [{ start: 10, end: 18 }],
+            },
+          },
+        },
+      },
+      manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+      constraints: {},
+      enrichmentCache: {},
+      uiPreferences: {},
+    });
+
+    expect(project.library.books.alpha.enrichment.chapters).toEqual([
+      'Chapter 1 Foundations',
+    ]);
+    expect(project.library.books.alpha.enrichment.topics).toEqual([
+      '1.1 Core definitions',
+    ]);
+    expect(project.library.books.alpha.enrichment.topicPageRanges).toEqual([
+      { start: 10, end: 18 },
+    ]);
+  });
 });

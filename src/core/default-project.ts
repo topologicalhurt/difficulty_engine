@@ -297,6 +297,7 @@ export const EXAMPLE_BOOK: BookRecord = {
   completed: false,
   enrichment: {
     chapters: [],
+    topics: [],
     description: '',
     olSubjects: [],
     tocSource: 'none',

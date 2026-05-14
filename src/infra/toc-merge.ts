@@ -23,6 +23,8 @@ export interface StrategyCandidate {
   confidence: number;
   chapters?: string[];
   chapterPageRanges?: Array<ChapterPageRange | null>;
+  topics?: string[];
+  topicPageRanges?: Array<ChapterPageRange | null>;
   estimatedChapterPageRanges?: Array<ChapterPageRange | null>;
   chapterPageRangeTrust?: ChapterPageRangeTrust[];
   pageAnchors?: PageAnchorEvidence[];
@@ -138,6 +140,30 @@ function selectedChapterPageRanges(
   });
 }
 
+function topicCandidate(candidate: StrategyCandidate): StrategyCandidate | null {
+  return candidate.topics?.length
+    ? {
+        ...candidate,
+        chapters: candidate.topics,
+        chapterPageRanges: candidate.topicPageRanges,
+      }
+    : null;
+}
+
+function existingTopicCandidate(book: BookRecord): StrategyCandidate | null {
+  return book.enrichment.topics?.length
+    ? {
+        provider:
+          book.enrichment.tocSource === 'manual' ? 'manual' : 'local_document',
+        sourceUrl: `project://book/${book.id}/topics`,
+        confidence: book.enrichment.tocSource === 'manual' ? 1 : 0.54,
+        chapters: book.enrichment.topics,
+        chapterPageRanges: book.enrichment.topicPageRanges,
+        tocSource: book.enrichment.tocSource,
+      }
+    : null;
+}
+
 export function mergeStrategyCandidates(
   book: BookRecord,
   candidates: StrategyCandidate[],
@@ -163,6 +189,29 @@ export function mergeStrategyCandidates(
     candidateChapters.length
       ? selectedChapterPageRanges(selectedChapterCandidate, chapters)
       : book.enrichment.chapterPageRanges;
+  const topicCandidates = compactItems([
+    existingTopicCandidate(book),
+    ...candidates.map(topicCandidate),
+  ]);
+  const selectedTopicCandidate = bestChapterCandidate(topicCandidates);
+  const candidateTopics = sanitizeChapterTitles(
+    selectedTopicCandidate?.chapters ?? [],
+    {
+      source:
+        selectedTopicCandidate?.tocSource === 'manual'
+          ? 'manual'
+          : 'structured',
+    },
+  );
+  const topics = candidateTopics.length
+    ? candidateTopics
+    : sanitizeChapterTitles(book.enrichment.topics ?? [], {
+        source: 'imported',
+      });
+  const topicPageRanges =
+    candidateTopics.length
+      ? selectedChapterPageRanges(selectedTopicCandidate, topics)
+      : book.enrichment.topicPageRanges;
   const pickCandidateValue = <T>(
     select: (candidate: StrategyCandidate) => T | null | undefined,
     accept?: (candidate: StrategyCandidate, value: T) => boolean,
@@ -211,6 +260,8 @@ export function mergeStrategyCandidates(
     enrichment: {
       chapters,
       chapterPageRanges,
+      topics,
+      topicPageRanges,
       description,
       olSubjects: subjects,
       tocSource: preferredTocSource(
@@ -229,6 +280,17 @@ export function mergeStrategyCandidates(
                 ),
               ) ?? book.enrichment.provenance?.chapters)
             : book.enrichment.provenance?.chapters,
+        topics:
+          topics.length && provenance[0]
+            ? (provenanceFor(provenance, candidates, (candidate) =>
+                Boolean(
+                  selectedTopicCandidate &&
+                  candidate.provider === selectedTopicCandidate.provider &&
+                  candidate.sourceUrl === selectedTopicCandidate.sourceUrl &&
+                  candidate.topics?.length,
+                ),
+              ) ?? book.enrichment.provenance?.topics)
+            : book.enrichment.provenance?.topics,
         description:
           description && provenance[0]
             ? (provenanceFor(provenance, candidates, (candidate) =>

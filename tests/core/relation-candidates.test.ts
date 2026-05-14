@@ -47,6 +47,7 @@ function corpusBook(
       tocSource: 'manual',
     },
     chapterProfiles: [{ idx: 0, title: phrase, words, phrases: [phrase] }],
+    topicProfiles: [],
     subjectTexts: [phrase],
     wordCounts,
     phraseCounts: { [phrase]: 1 },
