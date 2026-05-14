@@ -29,6 +29,10 @@ import {
   type ChapterPageRangeTrust,
   type PageAnchorEvidence,
 } from './toc-page-ranges';
+import {
+  MIN_PDF_OUTLINE_CHAPTERS,
+  preferredPdfOutlineAnchors,
+} from './document-outline-anchors';
 
 export type DocumentExtractionStrategy =
   | 'pdf_outline'
@@ -53,7 +57,11 @@ export interface DocumentChapterExtraction {
 
 export interface TocExtractionAttempt {
   strategy: DocumentExtractionStrategy;
-  sourceKind: 'pdf_raw_outline' | 'pdf_raw_text' | 'document_text';
+  sourceKind:
+    | 'pdf_raw_outline'
+    | 'pdf_structure'
+    | 'pdf_raw_text'
+    | 'document_text';
   confidence: number;
   chapters: string[];
   chapterPageRanges?: Array<ChapterPageRange | null>;
@@ -73,9 +81,11 @@ export interface TocExtractionAttempt {
 const CONTENTS_REGION_MAX_LINES = 900;
 const EARLY_TEXT_LINES = 260;
 const MIN_EXPLICIT_TOC_CHAPTERS = 2;
-const MIN_PDF_OUTLINE_CHAPTERS = 2;
 const MIN_INFERRED_HEADER_COUNT = 3;
 const MAX_INFERRED_HEADER_COUNT = 80;
+const DECIMAL_SECTION_ENTRY_PATTERN = /^\d{1,3}\.\d+(?:\.\d+)*\s+\S/;
+const TOP_LEVEL_NUMBERED_ENTRY_PATTERN =
+  /^\d{1,3}[.)]?\s+(?!\d)(?![ivxlcdm]+\b)\S/i;
 
 function decodeBytes(bytes: Uint8Array): string {
   return decodePdfBytes(bytes).slice(0, DOCUMENT_TEXT_SCAN_CHARS);
@@ -176,6 +186,38 @@ function entriesForChapters(
   });
 }
 
+function topLevelSequenceValue(title: string): number | null {
+  const match = title.match(TOP_LEVEL_NUMBERED_ENTRY_PATTERN);
+  if (!match) return null;
+  const value = title.match(/^(\d{1,3})/)?.[1];
+  return value ? Number(value) : null;
+}
+
+function preferChapterLevelTocEntries(
+  entries: ChapterTitleEntry[],
+): ChapterTitleEntry[] {
+  const decimalSectionCount = entries.filter((entry) =>
+    DECIMAL_SECTION_ENTRY_PATTERN.test(entry.title),
+  ).length;
+  if (decimalSectionCount < MIN_EXPLICIT_TOC_CHAPTERS) return entries;
+  const topLevel = entries.filter(
+    (entry) =>
+      TOP_LEVEL_NUMBERED_ENTRY_PATTERN.test(entry.title) ||
+      NUMBERED_HEADER_PATTERN.test(entry.title),
+  );
+  const sequenceValues = topLevel
+    .map((entry) => topLevelSequenceValue(entry.title))
+    .filter((value): value is number => value != null);
+  if (
+    topLevel.length >= MIN_EXPLICIT_TOC_CHAPTERS &&
+    sequenceValues[0] === 1 &&
+    hasConsistentChapterSequence(topLevel.map((entry) => entry.title))
+  ) {
+    return topLevel;
+  }
+  return entries.length > decimalSectionCount * 0.75 ? [] : entries;
+}
+
 function explicitTocRegion(lines: string[], contentsIndex: number): string[] {
   const region: string[] = [];
   let structuralEntries = 0;
@@ -204,15 +246,19 @@ function explicitTocRegion(lines: string[], contentsIndex: number): string[] {
 }
 
 export function extractPdfOutlineChapters(
-  bytes: Uint8Array,
+  bytes?: Uint8Array,
   pageAnchors?: PageAnchorEvidence[],
 ): DocumentChapterExtraction | null {
-  const outlineAnchorTitles = (pageAnchors ?? [])
-    .filter((anchor) => anchor.sourceMethod === 'pdf_outline_destination')
-    .map((anchor) => anchor.chapterTitle);
-  const titles = outlineAnchorTitles.length
-    ? outlineAnchorTitles
-    : extractPdfOutlineTitles(bytes);
+  const outlineAnchors = preferredPdfOutlineAnchors(pageAnchors);
+  const outlineAnchorTitles = outlineAnchors.map(
+    (anchor) => anchor.chapterTitle,
+  );
+  const titles =
+    outlineAnchorTitles.length >= MIN_PDF_OUTLINE_CHAPTERS
+      ? outlineAnchorTitles
+      : bytes
+        ? extractPdfOutlineTitles(bytes)
+        : [];
   const chapters = removeMarkerOnlyDuplicates(
     sanitizeChapterTitles(titles, { source: 'structured', limit: 80 }),
   );
@@ -224,7 +270,9 @@ export function extractPdfOutlineChapters(
     titles,
     [],
     undefined,
-    pageAnchors,
+    outlineAnchorTitles.length >= MIN_PDF_OUTLINE_CHAPTERS
+      ? outlineAnchors
+      : pageAnchors,
   );
 }
 
@@ -248,13 +296,14 @@ export function extractExplicitTocChapters(
     source: 'structured',
     limit: 80,
   });
+  const chapterLevelEntries = preferChapterLevelTocEntries(entries);
   const chapters = removeMarkerOnlyDuplicates(
-    entries.map((entry) => entry.title),
+    chapterLevelEntries.map((entry) => entry.title),
   );
   if (chapters.length < MIN_EXPLICIT_TOC_CHAPTERS) {
     return null;
   }
-  const chapterEntries = entriesForChapters(entries, chapters);
+  const chapterEntries = entriesForChapters(chapterLevelEntries, chapters);
   const pageAnchors = pageAnchorsFromStarts(
     chapterEntries,
     'toc_text_suffix',
@@ -318,9 +367,7 @@ export function inferChapterHeadersFromText(
 }
 
 function chapterSequenceValue(title: string): number | null {
-  const chapter = title.match(
-    /^(?:chapter|ch\.?)\s+(\d+|[ivxlcdm]+)\b/i,
-  );
+  const chapter = title.match(/^(?:chapter|ch\.?)\s+(\d+|[ivxlcdm]+)\b/i);
   if (chapter) {
     const raw = (chapter[1] ?? '').toLowerCase();
     if (/^\d+$/.test(raw)) return Number(raw);
@@ -366,13 +413,15 @@ export function extractDocumentChapterAttempts(input: {
   const isPdf = Boolean(
     input.bytes && isPdfDocument(input.sourceUrl, input.contentType),
   );
+  const hasPdfStructure =
+    preferredPdfOutlineAnchors(input.pageAnchors).length > 0;
   const text = input.text ?? (input.bytes ? decodeBytes(input.bytes) : '');
-  if (isPdf && input.bytes) {
+  if ((isPdf && input.bytes) || hasPdfStructure) {
     const start = performance.now();
     attempts.push(
       attempt(
         'pdf_outline',
-        'pdf_raw_outline',
+        isPdf && input.bytes ? 'pdf_raw_outline' : 'pdf_structure',
         start,
         extractPdfOutlineChapters(input.bytes, input.pageAnchors),
         ['no_usable_pdf_outline'],
@@ -412,8 +461,10 @@ export function extractDocumentChapters(input: {
   const isPdf = Boolean(
     input.bytes && isPdfDocument(input.sourceUrl, input.contentType),
   );
+  const hasPdfStructure =
+    preferredPdfOutlineAnchors(input.pageAnchors).length > 0;
   const text = input.text ?? (input.bytes ? decodeBytes(input.bytes) : '');
-  if (isPdf && input.bytes) {
+  if ((isPdf && input.bytes) || hasPdfStructure) {
     const outline = extractPdfOutlineChapters(input.bytes, input.pageAnchors);
     if (outline) {
       outline.attempts = extractDocumentChapterAttempts(input);

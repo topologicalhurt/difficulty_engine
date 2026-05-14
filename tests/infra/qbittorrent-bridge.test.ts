@@ -6,6 +6,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 interface BridgeModule {
+  parseTesseractTsv(value: string): { text: string; confidence: number };
   createQbittorrentBridgeServer(options: {
     listenUrl?: string;
     targetBaseUrl?: string;
@@ -504,5 +505,25 @@ describe('qBittorrent browser bridge', () => {
       await rm(root, { recursive: true, force: true });
       await rm(outside, { force: true });
     }
+  });
+
+  it('preserves Tesseract TSV line groups for TOC parsing', async () => {
+    const { parseTesseractTsv } = await bridgeModule();
+    const parsed = parseTesseractTsv(
+      [
+        'level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext',
+        '5\t1\t1\t1\t1\t1\t0\t0\t10\t10\t96\tChapter',
+        '5\t1\t1\t1\t1\t2\t11\t0\t10\t10\t95\t1',
+        '5\t1\t1\t1\t1\t3\t22\t0\t10\t10\t94\tFoundations',
+        '5\t1\t1\t1\t1\t4\t33\t0\t10\t10\t93\t1',
+        '5\t1\t1\t1\t2\t1\t0\t20\t10\t10\t92\tChapter',
+        '5\t1\t1\t1\t2\t2\t11\t20\t10\t10\t91\t2',
+        '5\t1\t1\t1\t2\t3\t22\t20\t10\t10\t90\tMethods',
+        '5\t1\t1\t1\t2\t4\t33\t20\t10\t10\t89\t31',
+      ].join('\n'),
+    );
+
+    expect(parsed.text).toBe('Chapter 1 Foundations 1\nChapter 2 Methods 31');
+    expect(parsed.confidence).toBeGreaterThan(0.9);
   });
 });

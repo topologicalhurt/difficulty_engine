@@ -100,7 +100,7 @@ describe('qBittorrent local acquisition', () => {
     expect(acquired?.documentRef?.availability.reason).toContain('missing');
   });
 
-  it('uses bridge data root but waits for qBittorrent tracking before creating refs', async () => {
+  it('uses bridge data root and keeps a queued ref while torrent metadata appears', async () => {
     const addSavePaths: Array<string | null> = [];
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/__health')) {
@@ -129,6 +129,8 @@ describe('qBittorrent local acquisition', () => {
       password: 'pass',
       fetchImpl: fetchImpl as unknown as typeof fetch,
       savePath: 'output/data/documents',
+      metadataPollAttempts: 1,
+      metadataPollIntervalMs: 0,
     });
     const candidate = {
       id: 'manual',
@@ -147,7 +149,213 @@ describe('qBittorrent local acquisition', () => {
     });
 
     expect(addSavePaths).toEqual(['/absolute/data/documents']);
-    expect(acquired).toBeNull();
+    expect(acquired?.documentRef).toMatchObject({
+      torrentHash: 'abc123',
+      status: 'queued',
+      contentKind: 'pdf',
+    });
+    expect(acquired?.storagePath).toContain('/absolute/data/documents');
+  });
+
+  it('waits for qBittorrent to expose newly added torrent file metadata', async () => {
+    const addSavePaths: Array<string | null> = [];
+    let infoCalls = 0;
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/__health')) {
+        return Response.json({
+          ok: true,
+          dataRoot: '/absolute/data/documents',
+        });
+      }
+      if (url.endsWith('/api/v2/auth/login')) {
+        return new Response('Ok.', {
+          status: 200,
+          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
+        });
+      }
+      if (url.endsWith('/api/v2/torrents/info')) {
+        infoCalls += 1;
+        return Response.json(
+          infoCalls < 3
+            ? []
+            : [
+                {
+                  hash: 'abc123',
+                  name: 'Fixture Book',
+                  state: 'pausedDL',
+                  progress: 0,
+                  save_path: '/absolute/data/documents',
+                },
+              ],
+        );
+      }
+      if (url.endsWith('/api/v2/torrents/add')) {
+        const body = init?.body as FormData;
+        addSavePaths.push(String(body.get('savepath')));
+        return new Response('Ok.', { status: 200 });
+      }
+      if (url.includes('/api/v2/torrents/files?')) {
+        return Response.json([
+          {
+            index: 0,
+            name: 'Fixture Book.pdf',
+            size: 10_000,
+            progress: 0,
+          },
+        ]);
+      }
+      if (url.endsWith('/api/v2/torrents/filePrio')) {
+        return new Response('Ok.', { status: 200 });
+      }
+      if (
+        url.endsWith('/api/v2/torrents/start') ||
+        url.endsWith('/api/v2/torrents/resume')
+      ) {
+        return new Response('Ok.', { status: 200 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    const provider = createQBittorrentProvider({
+      baseUrl: 'http://127.0.0.1:8787',
+      username: 'user',
+      password: 'pass',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      savePath: 'output/data/documents',
+      metadataPollAttempts: 3,
+      metadataPollIntervalMs: 0,
+    });
+    const candidate = {
+      id: 'manual',
+      provider: 'qbittorrent',
+      title: 'Fixture Book',
+      sourceUrl: 'magnet:?xt=urn:btih:abc123',
+      contentKind: 'pdf' as const,
+      accessBasis: 'user_provided' as const,
+      confidence: 0.9,
+      matchScore: 1,
+    };
+
+    const acquired = await provider.acquire(candidate, {
+      book: { ...EXAMPLE_BOOK, title: 'Fixture Book', sourcePath: null },
+      policy: qbitPolicy(),
+    });
+
+    expect(addSavePaths).toEqual(['/absolute/data/documents']);
+    expect(infoCalls).toBe(3);
+    expect(acquired?.documentRef).toMatchObject({
+      torrentHash: 'abc123',
+      fileIndex: 0,
+      status: 'downloading',
+      contentKind: 'pdf',
+    });
+  });
+
+  it('carries completed PDF structure anchors on first acquisition', async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url.endsWith('/api/v2/auth/login')) {
+        return new Response('Ok.', {
+          status: 200,
+          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
+        });
+      }
+      if (url.endsWith('/api/v2/torrents/info')) {
+        return Response.json([
+          {
+            hash: 'abc123',
+            name: 'Fixture Book',
+            state: 'stalledUP',
+            progress: 1,
+            save_path: '/absolute/data/documents',
+          },
+        ]);
+      }
+      if (url.includes('/api/v2/torrents/files?')) {
+        return Response.json([
+          {
+            index: 0,
+            name: 'Fixture Book.pdf',
+            size: 10_000,
+            progress: 1,
+          },
+        ]);
+      }
+      if (url.endsWith('/api/v2/torrents/filePrio')) {
+        return new Response('Ok.', { status: 200 });
+      }
+      if (
+        url.endsWith('/api/v2/torrents/start') ||
+        url.endsWith('/api/v2/torrents/resume')
+      ) {
+        return new Response('Ok.', { status: 200 });
+      }
+      if (url.includes('/documents/pdf-structure?')) {
+        return Response.json({
+          ok: true,
+          status: 'complete',
+          pageAnchors: [
+            {
+              chapterTitle: 'Chapter 1 Foundations',
+              sourceMethod: 'pdf_outline_destination',
+              confidence: 0.92,
+              physicalPage: 12,
+              outlineLevel: 1,
+            },
+            {
+              chapterTitle: 'Chapter 2 Applications',
+              sourceMethod: 'pdf_outline_destination',
+              confidence: 0.92,
+              physicalPage: 48,
+              outlineLevel: 1,
+            },
+          ],
+        });
+      }
+      if (url.includes('/documents/read-text?')) {
+        return new Response('missing', { status: 404 });
+      }
+      if (url.includes('/documents/extract-text?')) {
+        return Response.json({ text: 'embedded text' });
+      }
+      if (url.includes('/documents/read-bytes?')) {
+        return new Response('%PDF-1.4', { status: 200 });
+      }
+      if (url.includes('/documents/status?')) {
+        return new Response('ok', { status: 200 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    const provider = createQBittorrentProvider({
+      baseUrl: 'http://127.0.0.1:8787',
+      username: 'user',
+      password: 'pass',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      savePath: '/absolute/data/documents',
+    });
+    const candidate = {
+      id: 'manual',
+      provider: 'qbittorrent',
+      title: 'Fixture Book',
+      sourceUrl: 'magnet:?xt=urn:btih:abc123',
+      contentKind: 'pdf' as const,
+      accessBasis: 'user_provided' as const,
+      confidence: 0.9,
+      matchScore: 1,
+    };
+
+    const acquired = await provider.acquire(candidate, {
+      book: { ...EXAMPLE_BOOK, title: 'Fixture Book', sourcePath: null },
+      policy: qbitPolicy(),
+    });
+
+    expect(acquired?.pageAnchors?.map((anchor) => anchor.chapterTitle)).toEqual(
+      ['Chapter 1 Foundations', 'Chapter 2 Applications'],
+    );
+    expect(acquired?.documentRef).toMatchObject({
+      torrentHash: 'abc123',
+      fileIndex: 0,
+      status: 'complete',
+      contentKind: 'pdf',
+    });
   });
 
   it('reuses already tracked difficulty-engine torrents as find candidates', async () => {
@@ -164,7 +372,8 @@ describe('qBittorrent local acquisition', () => {
             category: '',
             hash: 'uncategorized',
             name: 'Fixture Book by Author Name',
-            content_path: '/repo/output/data/documents/Fixture Book Author Name.pdf',
+            content_path:
+              '/repo/output/data/documents/Fixture Book Author Name.pdf',
             magnet_uri: 'magnet:?xt=urn:btih:uncategorized',
             num_seeds: 9,
             num_leechs: 0,
@@ -175,7 +384,8 @@ describe('qBittorrent local acquisition', () => {
             category: 'difficulty-engine',
             hash: 'abc123',
             name: 'Fixture Book by Author Name',
-            content_path: '/repo/output/data/documents/Fixture Book Author Name.pdf',
+            content_path:
+              '/repo/output/data/documents/Fixture Book Author Name.pdf',
             magnet_uri: 'magnet:?xt=urn:btih:abc123',
             num_seeds: 0,
             num_leechs: 0,

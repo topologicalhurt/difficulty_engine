@@ -72,6 +72,37 @@ describe('qBittorrent file selection', () => {
     expect(selected?.name).toBe('Linear Algebra Done Right 4th Edition.pdf');
   });
 
+  it('rejects abbreviated solution PDFs before selecting a textbook file', () => {
+    const selected = preferredTorrentFile(
+      [
+        {
+          index: 0,
+          name: 'Griffiths D. Introduction to Electrodynamics 4ed 2013 Sol.pdf',
+          size: 34_000,
+          progress: 1,
+        },
+        {
+          index: 1,
+          name: 'Griffiths D. Introduction to Electrodynamics 5ed 2023.pdf',
+          size: 14_000,
+          progress: 1,
+        },
+      ],
+      {
+        book: {
+          ...EXAMPLE_BOOK,
+          title: 'Introduction to Electrodynamics',
+          authors: ['David J. Griffiths'],
+        },
+        policy: qbitPolicy(),
+      },
+    );
+
+    expect(selected?.name).toBe(
+      'Griffiths D. Introduction to Electrodynamics 5ed 2023.pdf',
+    );
+  });
+
   it('rejects nested PDFs below the first folder level', () => {
     const selected = preferredTorrentFile(
       [

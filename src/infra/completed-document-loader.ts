@@ -31,7 +31,8 @@ function canReuseDocument(
 ): boolean {
   if (!sourceEnabledForDocumentProvider(document, settings)) return false;
   if (!REUSABLE_DOCUMENT_STATUSES.has(document.status)) return false;
-  if (document.provider === 'qbittorrent') return document.contentKind === 'pdf';
+  if (document.provider === 'qbittorrent')
+    return document.contentKind === 'pdf';
   return TEXT_KINDS.has(document.contentKind) || document.contentKind === 'pdf';
 }
 
@@ -82,15 +83,14 @@ export async function loadCompletedDocumentRefs(
   const acquired: AcquiredDocument[] = [];
   for (const document of documents) {
     try {
-      const text =
-        TEXT_KINDS.has(document.contentKind)
-          ? await readBridgeText(
-              fetchImpl,
-              baseUrl,
-              document.storagePath,
-              request.signal,
-            ).catch(() => undefined)
-          : undefined;
+      const text = TEXT_KINDS.has(document.contentKind)
+        ? await readBridgeText(
+            fetchImpl,
+            baseUrl,
+            document.storagePath,
+            request.signal,
+          ).catch(() => undefined)
+        : undefined;
       const bytes =
         document.contentKind === 'pdf'
           ? await readBridgeBytes(
@@ -118,17 +118,18 @@ export async function loadCompletedDocumentRefs(
               request.signal,
             ).catch(() => undefined)
           : undefined;
+      const pageAnchors =
+        pdfStructure?.status === 'complete'
+          ? pdfStructure.pageAnchors
+          : undefined;
       const extractionWithoutOcr =
-        text || embeddedText || bytes
+        text || embeddedText || bytes || pageAnchors?.length
           ? extractDocumentChapters({
               text: text ?? embeddedText,
               bytes,
               contentType: document.contentType,
               sourceUrl: document.sourceUrl ?? document.storagePath,
-              pageAnchors:
-                pdfStructure?.status === 'complete'
-                  ? pdfStructure.pageAnchors
-                  : undefined,
+              pageAnchors,
             })
           : null;
       const ocr =
@@ -148,7 +149,15 @@ export async function loadCompletedDocumentRefs(
         (ocrConfidence == null || ocrConfidence >= MIN_OCR_TOC_CONFIDENCE)
           ? ocr.text
           : undefined;
-      if (!text && !embeddedText && !bytes && !ocrText) continue;
+      if (
+        !text &&
+        !embeddedText &&
+        !bytes &&
+        !ocrText &&
+        !extractionWithoutOcr
+      ) {
+        continue;
+      }
       acquired.push({
         candidateId: document.id,
         provider: document.provider,
@@ -160,6 +169,7 @@ export async function loadCompletedDocumentRefs(
           document.provenance.confidence || document.matchScore || 0.6,
         text: text ?? embeddedText ?? ocrText,
         bytes,
+        pageAnchors,
         sha256: document.sha256,
         documentRef:
           document.status === 'unreadable' && document.contentKind === 'pdf'

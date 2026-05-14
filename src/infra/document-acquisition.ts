@@ -4,6 +4,7 @@ import type {
   BookDocumentRef,
   BookRecord,
 } from '../core/types';
+import type { PageAnchorEvidence } from './toc-page-ranges';
 import {
   DEFAULT_CONTENT_PREFERENCE,
   DEFAULT_DOCUMENT_DATA_ROOT,
@@ -69,6 +70,7 @@ export interface AcquiredDocument {
   confidence: number;
   text?: string;
   bytes?: Uint8Array;
+  pageAnchors?: PageAnchorEvidence[];
   sha256?: string;
   documentRef?: BookDocumentRef;
   acquiredAt: string;
@@ -130,7 +132,9 @@ export function choosePreferredDocumentCandidate(
   policy: DocumentAcquisitionPolicy,
   acquisitionState?: BookDocumentAcquisitionState,
 ): DocumentCandidate | null {
-  return rankDocumentCandidates(candidates, policy, acquisitionState)[0] ?? null;
+  return (
+    rankDocumentCandidates(candidates, policy, acquisitionState)[0] ?? null
+  );
 }
 
 export function rankDocumentCandidates(
@@ -216,8 +220,7 @@ function normalizedDocumentPath(value: string | undefined): string {
 
 function documentMergeKey(document: BookDocumentRef): string {
   const torrentHash =
-    document.torrentHash ||
-    document.sourceUrl?.match(/btih:([a-z0-9]+)/i)?.[1];
+    document.torrentHash || document.sourceUrl?.match(/btih:([a-z0-9]+)/i)?.[1];
   if (torrentHash) {
     return `torrent:${torrentHash.toLowerCase()}:${document.fileIndex ?? normalizedDocumentPath(document.storagePath)}`;
   }
@@ -285,7 +288,8 @@ function compareDocumentRefPreference(
   right: BookDocumentRef,
 ): number {
   return (
-    documentStatusPriority(left.status) - documentStatusPriority(right.status) ||
+    documentStatusPriority(left.status) -
+      documentStatusPriority(right.status) ||
     (right.availability.progress ?? 0) - (left.availability.progress ?? 0) ||
     right.matchScore - left.matchScore ||
     right.updatedAt.localeCompare(left.updatedAt) ||

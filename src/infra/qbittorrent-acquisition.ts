@@ -7,6 +7,7 @@ import { isLawfulDocumentCandidate } from './document-acquisition';
 import type { QBittorrentClient } from './qbittorrent-client';
 import {
   documentRefId,
+  hashFromMagnet,
   documentStatus,
   fileMatchScore,
   selectTrustedTorrentFile,
@@ -70,14 +71,21 @@ async function readCompletedDocument(
   client: QBittorrentClient,
   storagePath: string,
   status: string,
-): Promise<{ text?: string; bytes?: Uint8Array }> {
+): Promise<Pick<AcquiredDocument, 'text' | 'bytes' | 'pageAnchors'>> {
   if (status !== 'complete') return {};
+  const pageAnchors = await client
+    .pdfStructureAnchors(storagePath)
+    .catch(() => undefined);
   const text = await client
     .readTextDocument(storagePath)
     .catch(() => undefined);
-  if (text) return { text };
+  const embeddedText = text
+    ? undefined
+    : await client.extractPdfTextDocument(storagePath).catch(() => undefined);
   return {
+    text: text ?? embeddedText,
     bytes: await client.readByteDocument(storagePath).catch(() => undefined),
+    pageAnchors,
   };
 }
 
@@ -91,9 +99,56 @@ export async function acquireTorrentDocument(
   let info = await client.torrentInfo(candidate);
   if (!info) {
     await client.addTorrent(candidate);
-    info = await client.torrentInfo(candidate);
+    info = await client.waitForTorrentInfo(candidate);
   }
-  if (!info?.hash) return null;
+  if (!info?.hash) {
+    const magnetHash = hashFromMagnet(candidate.sourceUrl);
+    if (!magnetHash) return null;
+    const now = isoTimestamp();
+    const savePath = await client.effectiveSavePath();
+    const pendingName = `${basename(candidate.title) || 'pending'}.pdf`;
+    const pendingStoragePath = joinStoragePath(savePath, pendingName);
+    return {
+      candidateId: candidate.id,
+      provider: 'qbittorrent',
+      sourceUrl: candidate.sourceUrl,
+      storagePath: pendingStoragePath,
+      contentType: 'application/pdf',
+      accessBasis: candidate.accessBasis ?? 'user_provided',
+      confidence: candidate.confidence,
+      acquiredAt: now,
+      documentRef: {
+        id: documentRefId(magnetHash, undefined, pendingStoragePath),
+        provider: 'qbittorrent',
+        sourceUrl: candidate.sourceUrl,
+        torrentHash: magnetHash,
+        fileName: pendingName,
+        storagePath: pendingStoragePath,
+        contentKind: 'pdf',
+        contentType: 'application/pdf',
+        accessBasis: candidate.accessBasis ?? 'user_provided',
+        status: 'queued',
+        matchScore: candidate.matchScore ?? candidate.confidence,
+        availability: {
+          seeders: candidate.seeders ?? null,
+          peers: candidate.peers ?? null,
+          progress: 0,
+          state: 'metadata_pending',
+          reason:
+            'qBittorrent accepted the torrent, but it has not exposed torrent metadata yet.',
+        },
+        provenance: {
+          provider: 'qbittorrent',
+          sourceUrl: candidate.sourceUrl,
+          fetchedAt: now,
+          confidence: candidate.confidence,
+          strategy: 'pending_torrent_metadata',
+        },
+        createdAt: now,
+        updatedAt: now,
+      },
+    };
+  }
   const savePath = await client.effectiveSavePath();
   let storagePath =
     info?.content_path ?? info?.save_path ?? savePath ?? candidate.title;
@@ -171,7 +226,7 @@ export async function acquireTorrentDocument(
 
   const contentType = contentTypeFromPath(storagePath ?? candidate.sourceUrl);
   const status = documentStatus(info, selected);
-  const { text, bytes } = await readCompletedDocument(
+  const { text, bytes, pageAnchors } = await readCompletedDocument(
     client,
     storagePath,
     status,
@@ -202,6 +257,7 @@ export async function acquireTorrentDocument(
     confidence: candidate.confidence,
     text,
     bytes,
+    pageAnchors,
     acquiredAt: now,
     documentRef: {
       id: documentRefId(info?.hash, selected?.index, storagePath),
@@ -226,10 +282,10 @@ export async function acquireTorrentDocument(
         state: availability.state,
         reason:
           refStatus === 'failed'
-              ? 'Completed torrent file is missing from the configured data folder.'
-              : status === 'stalled'
-                ? 'Torrent is stalled or has no active download progress.'
-                : undefined,
+            ? 'Completed torrent file is missing from the configured data folder.'
+            : status === 'stalled'
+              ? 'Torrent is stalled or has no active download progress.'
+              : undefined,
       },
       provenance: {
         provider: 'qbittorrent',

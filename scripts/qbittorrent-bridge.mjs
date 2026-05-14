@@ -382,11 +382,13 @@ async function readJsonBody(req, maxBytes = DOCUMENT_JSON_BODY_LIMIT_BYTES) {
 }
 
 function safeBackupPrefix(storageKey) {
-  return String(storageKey || 'project')
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^[._-]+|[._-]+$/g, '')
-    .slice(0, 80) || 'project';
+  return (
+    String(storageKey || 'project')
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, '-')
+      .replace(/^[._-]+|[._-]+$/g, '')
+      .slice(0, 80) || 'project'
+  );
 }
 
 async function writeProjectBackup(backupRoot, storageKey, projectJson) {
@@ -525,11 +527,13 @@ async function extractPdfStructure(filePath) {
     return {
       ok: true,
       status: 'unavailable',
-      reason: 'Install Python 3 and PyMuPDF to enable PDF structure extraction.',
+      reason:
+        'Install Python 3 and PyMuPDF to enable PDF structure extraction.',
     };
   }
   const script = String.raw`
 import json
+import re
 import sys
 
 path = sys.argv[1]
@@ -547,6 +551,37 @@ except Exception:
 def clean_text(value):
     return " ".join(str(value or "").split()).strip()
 
+FRONT_BACK_RE = re.compile(r"^(advertisements?|contents?|table of contents|preface|foreword|acknowledg|cover|half title|title page|copyright|references?|bibliography|index|glossary)\b", re.I)
+CHAPTER_LIKE_RE = re.compile(r"^(chapter|ch\.?|unit|module|lecture|lesson)\b|^\d{1,3}[.)]?\s+\S", re.I)
+MAJOR_RE = re.compile(r"^(chapter|ch\.?|part|book|unit|module|lecture|lesson|appendix)\b|^\d{1,3}[.)]?\s+\S", re.I)
+
+def outline_level(item):
+    try:
+        return int(item[0])
+    except Exception:
+        return None
+
+def preferred_outline_rows(rows):
+    rows = [row for row in rows if row.get("title") and row.get("page", 0) > 0]
+    if not rows:
+        return []
+    major = [row for row in rows if MAJOR_RE.search(row["title"]) and not FRONT_BACK_RE.search(row["title"])]
+    chapter_like = [row for row in major if CHAPTER_LIKE_RE.search(row["title"])]
+    if len(chapter_like) >= 2:
+        level = min(row["level"] for row in chapter_like if row.get("level"))
+        return [row for row in major if row.get("level") == level]
+    if len(major) >= 2:
+        level = min(row["level"] for row in major if row.get("level"))
+        return [row for row in major if row.get("level") == level]
+    non_front = [row for row in rows if not FRONT_BACK_RE.search(row["title"])]
+    if not non_front:
+        return []
+    levels = [row["level"] for row in non_front if row.get("level")]
+    if not levels:
+        return non_front
+    level = min(levels)
+    return [row for row in non_front if row.get("level") == level]
+
 try:
     doc = fitz.open(path)
     page_count = len(doc)
@@ -557,16 +592,23 @@ try:
         except Exception:
             labels.append(None)
     anchors = []
+    outline_rows = []
     for item in doc.get_toc(False):
         title = clean_text(item[1] if len(item) > 1 else "")
         page = item[2] if len(item) > 2 else 0
+        level = outline_level(item) or 1
         if title and isinstance(page, int) and page > 0:
+            outline_rows.append({"title": title, "page": page, "level": level})
+    for row in preferred_outline_rows(outline_rows):
+        page = row["page"]
+        if page > 0:
             anchors.append({
-                "chapterTitle": title,
+                "chapterTitle": row["title"],
                 "sourceMethod": "pdf_outline_destination",
                 "confidence": 0.92,
                 "physicalPage": page,
                 "printedPage": (labels[page - 1] if page - 1 < len(labels) else None) or str(page),
+                "outlineLevel": row["level"],
             })
     for page_index in range(min(page_count, page_limit)):
         page = doc[page_index]
@@ -676,18 +718,24 @@ async function ocrStatus(dataRoot, requestPath) {
   return { ok: true, status: 'pending', sidecarPath };
 }
 
-function parseTesseractTsv(value) {
+export function parseTesseractTsv(value) {
   const rows = value
     .split(/\r?\n/)
     .map((line) => line.split('\t'))
     .filter((row) => row.length >= 12);
-  const words = [];
+  const lineBuckets = new Map();
   const confidences = [];
   for (const row of rows.slice(1)) {
     const confidence = Number(row[10]);
     const text = String(row.slice(11).join('\t') || '').trim();
     if (!text) continue;
-    words.push(text);
+    const key = [row[1], row[2], row[3], row[4]].join(':');
+    const bucket = lineBuckets.get(key) ?? {
+      order: lineBuckets.size,
+      words: [],
+    };
+    bucket.words.push(text);
+    lineBuckets.set(key, bucket);
     if (Number.isFinite(confidence) && confidence >= 0) {
       confidences.push(confidence);
     }
@@ -695,15 +743,19 @@ function parseTesseractTsv(value) {
   const averageConfidence = confidences.length
     ? confidences.reduce((total, item) => total + item, 0) / confidences.length
     : 0;
+  const lines = [...lineBuckets.values()]
+    .sort((left, right) => left.order - right.order)
+    .map((bucket) => bucket.words.join(' ').trim())
+    .filter(Boolean);
   return {
-    text: words.join(' '),
+    text: lines.join('\n'),
     confidence: Math.round(averageConfidence) / 100,
   };
 }
 
 async function readCommandVersion(command) {
-  const output = await runProcess(command, ['--version'], 5_000).catch(
-    () => Buffer.alloc(0),
+  const output = await runProcess(command, ['--version'], 5_000).catch(() =>
+    Buffer.alloc(0),
   );
   return output.toString('utf8').split(/\r?\n/)[0]?.trim() || 'unknown';
 }
@@ -758,7 +810,10 @@ async function runOcrForPdf(dataRoot, requestPath) {
       const result = await ocrImage(join(workDir, image));
       if (result?.text) pages.push({ image, ...result });
     }
-    const combined = pages.map((page) => page.text).join('\n\n').trim();
+    const combined = pages
+      .map((page) => page.text)
+      .join('\n\n')
+      .trim();
     if (!combined) {
       return {
         ok: true,

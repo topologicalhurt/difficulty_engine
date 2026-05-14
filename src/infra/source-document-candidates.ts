@@ -187,6 +187,7 @@ export function acquiredDocumentCandidates(
           bytes: document.bytes,
           contentType: document.contentType,
           sourceUrl: document.sourceUrl ?? document.storagePath,
+          pageAnchors: document.pageAnchors,
         });
         if (!extraction) return null;
         return candidateFromExtraction(

@@ -2,7 +2,7 @@ import type { TorrentFile } from './qbittorrent-types';
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 
 export const BAD_QBITTORRENT_FILE_NAME_PATTERN =
-  /\b(?:sample|preview|solution|solutions|solver|solvers|answer|answers|instructor|slides|cover|front\s*matter|copyright)\b/i;
+  /\b(?:sample|preview|solution|solutions|soln?|solver|solvers|answer|answers|instructor|slides|cover|front\s*matter|copyright)\b/i;
 
 const SYSTEM_PATH_SEGMENT_PATTERN = /^(?:__macosx|\.ds_store)$/i;
 const MAX_SURFACE_PDF_DEPTH = 2;
@@ -13,7 +13,9 @@ export interface QbittorrentPdfEligibility {
   depth: number;
 }
 
-export function torrentFilePathSegments(fileName: string | null | undefined): string[] {
+export function torrentFilePathSegments(
+  fileName: string | null | undefined,
+): string[] {
   return String(fileName ?? '')
     .replace(/\\/g, '/')
     .split('/')
@@ -61,7 +63,9 @@ export function qbittorrentPdfRejectionSummary(files: TorrentFile[]): string {
     return 'No PDF file passed the title, author, or ISBN trust checks.';
   }
   return [...reasons.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .sort(
+      (left, right) => right[1] - left[1] || left[0].localeCompare(right[0]),
+    )
     .map(([reason, count]) => `${reason} (${count})`)
     .join('; ');
 }

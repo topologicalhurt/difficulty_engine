@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createDefaultSourceSettings, EXAMPLE_BOOK } from '../../src/core/defaults';
+import {
+  createDefaultSourceSettings,
+  EXAMPLE_BOOK,
+} from '../../src/core/defaults';
 import type { Logger } from '../../src/core/types';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
 import { createEnrichmentClient } from '../../src/infra/enrichment-client';
@@ -85,7 +88,12 @@ describe('completed document loader', () => {
             accessBasis: 'user_provided',
             status: 'complete',
             matchScore: 0.95,
-            availability: { seeders: 7, peers: 1, progress: 1, state: 'uploading' },
+            availability: {
+              seeders: 7,
+              peers: 1,
+              progress: 1,
+              state: 'uploading',
+            },
             provenance: {
               provider: 'qbittorrent',
               sourceUrl: 'magnet:?xt=urn:btih:complete',
@@ -207,5 +215,113 @@ describe('completed document loader', () => {
     });
 
     expect(response.enrichment.chapters).toEqual([]);
+  });
+
+  it('uses structure-only PDF outline anchors when bytes and text are unavailable', async () => {
+    const sourceSettings = createDefaultSourceSettings();
+    sourceSettings.metadataSources.openlibrary = false;
+    sourceSettings.metadataSources.googleBooks = false;
+    sourceSettings.metadataSources.internetArchive = false;
+    sourceSettings.documentSources.directUrl = false;
+    sourceSettings.documentSources.internetArchiveText = false;
+    sourceSettings.documentSources.qbittorrent = true;
+    sourceSettings.documentSources.localOcr = false;
+    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url);
+      if (href.includes('/documents/read-bytes?')) {
+        return new Response('too large', { status: 413 });
+      }
+      if (href.includes('/documents/extract-text?')) {
+        return Response.json({ ok: true, status: 'complete', text: '' });
+      }
+      if (href.includes('/documents/pdf-structure?')) {
+        return Response.json({
+          ok: true,
+          status: 'complete',
+          physicalPageCount: 160,
+          pageAnchors: [
+            {
+              chapterTitle: 'Chapter 1 Foundations',
+              sourceMethod: 'pdf_outline_destination',
+              confidence: 0.92,
+              physicalPage: 9,
+              outlineLevel: 1,
+            },
+            {
+              chapterTitle: 'Chapter 2 Instruments',
+              sourceMethod: 'pdf_outline_destination',
+              confidence: 0.92,
+              physicalPage: 41,
+              outlineLevel: 1,
+            },
+          ],
+        });
+      }
+      return Response.json({ ok: true });
+    }) as typeof fetch;
+    const client = createEnrichmentClient({
+      fetchImpl,
+      logger: silentLogger,
+      documentAcquisitionPolicy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: false,
+      },
+    });
+    const response = await client.fetchBook({
+      book: {
+        ...EXAMPLE_BOOK,
+        id: 'structure-only',
+        title: 'Structure Only',
+        documents: [
+          {
+            id: 'qbittorrent:structure-only:0',
+            provider: 'qbittorrent',
+            sourceUrl: 'magnet:?xt=urn:btih:structure',
+            torrentHash: 'structure',
+            fileIndex: 0,
+            fileName: 'Structure Only.pdf',
+            storagePath: 'output/data/documents/Structure Only.pdf',
+            contentKind: 'pdf',
+            contentType: 'application/pdf',
+            accessBasis: 'user_provided',
+            status: 'complete',
+            matchScore: 0.95,
+            availability: {
+              seeders: 3,
+              peers: 1,
+              progress: 1,
+              state: 'uploading',
+            },
+            provenance: {
+              provider: 'qbittorrent',
+              sourceUrl: 'magnet:?xt=urn:btih:structure',
+              fetchedAt: '2026-01-05T00:00:00.000Z',
+              confidence: 0.9,
+            },
+            createdAt: '2026-01-05T00:00:00.000Z',
+            updatedAt: '2026-01-05T00:00:00.000Z',
+          },
+        ],
+      },
+      sourceSettings,
+      qbittorrentConnection: {
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:8787',
+        username: '',
+        password: '',
+        savePath: 'output/data/documents',
+        category: 'difficulty-engine',
+        timeoutMs: 10000,
+      },
+    });
+
+    expect(response.enrichment.chapters).toEqual([
+      'Chapter 1 Foundations',
+      'Chapter 2 Instruments',
+    ]);
+    expect(fetchImpl).not.toHaveBeenCalledWith(
+      expect.stringContaining('/documents/ocr-toc?'),
+      expect.any(Object),
+    );
   });
 });

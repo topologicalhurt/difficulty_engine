@@ -8,7 +8,10 @@ import {
   postBridgeDocumentAction,
   readBridgeByteDocument,
   readBridgeTextDocument,
+  requestBridgeEmbeddedPdfText,
+  requestBridgePdfStructure,
 } from './qbittorrent-document-api';
+import type { PageAnchorEvidence } from './toc-page-ranges';
 import {
   DEFAULT_QBITTORRENT_TIMEOUT_MS,
   isAbsoluteStoragePath,
@@ -34,7 +37,12 @@ export interface QBittorrentProviderOptions {
   savePath?: string;
   category?: string;
   timeoutMs?: number;
+  metadataPollAttempts?: number;
+  metadataPollIntervalMs?: number;
 }
+
+const DEFAULT_METADATA_POLL_ATTEMPTS = 8;
+const DEFAULT_METADATA_POLL_INTERVAL_MS = 250;
 
 export function settingsToOptions(
   settings: QbittorrentConnectionSettings,
@@ -121,7 +129,11 @@ export class QBittorrentClient {
     const savePath = await this.effectiveSavePath();
     if (savePath) body.set('savepath', savePath);
     if (this.options.category) body.set('category', this.options.category);
-    await this.api('/torrents/add', { method: 'POST', body });
+    const response = await this.api('/torrents/add', { method: 'POST', body });
+    const text = await response.text();
+    if (/fails?/i.test(text)) {
+      throw new Error('qBittorrent rejected the torrent add request.');
+    }
   }
 
   async deleteTorrent(hash: string, deleteFiles: boolean): Promise<void> {
@@ -154,6 +166,25 @@ export class QBittorrentClient {
           .includes(normalizedTitle),
       ) ?? null
     );
+  }
+
+  async waitForTorrentInfo(
+    candidate: DocumentCandidate,
+  ): Promise<TorrentInfo | null> {
+    const attempts =
+      this.options.metadataPollAttempts ?? DEFAULT_METADATA_POLL_ATTEMPTS;
+    const intervalMs =
+      this.options.metadataPollIntervalMs ?? DEFAULT_METADATA_POLL_INTERVAL_MS;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const info = await this.torrentInfo(candidate);
+      if (info?.hash) return info;
+      if (attempt < attempts - 1 && intervalMs > 0) {
+        await new Promise((resolve) =>
+          globalThis.setTimeout(resolve, intervalMs),
+        );
+      }
+    }
+    return null;
   }
 
   async listTorrents(): Promise<TorrentInfo[]> {
@@ -211,6 +242,27 @@ export class QBittorrentClient {
 
   async readByteDocument(storagePath: string): Promise<Uint8Array | undefined> {
     return readBridgeByteDocument(this.fetchImpl, this.baseUrl, storagePath);
+  }
+
+  async extractPdfTextDocument(
+    storagePath: string,
+  ): Promise<string | undefined> {
+    return requestBridgeEmbeddedPdfText(
+      this.fetchImpl,
+      this.baseUrl,
+      storagePath,
+    );
+  }
+
+  async pdfStructureAnchors(
+    storagePath: string,
+  ): Promise<PageAnchorEvidence[] | undefined> {
+    const structure = await requestBridgePdfStructure(
+      this.fetchImpl,
+      this.baseUrl,
+      storagePath,
+    );
+    return structure?.status === 'complete' ? structure.pageAnchors : undefined;
   }
 
   async documentExists(storagePath: string): Promise<boolean> {

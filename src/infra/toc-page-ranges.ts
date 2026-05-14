@@ -20,6 +20,7 @@ export interface PageAnchorEvidence {
   confidence: number;
   physicalPage?: number;
   printedPage?: string;
+  outlineLevel?: number;
   bbox?: { x: number; y: number; width: number; height: number };
   conflicts?: string[];
 }
@@ -38,7 +39,10 @@ function chapterKey(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\b(?:chapter|ch|part|book|unit|section|appendix|lecture|lesson|module)\b/g, '')
+    .replace(
+      /\b(?:chapter|ch|part|book|unit|section|appendix|lecture|lesson|module)\b/g,
+      '',
+    )
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -67,12 +71,17 @@ function monotonicStarts(ranges: Array<ChapterPageRange | null>): boolean {
   return true;
 }
 
-function rangesFromStarts(starts: Array<number | null>): Array<ChapterPageRange | null> {
+function rangesFromStarts(
+  starts: Array<number | null>,
+): Array<ChapterPageRange | null> {
   return starts.map((start, index) => {
     if (!start || start < 1) return null;
     const nextStart = starts
       .slice(index + 1)
-      .find((candidate): candidate is number => candidate != null && candidate > start);
+      .find(
+        (candidate): candidate is number =>
+          candidate != null && candidate > start,
+      );
     return {
       start,
       end: nextStart ? nextStart - 1 : null,
@@ -115,7 +124,9 @@ export function rangesFromPageAnchors(
     )[0];
     return anchorStart(anchor);
   });
-  return starts.some((start) => start != null) ? rangesFromStarts(starts) : undefined;
+  return starts.some((start) => start != null)
+    ? rangesFromStarts(starts)
+    : undefined;
 }
 
 export function reconcileChapterPageRanges(
@@ -146,8 +157,7 @@ export function reconcileChapterPageRanges(
       rejectedReasons: ['non_monotonic_page_anchors'],
     };
   }
-  const minAnchors =
-    chapters.length <= 1 ? 1 : chapters.length <= 3 ? 2 : 3;
+  const minAnchors = chapters.length <= 1 ? 1 : chapters.length <= 3 ? 2 : 3;
   const coverage = anchoredCount / Math.max(1, chapters.length);
   const trusted =
     anchoredCount >= minAnchors &&

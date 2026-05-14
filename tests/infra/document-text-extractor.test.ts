@@ -74,6 +74,50 @@ describe('document text extraction', () => {
     ]);
   });
 
+  it('prefers top-level chapter rows over dense decimal subsection rows', () => {
+    const extraction = extractExplicitTocChapters(
+      [
+        'Contents',
+        '1 Vector Analysis 1',
+        '1.1 Vector Algebra 1',
+        '1.1.1 Vector Operations 1',
+        '1.2 Differential Calculus 13',
+        '2 Electrostatics 59',
+        '2.1 The Electric Field 59',
+        '2.2 Divergence and Curl 66',
+        '3 Potentials 113',
+        '3.1 Laplace Equation 113',
+      ].join('\n'),
+    );
+
+    expect(extraction?.chapters).toEqual([
+      '1 Vector Analysis',
+      '2 Electrostatics',
+      '3 Potentials',
+    ]);
+    expect(extraction?.chapterPageRanges).toEqual([
+      { start: 1, end: 58 },
+      { start: 59, end: 112 },
+      { start: 113, end: null },
+    ]);
+  });
+
+  it('rejects subsection-only explicit TOCs instead of treating sections as books chapters', () => {
+    const extraction = extractExplicitTocChapters(
+      [
+        'Contents',
+        '1.1 Vector Algebra 1',
+        '1.1.1 Vector Operations 1',
+        '1.2 Differential Calculus 13',
+        '2.1 The Electric Field 59',
+        '2.2 Divergence and Curl 66',
+        '3.1 Laplace Equation 113',
+      ].join('\n'),
+    );
+
+    expect(extraction).toBeNull();
+  });
+
   it('joins split table-of-contents markers with following title lines', () => {
     const extraction = extractExplicitTocChapters(
       [
@@ -345,6 +389,91 @@ describe('document text extraction', () => {
       { start: 11, end: 38 },
       { start: 39, end: 83 },
       { start: 84, end: null },
+    ]);
+  });
+
+  it('filters structured PDF outline anchors to chapter-level entries', () => {
+    const extraction = extractDocumentChapters({
+      contentType: 'application/pdf',
+      sourceUrl: 'https://example.test/book.pdf',
+      pageAnchors: [
+        {
+          chapterTitle: 'Part I Foundations',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 1,
+          outlineLevel: 1,
+        },
+        {
+          chapterTitle: 'Chapter 1 Signals',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 11,
+          outlineLevel: 2,
+        },
+        {
+          chapterTitle: '1.1 Notation',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 12,
+          outlineLevel: 3,
+        },
+        {
+          chapterTitle: 'Chapter 2 Systems',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 39,
+          outlineLevel: 2,
+        },
+      ],
+    });
+
+    expect(extraction?.strategy).toBe('pdf_outline');
+    expect(extraction?.chapters).toEqual([
+      'Chapter 1 Signals',
+      'Chapter 2 Systems',
+    ]);
+    expect(extraction?.chapterPageRanges).toEqual([
+      { start: 11, end: 38 },
+      { start: 39, end: null },
+    ]);
+    expect(extraction?.attempts?.[0]?.sourceKind).toBe('pdf_structure');
+  });
+
+  it('does not re-include front matter when outline chapters are unnumbered', () => {
+    const extraction = extractDocumentChapters({
+      contentType: 'application/pdf',
+      sourceUrl: 'https://example.test/book.pdf',
+      pageAnchors: [
+        {
+          chapterTitle: 'Advertisement',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 2,
+          outlineLevel: 1,
+        },
+        {
+          chapterTitle: 'Vector Analysis',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 11,
+          outlineLevel: 1,
+        },
+        {
+          chapterTitle: 'Electrostatics',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 67,
+          outlineLevel: 1,
+        },
+      ],
+    });
+
+    expect(extraction?.strategy).toBe('pdf_outline');
+    expect(extraction?.chapters).toEqual(['Vector Analysis', 'Electrostatics']);
+    expect(extraction?.chapterPageRanges).toEqual([
+      { start: 11, end: 66 },
+      { start: 67, end: null },
     ]);
   });
 
