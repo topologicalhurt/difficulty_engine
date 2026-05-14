@@ -76,6 +76,12 @@ export function existingChapterCandidate(
     sourceUrl: 'local://current-enrichment',
     confidence: book.enrichment.tocSource === 'manual' ? 1 : 0.54,
     chapters,
+    chapterPageRanges: book.enrichment.chapterPageRanges,
+    trustedChapterPageRangeCount:
+      book.enrichment.chapterPageRanges?.filter((range) => range?.start)
+        .length ?? 0,
+    pageRangeTrustStatus:
+      book.enrichment.provenance?.chapters?.pageRangeTrustStatus,
     tocSource: book.enrichment.tocSource,
     strategy: 'existing_chapters',
     inferred: book.enrichment.provenance?.chapters?.inferred,

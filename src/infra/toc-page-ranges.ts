@@ -149,7 +149,9 @@ export function reconcileChapterPageRanges(
   const minAnchors =
     chapters.length <= 1 ? 1 : chapters.length <= 3 ? 2 : 3;
   const coverage = anchoredCount / Math.max(1, chapters.length);
-  const trusted = anchoredCount >= minAnchors && (coverage >= 0.7 || anchoredCount >= 3);
+  const trusted =
+    anchoredCount >= minAnchors &&
+    (chapters.length <= 3 || coverage >= 0.7 || anchoredCount >= 3);
   if (!trusted) {
     return {
       estimatedRanges: normalizedRanges,

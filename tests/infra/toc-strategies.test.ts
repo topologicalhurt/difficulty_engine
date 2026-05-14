@@ -454,6 +454,10 @@ describe('resolveBookEnrichment', () => {
       { length: 10 },
       (_, index) => `Chapter ${index + 1} Existing`,
     );
+    book.enrichment.chapterPageRanges = [
+      { start: 1, end: 20 },
+      { start: 21, end: null },
+    ];
 
     const resolution = mergeStrategyCandidates(book, [
       {
@@ -468,6 +472,9 @@ describe('resolveBookEnrichment', () => {
 
     expect(resolution.enrichment.tocSource).toBe('internet_archive');
     expect(resolution.enrichment.chapters).toEqual(book.enrichment.chapters);
+    expect(resolution.enrichment.chapterPageRanges?.slice(0, 2)).toEqual(
+      book.enrichment.chapterPageRanges,
+    );
   });
 
   it('does not treat descriptive summary sentences as chapter titles', async () => {

@@ -275,6 +275,23 @@ describe('document text extraction', () => {
     expect(extraction?.pageRangeTrustStatus).toBe('estimated');
   });
 
+  it('trusts two monotonic anchors for short TOCs', () => {
+    const extraction = extractExplicitTocChapters(`
+      Contents
+      Chapter 1 Signals and Systems .......... 1
+      Chapter 2 Filters ..................... 47
+      Chapter 3 Applications
+    `);
+
+    expect(extraction?.chapters).toHaveLength(3);
+    expect(extraction?.chapterPageRanges).toEqual([
+      { start: 1, end: 46 },
+      { start: 47, end: null },
+      null,
+    ]);
+    expect(extraction?.pageRangeTrustStatus).toBe('trusted');
+  });
+
   it('quarantines nonmonotonic page suffixes as conflicting ranges', () => {
     const extraction = extractExplicitTocChapters(`
       Contents
