@@ -165,7 +165,7 @@ async function acquireCandidateDocuments(
           acquired.documentRef?.status !== 'failed' &&
           acquired.documentRef?.status !== 'stalled'
         ) {
-          deferredDocuments.push(acquired);
+          return { documents: [acquired], candidates };
         }
       } catch (error) {
         logger.warn('enrichment.document_acquisition.candidate_failed', {

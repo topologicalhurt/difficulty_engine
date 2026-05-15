@@ -393,6 +393,9 @@ export function classifySearchResults(
       : undefined;
     const reasons = [
       searchResultLooksLikePluginError(result) ? 'plugin error' : '',
+      !isSafeTorrentSource(sourceUrl(result))
+        ? 'missing direct magnet or HTTPS .torrent URL'
+        : '',
       BAD_FILE_NAME_PATTERN.test(title) ? 'solution/manual/sample file' : '',
       (detectedContentKind !== 'unknown' && detectedContentKind !== 'pdf') ||
       searchResultLooksNonPdfOnly(result)

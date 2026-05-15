@@ -3,7 +3,10 @@ import type {
   DocumentAcquisitionRequest,
   DocumentCandidate,
 } from './document-acquisition';
-import { isLawfulDocumentCandidate } from './document-acquisition';
+import {
+  candidateHasDownloadEvidence,
+  isLawfulDocumentCandidate,
+} from './document-acquisition';
 import type { QBittorrentClient } from './qbittorrent-client';
 import {
   documentRefId,
@@ -151,6 +154,17 @@ function statusReason(
   return undefined;
 }
 
+async function rejectDeadPendingTorrent(
+  client: QBittorrentClient,
+  hash: string | undefined,
+  reason: string,
+): Promise<never> {
+  if (hash) {
+    await client.deleteTorrent(hash, true).catch(() => undefined);
+  }
+  throw new Error(reason);
+}
+
 export async function acquireTorrentDocument(
   client: QBittorrentClient,
   candidate: DocumentCandidate,
@@ -166,6 +180,13 @@ export async function acquireTorrentDocument(
   if (!info?.hash) {
     const magnetHash = hashFromMagnet(candidate.sourceUrl);
     if (!magnetHash) return null;
+    if (candidate.accessBasis !== 'user_provided') {
+      await rejectDeadPendingTorrent(
+        client,
+        magnetHash,
+        'qBittorrent did not expose torrent metadata for this search result; trying the next candidate.',
+      );
+    }
     const now = isoTimestamp();
     const savePath = await client.effectiveSavePath();
     const pendingName = `${basename(candidate.title) || 'pending'}.pdf`;
@@ -225,12 +246,34 @@ export async function acquireTorrentDocument(
     selected = selection.selected;
     if (!selected && selection.fileCount === 0) {
       const now = isoTimestamp();
+      const availability = torrentAvailability(info);
+      const liveCandidate: DocumentCandidate = {
+        ...candidate,
+        seeders: availability.seeders,
+        peers: availability.peers,
+        availability,
+      };
+      if (!candidateHasDownloadEvidence(liveCandidate)) {
+        await rejectDeadPendingTorrent(
+          client,
+          info.hash,
+          'qBittorrent reports no live seeders, availability, progress, or download speed for this metadata-pending result; trying the next candidate.',
+        );
+      }
       const pendingName = `${basename(candidate.title) || 'pending'}.pdf`;
       const pendingStoragePath = joinStoragePath(
         info.save_path ?? savePath,
         pendingName,
       );
-      const availability = torrentAvailability(info);
+      const createdAt = candidate.queuedAt ?? now;
+      const refStatus = statusAfterGrace('queued', availability, createdAt);
+      if (refStatus === 'stalled' && candidate.accessBasis !== 'user_provided') {
+        await rejectDeadPendingTorrent(
+          client,
+          info.hash,
+          'qBittorrent metadata did not progress before the stall grace period; trying the next candidate.',
+        );
+      }
       return {
         candidateId: candidate.id,
         provider: 'qbittorrent',
@@ -250,13 +293,14 @@ export async function acquireTorrentDocument(
           contentKind: 'pdf',
           contentType: 'application/pdf',
           accessBasis: candidate.accessBasis ?? 'user_provided',
-          status: 'queued',
+          status: refStatus,
           matchScore: candidate.matchScore ?? candidate.confidence,
           availability: {
             ...availability,
-            seeders: candidate.seeders ?? availability.seeders,
-            peers: candidate.peers ?? availability.peers,
+            seeders: availability.seeders,
+            peers: availability.peers,
             reason:
+              statusReason(refStatus, availability) ??
               'Torrent is tracked, but qBittorrent has not exposed file metadata yet.',
           },
           provenance: {
@@ -266,7 +310,7 @@ export async function acquireTorrentDocument(
             confidence: candidate.confidence,
             strategy: 'pending_file_metadata',
           },
-          createdAt: now,
+          createdAt,
           updatedAt: now,
         },
       };
@@ -339,8 +383,8 @@ export async function acquireTorrentDocument(
         : (candidate.matchScore ?? candidate.confidence),
       availability: {
         ...availability,
-        seeders: candidate.seeders ?? availability.seeders,
-        peers: candidate.peers ?? availability.peers,
+        seeders: availability.seeders,
+        peers: availability.peers,
         progress,
         state: availability.state,
         reason: statusReason(refStatus, availability),

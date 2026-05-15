@@ -159,6 +159,8 @@ describe('qBittorrent local acquisition', () => {
 
   it('waits for qBittorrent to expose newly added torrent file metadata', async () => {
     const addSavePaths: Array<string | null> = [];
+    const addPausedValues: Array<FormDataEntryValue | null> = [];
+    const addStoppedValues: Array<FormDataEntryValue | null> = [];
     let infoCalls = 0;
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/__health')) {
@@ -192,6 +194,8 @@ describe('qBittorrent local acquisition', () => {
       if (url.endsWith('/api/v2/torrents/add')) {
         const body = init?.body as FormData;
         addSavePaths.push(String(body.get('savepath')));
+        addPausedValues.push(body.get('paused'));
+        addStoppedValues.push(body.get('stopped'));
         return new Response('Ok.', { status: 200 });
       }
       if (url.includes('/api/v2/torrents/files?')) {
@@ -241,6 +245,8 @@ describe('qBittorrent local acquisition', () => {
     });
 
     expect(addSavePaths).toEqual(['/repo/output/data/documents']);
+    expect(addPausedValues).toEqual([null]);
+    expect(addStoppedValues).toEqual([null]);
     expect(infoCalls).toBe(3);
     expect(acquired?.documentRef).toMatchObject({
       torrentHash: 'abc123',
@@ -248,6 +254,74 @@ describe('qBittorrent local acquisition', () => {
       status: 'downloading',
       contentKind: 'pdf',
     });
+  });
+
+  it('deletes dead automatic metadata-pending torrents instead of queueing them', async () => {
+    const deleted: string[] = [];
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/__health')) {
+        return Response.json({
+          ok: true,
+          dataRoot: '/repo/output/data/documents',
+        });
+      }
+      if (url.endsWith('/api/v2/auth/login')) {
+        return new Response('Ok.', {
+          status: 200,
+          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
+        });
+      }
+      if (url.endsWith('/api/v2/torrents/info')) {
+        return Response.json([
+          {
+            hash: 'deadbeef',
+            name: 'Fixture Book',
+            state: 'metaDL',
+            progress: 0,
+            num_seeds: 0,
+            num_leechs: 0,
+            availability: 0,
+            dlspeed: 0,
+            save_path: '/repo/output/data/documents',
+          },
+        ]);
+      }
+      if (url.includes('/api/v2/torrents/files?')) {
+        return Response.json([]);
+      }
+      if (url.endsWith('/api/v2/torrents/delete')) {
+        const body = init?.body as URLSearchParams;
+        deleted.push(`${body.get('hashes')}:${body.get('deleteFiles')}`);
+        return new Response('Ok.', { status: 200 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    const provider = createQBittorrentProvider({
+      baseUrl: 'http://127.0.0.1:8787',
+      username: 'user',
+      password: 'pass',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      savePath: 'output/data/documents',
+    });
+    const candidate = {
+      id: 'search-result',
+      provider: 'qbittorrent',
+      title: 'Fixture Book',
+      sourceUrl: 'magnet:?xt=urn:btih:deadbeef',
+      contentKind: 'pdf' as const,
+      accessBasis: 'open_access' as const,
+      confidence: 0.9,
+      matchScore: 1,
+      seeders: 30,
+    };
+
+    await expect(
+      provider.acquire(candidate, {
+        book: { ...EXAMPLE_BOOK, title: 'Fixture Book', sourcePath: null },
+        policy: qbitPolicy(),
+      }),
+    ).rejects.toThrow('no live seeders');
+    expect(deleted).toEqual(['deadbeef:true']);
   });
 
   it('carries completed PDF structure anchors on first acquisition', async () => {

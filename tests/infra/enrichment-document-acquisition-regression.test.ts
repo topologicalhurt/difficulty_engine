@@ -16,7 +16,7 @@ const silentLogger: Logger = {
 };
 
 describe('document acquisition regressions', () => {
-  it('continues past metadata-pending qBittorrent refs to find usable PDFs', async () => {
+  it('keeps one viable metadata-pending qBittorrent ref instead of fanning out', async () => {
     const sourceSettings = createDefaultSourceSettings();
     sourceSettings.metadataSources.openlibrary = false;
     sourceSettings.metadataSources.googleBooks = false;
@@ -148,7 +148,111 @@ describe('document acquisition regressions', () => {
       sourceSettings,
     });
 
-    expect(acquire).toHaveBeenCalledTimes(2);
+    expect(acquire).toHaveBeenCalledTimes(1);
+    expect(response.bookPatch.selectedDocumentId).toBe(
+      'qbittorrent:pending:file',
+    );
+    expect(response.enrichment.chapters).toEqual([]);
+  });
+
+  it('filters rejected zero-availability candidates before acquisition', async () => {
+    const sourceSettings = createDefaultSourceSettings();
+    sourceSettings.metadataSources.openlibrary = false;
+    sourceSettings.metadataSources.googleBooks = false;
+    sourceSettings.metadataSources.internetArchive = false;
+    sourceSettings.documentSources.directUrl = false;
+    sourceSettings.documentSources.internetArchiveText = false;
+    sourceSettings.documentSources.qbittorrent = true;
+    const acquiredAt = '2026-01-05T00:00:00.000Z';
+    const acquire = vi.fn(async (candidate: { id: string }) => {
+      if (candidate.id === 'pending') {
+        throw new Error('qBittorrent reports no live availability.');
+      }
+      return {
+        candidateId: 'usable',
+        provider: 'qbittorrent',
+        sourceUrl: 'magnet:?xt=urn:btih:usable',
+        storagePath: '/tmp/Usable.pdf',
+        contentType: 'application/pdf',
+        accessBasis: 'user_provided' as const,
+        confidence: 0.86,
+        bytes: new TextEncoder().encode(
+          '/Title (Contents) /Title (Chapter 1 Signals) /Title (Chapter 2 Systems)',
+        ),
+        acquiredAt,
+        documentRef: {
+          id: 'qbittorrent:usable:0',
+          provider: 'qbittorrent',
+          sourceUrl: 'magnet:?xt=urn:btih:usable',
+          torrentHash: 'usable',
+          fileIndex: 0,
+          fileName: 'Usable.pdf',
+          storagePath: '/tmp/Usable.pdf',
+          contentKind: 'pdf' as const,
+          contentType: 'application/pdf',
+          accessBasis: 'user_provided' as const,
+          status: 'complete' as const,
+          matchScore: 0.86,
+          availability: {
+            seeders: 3,
+            peers: 1,
+            progress: 1,
+            state: 'complete',
+          },
+          provenance: {
+            provider: 'qbittorrent',
+            sourceUrl: 'magnet:?xt=urn:btih:usable',
+            fetchedAt: acquiredAt,
+            confidence: 0.86,
+          },
+          createdAt: acquiredAt,
+          updatedAt: acquiredAt,
+        },
+      };
+    });
+    const client = createEnrichmentClient({
+      logger: silentLogger,
+      documentAcquisitionPolicy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+      },
+      documentAcquisitionProvider: {
+        id: 'metadata-pending-doc-provider',
+        enabled: true,
+        findCandidates: vi.fn(async () => [
+          {
+            id: 'pending',
+            provider: 'qbittorrent',
+            title: 'Usable Book preferred',
+            sourceUrl: 'magnet:?xt=urn:btih:pending',
+            contentKind: 'pdf' as const,
+            accessBasis: 'user_provided' as const,
+            confidence: 0.95,
+            matchScore: 0.95,
+            seeders: 0,
+          },
+          {
+            id: 'usable',
+            provider: 'qbittorrent',
+            title: 'Usable Book',
+            sourceUrl: 'magnet:?xt=urn:btih:usable',
+            contentKind: 'pdf' as const,
+            accessBasis: 'user_provided' as const,
+            confidence: 0.86,
+            matchScore: 0.86,
+            seeders: 3,
+          },
+        ]),
+        acquire,
+      },
+    });
+
+    const response = await client.fetchBook({
+      book: { ...EXAMPLE_BOOK, id: 'book-1', title: 'Usable Book' },
+      sourceSettings,
+    });
+
+    expect(acquire).toHaveBeenCalledTimes(1);
     expect(response.bookPatch.selectedDocumentId).toBe('qbittorrent:usable:0');
     expect(response.enrichment.chapters).toEqual([
       'Chapter 1 Signals',

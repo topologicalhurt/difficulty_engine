@@ -134,8 +134,6 @@ export class QBittorrentClient {
   async addTorrent(candidate: DocumentCandidate): Promise<void> {
     const body = new FormData();
     body.set('urls', candidate.sourceUrl);
-    body.set('paused', 'true');
-    body.set('stopped', 'true');
     const savePath = await this.effectiveSavePath();
     if (savePath) body.set('savepath', savePath);
     if (this.options.category) body.set('category', this.options.category);

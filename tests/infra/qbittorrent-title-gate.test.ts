@@ -39,8 +39,7 @@ describe('qBittorrent title evidence gate', () => {
       [
         {
           fileName: 'Stein E Lectures in Analysis Vol 2 Complex Analysis 2003',
-          fileUrl:
-            'https://www.limetorrents.lol/Stein-E-Lectures-in-Analysis-Vol-2-Complex-Analysis-2003-torrent.html',
+          fileUrl: 'magnet:?xt=urn:btih:complexanalysis',
           siteUrl: 'https://www.limetorrents.lol',
           nbSeeders: 8,
           nbLeechers: 1,
@@ -49,8 +48,7 @@ describe('qBittorrent title evidence gate', () => {
         {
           fileName:
             'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
-          fileUrl:
-            'https://www.limetorrents.lol/Stein-E-Lectures-in-Analysis-Vol-4-Functional-Analysis-2012-torrent.html',
+          fileUrl: 'magnet:?xt=urn:btih:functionalanalysis',
           siteUrl: 'https://www.limetorrents.lol',
           nbSeeders: 12,
           nbLeechers: 4,

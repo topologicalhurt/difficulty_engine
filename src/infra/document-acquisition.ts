@@ -127,6 +127,23 @@ export function isLawfulDocumentCandidate(
   );
 }
 
+export function candidateHasDownloadEvidence(
+  candidate: Pick<
+    DocumentCandidate,
+    'provider' | 'accessBasis' | 'seeders' | 'availability'
+  >,
+): boolean {
+  if (candidate.provider !== 'qbittorrent') return true;
+  if (candidate.accessBasis === 'user_provided') return true;
+  const availability = candidate.availability;
+  return Boolean(
+    (candidate.seeders ?? availability?.seeders ?? 0) > 0 ||
+      (availability?.availability ?? 0) > 0 ||
+      (availability?.downloadSpeedBytesPerSecond ?? 0) > 0 ||
+      (availability?.progress ?? 0) >= 1,
+  );
+}
+
 export function choosePreferredDocumentCandidate(
   candidates: DocumentCandidate[],
   policy: DocumentAcquisitionPolicy,
@@ -155,7 +172,11 @@ export function rankDocumentCandidates(
     ]) ?? [],
   );
   return [...candidates]
-    .filter((candidate) => isLawfulDocumentCandidate(candidate, policy))
+    .filter(
+      (candidate) =>
+        isLawfulDocumentCandidate(candidate, policy) &&
+        candidateHasDownloadEvidence(candidate),
+    )
     .map((candidate) => {
       const queued = penaltyByKey.get(documentGreylistKey(candidate));
       return queued
