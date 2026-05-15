@@ -22,6 +22,7 @@ function sourceMaskKey(request: EnrichmentRequest): string {
       savePath: request.qbittorrentConnection?.savePath ?? '',
       category: request.qbittorrentConnection?.category ?? '',
     },
+    bridgeDocuments: request.skipBridgeDocuments ? 'metadata-only' : 'enabled',
   });
 }
 

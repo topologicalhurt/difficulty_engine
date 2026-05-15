@@ -31,6 +31,10 @@ export interface PlannerStoreSelectors {
   getBook(id: string): BookRecord | undefined;
 }
 
+export interface EnrichmentRefreshOptions {
+  skipBridgeDocuments?: boolean;
+}
+
 export interface PlannerStoreCommands {
   setActiveView(activeView: AppView): void;
   selectBook(bookId: string | null): void;
@@ -93,7 +97,7 @@ export interface PlannerStoreCommands {
     patch: Partial<QbittorrentConnectionSettings>,
   ): void;
   prepareQbittorrentQuickStart(): void;
-  testQbittorrentConnection(): Promise<void>;
+  testQbittorrentConnection(): Promise<boolean>;
   refreshQbittorrentPlugins(): Promise<void>;
   setQbittorrentPluginEnabled(pluginName: string, enabled: boolean): void;
   openBookDocument(bookId: string, documentId: string): Promise<void>;
@@ -137,8 +141,11 @@ export interface PlannerStoreCommands {
   solveProjectForMe(): Promise<void>;
   applyAutopilotProposal(): void;
   clearAutopilotProposal(): void;
-  refreshBookEnrichment(bookId: string): Promise<void>;
-  refreshAllEnrichment(): Promise<void>;
+  refreshBookEnrichment(
+    bookId: string,
+    options?: EnrichmentRefreshOptions,
+  ): Promise<void>;
+  refreshAllEnrichment(options?: EnrichmentRefreshOptions): Promise<void>;
 }
 
 export interface PlannerStoreSubscriptions {

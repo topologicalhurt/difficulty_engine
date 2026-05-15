@@ -14,7 +14,7 @@ import {
   qbittorrentSearchQueries,
   sortSearchCandidates,
 } from './qbittorrent-search';
-import { pluginIsAllowed, sourceIsAllowed } from './qbittorrent-source-policy';
+import { pluginIsAllowed } from './qbittorrent-source-policy';
 import { systemNowMs } from './cache-time';
 import type { SearchResultsResponse } from './qbittorrent-types';
 
@@ -72,34 +72,12 @@ export async function pluginSearchCandidates(
     .filter((plugin) => pluginIsAllowed(plugin, settings));
   if (!allowedPlugins.length) return emptySearchResult();
   const category = settings.categories[0] ?? 'all';
-  const siteMappedPlugins = allowedPlugins.filter(
-    (plugin) =>
-      !settings.allowedPlugins.includes(plugin.name) ||
-      sourceIsAllowed(plugin.url, settings.allowedSites),
-  );
-  const explicitPlugins = allowedPlugins.filter(
-    (plugin) =>
-      settings.allowedPlugins.includes(plugin.name) &&
-      !sourceIsAllowed(plugin.url, settings.allowedSites),
-  );
   const pluginBatches = [
-    ...(siteMappedPlugins.length
-      ? [
-          {
-            pluginsToUse: siteMappedPlugins
-              .map((plugin) => plugin.name)
-              .join('|'),
-            tracePluginName:
-              siteMappedPlugins.length === 1
-                ? siteMappedPlugins[0]?.name
-                : undefined,
-          },
-        ]
-      : []),
-    ...explicitPlugins.map((plugin) => ({
-      pluginsToUse: plugin.name,
-      tracePluginName: plugin.name,
-    })),
+    {
+      pluginsToUse: allowedPlugins.map((plugin) => plugin.name).join('|'),
+      tracePluginName:
+        allowedPlugins.length === 1 ? allowedPlugins[0]?.name : undefined,
+    },
   ];
   const seenUrls = new Set<string>();
   const seenBlockedUrls = new Set<string>();

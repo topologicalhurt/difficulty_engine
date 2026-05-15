@@ -2,6 +2,7 @@ import type { BookEditorViewModel } from '../app/selectors/library';
 import type { AppState, BookRecord, PlannerStore } from '../core/types';
 import { runConfirmableAction } from './confirmable-action';
 import { badge, button, card, el } from './dom';
+import { refreshBookEnrichmentWithBridgePreflight } from './enrichment-actions';
 import { formatOneDecimal, formatPages } from './format';
 import { enrichmentBadge } from './library-controls';
 import { renderEnrichmentProvenanceCard } from './library-provenance-panel';
@@ -11,6 +12,7 @@ import { renderProgressBar } from './progress';
 export function renderBookDetailToolbar(
   state: AppState,
   book: BookRecord,
+  model: BookEditorViewModel,
   store: PlannerStore,
 ): HTMLElement {
   return el(
@@ -23,7 +25,13 @@ export function renderBookDetailToolbar(
     el('div', { className: 'detail-spacer' }),
     button('Refresh enrichment', {
       className: 'ghost-button',
-      onClick: () => void store.commands.refreshBookEnrichment(book.id),
+      onClick: () =>
+        void refreshBookEnrichmentWithBridgePreflight(
+          store,
+          model.enrichmentBridgePreflightRequired,
+          book.id,
+          model.bridgeUnavailableExplanation,
+        ),
     }),
     button('Remove book', {
       className: 'ghost-button danger-button',

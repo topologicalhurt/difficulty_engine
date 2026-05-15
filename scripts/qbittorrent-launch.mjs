@@ -202,6 +202,20 @@ function requestedOriginsSatisfied(health, allowedOrigin) {
     .every((origin) => active.has(origin));
 }
 
+function normalizedPath(value) {
+  return String(value ?? '')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/g, '');
+}
+
+function runningBridgeMatchesRequest(health, targetUrl, dataRoot) {
+  return (
+    String(health?.targetBaseUrl ?? '').replace(/\/+$/, '') ===
+      String(targetUrl).replace(/\/+$/, '') &&
+    normalizedPath(health?.dataRoot) === normalizedPath(dataRoot)
+  );
+}
+
 async function startBridge(
   bridgeUrl,
   targetUrl,
@@ -215,6 +229,11 @@ async function startBridge(
     if (!requestedOriginsSatisfied(health, allowedOrigin)) {
       throw new Error(
         `qBittorrent browser bridge is already running at ${bridgeUrl}, but its allowed origins are ${JSON.stringify(health.allowedOrigins ?? [])}. Stop the existing bridge process and rerun this command so it can allow ${allowedOrigin}.`,
+      );
+    }
+    if (!runningBridgeMatchesRequest(health, targetUrl, dataRoot)) {
+      throw new Error(
+        `qBittorrent browser bridge is already running at ${bridgeUrl}, but it targets ${health.targetBaseUrl ?? '(unknown)'} with data root ${health.dataRoot ?? '(unknown)'}. Stop the existing bridge process and rerun this command so it can target ${targetUrl} with data root ${dataRoot}.`,
       );
     }
     process.stdout.write(

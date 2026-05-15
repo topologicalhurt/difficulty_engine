@@ -47,7 +47,7 @@ export function renderBookEditorPanel(
         onClick: () => store.commands.selectBook(null),
       }),
     ),
-    renderBookDetailToolbar(state, book, store),
+    renderBookDetailToolbar(state, book, model, store),
     renderBookMetadataFields(book, update),
     card(
       'Relationships',

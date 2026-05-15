@@ -1,8 +1,10 @@
 import type { PersistenceAdapter, PlannerProjectV1 } from '../core/types';
 import { normalizeProject, serializeProject } from '../core/project-file';
+import { cacheEntryIsFresh, cacheExpiresAt, systemNowMs } from './cache-time';
 
 const BACKUP_SUFFIX = '.backup';
 const BACKUP_ENDPOINT_TIMEOUT_MS = 2500;
+const BACKUP_HEALTH_RETRY_MS = 30_000;
 
 export interface LocalStoragePersistenceOptions {
   backupEndpoint?: string;
@@ -28,9 +30,56 @@ export function createLocalStoragePersistence(
 ): PersistenceAdapter {
   const backupKey = `${storageKey}${BACKUP_SUFFIX}`;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch?.bind(globalThis);
+  let backupHealth: { ok: boolean; expiresAt: number } | null = null;
+
+  function backupHealthEndpoint(): string | null {
+    if (!options.backupEndpoint) return null;
+    try {
+      return `${new URL(options.backupEndpoint).origin}/__health`;
+    } catch {
+      return null;
+    }
+  }
+
+  async function backupEndpointAvailable(): Promise<boolean> {
+    const endpoint = backupHealthEndpoint();
+    if (!endpoint || !fetchImpl) return false;
+    if (
+      backupHealth &&
+      (backupHealth.ok ||
+        cacheEntryIsFresh(backupHealth.expiresAt, systemNowMs))
+    ) {
+      return backupHealth.ok;
+    }
+    const controller = new AbortController();
+    const timeout = globalThis.setTimeout(
+      () => controller.abort(),
+      BACKUP_ENDPOINT_TIMEOUT_MS,
+    );
+    try {
+      const response = await fetchImpl(endpoint, {
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+      backupHealth = {
+        ok: response.ok,
+        expiresAt: cacheExpiresAt(BACKUP_HEALTH_RETRY_MS, systemNowMs),
+      };
+      return response.ok;
+    } catch {
+      backupHealth = {
+        ok: false,
+        expiresAt: cacheExpiresAt(BACKUP_HEALTH_RETRY_MS, systemNowMs),
+      };
+      return false;
+    } finally {
+      globalThis.clearTimeout(timeout);
+    }
+  }
 
   async function writeBackupFolderSnapshot(projectJson: string): Promise<void> {
     if (!options.backupEndpoint || !fetchImpl) return;
+    if (!(await backupEndpointAvailable())) return;
     const controller = new AbortController();
     const timeout = globalThis.setTimeout(
       () => controller.abort(),

@@ -118,6 +118,25 @@ describe('qBittorrent browser bridge', () => {
     }
   });
 
+  it('does not expose target credentials from bridge health', async () => {
+    const { createQbittorrentBridgeServer } = await bridgeModule();
+    const bridge = createQbittorrentBridgeServer({
+      targetBaseUrl: 'http://user:secret@127.0.0.1:8080',
+    });
+    const bridgeBaseUrl = await listen(bridge);
+
+    try {
+      const response = await fetch(`${bridgeBaseUrl}/__health`);
+      const payload = (await response.json()) as { targetBaseUrl?: string };
+
+      expect(response.status).toBe(200);
+      expect(payload.targetBaseUrl).toBe('http://127.0.0.1:8080');
+      expect(JSON.stringify(payload)).not.toContain('secret');
+    } finally {
+      await close(bridge);
+    }
+  });
+
   it('writes project backups only inside the configured backup root', async () => {
     const backupRoot = await mkdtemp(join(tmpdir(), 'difficulty-backups-'));
     const { createQbittorrentBridgeServer } = await bridgeModule();

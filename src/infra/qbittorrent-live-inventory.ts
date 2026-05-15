@@ -23,6 +23,7 @@ import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import { qbittorrentPdfEligibility } from './qbittorrent-pdf-eligibility';
 import {
   bookMatchScore,
+  hasRequiredQbittorrentTitleEvidence,
   hashFromMagnet,
   MIN_TORRENT_MATCH_SCORE,
   torrentAvailability,
@@ -190,6 +191,7 @@ export function candidateFromLiveTorrent(
   const evidence = liveTorrentEvidence(torrent);
   const matchScore = bookMatchScore(evidence, request);
   if (matchScore < MIN_TORRENT_MATCH_SCORE) return null;
+  if (!hasRequiredQbittorrentTitleEvidence(evidence, request)) return null;
   if (
     request.book.authors.length &&
     !isbnAppearsInText(request.book.isbn, evidence) &&

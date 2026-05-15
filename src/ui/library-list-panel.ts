@@ -1,6 +1,7 @@
 import type { LibraryViewModel } from '../app/selectors/library';
 import type { ConstraintSet, PlannerStore } from '../core/types';
 import { badge, button, card, el, emptyState } from './dom';
+import { refreshAllEnrichmentWithBridgePreflight } from './enrichment-actions';
 import { selectInput } from './form-controls';
 import { formatCssPercent, round0 } from './format';
 import { renderProgressBar } from './progress';
@@ -76,7 +77,12 @@ export function renderReadingListPanel(
       }),
       button('Refresh all enrichment', {
         className: 'ghost-button',
-        onClick: () => void store.commands.refreshAllEnrichment(),
+        onClick: () =>
+          void refreshAllEnrichmentWithBridgePreflight(
+            store,
+            viewModel.enrichmentBridgePreflightRequired,
+            viewModel.bridgeUnavailableExplanation,
+          ),
       }),
       selectInput(
         viewModel.orderPolicy,

@@ -7,10 +7,14 @@ const pendingConfirmationsByStore = new WeakMap<PlannerStore, Map<string, number
 
 export interface ConfirmableAction {
   id: string;
+  title?: string;
   message: string;
   action(): void;
   nowMs?: () => number;
   windowMs?: number;
+  confirmLabel?: string;
+  confirmTone?: 'primary' | 'danger';
+  cancelLabel?: string;
 }
 
 function pendingConfirmations(store: PlannerStore): Map<string, number> {
@@ -40,12 +44,20 @@ export function runConfirmableAction(
   registerDialogAction(store, options.id, 'confirm', options.action);
   store.commands.setDialog({
     id: options.id,
-    title: 'Confirm action',
+    title: options.title ?? 'Confirm action',
     body: options.message,
     tone: 'warn',
     actions: [
-      { id: 'cancel', label: 'Cancel', tone: 'secondary' },
-      { id: 'confirm', label: 'Confirm', tone: 'danger' },
+      {
+        id: 'cancel',
+        label: options.cancelLabel ?? 'Cancel',
+        tone: 'secondary',
+      },
+      {
+        id: 'confirm',
+        label: options.confirmLabel ?? 'Confirm',
+        tone: options.confirmTone ?? 'danger',
+      },
     ],
   });
 }

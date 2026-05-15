@@ -46,6 +46,7 @@ export interface EnrichmentRequest {
   book: BookRecord;
   sourceSettings: SourceSettings;
   qbittorrentConnection?: QbittorrentConnectionSettings;
+  skipBridgeDocuments?: boolean;
   signal?: AbortSignal;
 }
 
@@ -76,6 +77,22 @@ export interface EnrichmentProvider {
   searchBooks(request: SearchBooksRequest): Promise<SearchBooksResponse>;
 }
 
+export type BridgeHealthStatus =
+  | 'ok'
+  | 'not_running'
+  | 'origin_blocked'
+  | 'qbit_unreachable'
+  | 'data_root_mismatch'
+  | 'unknown_error';
+
+export interface QbittorrentBridgeHealth {
+  status: BridgeHealthStatus;
+  message: string;
+  targetBaseUrl?: string;
+  dataRoot?: string;
+  allowedOrigins?: string[];
+}
+
 export interface AiRecommendationProvider {
   recommend(
     request: AiRecommendationRequest,
@@ -96,6 +113,9 @@ export interface LocalIntegrationSettingsAdapter {
 }
 
 export interface QbittorrentIntegrationService {
+  checkBridgeHealth?(
+    settings: QbittorrentConnectionSettings,
+  ): Promise<QbittorrentBridgeHealth>;
   testConnection(settings: QbittorrentConnectionSettings): Promise<void>;
   listPlugins(
     settings: QbittorrentConnectionSettings,

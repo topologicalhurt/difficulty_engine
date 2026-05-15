@@ -205,6 +205,82 @@ describe('store qBittorrent settings', () => {
     );
   });
 
+  it('surfaces bridge health failures before qBittorrent API tests', async () => {
+    const qbittorrentService: QbittorrentIntegrationService = {
+      checkBridgeHealth: vi.fn(async () => ({
+        status: 'not_running' as const,
+        message:
+          'The local qBittorrent bridge is not reachable at http://127.0.0.1:8787.',
+      })),
+      testConnection: vi.fn(),
+      listPlugins: vi.fn(),
+      findDocumentCandidates: vi.fn(),
+      acquireDocumentCandidate: vi.fn(),
+      deleteTorrent: vi.fn(),
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: {
+        fetchBook: vi.fn(),
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      qbittorrentService,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+    store.commands.updateQbittorrentLocalSettings({ enabled: true });
+
+    const ok = await store.commands.testQbittorrentConnection();
+
+    expect(ok).toBe(false);
+    expect(qbittorrentService.testConnection).not.toHaveBeenCalled();
+    expect(store.selectors.getState().ui.qbittorrentStatus).toMatchObject({
+      state: 'failed',
+      message:
+        'The local qBittorrent bridge is not reachable at http://127.0.0.1:8787.',
+    });
+  });
+
+  it('passes metadata-only enrichment options through refresh commands', async () => {
+    const fetchBook = vi.fn(async ({ book }) => ({
+      cacheKey: book.id,
+      bookPatch: {},
+      enrichment: book.enrichment,
+      provenance: [
+        {
+          provider: 'test',
+          fetchedAt: '2026-01-05T00:00:00.000Z',
+          confidence: 1,
+        },
+      ],
+    }));
+    const store = createPlannerStore({
+      initialProject: makeProject(),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: {
+        fetchBook,
+        searchBooks: vi.fn(),
+      } as unknown as EnrichmentProvider,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    await store.commands.refreshBookEnrichment('book-1', {
+      skipBridgeDocuments: true,
+    });
+
+    expect(fetchBook).toHaveBeenCalledWith(
+      expect.objectContaining({ skipBridgeDocuments: true }),
+    );
+  });
+
   it('ignores stale connection test results after local settings change', async () => {
     const connectionResult = createDeferred<void>();
     const qbittorrentService: QbittorrentIntegrationService = {

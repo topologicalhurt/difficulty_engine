@@ -1,7 +1,9 @@
 import type {
   BookRecord,
   CreatePlannerStoreOptions,
+  EnrichmentRequest,
   EnrichmentResponse,
+  EnrichmentRefreshOptions,
   PlannerProjectV1,
   PlannerStoreCommands,
   PlannerStoreEvent,
@@ -120,18 +122,32 @@ export function createEnrichmentCommands(
     });
   }
 
-  async function refreshBookEnrichment(bookId: string): Promise<void> {
+  function enrichmentRequestFor(
+    book: BookRecord,
+    state: StoreState,
+    options: EnrichmentRefreshOptions = {},
+  ): EnrichmentRequest {
+    return {
+      book,
+      sourceSettings: state.project.sourceSettings,
+      qbittorrentConnection: state.ui.qbittorrentConnection,
+      skipBridgeDocuments: options.skipBridgeDocuments,
+    };
+  }
+
+  async function refreshBookEnrichment(
+    bookId: string,
+    options: EnrichmentRefreshOptions = {},
+  ): Promise<void> {
     const state = context.getState();
     const book = state.project.library.books[bookId];
     if (!book) return;
 
     const previousCacheEntry = state.project.enrichmentCache[bookId];
     const requestSequence = nextRefreshSequence(bookId);
-    const requestCacheKey = stableEnrichmentCacheKey({
-      book,
-      sourceSettings: state.project.sourceSettings,
-      qbittorrentConnection: state.ui.qbittorrentConnection,
-    });
+    const requestCacheKey = stableEnrichmentCacheKey(
+      enrichmentRequestFor(book, state, options),
+    );
     const startedAt = isoTimestamp(nowMs);
     services.logger.info('planner.enrichment.start', { bookId });
     const loadingProject = updateEnrichmentCache(state.project, bookId, {
@@ -150,19 +166,15 @@ export function createEnrichmentCommands(
 
     try {
       const response = await services.enrichmentProvider.fetchBook({
-        book,
-        sourceSettings: state.project.sourceSettings,
-        qbittorrentConnection: state.ui.qbittorrentConnection,
+        ...enrichmentRequestFor(book, state, options),
       });
       const fetchedAt = isoTimestamp(nowMs);
       const latestState = context.getState();
       if (!requestIsCurrent(bookId, requestSequence)) return;
       const currentBook = latestState.project.library.books[bookId] ?? book;
-      const latestCacheKey = stableEnrichmentCacheKey({
-        book: currentBook,
-        sourceSettings: latestState.project.sourceSettings,
-        qbittorrentConnection: latestState.ui.qbittorrentConnection,
-      });
+      const latestCacheKey = stableEnrichmentCacheKey(
+        enrichmentRequestFor(currentBook, latestState, options),
+      );
       if (latestCacheKey !== requestCacheKey) {
         commitIgnoredStaleRefresh(
           bookId,
@@ -187,7 +199,7 @@ export function createEnrichmentCommands(
           message: `Enrichment refreshed for ${mergedBook.short || mergedBook.title}.`,
         },
       });
-      if (applied.replacedDocuments.length) {
+      if (!options.skipBridgeDocuments && applied.replacedDocuments.length) {
         const deleteErrors = await deleteDocumentContent(
           applied.project,
           new Set([bookId]),
@@ -205,7 +217,7 @@ export function createEnrichmentCommands(
           });
         }
       }
-      if (applied.replacedHashes.length) {
+      if (!options.skipBridgeDocuments && applied.replacedHashes.length) {
         const deleteErrors = await deleteQbittorrentHashes(
           applied.project,
           new Set([bookId]),
@@ -231,11 +243,9 @@ export function createEnrichmentCommands(
       const latestState = context.getState();
       if (!requestIsCurrent(bookId, requestSequence)) return;
       const currentBook = latestState.project.library.books[bookId] ?? book;
-      const latestCacheKey = stableEnrichmentCacheKey({
-        book: currentBook,
-        sourceSettings: latestState.project.sourceSettings,
-        qbittorrentConnection: latestState.ui.qbittorrentConnection,
-      });
+      const latestCacheKey = stableEnrichmentCacheKey(
+        enrichmentRequestFor(currentBook, latestState, options),
+      );
       if (latestCacheKey !== requestCacheKey) {
         commitIgnoredStaleRefresh(
           bookId,
@@ -276,7 +286,9 @@ export function createEnrichmentCommands(
 
   return {
     refreshBookEnrichment,
-    async refreshAllEnrichment(): Promise<void> {
+    async refreshAllEnrichment(
+      options: EnrichmentRefreshOptions = {},
+    ): Promise<void> {
       const initialState = context.getState();
       const requests = Object.keys(initialState.project.library.books)
         .map((bookId): RefreshRequestContext | null => {
@@ -287,11 +299,9 @@ export function createEnrichmentCommands(
             book,
             previousCacheEntry: initialState.project.enrichmentCache[bookId],
             requestSequence: nextRefreshSequence(bookId),
-            requestCacheKey: stableEnrichmentCacheKey({
-              book,
-              sourceSettings: initialState.project.sourceSettings,
-              qbittorrentConnection: initialState.ui.qbittorrentConnection,
-            }),
+            requestCacheKey: stableEnrichmentCacheKey(
+              enrichmentRequestFor(book, initialState, options),
+            ),
           };
         })
         .filter((request): request is RefreshRequestContext =>
@@ -339,9 +349,11 @@ export function createEnrichmentCommands(
               results[resultIndex] = {
                 request,
                 response: await services.enrichmentProvider.fetchBook({
-                  book: request.book,
-                  sourceSettings: initialState.project.sourceSettings,
-                  qbittorrentConnection: initialState.ui.qbittorrentConnection,
+                  ...enrichmentRequestFor(
+                    request.book,
+                    initialState,
+                    options,
+                  ),
                 }),
               };
             } catch (error) {
@@ -370,11 +382,13 @@ export function createEnrichmentCommands(
         const currentBook = nextProject.library.books[request.bookId];
         if (!currentBook) continue;
         const latestState = context.getState();
-        const latestCacheKey = stableEnrichmentCacheKey({
-          book: currentBook,
-          sourceSettings: nextProject.sourceSettings,
-          qbittorrentConnection: latestState.ui.qbittorrentConnection,
-        });
+        const latestCacheKey = stableEnrichmentCacheKey(
+          enrichmentRequestFor(
+            currentBook,
+            { ...latestState, project: nextProject },
+            options,
+          ),
+        );
         if (latestCacheKey !== request.requestCacheKey) {
           const fallbackStatus = fallbackStatusForPrevious(
             request.previousCacheEntry,
@@ -445,7 +459,7 @@ export function createEnrichmentCommands(
       }
 
       const latestState = context.getState();
-      if (cleanupDocuments.length) {
+      if (!options.skipBridgeDocuments && cleanupDocuments.length) {
         const deleteErrors = await deleteDocumentContent(
           latestState.project,
           affectedBookIds,
@@ -463,7 +477,7 @@ export function createEnrichmentCommands(
           });
         }
       }
-      if (cleanupHashes.size) {
+      if (!options.skipBridgeDocuments && cleanupHashes.size) {
         const deleteErrors = await deleteQbittorrentHashes(
           latestState.project,
           affectedBookIds,

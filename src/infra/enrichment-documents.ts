@@ -67,10 +67,28 @@ function isTerminalAcquiredDocument(document: AcquiredDocument): boolean {
 }
 
 function shouldUseQbittorrentProvider(request: EnrichmentRequest): boolean {
+  if (request.skipBridgeDocuments) return false;
   return qbittorrentRuntimeEnabled(
     request.sourceSettings,
     request.qbittorrentConnection,
   );
+}
+
+function metadataOnlySourceSettings(
+  request: EnrichmentRequest,
+): EnrichmentRequest['sourceSettings'] {
+  if (!request.skipBridgeDocuments) return request.sourceSettings;
+  return {
+    ...request.sourceSettings,
+    documentSources: {
+      ...request.sourceSettings.documentSources,
+      directUrl: false,
+      localFile: false,
+      internetArchiveText: false,
+      qbittorrent: false,
+      localOcr: false,
+    },
+  };
 }
 
 function effectiveDocumentPolicy(
@@ -234,15 +252,19 @@ export function createBookEnrichmentLoader(
       request: EnrichmentRequest,
       cacheKey: string,
     ): Promise<EnrichmentResponse> {
-      const completedDocuments = await loadCompletedDocumentRefs(
-        request,
-        options.fetchImpl,
-        options.logger,
-      );
-      const policy = effectiveDocumentPolicy(request, documentPolicy);
+      const sourceSettings = metadataOnlySourceSettings(request);
+      const requestForRun = { ...request, sourceSettings };
+      const completedDocuments = request.skipBridgeDocuments
+        ? []
+        : await loadCompletedDocumentRefs(
+            requestForRun,
+            options.fetchImpl,
+            options.logger,
+          );
+      const policy = effectiveDocumentPolicy(requestForRun, documentPolicy);
       const acquisitionRun = await acquireCandidateDocuments(
-        request,
-        documentProvider(request, options),
+        requestForRun,
+        documentProvider(requestForRun, options),
         policy,
         options.logger,
       );
@@ -256,16 +278,19 @@ export function createBookEnrichmentLoader(
         fetchJson: options.jsonFetcher,
         fetchImpl: options.fetchImpl,
         acquiredDocuments: usableDocuments,
-        sourceSettings: request.sourceSettings,
+        sourceSettings,
+        skipBridgeDocuments: request.skipBridgeDocuments,
       });
       return {
         cacheKey,
         bookPatch: {
           ...resolution.bookPatch,
-          ...mergeResolvedDocumentState(request, {
-            documents: usableDocuments,
-            candidates: acquisitionRun.candidates,
-          }),
+          ...(request.skipBridgeDocuments
+            ? {}
+            : mergeResolvedDocumentState(requestForRun, {
+                documents: usableDocuments,
+                candidates: acquisitionRun.candidates,
+              })),
         },
         enrichment: resolution.enrichment,
         provenance: resolution.provenance.length

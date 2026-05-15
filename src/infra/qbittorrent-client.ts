@@ -13,6 +13,7 @@ import {
 } from './qbittorrent-document-api';
 import type { PageAnchorEvidence } from './toc-page-ranges';
 import {
+  bridgeDataRootMatchesSavePath,
   DEFAULT_QBITTORRENT_TIMEOUT_MS,
   isAbsoluteStoragePath,
   requestQbittorrentApi,
@@ -119,6 +120,14 @@ export class QBittorrentClient {
       dataRoot?: string;
     } | null;
     this.bridgeDataRoot = payload?.dataRoot || null;
+    if (
+      this.bridgeDataRoot &&
+      !bridgeDataRootMatchesSavePath(this.bridgeDataRoot, this.options.savePath)
+    ) {
+      throw new Error(
+        `qBittorrent bridge data root mismatch: bridge uses ${this.bridgeDataRoot}, but the app is configured for ${this.options.savePath}. Restart the bridge from Project settings.`,
+      );
+    }
     return this.bridgeDataRoot ?? this.options.savePath;
   }
 

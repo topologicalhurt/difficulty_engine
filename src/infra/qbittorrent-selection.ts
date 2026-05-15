@@ -7,6 +7,8 @@ import {
   authorAppearsInText,
   bookMatchDecision,
   isbnAppearsInText,
+  matchTokens,
+  normalizeMatcherText,
   normalizedIsbnText,
 } from '../core/matchers';
 import { SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA } from './document-candidate-quality';
@@ -20,6 +22,34 @@ export const MIN_PLUGIN_SEEDERS = 1;
 export const MIN_TORRENT_MATCH_SCORE = 0.34;
 export const MIN_SELECTED_FILE_MATCH_SCORE = 0.34;
 export const BAD_FILE_NAME_PATTERN = BAD_QBITTORRENT_FILE_NAME_PATTERN;
+
+const GENERIC_QBITTORRENT_TITLE_TOKENS = new Set([
+  'and',
+  'approach',
+  'book',
+  'course',
+  'edition',
+  'ed',
+  'everyone',
+  'for',
+  'from',
+  'guide',
+  'handbook',
+  'introduction',
+  'introductory',
+  'lecture',
+  'lectures',
+  'manual',
+  'practical',
+  'second',
+  'systems',
+  'the',
+  'theory',
+  'third',
+  'volume',
+  'vol',
+  'with',
+]);
 
 export function normalizedBookIsbn(value: string | null | undefined): string {
   return normalizedIsbnText(value);
@@ -49,6 +79,40 @@ export function fileMatchScore(
   const name = file.name ?? '';
   if (!qbittorrentPdfEligibility(file).eligible) return 0;
   return bookMatchScore(name, request);
+}
+
+function qbittorrentEvidenceTokens(value: string): Set<string> {
+  return new Set(matchTokens(normalizeMatcherText(value).replace(/[-']/g, ' ')));
+}
+
+function distinctiveBookTitleTokens(
+  request: DocumentAcquisitionRequest,
+): string[] {
+  return matchTokens(
+    normalizeMatcherText(request.book.title)
+      .replace(/[-']/g, ' ')
+      .replace(
+        /\b(?:\d+(?:st|nd|rd|th)?|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|edition|ed)\b/g,
+        ' ',
+      ),
+  ).filter((token) => !GENERIC_QBITTORRENT_TITLE_TOKENS.has(token));
+}
+
+export function hasRequiredQbittorrentTitleEvidence(
+  evidence: string,
+  request: DocumentAcquisitionRequest,
+): boolean {
+  if (isbnAppearsInText(request.book.isbn, evidence)) return true;
+  const requiredTokens = distinctiveBookTitleTokens(request);
+  if (!requiredTokens.length) return true;
+  const candidateTokens = qbittorrentEvidenceTokens(evidence);
+  const matched = requiredTokens.filter((token) => candidateTokens.has(token));
+  if (requiredTokens.length <= 2) return matched.length === requiredTokens.length;
+  const requiredCount =
+    requiredTokens.length >= 5
+      ? Math.ceil(requiredTokens.length * 0.6)
+      : Math.ceil(requiredTokens.length * 0.75);
+  return matched.length >= requiredCount;
 }
 
 export function hashFromMagnet(value: string): string {

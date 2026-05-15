@@ -11,6 +11,24 @@ export function isAbsoluteStoragePath(value: string): boolean {
   return ABSOLUTE_PATH_PATTERN.test(value);
 }
 
+export function normalizeStoragePath(value: string | null | undefined): string {
+  return String(value ?? '')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/g, '');
+}
+
+export function bridgeDataRootMatchesSavePath(
+  bridgeDataRoot: string | null | undefined,
+  savePath: string | null | undefined,
+): boolean {
+  if (!bridgeDataRoot || !savePath) return true;
+  const root = normalizeStoragePath(bridgeDataRoot);
+  const expected = normalizeStoragePath(savePath);
+  if (!root || !expected) return true;
+  if (isAbsoluteStoragePath(expected)) return root === expected;
+  return root === expected || root.endsWith(`/${expected}`);
+}
+
 async function withQbittorrentTimeout<T>(
   task: (signal: AbortSignal) => Promise<T>,
   timeoutMs: number,

@@ -98,6 +98,17 @@ function trimBaseUrl(value) {
   return value.replace(/\/+$/, '');
 }
 
+function publicBaseUrl(value) {
+  try {
+    const parsed = new URL(value);
+    parsed.username = '';
+    parsed.password = '';
+    return trimBaseUrl(parsed.toString());
+  } catch {
+    return '';
+  }
+}
+
 function parseAllowedOrigins(value) {
   if (!value) return [...DEFAULT_ALLOWED_ORIGINS];
   return String(value)
@@ -1049,7 +1060,7 @@ export function createQbittorrentBridgeServer({
       res.end(
         JSON.stringify({
           ok: true,
-          targetBaseUrl: cleanTargetBaseUrl,
+          targetBaseUrl: publicBaseUrl(cleanTargetBaseUrl),
           dataRoot: cleanDataRoot,
           allowedOrigins: cleanAllowedOrigins,
         }),

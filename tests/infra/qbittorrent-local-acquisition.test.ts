@@ -106,7 +106,7 @@ describe('qBittorrent local acquisition', () => {
       if (url.endsWith('/__health')) {
         return Response.json({
           ok: true,
-          dataRoot: '/absolute/data/documents',
+          dataRoot: '/repo/output/data/documents',
         });
       }
       if (url.endsWith('/api/v2/auth/login')) {
@@ -148,13 +148,13 @@ describe('qBittorrent local acquisition', () => {
       policy: qbitPolicy(),
     });
 
-    expect(addSavePaths).toEqual(['/absolute/data/documents']);
+    expect(addSavePaths).toEqual(['/repo/output/data/documents']);
     expect(acquired?.documentRef).toMatchObject({
       torrentHash: 'abc123',
       status: 'queued',
       contentKind: 'pdf',
     });
-    expect(acquired?.storagePath).toContain('/absolute/data/documents');
+    expect(acquired?.storagePath).toContain('/repo/output/data/documents');
   });
 
   it('waits for qBittorrent to expose newly added torrent file metadata', async () => {
@@ -164,7 +164,7 @@ describe('qBittorrent local acquisition', () => {
       if (url.endsWith('/__health')) {
         return Response.json({
           ok: true,
-          dataRoot: '/absolute/data/documents',
+          dataRoot: '/repo/output/data/documents',
         });
       }
       if (url.endsWith('/api/v2/auth/login')) {
@@ -184,7 +184,7 @@ describe('qBittorrent local acquisition', () => {
                   name: 'Fixture Book',
                   state: 'pausedDL',
                   progress: 0,
-                  save_path: '/absolute/data/documents',
+                  save_path: '/repo/output/data/documents',
                 },
               ],
         );
@@ -240,7 +240,7 @@ describe('qBittorrent local acquisition', () => {
       policy: qbitPolicy(),
     });
 
-    expect(addSavePaths).toEqual(['/absolute/data/documents']);
+    expect(addSavePaths).toEqual(['/repo/output/data/documents']);
     expect(infoCalls).toBe(3);
     expect(acquired?.documentRef).toMatchObject({
       torrentHash: 'abc123',

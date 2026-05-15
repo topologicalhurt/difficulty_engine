@@ -2,6 +2,7 @@ import type { AppState, BookRecord, EnrichmentStatus } from '../../core/types';
 import { effectiveReadingPagesForBook } from '../../core/effective-pages';
 import { readingScopeSettingsForProject } from '../../core/reading-scope';
 import { classifyReadingSections } from '../../core/section-classifier';
+import { qbittorrentRuntimeEnabled } from '../../core/source-settings-policy';
 import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
 import { compactItems, round1 } from '../../core/utils';
 import {
@@ -37,6 +38,8 @@ export interface BookEditorViewModel {
   readingScope: BookReadingScopeView | null;
   enrichmentStatus: EnrichmentStatus | 'idle';
   enrichmentError: string | null;
+  enrichmentBridgePreflightRequired: boolean;
+  bridgeUnavailableExplanation: string | null;
   incomingRelations: string[];
   outgoingRelations: string[];
   scheduleSummary: string;
@@ -78,6 +81,8 @@ export interface LibraryViewModel {
     failed: number;
     idle: number;
   };
+  enrichmentBridgePreflightRequired: boolean;
+  bridgeUnavailableExplanation: string | null;
 }
 
 export function enrichmentBadgeView(
@@ -195,6 +200,8 @@ const selectLibraryViewModelMemo = memoizeSelector(
     state.snapshot,
     state.ui.selectedBookId,
     state.ui.libraryListWidthPx,
+    state.ui.qbittorrentConnection,
+    state.ui.qbittorrentStatus,
     state.enrichment.byBookId,
   ],
   (state: AppState): LibraryViewModel => {
@@ -213,6 +220,15 @@ const selectLibraryViewModelMemo = memoizeSelector(
     const failed = enrichmentEntries.filter(
       (entry) => entry.status === 'failed',
     ).length;
+    const enrichmentBridgePreflightRequired = qbittorrentRuntimeEnabled(
+      state.project.sourceSettings,
+      state.ui.qbittorrentConnection,
+    );
+    const bridgeUnavailableExplanation =
+      enrichmentBridgePreflightRequired &&
+      state.ui.qbittorrentStatus.state === 'failed'
+        ? state.ui.qbittorrentStatus.message
+        : null;
     return {
       selectedBook,
       readingList: readingListViewModelFromProgress(state, progressByBook),
@@ -223,6 +239,8 @@ const selectLibraryViewModelMemo = memoizeSelector(
       ),
       orderPolicy: state.project.constraints.bookOrderPolicy,
       listWidthPx: state.ui.libraryListWidthPx,
+      enrichmentBridgePreflightRequired,
+      bridgeUnavailableExplanation,
       enrichmentProgress: {
         total,
         loading,
@@ -263,6 +281,14 @@ function bookEditorViewModelFromProgress(
       readingScope: null,
       enrichmentStatus: 'idle',
       enrichmentError: null,
+      enrichmentBridgePreflightRequired: qbittorrentRuntimeEnabled(
+        state.project.sourceSettings,
+        state.ui.qbittorrentConnection,
+      ),
+      bridgeUnavailableExplanation:
+        state.ui.qbittorrentStatus.state === 'failed'
+          ? state.ui.qbittorrentStatus.message
+          : null,
       incomingRelations: [],
       outgoingRelations: [],
       scheduleSummary: 'Not scheduled yet.',
@@ -316,6 +342,14 @@ function bookEditorViewModelFromProgress(
     readingScope,
     enrichmentStatus: enrichmentEntry?.status ?? 'idle',
     enrichmentError: enrichmentEntry?.error ?? null,
+    enrichmentBridgePreflightRequired: qbittorrentRuntimeEnabled(
+      state.project.sourceSettings,
+      state.ui.qbittorrentConnection,
+    ),
+    bridgeUnavailableExplanation:
+      state.ui.qbittorrentStatus.state === 'failed'
+        ? state.ui.qbittorrentStatus.message
+        : null,
     incomingRelations: relationSummary.incomingRelations,
     outgoingRelations: relationSummary.outgoingRelations,
     scheduleSummary: schedule

@@ -17,6 +17,7 @@ import { uniqueCompactStrings } from '../core/utils';
 import {
   BAD_FILE_NAME_PATTERN,
   bookMatchScore,
+  hasRequiredQbittorrentTitleEvidence,
   MIN_PLUGIN_SEEDERS,
   MIN_TORRENT_MATCH_SCORE,
   normalizedBookIsbn,
@@ -36,6 +37,9 @@ import type { SearchResult } from './qbittorrent-types';
 
 const MAX_QBITTORRENT_SEARCH_PATTERNS = 10;
 const MIN_USER_OWNED_RETRY_SCORE = 0.55;
+const NON_PDF_ONLY_SEARCH_RESULT_PATTERN =
+  /\b(?:epub|mobi|azw3|djvu|txt|text)\b/i;
+const PDF_SEARCH_RESULT_PATTERN = /\bpdf\b/i;
 
 // Search plugins are literal-string matchers more often than semantic searchers.
 // Keep variants precise, but remove edition/noise words that commonly hide hits.
@@ -279,6 +283,14 @@ function searchResultLooksLikePluginError(result: SearchResult): boolean {
   );
 }
 
+function searchResultLooksNonPdfOnly(result: SearchResult): boolean {
+  const text = searchResultEvidenceText(result);
+  return (
+    NON_PDF_ONLY_SEARCH_RESULT_PATTERN.test(text) &&
+    !PDF_SEARCH_RESULT_PATTERN.test(text)
+  );
+}
+
 function searchResultSourceIsAllowed(
   result: SearchResult,
   pluginName: string,
@@ -315,6 +327,7 @@ function blockedCandidate(
     ) &&
     !reasons.includes('qBittorrent document acquisition requires PDF files') &&
     !reasons.includes('plugin error') &&
+    !reasons.includes('missing distinctive title token') &&
     sourceCanBeManuallyAdded(url) &&
     seeders >= MIN_PLUGIN_SEEDERS &&
     matchScore >= MIN_USER_OWNED_RETRY_SCORE &&
@@ -379,11 +392,18 @@ export function classifySearchResults(
     const reasons = [
       searchResultLooksLikePluginError(result) ? 'plugin error' : '',
       BAD_FILE_NAME_PATTERN.test(title) ? 'solution/manual/sample file' : '',
-      detectedContentKind !== 'unknown' && detectedContentKind !== 'pdf'
+      (detectedContentKind !== 'unknown' && detectedContentKind !== 'pdf') ||
+      searchResultLooksNonPdfOnly(result)
         ? 'qBittorrent document acquisition requires PDF files'
         : '',
       seeders < MIN_PLUGIN_SEEDERS ? 'zero seeders' : '',
       matchScore < MIN_TORRENT_MATCH_SCORE ? 'weak title match' : '',
+      !hasRequiredQbittorrentTitleEvidence(
+        searchResultEvidenceText(result),
+        request,
+      )
+        ? 'missing distinctive title token'
+        : '',
       !hasRequiredAuthorEvidence(result, request) ? 'author mismatch' : '',
       !sourceUrl(result) ? 'missing source URL' : '',
       !sourceAllowed ? 'unallowed plugin/site' : '',

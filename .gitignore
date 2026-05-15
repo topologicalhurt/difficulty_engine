@@ -8,4 +8,6 @@ test-results/
 scripts/__pycache__/
 *.pyc
 output/data/documents/
+output/backups/
 output/audits/
+data/documents/

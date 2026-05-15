@@ -95,13 +95,16 @@ describe('local project persistence', () => {
       [STORAGE_KEY]: serializeProject(firstProject),
     });
     let finishBackup!: () => void;
-    const fetchImpl = vi.fn(
-      () =>
-        new Promise<Response>((resolve) => {
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/__health')) {
+        return Promise.resolve(new Response(JSON.stringify({ ok: true })));
+      }
+      return new Promise<Response>((resolve) => {
           finishBackup = () =>
             resolve(new Response(JSON.stringify({ ok: true })));
-        }),
-    );
+      });
+    });
     vi.stubGlobal('localStorage', storage);
     const persistence = createLocalStoragePersistence(STORAGE_KEY, {
       backupEndpoint: 'http://127.0.0.1:8787/project-backups/write',
@@ -112,8 +115,37 @@ describe('local project persistence', () => {
     const primary = JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}');
     expect(primary.library.books.second.title).toBe('Second Book');
 
+    for (let attempt = 0; !finishBackup && attempt < 5; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
     finishBackup();
     await savePromise;
+  });
+
+  it('skips folder backup writes when bridge health is unavailable', async () => {
+    const firstProject = projectWithBook('first', 'First Book');
+    const secondProject = projectWithBook('second', 'Second Book');
+    const storage = memoryStorage({
+      [STORAGE_KEY]: serializeProject(firstProject),
+    });
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError('NetworkError when attempting to fetch resource.');
+    });
+    vi.stubGlobal('localStorage', storage);
+    const persistence = createLocalStoragePersistence(STORAGE_KEY, {
+      backupEndpoint: 'http://127.0.0.1:8787/project-backups/write',
+      fetchImpl,
+    });
+
+    await persistence.save(secondProject);
+
+    const primary = JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}');
+    expect(primary.library.books.second.title).toBe('Second Book');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/__health',
+      expect.anything(),
+    );
   });
 
   it('skips local and folder backups when project backups are disabled', async () => {

@@ -9,5 +9,7 @@ export interface StrategyContext {
   fetchImpl?: typeof fetch;
   acquiredDocuments?: AcquiredDocument[];
   sourceSettings?: SourceSettings;
+  skipBridgeDocuments?: boolean;
+  allowInternetArchiveTextFetch?: boolean;
   signal?: AbortSignal;
 }

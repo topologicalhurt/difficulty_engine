@@ -74,6 +74,7 @@ describe('Internet Archive TOC candidates', () => {
             headers: { 'content-type': 'text/plain' },
           },
         ),
+      allowTextFetch: true,
     });
 
     expect(metadataUrls).toEqual([
@@ -83,5 +84,40 @@ describe('Internet Archive TOC candidates', () => {
       'Chapter 1 Foundations',
       'Chapter 2 Contours',
     ]);
+  });
+
+  it('skips Archive text file downloads unless explicitly enabled', async () => {
+    let textFetches = 0;
+    const candidates = await fetchInternetArchiveCandidates({
+      book: book(),
+      fetchJson: async <T>(url: string): Promise<T> => {
+        if (url.startsWith('https://archive.org/advancedsearch.php?')) {
+          return {
+            response: {
+              docs: [
+                {
+                  identifier: 'no-creator-same-title',
+                  title: 'Complex analysis',
+                },
+              ],
+            },
+          } as T;
+        }
+        return {
+          metadata: { title: 'Complex analysis', subject: ['analysis'] },
+          files: [
+            { name: 'complex_djvu.txt', format: 'DjVuTXT', size: '1200' },
+          ],
+        } as T;
+      },
+      fetchImpl: async () => {
+        textFetches += 1;
+        return new Response('Chapter 1', { status: 200 });
+      },
+    });
+
+    expect(textFetches).toBe(0);
+    expect(candidates[0]?.subjects).toEqual(['analysis']);
+    expect(candidates[0]?.chapters).toEqual([]);
   });
 });

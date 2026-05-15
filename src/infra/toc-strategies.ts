@@ -57,7 +57,12 @@ export async function resolveBookEnrichment(
     openLibraryEnabled ? openLibraryWorkCandidate(context) : null,
     openLibraryEnabled ? openLibrarySearchCandidates(context) : [],
     googleBooksEnabled ? googleBooksCandidates(context) : [],
-    internetArchiveEnabled ? fetchInternetArchiveCandidates(context) : [],
+    internetArchiveEnabled
+      ? fetchInternetArchiveCandidates({
+          ...context,
+          allowTextFetch: context.allowInternetArchiveTextFetch === true,
+        })
+      : [],
   ]);
   if (editionCandidate) {
     candidates.push(editionCandidate);

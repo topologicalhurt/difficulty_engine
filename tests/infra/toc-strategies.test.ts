@@ -326,6 +326,7 @@ describe('resolveBookEnrichment', () => {
     const resolution = await resolveBookEnrichment({
       book,
       fetchJson,
+      allowInternetArchiveTextFetch: true,
       fetchImpl: async () =>
         new Response(
           [

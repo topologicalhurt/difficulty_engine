@@ -6,6 +6,7 @@ import { normalizeQbittorrentConnectionSettings } from '../core/project-normaliz
 import type {
   CreatePlannerStoreOptions,
   PlannerStoreCommands,
+  QbittorrentBridgeHealth,
   QbittorrentConnectionSettings,
 } from '../core/types';
 import type { StoreCommandContext } from './store-command-context';
@@ -34,6 +35,10 @@ export function createQbittorrentCommands(
     requests.isCurrent(sequence) &&
     connectionFingerprint(context.getState().ui.qbittorrentConnection) ===
       fingerprint;
+  const bridgeFailureMessage = (health: QbittorrentBridgeHealth): string => {
+    if (health.status === 'ok') return 'qBittorrent connection succeeded.';
+    return health.message;
+  };
 
   return {
     updateQbittorrentLocalSettings(patch): void {
@@ -87,7 +92,7 @@ export function createQbittorrentCommands(
         },
       );
     },
-    async testQbittorrentConnection(): Promise<void> {
+    async testQbittorrentConnection(): Promise<boolean> {
       const state = context.getState();
       const connection = state.ui.qbittorrentConnection;
       if (!connection.enabled) {
@@ -104,7 +109,7 @@ export function createQbittorrentCommands(
               'qBittorrent connection test skipped because the integration is disabled.',
           },
         });
-        return;
+        return false;
       }
       const sequence = requests.begin();
       const fingerprint = connectionFingerprint(connection);
@@ -121,8 +126,25 @@ export function createQbittorrentCommands(
             'qBittorrent integration is not available in this host.',
           );
         }
+        const health =
+          await services.qbittorrentService.checkBridgeHealth?.(connection);
+        if (health && health.status !== 'ok') {
+          if (!requestIsCurrent(sequence, fingerprint)) return false;
+          context.commitUi('project.qbittorrentTest', {
+            qbittorrentStatus: {
+              ...context.getState().ui.qbittorrentStatus,
+              state: 'failed',
+              message: bridgeFailureMessage(health),
+            },
+            banner: {
+              tone: 'error',
+              message: bridgeFailureMessage(health),
+            },
+          });
+          return false;
+        }
         await services.qbittorrentService.testConnection(connection);
-        if (!requestIsCurrent(sequence, fingerprint)) return;
+        if (!requestIsCurrent(sequence, fingerprint)) return false;
         context.commitUi('project.qbittorrentTest', {
           qbittorrentStatus: {
             ...context.getState().ui.qbittorrentStatus,
@@ -134,8 +156,9 @@ export function createQbittorrentCommands(
             message: 'qBittorrent connection succeeded.',
           },
         });
+        return true;
       } catch (error) {
-        if (!requestIsCurrent(sequence, fingerprint)) return;
+        if (!requestIsCurrent(sequence, fingerprint)) return false;
         context.commitUi('project.qbittorrentTest', {
           qbittorrentStatus: {
             ...context.getState().ui.qbittorrentStatus,
@@ -153,6 +176,7 @@ export function createQbittorrentCommands(
                 : 'qBittorrent connection failed.',
           },
         });
+        return false;
       }
     },
     async refreshQbittorrentPlugins(): Promise<void> {

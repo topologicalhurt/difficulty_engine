@@ -128,6 +128,7 @@ async function archiveCandidateFromDoc(
   doc: ArchiveSearchDoc,
   fetchJson: JsonFetcher,
   fetchImpl: typeof fetch,
+  allowTextFetch: boolean,
   signal?: AbortSignal,
 ): Promise<InternetArchiveCandidate | null> {
   const identifier = String(doc.identifier ?? '').trim();
@@ -137,28 +138,30 @@ async function archiveCandidateFromDoc(
     signal,
   ).catch(() => null);
   if (!metadata) return null;
-  const files = textFiles(metadata.files ?? []);
-  const chaptersByFile = await Promise.all(
-    files.map(async (file) => {
-      const name = String(file.name ?? '');
-      const text = await fetchText(
-        fetchImpl,
-        archiveDownloadUrl(identifier, name),
-        signal,
-      );
-      const extraction = extractDocumentChapters({
-        text,
-        contentType: 'text/plain',
-      });
-      return {
-        chapters: extraction?.chapters ?? extractArchiveChapters(text),
-        chapterPageRanges: extraction?.chapterPageRanges,
-        strategy: extraction?.strategy,
-        inferred: extraction?.inferred,
-        evidenceAnchors: extraction?.evidenceAnchors,
-      };
-    }),
-  );
+  const files = allowTextFetch ? textFiles(metadata.files ?? []) : [];
+  const chaptersByFile = allowTextFetch
+    ? await Promise.all(
+        files.map(async (file) => {
+          const name = String(file.name ?? '');
+          const text = await fetchText(
+            fetchImpl,
+            archiveDownloadUrl(identifier, name),
+            signal,
+          );
+          const extraction = extractDocumentChapters({
+            text,
+            contentType: 'text/plain',
+          });
+          return {
+            chapters: extraction?.chapters ?? extractArchiveChapters(text),
+            chapterPageRanges: extraction?.chapterPageRanges,
+            strategy: extraction?.strategy,
+            inferred: extraction?.inferred,
+            evidenceAnchors: extraction?.evidenceAnchors,
+          };
+        }),
+      )
+    : [];
   const selected =
     chaptersByFile.find((items) => items.chapters.length >= 3) ??
     chaptersByFile[0];
@@ -189,6 +192,7 @@ export async function fetchInternetArchiveCandidates(options: {
   book: BookRecord;
   fetchJson: JsonFetcher;
   fetchImpl?: typeof fetch;
+  allowTextFetch?: boolean;
   signal?: AbortSignal;
 }): Promise<InternetArchiveCandidate[]> {
   if (!options.fetchImpl) return [];
@@ -227,6 +231,7 @@ export async function fetchInternetArchiveCandidates(options: {
           doc,
           options.fetchJson,
           options.fetchImpl as typeof fetch,
+          options.allowTextFetch === true,
           options.signal,
         ),
       ),

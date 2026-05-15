@@ -29,6 +29,7 @@ import {
   settingsToOptions,
   type QBittorrentProviderOptions,
 } from './qbittorrent-client';
+import { checkQbittorrentBridgeHealth } from './qbittorrent-bridge-health';
 import { pluginSearchCandidates } from './qbittorrent-plugin-search';
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import { documentCandidateQualityScore } from './document-candidate-quality';
@@ -259,6 +260,9 @@ export function createQBittorrentIntegrationService(
   fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis),
 ): QbittorrentIntegrationService {
   return {
+    checkBridgeHealth(settings: QbittorrentConnectionSettings) {
+      return checkQbittorrentBridgeHealth(fetchImpl, settings);
+    },
     async testConnection(
       settings: QbittorrentConnectionSettings,
     ): Promise<void> {

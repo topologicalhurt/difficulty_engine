@@ -8,6 +8,25 @@ export type QbittorrentApi = (
 
 const SEARCH_POLL_ATTEMPTS = 18;
 const SEARCH_POLL_INTERVAL_MS = 650;
+const MAX_GLOBAL_QBITTORRENT_SEARCHES = 4;
+
+let activeSearches = 0;
+const queuedSearches: Array<() => void> = [];
+
+async function withGlobalSearchSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (activeSearches >= MAX_GLOBAL_QBITTORRENT_SEARCHES) {
+    await new Promise<void>((resolve) => {
+      queuedSearches.push(resolve);
+    });
+  }
+  activeSearches += 1;
+  try {
+    return await task();
+  } finally {
+    activeSearches = Math.max(0, activeSearches - 1);
+    queuedSearches.shift()?.();
+  }
+}
 
 export function normalizeQbittorrentPlugins(
   items: Array<{
@@ -87,28 +106,39 @@ export async function runQbittorrentPluginSearch(
   category: string,
   limit: number,
 ): Promise<SearchResultsResponse> {
-  const searchId = await startQbittorrentSearch(
-    api,
-    pattern,
-    pluginName,
-    category,
-  );
-  if (searchId == null) return {};
-  try {
-    let payload: SearchResultsResponse = {};
-    for (let attempt = 0; attempt < SEARCH_POLL_ATTEMPTS; attempt += 1) {
-      payload = await readQbittorrentSearchResults(api, searchId, limit);
-      if (
-        payload.status === 'Stopped' ||
-        (payload.results?.length ?? 0) >= limit
-      )
-        break;
-      await new Promise((resolve) =>
-        globalThis.setTimeout(resolve, SEARCH_POLL_INTERVAL_MS),
-      );
+  return withGlobalSearchSlot(async () => {
+    const searchId = await startQbittorrentSearch(
+      api,
+      pattern,
+      pluginName,
+      category,
+    );
+    if (searchId == null) return {};
+    try {
+      let payload: SearchResultsResponse = {};
+      let previousResultCount = -1;
+      let stableResultPolls = 0;
+      for (let attempt = 0; attempt < SEARCH_POLL_ATTEMPTS; attempt += 1) {
+        payload = await readQbittorrentSearchResults(api, searchId, limit);
+        const resultCount = payload.results?.length ?? 0;
+        if (
+          payload.status === 'Stopped' ||
+          resultCount >= limit ||
+          (resultCount > 0 && stableResultPolls >= 2)
+        )
+          break;
+        stableResultPolls =
+          resultCount > 0 && resultCount === previousResultCount
+            ? stableResultPolls + 1
+            : 0;
+        previousResultCount = resultCount;
+        await new Promise((resolve) =>
+          globalThis.setTimeout(resolve, SEARCH_POLL_INTERVAL_MS),
+        );
+      }
+      return payload;
+    } finally {
+      await deleteQbittorrentSearch(api, searchId);
     }
-    return payload;
-  } finally {
-    await deleteQbittorrentSearch(api, searchId);
-  }
+  });
 }
