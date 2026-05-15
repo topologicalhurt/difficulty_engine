@@ -56,6 +56,16 @@ interface DocumentAcquisitionRun {
   candidates: DocumentCandidate[];
 }
 
+function isTerminalAcquiredDocument(document: AcquiredDocument): boolean {
+  const ref = document.documentRef;
+  if (!ref) {
+    return Boolean(document.text || document.bytes || document.pageAnchors?.length);
+  }
+  if (ref.status === 'failed' || ref.status === 'stalled') return false;
+  if (ref.provider === 'qbittorrent') return ref.fileIndex != null;
+  return true;
+}
+
 function shouldUseQbittorrentProvider(request: EnrichmentRequest): boolean {
   return qbittorrentRuntimeEnabled(
     request.sourceSettings,
@@ -115,6 +125,7 @@ async function acquireCandidateDocuments(
       policy,
       signal: request.signal,
     });
+    const deferredDocuments: AcquiredDocument[] = [];
     let latestRejected: AcquiredDocument | null = null;
     for (const candidate of rankDocumentCandidates(
       candidates,
@@ -128,12 +139,15 @@ async function acquireCandidateDocuments(
           signal: request.signal,
         });
         if (acquired) latestRejected = acquired;
+        if (acquired && isTerminalAcquiredDocument(acquired)) {
+          return { documents: [...deferredDocuments, acquired], candidates };
+        }
         if (
           acquired &&
           acquired.documentRef?.status !== 'failed' &&
           acquired.documentRef?.status !== 'stalled'
         ) {
-          return { documents: [acquired], candidates };
+          deferredDocuments.push(acquired);
         }
       } catch (error) {
         logger.warn('enrichment.document_acquisition.candidate_failed', {
@@ -143,7 +157,14 @@ async function acquireCandidateDocuments(
         });
       }
     }
-    return { documents: latestRejected ? [latestRejected] : [], candidates };
+    return {
+      documents: deferredDocuments.length
+        ? deferredDocuments
+        : latestRejected
+          ? [latestRejected]
+          : [],
+      candidates,
+    };
   } catch (error) {
     logger.warn('enrichment.document_acquisition.failed', {
       bookId: request.book.id,

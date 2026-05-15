@@ -104,6 +104,65 @@ describe('document text topic extraction', () => {
     ]);
   });
 
+  it('keeps lower-level outline bookmarks as topics without TOC text', () => {
+    const extraction = extractDocumentChapters({
+      contentType: 'application/pdf',
+      sourceUrl: 'https://example.test/book.pdf',
+      pageAnchors: [
+        {
+          chapterTitle: '1. Vector Analysis',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 20,
+          outlineLevel: 1,
+        },
+        {
+          chapterTitle: '1.1 Vector Algebra',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.9,
+          physicalPage: 21,
+          outlineLevel: 2,
+        },
+        {
+          chapterTitle: '1.2 Differential Calculus',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.9,
+          physicalPage: 34,
+          outlineLevel: 2,
+        },
+        {
+          chapterTitle: '2. Electrostatics',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.92,
+          physicalPage: 78,
+          outlineLevel: 1,
+        },
+        {
+          chapterTitle: '2.1 The Electric Field',
+          sourceMethod: 'pdf_outline_destination',
+          confidence: 0.9,
+          physicalPage: 79,
+          outlineLevel: 2,
+        },
+      ],
+    });
+
+    expect(extraction?.chapters).toEqual([
+      '1. Vector Analysis',
+      '2. Electrostatics',
+    ]);
+    expect(extraction?.topics).toEqual([
+      '1.1 Vector Algebra',
+      '1.2 Differential Calculus',
+      '2.1 The Electric Field',
+    ]);
+    expect(extraction?.topicPageRanges).toEqual([
+      { start: 21, end: 33 },
+      { start: 34, end: 78 },
+      { start: 79, end: null },
+    ]);
+  });
+
   it('does not re-include front matter when outline chapters are unnumbered', () => {
     const extraction = extractDocumentChapters({
       contentType: 'application/pdf',

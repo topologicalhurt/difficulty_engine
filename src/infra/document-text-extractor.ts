@@ -32,6 +32,7 @@ import {
 import {
   MIN_PDF_OUTLINE_CHAPTERS,
   preferredPdfOutlineAnchors,
+  topicPdfOutlineAnchors,
 } from './document-outline-anchors';
 import {
   preferChapterLevelTocEntries,
@@ -233,6 +234,7 @@ export function extractPdfOutlineChapters(
   pageAnchors?: PageAnchorEvidence[],
 ): DocumentChapterExtraction | null {
   const outlineAnchors = preferredPdfOutlineAnchors(pageAnchors);
+  const topicAnchors = topicPdfOutlineAnchors(pageAnchors, outlineAnchors);
   const outlineAnchorTitles = outlineAnchors.map(
     (anchor) => anchor.chapterTitle,
   );
@@ -246,6 +248,12 @@ export function extractPdfOutlineChapters(
     sanitizeChapterTitles(titles, { source: 'structured', limit: 80 }),
   );
   if (chapters.length < MIN_PDF_OUTLINE_CHAPTERS) return null;
+  const topics = removeMarkerOnlyDuplicates(
+    sanitizeChapterTitles(
+      topicAnchors.map((anchor) => anchor.chapterTitle),
+      { source: 'structured', limit: 160 },
+    ),
+  );
   return extraction(
     chapters,
     'pdf_outline',
@@ -256,6 +264,8 @@ export function extractPdfOutlineChapters(
     outlineAnchorTitles.length >= MIN_PDF_OUTLINE_CHAPTERS
       ? outlineAnchors
       : pageAnchors,
+    topics,
+    rangesFromPageAnchors(topics, topicAnchors),
   );
 }
 
@@ -465,7 +475,7 @@ export function extractDocumentChapters(input: {
     const outline = extractPdfOutlineChapters(input.bytes, input.pageAnchors);
     if (outline) {
       const explicit = extractExplicitTocChapters(text);
-      if (explicit?.topics?.length) {
+      if (explicit?.topics?.length && !outline.topics.length) {
         outline.topics = explicit.topics;
         outline.topicPageRanges = explicit.topicPageRanges;
       }

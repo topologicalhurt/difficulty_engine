@@ -22,6 +22,15 @@ function isMajorOutlineAnchor(anchor: PageAnchorEvidence): boolean {
   );
 }
 
+function outlineAnchorKey(anchor: PageAnchorEvidence): string {
+  return [
+    anchor.chapterTitle.toLowerCase().trim(),
+    outlineLevel(anchor) ?? '',
+    anchor.physicalPage ?? '',
+    anchor.printedPage ?? '',
+  ].join('::');
+}
+
 export function preferredPdfOutlineAnchors(
   pageAnchors: PageAnchorEvidence[] = [],
 ): PageAnchorEvidence[] {
@@ -54,4 +63,23 @@ export function preferredPdfOutlineAnchors(
       ? majorAnchors
       : nonFrontOutlineAnchors;
   return preferred.filter((anchor) => outlineLevel(anchor) === preferredLevel);
+}
+
+export function topicPdfOutlineAnchors(
+  pageAnchors: PageAnchorEvidence[] = [],
+  chapterAnchors: PageAnchorEvidence[] = preferredPdfOutlineAnchors(pageAnchors),
+): PageAnchorEvidence[] {
+  const chapterLevels = chapterAnchors
+    .map(outlineLevel)
+    .filter((level): level is number => level != null);
+  if (!chapterLevels.length) return [];
+  const chapterLevel = Math.min(...chapterLevels);
+  const chapterKeys = new Set(chapterAnchors.map(outlineAnchorKey));
+  return pageAnchors.filter((anchor) => {
+    if (anchor.sourceMethod !== 'pdf_outline_destination') return false;
+    if (PDF_OUTLINE_FRONT_BACK_PATTERN.test(anchor.chapterTitle)) return false;
+    if (chapterKeys.has(outlineAnchorKey(anchor))) return false;
+    const level = outlineLevel(anchor);
+    return level != null && level > chapterLevel;
+  });
 }

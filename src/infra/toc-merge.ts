@@ -9,7 +9,6 @@ import { compactItems, uniqueCompactStrings } from '../core/utils';
 import {
   bestChapterCandidate,
   existingChapterCandidate,
-  preferredTocSource,
 } from './toc-candidate-ranking';
 import { isoTimestamp } from './cache-time';
 import type {
@@ -237,6 +236,10 @@ export function mergeStrategyCandidates(
       (_candidate, pages) => pages > 0,
     );
   const provenance = buildProvenance(candidates);
+  const tocSource =
+    selectedChapterCandidate?.tocSource ??
+    selectedTopicCandidate?.tocSource ??
+    book.enrichment.tocSource;
 
   return {
     bookPatch: {
@@ -264,10 +267,7 @@ export function mergeStrategyCandidates(
       topicPageRanges,
       description,
       olSubjects: subjects,
-      tocSource: preferredTocSource(
-        book.enrichment.tocSource,
-        chapterCandidates,
-      ),
+      tocSource,
       provenance: {
         chapters:
           chapters.length && provenance[0]

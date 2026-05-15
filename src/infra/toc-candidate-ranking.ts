@@ -1,5 +1,5 @@
 import { sanitizeChapterTitles } from '../core/chapter-titles';
-import type { BookEnrichment, BookRecord } from '../core/types';
+import type { BookRecord } from '../core/types';
 import type { StrategyCandidate } from './toc-merge';
 
 function chapterSourcePriority(candidate: StrategyCandidate): number {
@@ -53,14 +53,6 @@ export function bestChapterCandidate(
         left.sourceUrl.localeCompare(right.sourceUrl)
       );
     })[0];
-}
-
-export function preferredTocSource(
-  current: BookEnrichment['tocSource'],
-  candidates: StrategyCandidate[],
-): BookEnrichment['tocSource'] {
-  const winner = bestChapterCandidate(candidates);
-  return winner?.tocSource ?? current;
 }
 
 export function existingChapterCandidate(
