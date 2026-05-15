@@ -107,7 +107,10 @@ export interface PlannerStoreCommands {
     documentId: string,
     options?: { deleteContent?: boolean },
   ): Promise<void>;
-  refreshBookDocumentCandidates(bookId: string): Promise<void>;
+  refreshBookDocumentCandidates(
+    bookId: string,
+    searchQuery?: string,
+  ): Promise<void>;
   selectBookDocumentCandidate(
     bookId: string,
     candidateId: string,

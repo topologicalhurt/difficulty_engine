@@ -10,7 +10,8 @@ import {
   hashFromMagnet,
   documentStatus,
   fileMatchScore,
-  selectTrustedTorrentFile,
+  rankedTorrentFiles,
+  selectedTorrentFileIsTrusted,
   torrentAvailability,
 } from './qbittorrent-selection';
 import type { TorrentFile, TorrentInfo } from './qbittorrent-types';
@@ -19,7 +20,10 @@ import {
   contentTypeFromPath,
   joinStoragePath,
 } from './qbittorrent-file-kinds';
-import { isoTimestamp } from './cache-time';
+import { isoTimestamp, systemNowMs } from './cache-time';
+import { qbittorrentPdfRejectionSummary } from './qbittorrent-pdf-eligibility';
+
+import type { BookDocumentAvailability, BookDocumentStatus } from '../core/types';
 
 async function selectedTorrentFile(
   client: QBittorrentClient,
@@ -34,22 +38,41 @@ async function selectedTorrentFile(
 }> {
   if (!info.hash) return { selected: null, fileCount: 0, eligibleFileCount: 0 };
   const files = await client.torrentFiles(info.hash).catch(() => []);
-  const selection = selectTrustedTorrentFile(files, candidate, request);
-  if (!selection.eligibleFileCount) {
+  const rankedFiles = rankedTorrentFiles(files, request);
+  if (!rankedFiles.length) {
     const allIndexes = files
       .map((file) => file.index)
       .filter((index): index is number => index != null);
     await client.setFilePriority(info.hash, allIndexes, 0);
-    return selection;
+    return {
+      selected: null,
+      fileCount: files.length,
+      eligibleFileCount: 0,
+      rejectionReason: `No eligible top-surface PDF was found in this torrent: ${qbittorrentPdfRejectionSummary(files)}`,
+    };
   }
-  const selected = selection.selected;
+  const selected =
+    rankedFiles.find((file) =>
+      selectedTorrentFileIsTrusted(
+        file,
+        candidate,
+        request,
+        rankedFiles.length,
+      ),
+    ) ?? null;
   const selectedIndex = selected?.index;
   if (!selected) {
     const allIndexes = files
       .map((file) => file.index)
       .filter((index): index is number => index != null);
     await client.setFilePriority(info.hash, allIndexes, 0);
-    return selection;
+    return {
+      selected: null,
+      fileCount: files.length,
+      eligibleFileCount: rankedFiles.length,
+      rejectionReason:
+        'Top-surface PDFs were present, but none passed the title, author, or ISBN trust checks.',
+    };
   }
   if (selectedIndex != null) {
     const otherIndexes = files
@@ -62,8 +85,8 @@ async function selectedTorrentFile(
   }
   return {
     selected,
-    fileCount: selection.fileCount,
-    eligibleFileCount: selection.eligibleFileCount,
+    fileCount: files.length,
+    eligibleFileCount: rankedFiles.length,
   };
 }
 
@@ -87,6 +110,45 @@ async function readCompletedDocument(
     bytes: await client.readByteDocument(storagePath).catch(() => undefined),
     pageAnchors,
   };
+}
+
+const TORRENT_STALL_GRACE_MS = 10 * 60 * 1000;
+
+function hasNoActiveDownloadProgress(
+  availability: BookDocumentAvailability,
+): boolean {
+  return (
+    availability.progress <= 0 &&
+    (availability.seeders ?? 0) <= 0 &&
+    (availability.availability ?? 0) <= 0 &&
+    (availability.downloadSpeedBytesPerSecond ?? 0) <= 0
+  );
+}
+
+function statusAfterGrace(
+  status: BookDocumentStatus,
+  availability: BookDocumentAvailability,
+  createdAt: string,
+  nowMs = systemNowMs(),
+): BookDocumentStatus {
+  if (status !== 'queued' && status !== 'downloading') return status;
+  const startedAt = Date.parse(createdAt);
+  if (!Number.isFinite(startedAt)) return status;
+  if (nowMs - startedAt < TORRENT_STALL_GRACE_MS) return status;
+  return hasNoActiveDownloadProgress(availability) ? 'stalled' : status;
+}
+
+function statusReason(
+  refStatus: BookDocumentStatus,
+  availability: BookDocumentAvailability,
+): string | undefined {
+  if (refStatus === 'failed') {
+    return 'Completed torrent file is missing from the configured data folder.';
+  }
+  if (refStatus === 'stalled') {
+    return availability.reason || 'Torrent has not made download progress and appears stalled.';
+  }
+  return undefined;
 }
 
 export async function acquireTorrentDocument(
@@ -214,8 +276,7 @@ export async function acquireTorrentDocument(
         selection.rejectionReason ??
           'No trusted top-surface PDF was selected from this candidate.',
       );
-    }
-    if (selected?.index != null) {
+    } else if (selected.index != null) {
       storagePath = joinStoragePath(
         info.save_path ?? savePath,
         selected.name ?? storagePath,
@@ -225,27 +286,29 @@ export async function acquireTorrentDocument(
   }
 
   const contentType = contentTypeFromPath(storagePath ?? candidate.sourceUrl);
-  const status = documentStatus(info, selected);
+  const rawStatus: BookDocumentStatus = documentStatus(info, selected);
   const { text, bytes, pageAnchors } = await readCompletedDocument(
     client,
     storagePath,
-    status,
+    rawStatus,
   );
   const completedFileExists =
-    status === 'complete'
+    rawStatus === 'complete'
       ? await client.documentExists(storagePath).catch(() => false)
       : false;
   const now = isoTimestamp();
+  const createdAt = candidate.queuedAt ?? now;
   const fileName = basename(storagePath);
   const progress = selected?.progress ?? info?.progress ?? 0;
-  const availability = torrentAvailability(info);
+  const availability = { ...torrentAvailability(info), progress };
   const contentKind = 'pdf';
-  const refStatus =
-    status === 'complete' && !completedFileExists
+  const preliminaryStatus: BookDocumentStatus =
+    rawStatus === 'complete' && !completedFileExists
       ? 'failed'
       : text || bytes
         ? 'complete'
-        : status;
+        : rawStatus;
+  const refStatus = statusAfterGrace(preliminaryStatus, availability, createdAt);
 
   return {
     candidateId: candidate.id,
@@ -280,12 +343,7 @@ export async function acquireTorrentDocument(
         peers: candidate.peers ?? availability.peers,
         progress,
         state: availability.state,
-        reason:
-          refStatus === 'failed'
-            ? 'Completed torrent file is missing from the configured data folder.'
-            : status === 'stalled'
-              ? 'Torrent is stalled or has no active download progress.'
-              : undefined,
+        reason: statusReason(refStatus, availability),
       },
       provenance: {
         provider: 'qbittorrent',
@@ -294,7 +352,7 @@ export async function acquireTorrentDocument(
         confidence: candidate.confidence,
         strategy: 'background_acquisition',
       },
-      createdAt: now,
+      createdAt,
       updatedAt: now,
     },
   };

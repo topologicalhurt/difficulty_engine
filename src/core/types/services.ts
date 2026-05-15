@@ -123,6 +123,7 @@ export interface QbittorrentIntegrationService {
   findDocumentCandidates(
     settings: QbittorrentConnectionSettings,
     request: EnrichmentRequest,
+    searchQuery?: string,
   ): Promise<{
     candidates: BookDocumentCandidateOption[];
     blockedCandidates: BookDocumentBlockedCandidateOption[];

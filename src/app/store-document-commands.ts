@@ -6,6 +6,7 @@ import type {
   PlannerStoreCommands,
 } from '../core/types';
 import { documentGreylistKey } from '../core/document-acquisition-state';
+import { isSafeTorrentSource } from '../core/document-source-safety';
 import { bridgeEndpoint } from '../infra/document-bridge-url';
 import type { StoreCommandContext } from './store-command-context';
 import { createStoreRequestSequencer } from './store-request-sequencer';
@@ -20,18 +21,6 @@ import {
   replacedQbittorrentDocuments,
   staleQbittorrentCandidateHashes,
 } from './store-document-state';
-
-function isSafeTorrentSource(value: string): boolean {
-  if (/^magnet:/i.test(value)) return true;
-  try {
-    const parsed = new URL(value);
-    return (
-      parsed.protocol === 'https:' && /\.torrent(?:$|\?)/i.test(parsed.pathname)
-    );
-  } catch {
-    return false;
-  }
-}
 
 function bookDocument(
   project: PlannerProjectV1,
@@ -243,12 +232,16 @@ export function createDocumentCommands(
         });
       }
     },
-    async refreshBookDocumentCandidates(bookId): Promise<void> {
+    async refreshBookDocumentCandidates(
+      bookId: string,
+      searchQuery?: string,
+    ): Promise<void> {
       const state = context.getState();
       const book = state.project.library.books[bookId];
       if (!book) return;
       const sequence = candidateRequests.begin();
       const contextKey = bookCandidateContextKey(book);
+      const normalizedSearchQuery = searchQuery?.trim();
       context.commitUi('document.candidates', {
         documentCandidates: {
           bookId,
@@ -269,6 +262,7 @@ export function createDocumentCommands(
             sourceSettings: state.project.sourceSettings,
             qbittorrentConnection: state.ui.qbittorrentConnection,
           },
+          normalizedSearchQuery || undefined,
         );
         if (!candidateRequests.isCurrent(sequence)) return;
         const currentBook = context.getState().project.library.books[bookId];

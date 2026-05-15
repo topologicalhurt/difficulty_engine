@@ -76,7 +76,8 @@ export type QbittorrentSearchIntent =
   | 'author_topic'
   | 'hyphenated_title'
   | 'distinctive_tokens'
-  | 'broad_recall';
+  | 'broad_recall'
+  | 'custom_query';
 
 export interface BookDocumentBlockedCandidateOption {
   id: string;

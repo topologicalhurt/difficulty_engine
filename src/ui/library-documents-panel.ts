@@ -1,6 +1,5 @@
 import type {
   AppState,
-  BookDocumentBlockedCandidateOption,
   BookDocumentCandidateOption,
   BookDocumentSearchAttempt,
   BookDocumentRef,
@@ -15,7 +14,10 @@ import {
   getPendingBooleanOption,
   setPendingBooleanOption,
 } from './pending-action-options';
-
+import {
+  seedersLabel,
+} from './document-source-actions';
+import { renderBlockedCandidates } from './library-blocked-candidates';
 function statusTone(
   status: BookDocumentRef['status'],
 ): 'neutral' | 'success' | 'warn' | 'danger' {
@@ -34,10 +36,7 @@ function displayDocumentStatus(
 }
 
 function documentSummary(document: BookDocumentRef): string {
-  const seeders =
-    document.availability.seeders == null
-      ? 'unknown seeders'
-      : `${document.availability.seeders} seeders`;
+  const seeders = seedersLabel(document.availability.seeders, document.availability);
   const progress = formatPercent(document.availability.progress);
   const eta =
     document.availability.etaSeconds == null
@@ -155,8 +154,19 @@ function renderCandidateBrowser(
       textInputControl({
         value: manualValue,
         focusKey: `document-manual-source:${book.id}`,
-        placeholder: 'Paste magnet link or HTTPS .torrent URL',
+        placeholder: 'Paste magnet/HTTPS .torrent URL or type custom search',
         onInput: (value) => store.commands.setBookDocumentManualSource(value),
+      }),
+      button('Search qBittorrent', {
+        className: 'ghost-button',
+        disabled:
+          (activeForBook && browser.status === 'loading') ||
+          !manualValue.trim(),
+        onClick: () =>
+          void store.commands.refreshBookDocumentCandidates(
+            book.id,
+            manualValue,
+          ),
       }),
       button('Use manual source', {
         className: 'ghost-button',
@@ -208,65 +218,6 @@ function renderSearchTrace(attempts: BookDocumentSearchAttempt[]): HTMLElement {
           el('span', {
             text: `: "${attempt.pattern}" via ${attempt.plugins || 'enabled plugins'} · ${attempt.resultCount} raw · ${attempt.acceptedCount} accepted · ${attempt.blockedCount} blocked · ${formatOneDecimal(attempt.pollDurationMs / 1000)}s${attempt.error ? ` · ${attempt.error}` : ''}`,
           }),
-        ),
-      ),
-    ),
-  );
-}
-
-function renderBlockedCandidates(
-  book: BookRecord,
-  candidates: BookDocumentBlockedCandidateOption[],
-  store: PlannerStore,
-): HTMLElement {
-  return el(
-    'details',
-    { className: 'document-card compact-stack' },
-    el('summary', {
-      text: `Raw matches found but blocked (${candidates.length})`,
-    }),
-    el(
-      'div',
-      { className: 'stack-list compact-stack' },
-      ...candidates.slice(0, 10).map((candidate) =>
-        el(
-          'div',
-          { className: 'document-card' },
-          el(
-            'div',
-            { className: 'detail-toolbar' },
-            badge(candidate.contentKind),
-            candidate.retryableAsUserOwned
-              ? badge('manual confirmable', 'warn')
-              : null,
-            el('strong', { text: candidate.title }),
-          ),
-          el('div', {
-            className: 'muted-copy',
-            text: [
-              candidate.seeders == null
-                ? 'unknown seeders'
-                : `${candidate.seeders} seeders`,
-              candidate.matchScore == null
-                ? null
-                : `match ${formatOneDecimal(candidate.matchScore * 10)}/10`,
-              candidate.pattern ? `query "${candidate.pattern}"` : null,
-              `blocked: ${candidate.blockedReasons.join(', ')}`,
-            ]
-              .filter(Boolean)
-              .join(' · '),
-          }),
-          el('div', { className: 'muted-copy', text: candidate.sourceUrl }),
-          candidate.retryableAsUserOwned
-            ? button('Use as user-owned source', {
-                className: 'ghost-button',
-                onClick: () =>
-                  void store.commands.addBookTorrentSource(
-                    book.id,
-                    candidate.sourceUrl,
-                  ),
-              })
-            : null,
         ),
       ),
     ),
@@ -486,7 +437,7 @@ export function renderBookDocumentsPanel(
                 : null,
               documentActions(book, document, store),
             );
-          }),
+          })
         )
       : emptyState(
           'No offline documents yet',

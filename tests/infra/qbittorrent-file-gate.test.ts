@@ -245,18 +245,18 @@ describe('qBittorrent selected file gate', () => {
     };
 
     const acquired = await provider.acquire(candidate, {
-        book: {
-          ...EXAMPLE_BOOK,
-          title: 'Functional Analysis',
-          authors: ['Elias Stein'],
-          sourcePath: null,
-        },
-        policy: {
-          ...defaultDocumentAcquisitionPolicy(),
-          enabled: true,
-          sourceSettings,
-        },
-      });
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Functional Analysis',
+        authors: ['Elias Stein'],
+        sourcePath: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+        sourceSettings,
+      },
+    });
 
     expect(acquired?.documentRef).toEqual(
       expect.objectContaining({

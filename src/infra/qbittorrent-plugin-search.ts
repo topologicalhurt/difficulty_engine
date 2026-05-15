@@ -11,6 +11,7 @@ import type {
 import type { QBittorrentClient } from './qbittorrent-client';
 import {
   classifySearchResults,
+  customQbittorrentSearchQuery,
   qbittorrentSearchQueries,
   sortSearchCandidates,
 } from './qbittorrent-search';
@@ -54,6 +55,7 @@ function emptySearchResult(): PluginSearchCandidateResult {
 export async function pluginSearchCandidates(
   client: QBittorrentClient,
   request: DocumentAcquisitionRequest,
+  customQuery?: string,
 ): Promise<PluginSearchCandidateResult> {
   if (!qbittorrentSearchPluginsEnabled(request.policy.sourceSettings))
     return emptySearchResult();
@@ -84,7 +86,13 @@ export async function pluginSearchCandidates(
   const candidates: DocumentCandidate[] = [];
   const blockedCandidates: BookDocumentBlockedCandidateOption[] = [];
   const searchAttempts: BookDocumentSearchAttempt[] = [];
-  const queries = qbittorrentSearchQueries(request);
+  const normalizedCustomQuery = customQuery?.trim();
+  const queries = normalizedCustomQuery
+    ? [customQbittorrentSearchQuery(normalizedCustomQuery)]
+    : qbittorrentSearchQueries(request);
+  if (!queries.length || queries.some((query) => !query.pattern)) {
+    return emptySearchResult();
+  }
 
   const searchJobs = await runLimited(
     queries.flatMap((query, queryIndex) =>
