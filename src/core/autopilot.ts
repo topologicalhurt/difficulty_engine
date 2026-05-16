@@ -6,9 +6,14 @@ import {
 import { createDefaultAutopilotWizardState } from './default-project';
 import { targetEndDateKey } from './planning-window';
 import type {
-  AutopilotProposal, AutopilotWizardState, EngineSnapshot, PlannerOptimizationInput,
-  PlannerOptimizationObjectiveBreakdown, PlannerOptimizationPlan,
-  PlannerOptimizationResult, PlannerProjectV1,
+  AutopilotProposal,
+  AutopilotWizardState,
+  EngineSnapshot,
+  PlannerOptimizationInput,
+  PlannerOptimizationObjectiveBreakdown,
+  PlannerOptimizationPlan,
+  PlannerOptimizationResult,
+  PlannerProjectV1,
 } from './types';
 import { clamp, round1, round2 } from './utils';
 
@@ -17,8 +22,10 @@ type SnapshotEvaluator = (
 ) => EngineSnapshot | Promise<EngineSnapshot>;
 
 const SOFT_OBJECTIVE_ORDER = [
-  'infeasibility/relaxation',
+  'hard infeasibility',
   'deadline lateness',
+  'completion pressure',
+  'settings relaxation cost',
   'prerequisite impurity',
   'overload/overwhelm',
   'uncertainty exposure',
@@ -105,33 +112,40 @@ function objectiveFor(
   snapshot: EngineSnapshot,
   project: PlannerProjectV1,
   wizard: AutopilotWizardState,
+  spec: AutopilotCandidateSpec,
   tieBreak: number,
 ): PlannerOptimizationObjectiveBreakdown {
   const stats = snapshot.scheduleStats;
   const finish = finishDateKey(snapshot);
+  const missingFinishDate =
+    !finish && snapshot.schedulePlan.items.length > 0 ? 10000 : 0;
+  const completionDays = finish
+    ? safeDateDays(project.constraints.sd, finish)
+    : 999999;
+  const targetDays = safeDateDays(project.constraints.sd, wizard.targetEndDate);
   const latenessDays =
     finish && wizard.deadlinePolicy !== 'none'
-      ? Math.max(
-          0,
-          safeDateDays(project.constraints.sd, finish) -
-            safeDateDays(project.constraints.sd, wizard.targetEndDate) -
-            wizard.latenessToleranceDays,
-        )
+      ? Math.max(0, completionDays - targetDays - wizard.latenessToleranceDays)
       : 0;
-  const strictDeadlinePenalty =
-    wizard.deadlinePolicy === 'strict' && latenessDays > 0 ? 1000 : 0;
+  const completionPressureDays =
+    wizard.deadlinePolicy === 'none'
+      ? completionDays
+      : Math.max(0, completionDays - targetDays - wizard.latenessToleranceDays);
   const dayMinutes = Object.values(snapshot.dayPlan.byDate).map((entries) =>
     entries.reduce((sum, entry) => sum + entry.mins, 0),
   );
   return {
     infeasibility:
-      strictDeadlinePenalty +
+      missingFinishDate +
+      stats.unfinishedBooks * 125 +
       stats.hardInfeasibleBooks * 150 +
       stats.blockedBooks * 100 +
       stats.capViolations * 200 +
       stats.floorViolations * 75 +
       stats.overbookedDays * 75,
     deadlineLatenessDays: round1(latenessDays),
+    completionPressureDays: round1(completionPressureDays),
+    relaxationCost: spec.relaxationPenalty ?? 0,
     prerequisiteImpurity: round2(
       stats.prereqOverlapStarts +
         (project.constraints.prereqMode === 'strict' ? 0 : 2) +
@@ -145,7 +159,9 @@ function objectiveFor(
     uncertaintyExposure: round2(
       averageWorkloadUncertainty(snapshot) + earlyBookPenalty(snapshot, wizard),
     ),
-    contextSwitching: round2(stats.peakBooks + stats.unfilledParallelSlots / 20),
+    contextSwitching: round2(
+      stats.peakBooks + stats.unfilledParallelSlots / 20,
+    ),
     pacingRoughness: round2(Math.sqrt(variance(dayMinutes)) / 10),
     tieBreak,
   };
@@ -158,6 +174,8 @@ function compareObjectives(
   const keys: Array<keyof PlannerOptimizationObjectiveBreakdown> = [
     'infeasibility',
     'deadlineLatenessDays',
+    'completionPressureDays',
+    'relaxationCost',
     'prerequisiteImpurity',
     'overload',
     'uncertaintyExposure',
@@ -198,17 +216,23 @@ function bindingConstraints(
 function relaxationSuggestions(
   snapshot: EngineSnapshot,
   wizard: AutopilotWizardState,
+  plan: PlannerOptimizationPlan,
 ): string[] {
   const stats = snapshot.scheduleStats;
+  const planDailyHours = plan.constraintPatch.hpd ?? wizard.dailyHours;
+  const planParallelCap = plan.constraintPatch.par ?? wizard.hardParallelCap;
   const suggestions: string[] = [];
-  if (stats.peakMinutes >= wizard.dailyHours * 60) {
+  suggestions.push(...plan.relaxationReasons);
+  if (stats.peakMinutes >= planDailyHours * 60) {
     suggestions.push('Increase daily study hours or extend the target date.');
   }
-  if (stats.peakBooks >= wizard.hardParallelCap) {
+  if (stats.peakBooks >= planParallelCap) {
     suggestions.push('Increase parallel slots or accept a longer plan.');
   }
   if (stats.floorViolations || stats.floorRelaxedBooks) {
-    suggestions.push('Use practical floor mode or lower the minimum page floor.');
+    suggestions.push(
+      'Use practical floor mode or lower the minimum page floor.',
+    );
   }
   if (stats.blockedBooks || stats.hardInfeasibleBooks) {
     suggestions.push('Relax manual windows or prerequisite strictness.');
@@ -229,6 +253,7 @@ function planFromCandidate(
     label: spec.label,
     summary: spec.summary,
     constraintPatch: spec.patch,
+    relaxationReasons: spec.relaxationReasons ?? [],
     objectiveBreakdown,
     finishDate: finishDateKey(snapshot),
     spanWeeks: round1(snapshot.scheduleStats.spanWeeks),
@@ -249,16 +274,13 @@ function uniqueParetoPlans(
     .slice(0, 3);
 }
 
-function hardInfeasible(
-  snapshot: EngineSnapshot,
-  objective: PlannerOptimizationObjectiveBreakdown,
-  wizard: AutopilotWizardState,
-): boolean {
+function hardInfeasible(snapshot: EngineSnapshot): boolean {
   return (
+    (!finishDateKey(snapshot) && snapshot.schedulePlan.items.length > 0) ||
+    snapshot.scheduleStats.unfinishedBooks > 0 ||
     snapshot.scheduleStats.hardInfeasibleBooks > 0 ||
     snapshot.scheduleStats.capViolations > 0 ||
-    snapshot.scheduleStats.floorViolations > 0 ||
-    (wizard.deadlinePolicy === 'strict' && objective.deadlineLatenessDays > 0)
+    snapshot.scheduleStats.floorViolations > 0
   );
 }
 
@@ -276,8 +298,8 @@ function optimizationInput(
     wizard,
     hardConstraints: [
       'preserve manual progress and history',
-      `automatic parallel cap <= ${wizard.hardParallelCap}`,
-      `${round1(wizard.dailyHours)}h/day available time`,
+      `requested automatic parallel cap starts at <= ${wizard.hardParallelCap}`,
+      `requested available time starts at ${round1(wizard.dailyHours)}h/day`,
       `${wizard.deadlinePolicy} deadline policy`,
       `${wizard.settingsPolicy} settings policy`,
       'manual difficulty locks and overrides remain authoritative',
@@ -305,6 +327,7 @@ export async function createAutopilotProposal(
       snapshot,
       candidateProject,
       wizard,
+      spec,
       index,
     );
     evaluatedPlans.push({
@@ -325,15 +348,20 @@ export async function createAutopilotProposal(
   );
   const best = evaluatedPlans[0];
   const bestPlan = best.plan;
-  const infeasible = hardInfeasible(
-    best.snapshot,
-    bestPlan.objectiveBreakdown,
-    wizard,
-  );
+  const infeasible = hardInfeasible(best.snapshot);
+  const strictDeadlineMissed =
+    wizard.deadlinePolicy === 'strict' &&
+    bestPlan.objectiveBreakdown.deadlineLatenessDays > 0;
+  const recoveredByRelaxation = bestPlan.relaxationReasons.length > 0;
+  const proofStatus = infeasible
+    ? 'infeasible'
+    : strictDeadlineMissed || recoveredByRelaxation
+      ? 'feasible_with_gap'
+      : 'optimal';
   const optimization: PlannerOptimizationResult = {
     status: infeasible ? 'infeasible' : 'ready',
     backend: 'browser_exact',
-    proofStatus: infeasible ? 'infeasible' : 'optimal',
+    proofStatus,
     proofScope:
       'Exact over the declared finite autopilot parameter portfolio; the underlying schedule remains the deterministic planner model for each candidate.',
     recommendedPlan: bestPlan,
@@ -343,7 +371,11 @@ export async function createAutopilotProposal(
     ),
     objectiveBreakdown: bestPlan.objectiveBreakdown,
     bindingConstraints: bindingConstraints(best.snapshot, wizard),
-    relaxationSuggestions: relaxationSuggestions(best.snapshot, wizard),
+    relaxationSuggestions: relaxationSuggestions(
+      best.snapshot,
+      wizard,
+      bestPlan,
+    ),
   };
   return {
     id: `autopilot-${nowIso}`,

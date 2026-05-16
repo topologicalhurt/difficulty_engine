@@ -117,9 +117,9 @@ describe('autopilot proposal flow', () => {
     store.commands.updateAutopilotDraft({
       goal: 'deadline_first',
       deadlinePolicy: 'strict',
-      targetEndDate: '2026-03-01',
+      targetEndDate: '2027-03-01',
       hardParallelCap: 1,
-      dailyHours: 1,
+      dailyHours: 3,
       floorPolicy: 'strict_floor',
     });
     await store.commands.solveProjectForMe();
@@ -128,9 +128,9 @@ describe('autopilot proposal flow', () => {
     expect(proposal?.wizard.goal).toBe('deadline_first');
     expect(proposal?.wizard.deadlinePolicy).toBe('strict');
     expect(proposal?.constraintPatch.par).toBe(1);
-    expect(proposal?.constraintPatch.hpd).toBe(1);
+    expect(proposal?.constraintPatch.hpd).toBe(3);
     expect(proposal?.optimizationInput.hardConstraints).toContain(
-      'automatic parallel cap <= 1',
+      'requested automatic parallel cap starts at <= 1',
     );
   });
 
@@ -188,7 +188,7 @@ describe('autopilot proposal flow', () => {
     expect(proposal?.constraintPatch.autoRD).toBeUndefined();
   });
 
-  it('applies the best available proposal even when constraints remain infeasible', async () => {
+  it('recovers a known completion date from overconstrained inputs', async () => {
     const store = makeStore({
       initialProject: makeProject({
         books: {
@@ -213,14 +213,55 @@ describe('autopilot proposal flow', () => {
     await store.commands.solveProjectForMe();
 
     const proposal = store.selectors.getState().ui.autopilotProposal;
-    expect(proposal?.optimization.status).toBe('infeasible');
+    expect(proposal?.optimization.status).toBe('ready');
+    expect(proposal?.optimization.proofStatus).toBe('feasible_with_gap');
+    expect(proposal?.optimization.recommendedPlan.finishDate).toBeTruthy();
+    expect(
+      proposal?.optimization.recommendedPlan.relaxationReasons.length,
+    ).toBeGreaterThan(0);
     store.commands.applyAutopilotProposal();
 
     const state = store.selectors.getState();
-    expect(state.project.constraints.hpd).toBe(0.25);
-    expect(state.project.constraints.par).toBe(1);
+    expect(state.snapshot.scheduleStats.finishDate).toBeTruthy();
     expect(state.ui.autopilotProposal).toBeNull();
-    expect(state.ui.banner?.tone).toBe('warn');
+    expect(state.ui.banner?.tone).toBe('success');
+  });
+
+  it('prefers a useful completion date over a tiny ineffective relaxation', async () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          a: makeBook({ id: 'a', title: 'Long Autopilot A', pages: 500 }),
+        },
+        constraints: {
+          hpd: 0.5,
+          par: 1,
+          minPg: 1,
+          maxPg: 1,
+          feasibilityMode: 'practical',
+        },
+      }),
+    });
+    const currentSpanWeeks =
+      store.selectors.getState().snapshot.scheduleStats.spanWeeks;
+
+    store.commands.updateAutopilotDraft({
+      deadlinePolicy: 'none',
+      settingsPolicy: 'respect_current',
+      dailyHours: 0.5,
+      hardParallelCap: 1,
+      floorPolicy: 'practical',
+    });
+    await store.commands.solveProjectForMe();
+
+    const plan =
+      store.selectors.getState().ui.autopilotProposal?.optimization
+        .recommendedPlan;
+    expect(plan?.finishDate).toBeTruthy();
+    expect(plan?.spanWeeks ?? Number.POSITIVE_INFINITY).toBeLessThan(
+      currentSpanWeeks / 4,
+    );
+    expect(plan?.relaxationReasons.length).toBeGreaterThan(0);
   });
 
   it('derives default wizard values from the loaded project constraints', () => {

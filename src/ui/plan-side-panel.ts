@@ -9,6 +9,9 @@ export function renderWarningCenter(
   hiddenWarningCount: number,
   store: PlannerStore,
 ): HTMLElement {
+  const hasBlockingWarnings = warnings.some(
+    (warning) => warning.severity === 'fail',
+  );
   if (!warnings.length) {
     return card(
       'Plan health',
@@ -33,6 +36,12 @@ export function renderWarningCenter(
       ? el('div', {
           className: 'muted-copy',
           text: `${hiddenWarningCount} non-blocking warning(s) hidden.`,
+        })
+      : null,
+    hasBlockingWarnings
+      ? button('Open solver', {
+          className: 'primary-button compact-button',
+          onClick: () => store.commands.setActiveView('project'),
         })
       : null,
     el(

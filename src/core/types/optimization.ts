@@ -48,6 +48,8 @@ export interface PlannerOptimizationInput {
 export interface PlannerOptimizationObjectiveBreakdown {
   infeasibility: number;
   deadlineLatenessDays: number;
+  completionPressureDays: number;
+  relaxationCost: number;
   prerequisiteImpurity: number;
   overload: number;
   uncertaintyExposure: number;
@@ -61,6 +63,7 @@ export interface PlannerOptimizationPlan {
   label: string;
   summary: string;
   constraintPatch: Partial<ConstraintSet>;
+  relaxationReasons: string[];
   objectiveBreakdown: PlannerOptimizationObjectiveBreakdown;
   finishDate: string | null;
   spanWeeks: number;

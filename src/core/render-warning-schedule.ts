@@ -78,7 +78,7 @@ function buildStrictModeWarnings(
       createWarning(
         'fail',
         'strict-floor-infeasible',
-        `${scheduleStats.hardInfeasibleBooks} book(s) cannot meet the strict ${project.constraints.minPg} pg/day floor inside the hard ${project.constraints.hpd}h/day time budget.`,
+        `${scheduleStats.hardInfeasibleBooks} book(s) cannot meet the strict ${project.constraints.minPg} pg/day floor inside the hard ${project.constraints.hpd}h/day time budget. Switch to practical page floor, lower min pages/day, increase hours/day, or use the solver to apply the minimal completion fix.`,
         Object.values(dayPlan.byBookStats)
           .filter((entry) => entry.hardInfeasible)
           .map((entry) => entry.id),
@@ -90,7 +90,7 @@ function buildStrictModeWarnings(
       createWarning(
         'fail',
         'strict-floor-blocked',
-        `${scheduleStats.blockedBooks} book(s) remain blocked by prerequisite or lane constraints.`,
+        `${scheduleStats.blockedBooks} book(s) remain blocked by prerequisite or lane constraints. Relax prerequisite/order strictness, batch oversized co-study groups, or use the solver to recover a completion date.`,
         Object.values(dayPlan.byBookStats)
           .filter((entry) => !entry.hardInfeasible && entry.blockedReason)
           .map((entry) => entry.id),
@@ -111,7 +111,7 @@ function buildRelaxedModeWarnings(
       createWarning(
         'fail',
         'hard-infeasible',
-        `${scheduleStats.hardInfeasibleBooks} book(s) remain truly infeasible even after relaxing the page floor.`,
+        `${scheduleStats.hardInfeasibleBooks} book(s) remain infeasible even after relaxing the page floor. Increase daily hours, lower min pages/day, widen the study window, or use the solver to apply the smallest completion-date recovery.`,
         Object.values(dayPlan.byBookStats)
           .filter((entry) => entry.hardInfeasible)
           .map((entry) => entry.id),
@@ -147,7 +147,7 @@ function buildRelaxedModeWarnings(
       createWarning(
         'warn',
         'blocked-books',
-        `${scheduleStats.blockedBooks} book(s) still remain blocked by prerequisite or manual-window constraints.`,
+        `${scheduleStats.blockedBooks} book(s) still remain blocked by prerequisite or manual-window constraints. Relax prerequisite/order strictness, widen manual windows, or open the solver for a minimal completion fix.`,
         Object.values(dayPlan.byBookStats)
           .filter((entry) => !entry.hardInfeasible && entry.blockedReason)
           .map((entry) => entry.id),
@@ -184,8 +184,8 @@ export function buildScheduleWarnings(
         unexplainedRows.length ? 'fail' : 'warn',
         'unfinished-books',
         unexplainedRows.length
-          ? `${unfinishedRows.length} book(s) remain unresolved in the generated plan; ${unexplainedRows.length} lack a blocker reason.`
-          : `${unfinishedRows.length} book(s) remain unresolved in the generated plan.`,
+          ? `${unfinishedRows.length} book(s) remain unresolved in the generated plan; ${unexplainedRows.length} lack a blocker reason. Open the solver to widen the planning window and recover a known completion date.`
+          : `${unfinishedRows.length} book(s) remain unresolved in the generated plan. Open the solver to apply the smallest settings change that recovers a known completion date.`,
         unfinishedRows.map((entry) => entry.id),
       ),
     );

@@ -110,22 +110,28 @@ function objectiveRows(
       el('td', { text: String(value) }),
     ),
   );
-  return el(
-    'table',
-    { className: 'compact-table' },
-    el('tbody', {}, ...rows),
-  );
+  return el('table', { className: 'compact-table' }, el('tbody', {}, ...rows));
 }
 
 function planSummary(plan: PlannerOptimizationPlan): HTMLElement {
   return el(
     'div',
-    { className: 'stack-row' },
-    el('strong', { text: plan.label }),
-    el('span', {
-      className: 'muted-copy',
-      text: `${plan.finishDate ?? 'unknown finish'} · ${plan.spanWeeks} week(s) · ${formatHours(plan.totalHours)} · peak ${formatWholeNumber(plan.peakBooks)} book(s)`,
-    }),
+    { className: 'stack-layout compact-stack' },
+    el(
+      'div',
+      { className: 'stack-row' },
+      el('strong', { text: plan.label }),
+      el('span', {
+        className: 'muted-copy',
+        text: `${plan.finishDate ?? 'unknown finish'} · ${plan.spanWeeks} week(s) · ${formatHours(plan.totalHours)} · peak ${formatWholeNumber(plan.peakBooks)} book(s)`,
+      }),
+    ),
+    plan.relaxationReasons.length
+      ? el('div', {
+          className: 'muted-copy',
+          text: `minimal fixes: ${plan.relaxationReasons.join(' ')}`,
+        })
+      : null,
   );
 }
 
@@ -140,8 +146,7 @@ export function renderAutopilotCard(
     'Solve everything for me',
     el('p', {
       className: 'muted-copy',
-      text:
-        'Answer the cards, then generate an optimized preview. The solver scores a finite policy portfolio with hard constraints first, then deadline, prerequisite, overload, uncertainty, switching, and pacing objectives.',
+      text: 'Answer the cards, then generate an optimized preview. The solver scores a finite policy portfolio with hard constraints first, then deadline, prerequisite, overload, uncertainty, switching, and pacing objectives.',
     }),
     el(
       'div',
@@ -221,7 +226,8 @@ export function renderAutopilotCard(
           textInputControl({
             focusKey: 'autopilot-scary-books',
             value:
-              draft.scaryBookText || bookReferenceText(viewModel, draft.scaryBookIds),
+              draft.scaryBookText ||
+              bookReferenceText(viewModel, draft.scaryBookIds),
             placeholder: 'Exact book titles or ids, comma separated',
             onInput: (value) =>
               updateDraft({
@@ -311,7 +317,10 @@ export function renderAutopilotCard(
           el(
             'div',
             { className: 'toolbar-row' },
-            badge(proposal.optimization.proofStatus, proposal.optimization.status === 'ready' ? 'success' : 'danger'),
+            badge(
+              proposal.optimization.proofStatus,
+              proposal.optimization.status === 'ready' ? 'success' : 'danger',
+            ),
             badge(proposal.optimization.backend, 'neutral'),
           ),
           planSummary(proposal.optimization.recommendedPlan),

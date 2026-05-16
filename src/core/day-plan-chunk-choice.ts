@@ -66,7 +66,7 @@ function todayChunkBounds(
       desiredTotal += leftover;
     }
     const minTotal =
-        remainingUniverse <= rampedTarget || desiredTotal === remainingUniverse
+      remainingUniverse <= rampedTarget || desiredTotal === remainingUniverse
         ? desiredTotal
         : Math.min(preferredMinTenths, desiredTotal);
     if (minTotal > maxTenths) return null;
@@ -81,10 +81,15 @@ function todayChunkBounds(
   }
   let daysInclToday = Math.max(1, (state.planDays || 1) - usedBeforeToday);
   let minTenths = preferredMinTenths;
-  daysInclToday = Math.max(
-    daysInclToday,
+  const minDaysByMaxChunk = Math.max(
+    1,
+    Math.ceil(remainingUniverse / Math.max(1, maxTenths)),
+  );
+  const maxDaysByMinChunk = Math.max(
+    minDaysByMaxChunk,
     Math.ceil(remainingUniverse / Math.max(1, preferredMinTenths)),
   );
+  daysInclToday = clamp(daysInclToday, minDaysByMaxChunk, maxDaysByMinChunk);
   minTenths = Math.min(
     preferredMinTenths,
     Math.max(10, Math.floor(remainingUniverse / Math.max(1, daysInclToday))),
