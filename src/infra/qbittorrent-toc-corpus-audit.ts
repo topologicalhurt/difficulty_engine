@@ -229,6 +229,15 @@ function classifyBook(
     diagnostics.push('Trusted PDF is available but no TOC was accepted.');
     return { failureClass: 'ocr_needed', diagnostics };
   }
+  const hasCompleteLivePdf = row.liveMatches.some(
+    (match) => match.staleStatus === 'complete' && match.eligiblePdfCount > 0,
+  );
+  if (hasCompleteLivePdf) {
+    diagnostics.push(
+      'qBittorrent has completed a matching PDF; refresh enrichment should attach it and run TOC extraction.',
+    );
+    return { failureClass: 'pdf_candidate_found', diagnostics };
+  }
   const hasPdfDocument = row.existingDocuments.some(
     (document) => document.contentKind === 'pdf',
   );

@@ -316,8 +316,9 @@ export function torrentComplete(
 ): boolean {
   if (selected?.progress != null) return selected.progress >= 1;
   if (info?.progress != null) return info.progress >= 1;
+  const hasKnownPayloadSize = (info?.size ?? info?.total_size ?? 0) > 0;
+  if (hasKnownPayloadSize && info?.amount_left === 0) return true;
   return (
-    info?.amount_left === 0 ||
     /upload|stalledUP|queuedUP|forcedUP/i.test(info?.state ?? '')
   );
 }

@@ -104,7 +104,11 @@ function isNarrativeText(title: string): boolean {
   if (NARRATIVE_START_PATTERN.test(title)) return true;
   if (NARRATIVE_VERB_PATTERN.test(title)) return true;
   if (MARKETING_VERB_PATTERN.test(title)) return true;
-  if (SENTENCE_BOUNDARY_PATTERN.test(title) && wordsIn(title).length > 8)
+  if (
+    SENTENCE_BOUNDARY_PATTERN.test(title) &&
+    wordsIn(title).length > 8 &&
+    !STRUCTURAL_PREFIX_PATTERN.test(title)
+  )
     return true;
   return false;
 }

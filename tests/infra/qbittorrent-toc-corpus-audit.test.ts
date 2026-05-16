@@ -134,6 +134,65 @@ describe('qBittorrent TOC corpus audit', () => {
     expect(audit.summary.ocrNeeded).toBe(1);
   });
 
+  it('reports queued refs with completed live PDFs as attachable candidates', () => {
+    const audit = buildQbittorrentTocCorpusAudit({
+      project: project([
+        book('queued', {
+          documents: [
+            {
+              id: 'doc',
+              provider: 'qbittorrent',
+              fileName: 'Fixture Systems.pdf',
+              storagePath: '/repo/output/data/documents/Fixture Systems.pdf',
+              torrentHash: 'abc',
+              contentKind: 'pdf',
+              contentType: 'application/pdf',
+              accessBasis: 'user_owned',
+              status: 'queued',
+              matchScore: 1,
+              availability: {
+                seeders: 1,
+                peers: 0,
+                progress: 0,
+                state: 'queuedDL',
+              },
+              provenance: {
+                provider: 'qbittorrent',
+                sourceUrl: 'magnet:?xt=urn:btih:abc',
+                fetchedAt: '2026-01-01T00:00:00.000Z',
+                confidence: 1,
+              },
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        }),
+      ]),
+      inventory: {
+        errors: [],
+        torrents: [
+          normalizeLiveTorrent(
+            {
+              hash: 'abc',
+              name: 'Fixture Systems A Author',
+              state: 'stalledUP',
+              progress: 1,
+              amount_left: 0,
+              size: 1024,
+            },
+            [{ index: 0, name: 'Fixture Systems A Author.pdf', progress: 1 }],
+          ),
+        ],
+      },
+      generatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    expect(audit.books[0]?.failureClass).toBe('pdf_candidate_found');
+    expect(audit.books[0]?.diagnostics).toContain(
+      'qBittorrent has completed a matching PDF; refresh enrichment should attach it and run TOC extraction.',
+    );
+  });
+
   it('reports persisted qBittorrent refs that are missing from live inventory', () => {
     const audit = buildQbittorrentTocCorpusAudit({
       project: project([

@@ -572,6 +572,14 @@ def outline_level(item):
     except Exception:
         return None
 
+def int_page(value):
+    try:
+        if isinstance(value, bool):
+            return None
+        return int(value)
+    except Exception:
+        return None
+
 def preferred_outline_rows(rows):
     rows = [row for row in rows if row.get("title") and row.get("page", 0) > 0]
     if not rows:
@@ -606,9 +614,9 @@ try:
     outline_rows = []
     for item in doc.get_toc(False):
         title = clean_text(item[1] if len(item) > 1 else "")
-        page = item[2] if len(item) > 2 else 0
+        page = int_page(item[2] if len(item) > 2 else 0)
         level = outline_level(item) or 1
-        if title and isinstance(page, int) and page > 0:
+        if title and page is not None and page > 0:
             outline_rows.append({"title": title, "page": page, "level": level})
     for row in preferred_outline_rows(outline_rows):
         page = row["page"]
@@ -628,7 +636,7 @@ try:
         except Exception:
             links = []
         for link in links:
-            target = link.get("page", -1)
+            target = int_page(link.get("page", -1))
             if target is None or target < 0:
                 continue
             rect = link.get("from")

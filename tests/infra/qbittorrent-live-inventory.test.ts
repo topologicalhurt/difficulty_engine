@@ -47,6 +47,61 @@ describe('qBittorrent live inventory', () => {
     );
   });
 
+  it('does not treat metadata-only zero-byte torrents as complete', () => {
+    expect(
+      liveTorrentStatus({
+        state: 'metaDL',
+        progress: 0,
+        amount_left: 0,
+        size: 0,
+        total_size: 0,
+      }),
+    ).toBe('metadata_pending');
+  });
+
+  it('marks folder torrents as PDF candidates when their file list has an eligible PDF', () => {
+    const sourceSettings = createDefaultSourceSettings();
+    const policy = {
+      ...defaultDocumentAcquisitionPolicy(),
+      enabled: true,
+      sourceSettings,
+    };
+    const live = normalizeLiveTorrent(
+      {
+        hash: 'hash1',
+        name: 'The Art of Electronics 3rd ed [2015]',
+        content_path: '/downloads/The Art of Electronics 3rd ed [2015]',
+        state: 'stalledUP',
+        progress: 1,
+        num_seeds: 0,
+      },
+      [
+        {
+          index: 0,
+          name: 'The Art of Electronics 3rd ed [2015]/The Art of Electronics 3rd ed [2015].pdf',
+          progress: 1,
+        },
+        {
+          index: 1,
+          name: 'The Art of Electronics 3rd ed [2015]/share.txt',
+          progress: 1,
+        },
+      ],
+    );
+
+    const candidate = candidateFromLiveTorrent(live, {
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'The Art of Electronics',
+        authors: ['Paul Horowitz', 'Winfield Hill'],
+        sourcePath: null,
+      },
+      policy,
+    });
+
+    expect(candidate?.contentKind).toBe('pdf');
+  });
+
   it('converts a matching live torrent into a ranked user-owned candidate', () => {
     const sourceSettings = createDefaultSourceSettings();
     const policy = {

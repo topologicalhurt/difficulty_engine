@@ -61,6 +61,21 @@ describe('chapter title detection', () => {
     ).toEqual(['Chapter 1 Foundations']);
   });
 
+  it('keeps long structural titles with dotted chapter or appendix markers', () => {
+    expect(
+      sanitizeChapterTitles(
+        [
+          'Chapter 4. Make the Noise Toaster Analog Sound Synthesizer',
+          'Appendix A. A Field Guide to Op Amp Circuit Applications',
+        ],
+        { source: 'structured' },
+      ),
+    ).toEqual([
+      'Chapter 4. Make the Noise Toaster Analog Sound Synthesizer',
+      'Appendix A. A Field Guide to Op Amp Circuit Applications',
+    ]);
+  });
+
   it('requires structural evidence when extracting from unstructured descriptions', () => {
     const text = [
       'A comprehensive introduction to modern analysis for graduate students.',

@@ -92,8 +92,10 @@ export function liveTorrentStatus(
 ): QbittorrentLiveStaleStatus {
   const state = String(info.state ?? '');
   const progress = info.progress ?? 0;
-  if (progress >= 1 || info.amount_left === 0) return 'complete';
   if (METADATA_PENDING_STATE_PATTERN.test(state)) return 'metadata_pending';
+  if (progress >= 1) return 'complete';
+  const hasKnownPayloadSize = (info.size ?? info.total_size ?? 0) > 0;
+  if (hasKnownPayloadSize && info.amount_left === 0) return 'complete';
   if (PAUSED_STATE_PATTERN.test(state)) return 'paused';
   if (LIVE_STALLED_STATE_PATTERN.test(state)) return 'stalled';
   if ((info.dlspeed ?? 0) > 0 || progress > 0) return 'active';
@@ -193,17 +195,19 @@ export function candidateFromLiveTorrent(
   request: DocumentAcquisitionRequest,
 ): DocumentCandidate | null {
   const title = torrent.name || torrent.contentPath || request.book.title;
-  const contentKind = contentKindFromUrl(torrent.contentPath || title);
+  const contentKind =
+    torrent.eligiblePdfCount > 0
+      ? 'pdf'
+      : contentKindFromUrl(torrent.contentPath || title);
   if (contentKind !== 'unknown' && contentKind !== 'pdf') return null;
   const evidence = liveTorrentEvidence(torrent);
   const matchScore = bookMatchScore(evidence, request);
   if (matchScore < MIN_TORRENT_MATCH_SCORE) return null;
   if (!hasRequiredQbittorrentTitleEvidence(evidence, request)) return null;
+  const nameEvidence = normalizeMatcherText(torrent.name);
   if (
-    !hasRequiredQbittorrentAuthorEvidence(
-      liveTorrentIdentityEvidence(torrent),
-      request,
-    )
+    !hasRequiredQbittorrentAuthorEvidence(nameEvidence, request) &&
+    !hasRequiredQbittorrentAuthorEvidence(liveTorrentIdentityEvidence(torrent), request)
   ) {
     return null;
   }

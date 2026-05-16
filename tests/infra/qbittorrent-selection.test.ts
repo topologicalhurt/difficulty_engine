@@ -8,6 +8,7 @@ import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acqui
 import {
   preferredTorrentFile,
   selectTrustedTorrentFile,
+  torrentComplete,
 } from '../../src/infra/qbittorrent-selection';
 
 function qbitPolicy(): ReturnType<typeof defaultDocumentAcquisitionPolicy> {
@@ -157,5 +158,17 @@ describe('qBittorrent file selection', () => {
     expect(selection.selected).toBeNull();
     expect(selection.rejectionReason).toContain('No eligible top-surface PDF');
     expect(selection.rejectionReason).toContain('nested below');
+  });
+
+  it('does not mark metadata-only zero-byte torrents complete from amount_left alone', () => {
+    expect(
+      torrentComplete({
+        state: 'metaDL',
+        progress: 0,
+        amount_left: 0,
+        size: 0,
+        total_size: 0,
+      }),
+    ).toBe(false);
   });
 });

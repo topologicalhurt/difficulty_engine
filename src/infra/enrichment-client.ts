@@ -6,6 +6,7 @@ import type {
   SearchBooksRequest,
   SearchBooksResponse,
 } from '../core/types';
+import { qbittorrentRuntimeEnabled } from '../core/source-settings-policy';
 import type {
   DocumentAcquisitionPolicy,
   DocumentAcquisitionProvider,
@@ -46,6 +47,16 @@ interface CacheValue {
   response: EnrichmentResponse;
 }
 
+function requestReadsMutableBridgeDocuments(request: EnrichmentRequest): boolean {
+  return Boolean(
+    !request.skipBridgeDocuments &&
+      qbittorrentRuntimeEnabled(
+        request.sourceSettings,
+        request.qbittorrentConnection,
+      ),
+  );
+}
+
 export function createEnrichmentClient(
   options: CreateEnrichmentClientOptions = {},
 ): EnrichmentProvider {
@@ -78,15 +89,18 @@ export function createEnrichmentClient(
     request: EnrichmentRequest,
   ): Promise<EnrichmentResponse> {
     const key = stableEnrichmentCacheKey(request);
-    const cached = memoryCache.get(key);
+    const cacheable = !requestReadsMutableBridgeDocuments(request);
+    const cached = cacheable ? memoryCache.get(key) : undefined;
     if (cached && cacheEntryIsFresh(cached.expiresAt, nowMs)) {
       return cached.response;
     }
     const response = await bookLoader.loadBook(request, key);
-    memoryCache.set(key, {
-      response,
-      expiresAt: cacheExpiresAt(cacheTtlMs, nowMs),
-    });
+    if (cacheable) {
+      memoryCache.set(key, {
+        response,
+        expiresAt: cacheExpiresAt(cacheTtlMs, nowMs),
+      });
+    }
     return response;
   }
 
