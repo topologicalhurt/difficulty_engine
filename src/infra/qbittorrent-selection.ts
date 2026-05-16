@@ -50,6 +50,12 @@ const GENERIC_QBITTORRENT_TITLE_TOKENS = new Set([
   'vol',
   'with',
 ]);
+const QBITTORRENT_TITLE_NOISE_PATTERN =
+  /\b(?:\d+(?:st|nd|rd|th)?|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|edition|ed|revised|updated|international|student)\b/g;
+const QBITTORRENT_TITLE_TRAILING_DETAIL_PATTERN =
+  /\s*(?::|\(|\s[-–—]\s).*$/;
+const QBITTORRENT_TITLE_RESIDUAL_NOISE_PATTERN =
+  /\b(?:pdf|ebook|e-book|retail|truepdf|scan|scanned|gnv64|lnw|z+|by)\b/g;
 
 export function normalizedBookIsbn(value: string | null | undefined): string {
   return normalizedIsbnText(value);
@@ -113,6 +119,60 @@ export function hasRequiredQbittorrentTitleEvidence(
       ? Math.ceil(requiredTokens.length * 0.6)
       : Math.ceil(requiredTokens.length * 0.75);
   return matched.length >= requiredCount;
+}
+
+function normalizedQbittorrentTitlePhrase(value: string): string {
+  return normalizeMatcherText(value)
+    .replace(QBITTORRENT_TITLE_NOISE_PATTERN, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function exactTitlePhrases(request: DocumentAcquisitionRequest): string[] {
+  const rawTitles = [
+    request.book.title,
+    request.book.title.replace(QBITTORRENT_TITLE_TRAILING_DETAIL_PATTERN, ''),
+    request.book.short,
+    request.book.short.replace(QBITTORRENT_TITLE_TRAILING_DETAIL_PATTERN, ''),
+  ];
+  return [...new Set(rawTitles.map(normalizedQbittorrentTitlePhrase))]
+    .filter(Boolean)
+    .filter((phrase) => phrase.split(/\s+/).length >= 3)
+    .filter((phrase) => matchTokens(phrase).length >= 2)
+    .filter((phrase) => {
+      const tokens = matchTokens(phrase);
+      return tokens.some((token) => !GENERIC_QBITTORRENT_TITLE_TOKENS.has(token));
+    });
+}
+
+export function hasExactQbittorrentTitlePhrase(
+  evidence: string,
+  request: DocumentAcquisitionRequest,
+): boolean {
+  const normalizedEvidence = ` ${normalizedQbittorrentTitlePhrase(evidence)} `;
+  return exactTitlePhrases(request).some((phrase) => {
+    if (!normalizedEvidence.includes(` ${phrase} `)) return false;
+    const residual = normalizedEvidence
+      .replace(` ${phrase} `, ' ')
+      .replace(QBITTORRENT_TITLE_RESIDUAL_NOISE_PATTERN, ' ');
+    const residualTokens = matchTokens(residual).filter(
+      (token) =>
+        !GENERIC_QBITTORRENT_TITLE_TOKENS.has(token) && !/\d/.test(token),
+    );
+    return residualTokens.length === 0;
+  });
+}
+
+export function hasRequiredQbittorrentAuthorEvidence(
+  evidence: string,
+  request: DocumentAcquisitionRequest,
+): boolean {
+  if (!request.book.authors.length) return true;
+  return (
+    isbnAppearsInText(request.book.isbn, evidence) ||
+    authorAppearsInText(request.book.authors, evidence) ||
+    hasExactQbittorrentTitlePhrase(evidence, request)
+  );
 }
 
 export function hashFromMagnet(value: string): string {
@@ -216,6 +276,7 @@ function candidateCanTrustSingleFile(
   return (
     isbnAppearsInText(request.book.isbn, name) ||
     authorAppearsInText(request.book.authors, name) ||
+    hasExactQbittorrentTitlePhrase(name, request) ||
     (!request.book.authors.length && !request.book.isbn)
   );
 }

@@ -10,6 +10,7 @@ import {
   DEFAULT_DOCUMENT_DATA_ROOT,
 } from '../core/default-source-settings';
 import type { SourceContentKind, SourceSettings } from '../core/types';
+import { normalizeMatcherText } from '../core/matchers';
 import { contentKindPriorityForPreference } from './document-content-priority';
 import {
   compareDocumentCandidateQuality,
@@ -171,7 +172,7 @@ export function rankDocumentCandidates(
       candidate,
     ]) ?? [],
   );
-  return [...candidates]
+  const ranked = [...candidates]
     .filter(
       (candidate) =>
         isLawfulDocumentCandidate(candidate, policy) &&
@@ -198,6 +199,29 @@ export function rankDocumentCandidates(
     .sort((left, right) =>
       compareDocumentCandidateQuality(left, right, priorityFor),
     );
+  const byKey = new Map<string, DocumentCandidate>();
+  for (const candidate of ranked) {
+    const key = documentCandidateDedupeKey(candidate);
+    if (!byKey.has(key)) byKey.set(key, candidate);
+  }
+  return [...byKey.values()];
+}
+
+function documentCandidateDedupeKey(candidate: DocumentCandidate): string {
+  const normalizedTitle = normalizeMatcherText(candidate.title)
+    .replace(/\b(?:pdf|ebook|retail)\b/g, ' ')
+    .replace(/\b(?:19|20)\d{2}\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalizedTitle) {
+    const greylistKey = documentGreylistKey(candidate);
+    if (greylistKey.startsWith('hash:')) return greylistKey;
+  }
+  return [
+    candidate.provider,
+    candidate.contentKind,
+    normalizedTitle || candidate.sourceUrl.toLowerCase(),
+  ].join(':');
 }
 
 export function mergeDocumentRefs(

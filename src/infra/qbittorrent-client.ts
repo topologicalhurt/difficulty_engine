@@ -200,10 +200,6 @@ export class QBittorrentClient {
     return (await response.json()) as TorrentInfo[];
   }
 
-  torrentCategory(): string {
-    return this.options.category || 'difficulty-engine';
-  }
-
   async torrentFiles(hash: string): Promise<TorrentFile[]> {
     const response = await this.api(
       `/torrents/files?${new URLSearchParams({ hash }).toString()}`,

@@ -2,7 +2,7 @@ import type { TorrentFile } from './qbittorrent-types';
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 
 export const BAD_QBITTORRENT_FILE_NAME_PATTERN =
-  /\b(?:sample|preview|solution|solutions|soln?|solver|solvers|answer|answers|instructor|slides|cover|front\s*matter|copyright)\b/i;
+  /\b(?:sample|preview|solution|solutions|soln?|solver|solvers|answer|answers|instructor|slides|cover|front\s*matter|copyright|x[-\s]?chapters?|extra\s+chapters?|supplements?)\b/i;
 
 const SYSTEM_PATH_SEGMENT_PATTERN = /^(?:__macosx|\.ds_store)$/i;
 const MAX_SURFACE_PDF_DEPTH = 2;

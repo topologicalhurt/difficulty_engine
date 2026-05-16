@@ -8,9 +8,12 @@ import type {
   BookDocumentSearchAttempt,
   BookDocumentStatus,
 } from './types';
+import {
+  compareQueuedCandidates,
+  rankAndLimitCandidateQueue,
+} from './document-candidate-queue';
 import { currentIsoTimestamp } from './time';
 
-export const DOCUMENT_CANDIDATE_QUEUE_LIMIT = 10;
 const DOCUMENT_BLOCKED_CANDIDATE_LIMIT = 20;
 const DOCUMENT_SEARCH_ATTEMPT_LIMIT = 20;
 export const GREYLIST_REQUIRED_STALL_OBSERVATIONS = 2;
@@ -349,10 +352,7 @@ export function mergeDocumentCandidateQueue(
     }
   });
 
-  const candidateQueue = [...byKey.values()]
-    .sort(compareQueuedCandidates)
-    .slice(0, DOCUMENT_CANDIDATE_QUEUE_LIMIT)
-    .map((candidate, index) => ({ ...candidate, rank: index + 1 }));
+  const candidateQueue = rankAndLimitCandidateQueue([...byKey.values()]);
 
   return {
     candidateQueue,
@@ -451,7 +451,7 @@ export function normalizeDocumentAcquisitionState(
         },
       ]),
   );
-  const candidateQueue = (state?.candidateQueue ?? [])
+  const candidateQueue = rankAndLimitCandidateQueue((state?.candidateQueue ?? [])
     .filter((candidate) => candidate.id && candidate.sourceUrl)
     .map((candidate) => {
       const key = documentGreylistKey(candidate);
@@ -464,10 +464,7 @@ export function normalizeDocumentAcquisitionState(
         qualityScore: Math.max(0, candidate.qualityScore ?? 0),
         retryable: candidate.retryable ?? true,
       };
-    })
-    .sort(compareQueuedCandidates)
-    .slice(0, DOCUMENT_CANDIDATE_QUEUE_LIMIT)
-    .map((candidate, index) => ({ ...candidate, rank: index + 1 }));
+    }));
   return {
     candidateQueue,
     blockedCandidates: mergeBlockedCandidates(state?.blockedCandidates),
@@ -476,18 +473,4 @@ export function normalizeDocumentAcquisitionState(
     lastDiagnostic: state?.lastDiagnostic,
     updatedAt: state?.updatedAt,
   };
-}
-
-function compareQueuedCandidates(
-  left: BookDocumentCandidateOption,
-  right: BookDocumentCandidateOption,
-): number {
-  return (
-    (right.qualityScore ?? 0) - (left.qualityScore ?? 0) ||
-    (right.matchScore ?? 0) - (left.matchScore ?? 0) ||
-    (right.seeders ?? right.availability?.seeders ?? 0) -
-      (left.seeders ?? left.availability?.seeders ?? 0) ||
-    left.title.localeCompare(right.title) ||
-    left.id.localeCompare(right.id)
-  );
 }

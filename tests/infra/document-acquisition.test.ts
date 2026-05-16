@@ -7,6 +7,7 @@ import {
   defaultDocumentAcquisitionPolicy,
   isLawfulDocumentCandidate,
   mergeDocumentRefs,
+  rankDocumentCandidates,
 } from '../../src/infra/document-acquisition';
 
 describe('document acquisition policy', () => {
@@ -191,6 +192,53 @@ describe('document acquisition policy', () => {
     );
 
     expect(selected?.id).toBe('viable');
+  });
+
+  it('deduplicates repeated candidate rows and keeps the best source', () => {
+    const policy = { ...defaultDocumentAcquisitionPolicy(), enabled: true };
+    const ranked = rankDocumentCandidates(
+      [
+        {
+          id: 'slow-duplicate',
+          provider: 'qbittorrent',
+          title: 'Stein E. Lectures in Analysis. Vol 1. Fourier Analysis 2003',
+          sourceUrl: 'magnet:?xt=urn:btih:slowduplicate',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 1,
+          seeders: 1,
+          availability: {
+            seeders: 1,
+            peers: 0,
+            progress: 0,
+            state: 'search-result',
+          },
+        },
+        {
+          id: 'better-duplicate',
+          provider: 'qbittorrent',
+          title: 'Stein E. Lectures in Analysis. Vol 1. Fourier Analysis 2003',
+          sourceUrl: 'magnet:?xt=urn:btih:betterduplicate',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 1,
+          seeders: 9,
+          availability: {
+            seeders: 9,
+            peers: 1,
+            progress: 0,
+            state: 'search-result',
+          },
+        },
+      ],
+      policy,
+    );
+
+    expect(ranked.map((candidate) => candidate.id)).toEqual([
+      'better-duplicate',
+    ]);
   });
 
   it('selects the best completed document instead of alphabetical order', () => {

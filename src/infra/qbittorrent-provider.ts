@@ -32,7 +32,10 @@ import {
 import { checkQbittorrentBridgeHealth } from './qbittorrent-bridge-health';
 import { pluginSearchCandidates } from './qbittorrent-plugin-search';
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
-import { documentCandidateQualityScore } from './document-candidate-quality';
+import {
+  compareDocumentCandidateQuality,
+  documentCandidateQualityScore,
+} from './document-candidate-quality';
 import { contentKindPriorityForPreference } from './document-content-priority';
 import {
   candidateFromLiveTorrent,
@@ -163,13 +166,41 @@ function userProvidedTorrentCandidate(
 async function localTorrentCandidates(
   client: QBittorrentClient,
   request: DocumentAcquisitionRequest,
+  preferredCategory?: string,
 ): Promise<DocumentCandidate[]> {
   const inventory = await readQbittorrentLiveInventory(client);
-  const category = client.torrentCategory();
-  return inventory.torrents
-    .filter((torrent) => torrent.category === category)
-    .map((torrent) => candidateFromLiveTorrent(torrent, request))
-    .filter((candidate): candidate is DocumentCandidate => Boolean(candidate));
+  const priorityFor = contentKindPriorityForPreference(
+    request.policy.contentPreference,
+  );
+  const byIdentity = new Map<
+    string,
+    {
+      candidate: DocumentCandidate;
+      categoryMatches: boolean;
+    }
+  >();
+  inventory.torrents.forEach((torrent) => {
+    const candidate = candidateFromLiveTorrent(torrent, request);
+    if (!candidate) return;
+    const key = `${candidate.provider}|${candidate.contentKind}|${candidate.title.toLowerCase()}`;
+    const categoryMatches = Boolean(
+      preferredCategory && torrent.category === preferredCategory,
+    );
+    const previous = byIdentity.get(key);
+    if (
+      !previous ||
+      Number(categoryMatches) - Number(previous.categoryMatches) > 0 ||
+      (categoryMatches === previous.categoryMatches &&
+        compareDocumentCandidateQuality(
+          candidate,
+          previous.candidate,
+          priorityFor,
+        ) < 0)
+    ) {
+      byIdentity.set(key, { candidate, categoryMatches });
+    }
+  });
+  return [...byIdentity.values()].map((entry) => entry.candidate);
 }
 
 export function createQBittorrentProvider(
@@ -193,7 +224,9 @@ export function createQBittorrentProvider(
       const manualCandidate = userProvidedTorrentCandidate(request);
       if (manualCandidate) candidates.push(manualCandidate);
       candidates.push(
-        ...(await localTorrentCandidates(client, request).catch(() => [])),
+        ...(await localTorrentCandidates(client, request, options.category).catch(
+          () => [],
+        )),
       );
       if (qbittorrentSearchPluginsEnabled(request.policy.sourceSettings)) {
         const search = await pluginSearchCandidates(client, request);

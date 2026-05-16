@@ -18,8 +18,8 @@ import {
 } from './project-normalize-primitives';
 import { EPOCH_ISO_TIMESTAMP } from './time';
 import {
-  DOCUMENT_CANDIDATE_QUEUE_LIMIT,
   documentGreylistKey,
+  normalizeDocumentAcquisitionState,
 } from './document-acquisition-state';
 
 function normalizeDocumentStatus(
@@ -317,8 +317,6 @@ export function normalizeBookDocumentAcquisition(
   );
   const candidateQueue = Array.isArray(raw.candidateQueue)
     ? compactItems(raw.candidateQueue.map(normalizeCandidateOption))
-        .slice(0, DOCUMENT_CANDIDATE_QUEUE_LIMIT)
-        .map((candidate, index) => ({ ...candidate, rank: index + 1 }))
     : [];
   const blockedCandidates = Array.isArray(raw.blockedCandidates)
     ? compactItems(raw.blockedCandidates.map(normalizeBlockedCandidateOption))
@@ -326,14 +324,14 @@ export function normalizeBookDocumentAcquisition(
   const searchAttempts = Array.isArray(raw.searchAttempts)
     ? compactItems(raw.searchAttempts.map(normalizeSearchAttempt))
     : [];
-  return {
+  return normalizeDocumentAcquisitionState({
     candidateQueue,
     blockedCandidates,
     searchAttempts,
     greylist,
     lastDiagnostic: normalizeString(raw.lastDiagnostic) || undefined,
     updatedAt: normalizeString(raw.updatedAt) || undefined,
-  };
+  });
 }
 
 function projectDocumentStatusPriority(status: BookDocumentStatus): number {

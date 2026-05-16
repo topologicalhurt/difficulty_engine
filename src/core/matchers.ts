@@ -145,12 +145,55 @@ export function isbnAppearsInText(
   return Boolean(normalized && normalizedIsbnText(text).includes(normalized));
 }
 
+const AUTHOR_SPLIT_PATTERN = /\s*(?:\/|;|&|\band\b)\s*/i;
+const AUTHOR_INITIAL_PATTERN = /^[a-z]$/i;
+
+export function authorEvidenceTokens(
+  authors: string[] | null | undefined,
+): Set<string> {
+  const evidence = new Set<string>();
+  for (const author of authors ?? []) {
+    const segments = String(author)
+      .split(AUTHOR_SPLIT_PATTERN)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    for (const segment of segments) {
+      const tokens = normalizeMatcherText(segment.replace(/[.]/g, ' '))
+        .split(/\s+/)
+        .map((token) => token.replace(/^['-]+|['-]+$/g, ''))
+        .filter(Boolean);
+      tokens.forEach((token, index) => {
+        const next = tokens[index + 1];
+        if (
+          AUTHOR_INITIAL_PATTERN.test(token) &&
+          next &&
+          next.length >= MATCHER_LIMITS.minTokenLength
+        ) {
+          evidence.add(next);
+        }
+      });
+      const last = tokens.at(-1);
+      if (
+        last &&
+        !AUTHOR_INITIAL_PATTERN.test(last) &&
+        last.length >= MATCHER_LIMITS.minTokenLength
+      ) {
+        evidence.add(last);
+      }
+    }
+  }
+  return evidence;
+}
+
 export function authorAppearsInText(
   authors: string[] | null | undefined,
   text: string | null | undefined,
 ): boolean {
   const candidateTokens = matchTokenSet(text);
   if (!authors?.length || !candidateTokens.size) return false;
+  for (const token of authorEvidenceTokens(authors)) {
+    if (candidateTokens.has(token)) return true;
+  }
   return authors.some((author) => {
     const tokens = matchTokens(author);
     const lastName = tokens.at(-1);

@@ -3,11 +3,7 @@ import type {
   BookRecord,
   QbittorrentConnectionSettings,
 } from '../core/types';
-import {
-  authorAppearsInText,
-  isbnAppearsInText,
-  normalizeMatcherText,
-} from '../core/matchers';
+import { normalizeMatcherText } from '../core/matchers';
 import type {
   DocumentAcquisitionPolicy,
   DocumentAcquisitionRequest,
@@ -23,6 +19,7 @@ import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import { qbittorrentPdfEligibility } from './qbittorrent-pdf-eligibility';
 import {
   bookMatchScore,
+  hasRequiredQbittorrentAuthorEvidence,
   hasRequiredQbittorrentTitleEvidence,
   hashFromMagnet,
   MIN_TORRENT_MATCH_SCORE,
@@ -181,6 +178,16 @@ function liveTorrentEvidence(torrent: QbittorrentLiveTorrent): string {
   );
 }
 
+function liveTorrentIdentityEvidence(torrent: QbittorrentLiveTorrent): string {
+  return normalizeMatcherText(
+    [
+      torrent.name,
+      torrent.contentPath,
+      ...torrent.files.map((file) => file.name),
+    ].join(' '),
+  );
+}
+
 export function candidateFromLiveTorrent(
   torrent: QbittorrentLiveTorrent,
   request: DocumentAcquisitionRequest,
@@ -193,9 +200,10 @@ export function candidateFromLiveTorrent(
   if (matchScore < MIN_TORRENT_MATCH_SCORE) return null;
   if (!hasRequiredQbittorrentTitleEvidence(evidence, request)) return null;
   if (
-    request.book.authors.length &&
-    !isbnAppearsInText(request.book.isbn, evidence) &&
-    !authorAppearsInText(request.book.authors, evidence)
+    !hasRequiredQbittorrentAuthorEvidence(
+      liveTorrentIdentityEvidence(torrent),
+      request,
+    )
   ) {
     return null;
   }

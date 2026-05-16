@@ -18,6 +18,7 @@ import { uniqueCompactStrings } from '../core/utils';
 import {
   BAD_FILE_NAME_PATTERN,
   bookMatchScore,
+  hasExactQbittorrentTitlePhrase,
   hasRequiredQbittorrentTitleEvidence,
   MIN_PLUGIN_SEEDERS,
   MIN_TORRENT_MATCH_SCORE,
@@ -124,7 +125,8 @@ function hasRequiredAuthorEvidence(
   const evidenceText = searchResultEvidenceText(result);
   return (
     isbnAppearsInText(request.book.isbn, evidenceText) ||
-    authorAppearsInText(request.book.authors, evidenceText)
+    authorAppearsInText(request.book.authors, evidenceText) ||
+    hasExactQbittorrentTitlePhrase(result.fileName ?? '', request)
   );
 }
 

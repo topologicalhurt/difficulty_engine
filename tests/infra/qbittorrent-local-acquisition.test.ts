@@ -483,6 +483,7 @@ describe('qBittorrent local acquisition', () => {
       baseUrl: 'http://127.0.0.1:8787',
       username: 'user',
       password: 'pass',
+      category: 'difficulty-engine',
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
 

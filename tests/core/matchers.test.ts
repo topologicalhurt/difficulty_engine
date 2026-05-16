@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bookMatchDecision,
+  authorAppearsInText,
   genericTitleAuthorConflict,
   jaccardTokenSimilarity,
   matchTokens,
@@ -64,6 +65,21 @@ describe('shared matcher primitives', () => {
 
     expect(decision.accepted).toBe(false);
     expect(decision.reasons).not.toContain('isbn_match');
+  });
+
+  it('extracts usable surnames from malformed multi-author strings', () => {
+    expect(
+      authorAppearsInText(
+        ['Ronald W. Oppenheim Alan V. / Schafer'],
+        'Oppenheim A. Discrete-Time Signal Processing 3ed',
+      ),
+    ).toBe(true);
+    expect(
+      authorAppearsInText(
+        ['Ronald W. Oppenheim Alan V. / Schafer'],
+        'Palani S. Discrete Time Systems and Signal Processing 2ed',
+      ),
+    ).toBe(false);
   });
 
   it('does not treat partial subset titles as exact matches', () => {

@@ -4,6 +4,7 @@ import {
   mergeDocumentCandidateQueue,
   observeDocumentGreylist,
 } from '../../src/core/document-acquisition-state';
+import { normalizeBookDocumentAcquisition } from '../../src/core/project-normalize-documents';
 import type { BookDocumentRef } from '../../src/core/types';
 import {
   choosePreferredDocumentCandidate,
@@ -42,7 +43,7 @@ function documentRef(
 }
 
 describe('document acquisition queue', () => {
-  it('demotes greylisted candidates without blocking manual retry', () => {
+  it('demotes greylisted candidates and keeps the best duplicate title', () => {
     const policy = { ...defaultDocumentAcquisitionPolicy(), enabled: true };
     const state = mergeDocumentCandidateQueue(
       observeDocumentGreylist(
@@ -114,10 +115,87 @@ describe('document acquisition queue', () => {
 
     expect(state.candidateQueue.map((candidate) => candidate.id)).toEqual([
       'viable',
-      'stalled',
     ]);
-    expect(state.candidateQueue[1]?.retryable).toBe(true);
+    expect(state.candidateQueue[0]?.retryable).toBe(true);
     expect(selected?.id).toBe('viable');
+  });
+
+  it('deduplicates stale persisted queue rows by presentation title', () => {
+    const staleQueue = mergeDocumentCandidateQueue(
+      undefined,
+      [
+        {
+          id: 'stale-low',
+          provider: 'qbittorrent',
+          title: 'Fourier Analysis An Introduction Stein Shakarchi PDF',
+          sourceUrl: 'magnet:?xt=urn:btih:stale',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.7,
+          matchScore: 0.8,
+          seeders: 1,
+          qualityScore: 0.4,
+        },
+      ],
+      '2026-01-05T00:00:00.000Z',
+    );
+    const refreshed = mergeDocumentCandidateQueue(
+      staleQueue,
+      [
+        {
+          id: 'fresh-best',
+          provider: 'qbittorrent',
+          title: 'Fourier Analysis An Introduction Stein Shakarchi 2011',
+          sourceUrl: 'magnet:?xt=urn:btih:fresh',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 0.95,
+          seeders: 12,
+          qualityScore: 0.86,
+        },
+      ],
+      '2026-01-05T00:01:00.000Z',
+    );
+
+    expect(refreshed.candidateQueue.map((candidate) => candidate.id)).toEqual([
+      'fresh-best',
+    ]);
+  });
+
+  it('normalizes persisted duplicate queue rows through the same ranking path', () => {
+    const normalized = normalizeBookDocumentAcquisition({
+      candidateQueue: [
+        {
+          id: 'stale-low',
+          provider: 'qbittorrent',
+          title: 'Stein E Lectures in Analysis Vol 2 Complex Analysis 2003',
+          sourceUrl: 'magnet:?xt=urn:btih:stale',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.7,
+          matchScore: 0.8,
+          seeders: 1,
+          qualityScore: 0.4,
+        },
+        {
+          id: 'fresh-best',
+          provider: 'qbittorrent',
+          title: 'Stein E. Lectures in Analysis. Vol 2. Complex Analysis 2003',
+          sourceUrl: 'magnet:?xt=urn:btih:fresh',
+          contentKind: 'pdf',
+          accessBasis: 'open_access',
+          confidence: 0.9,
+          matchScore: 0.95,
+          seeders: 12,
+          qualityScore: 0.86,
+        },
+      ],
+    });
+
+    expect(normalized.candidateQueue.map((candidate) => candidate.id)).toEqual([
+      'fresh-best',
+    ]);
   });
 
   it('decays greylist penalties after clean observations', () => {
