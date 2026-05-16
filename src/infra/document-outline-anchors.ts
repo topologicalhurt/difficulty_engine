@@ -1,3 +1,5 @@
+import { isLikelyChapterTitle } from '../core/chapter-titles';
+import { STRUCTURAL_MARKER_ONLY_PATTERN } from '../core/chapter-title-patterns';
 import type { PageAnchorEvidence } from './toc-page-ranges';
 
 export const MIN_PDF_OUTLINE_CHAPTERS = 2;
@@ -31,12 +33,77 @@ function outlineAnchorKey(anchor: PageAnchorEvidence): string {
   ].join('::');
 }
 
+function shouldPairSplitOutlineAnchor(
+  marker: PageAnchorEvidence,
+  title: PageAnchorEvidence | undefined,
+): title is PageAnchorEvidence {
+  if (!STRUCTURAL_MARKER_ONLY_PATTERN.test(marker.chapterTitle)) return false;
+  if (!title) return false;
+  if (title.sourceMethod !== marker.sourceMethod) return false;
+  if (STRUCTURAL_MARKER_ONLY_PATTERN.test(title.chapterTitle)) return false;
+  if (PDF_OUTLINE_FRONT_BACK_PATTERN.test(title.chapterTitle)) return false;
+  const markerLevel = outlineLevel(marker);
+  const titleLevel = outlineLevel(title);
+  if (markerLevel != null && titleLevel != null && titleLevel !== markerLevel) {
+    return false;
+  }
+  if (
+    marker.physicalPage != null &&
+    title.physicalPage != null &&
+    marker.physicalPage !== title.physicalPage
+  ) {
+    return false;
+  }
+  if (
+    marker.printedPage != null &&
+    title.printedPage != null &&
+    marker.printedPage !== title.printedPage
+  ) {
+    return false;
+  }
+  return isLikelyChapterTitle(title.chapterTitle, 'structured');
+}
+
+function pairSplitOutlineAnchors(
+  anchors: PageAnchorEvidence[],
+): PageAnchorEvidence[] {
+  const paired: PageAnchorEvidence[] = [];
+  for (let index = 0; index < anchors.length; index += 1) {
+    const anchor = anchors[index];
+    if (!anchor) continue;
+    const next = anchors[index + 1];
+    if (shouldPairSplitOutlineAnchor(anchor, next)) {
+      paired.push({
+        ...anchor,
+        chapterTitle: `${anchor.chapterTitle} ${next.chapterTitle}`,
+        physicalPage: anchor.physicalPage ?? next.physicalPage,
+        printedPage: anchor.printedPage ?? next.printedPage,
+        bbox: anchor.bbox ?? next.bbox,
+        confidence: Math.min(anchor.confidence, next.confidence),
+        conflicts: [...(anchor.conflicts ?? []), ...(next.conflicts ?? [])],
+      });
+      index += 1;
+      continue;
+    }
+    paired.push(anchor);
+  }
+  return paired;
+}
+
+function pdfOutlineAnchors(
+  pageAnchors: PageAnchorEvidence[],
+): PageAnchorEvidence[] {
+  return pairSplitOutlineAnchors(
+    pageAnchors.filter(
+      (anchor) => anchor.sourceMethod === 'pdf_outline_destination',
+    ),
+  );
+}
+
 export function preferredPdfOutlineAnchors(
   pageAnchors: PageAnchorEvidence[] = [],
 ): PageAnchorEvidence[] {
-  const outlineAnchors = pageAnchors.filter(
-    (anchor) => anchor.sourceMethod === 'pdf_outline_destination',
-  );
+  const outlineAnchors = pdfOutlineAnchors(pageAnchors);
   if (!outlineAnchors.some((anchor) => outlineLevel(anchor) != null)) {
     return outlineAnchors;
   }
@@ -67,7 +134,9 @@ export function preferredPdfOutlineAnchors(
 
 export function topicPdfOutlineAnchors(
   pageAnchors: PageAnchorEvidence[] = [],
-  chapterAnchors: PageAnchorEvidence[] = preferredPdfOutlineAnchors(pageAnchors),
+  chapterAnchors: PageAnchorEvidence[] = preferredPdfOutlineAnchors(
+    pageAnchors,
+  ),
 ): PageAnchorEvidence[] {
   const chapterLevels = chapterAnchors
     .map(outlineLevel)
@@ -75,8 +144,7 @@ export function topicPdfOutlineAnchors(
   if (!chapterLevels.length) return [];
   const chapterLevel = Math.min(...chapterLevels);
   const chapterKeys = new Set(chapterAnchors.map(outlineAnchorKey));
-  return pageAnchors.filter((anchor) => {
-    if (anchor.sourceMethod !== 'pdf_outline_destination') return false;
+  return pdfOutlineAnchors(pageAnchors).filter((anchor) => {
     if (PDF_OUTLINE_FRONT_BACK_PATTERN.test(anchor.chapterTitle)) return false;
     if (chapterKeys.has(outlineAnchorKey(anchor))) return false;
     const level = outlineLevel(anchor);

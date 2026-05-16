@@ -13,6 +13,7 @@ import {
   NUMBERED_TITLE_PATTERN,
   PLAIN_PAGE_SUFFIX_PATTERN,
   SENTENCE_BOUNDARY_PATTERN,
+  STRUCTURAL_MARKER_ONLY_PATTERN,
   STRUCTURAL_PREFIX_ONLY_PATTERN,
   STRUCTURAL_PREFIX_PATTERN,
   STRUCTURAL_SENTENCE_PATTERN,
@@ -173,6 +174,15 @@ export function chapterTitleDecision(
       score: 0.1,
       sourceMode: matcherSourceMode(source),
       rejectedReasons: ['narrative_or_marketing_text'],
+      evidenceAnchors: [title],
+    });
+  }
+  if (source !== 'manual' && STRUCTURAL_MARKER_ONLY_PATTERN.test(title)) {
+    return matcherDecision({
+      accepted: false,
+      score: 0.15,
+      sourceMode: matcherSourceMode(source),
+      rejectedReasons: ['marker_only_without_title'],
       evidenceAnchors: [title],
     });
   }

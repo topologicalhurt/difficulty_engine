@@ -122,7 +122,7 @@ describe('project-file boundary', () => {
           error: 'NetworkError when attempting to fetch resource.',
           data: {
             description: 'Previous usable enrichment.',
-            chapters: ['Chapter 1'],
+            chapters: ['Chapter 1 Foundations'],
             olSubjects: ['subject'],
           },
         },
@@ -132,7 +132,7 @@ describe('project-file boundary', () => {
 
     expect(project.enrichmentCache.alpha?.status).toBe('stale');
     expect(project.enrichmentCache.alpha?.data?.chapters).toEqual([
-      'Chapter 1',
+      'Chapter 1 Foundations',
     ]);
     expect(project.enrichmentCache.alpha?.error).toContain('NetworkError');
   });

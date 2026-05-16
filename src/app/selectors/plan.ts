@@ -2,6 +2,7 @@ import {
   localDateKey,
   parseLocalDateKey,
   plannerClock,
+  studyWeekdays,
   studyDateFromSlot,
 } from '../../core/time';
 import {
@@ -19,19 +20,13 @@ import { compactItems, compactJoin, round1 } from '../../core/utils';
 import { buildCalendarWeeks, type CalendarWeek } from './calendar-weeks';
 import { formatPlanFullDate, formatPlanShortDate } from './date-labels';
 import { selectPlanColors, type PlanColorMetadata } from './plan-colors';
-import {
-  selectProgressSummary,
-  type OverallProgressView,
-} from './progress';
+import { selectProgressSummary, type OverallProgressView } from './progress';
 import { memoizeSelector } from './memo';
 import {
   selectBookInspector,
   type BookInspectorViewModel,
 } from './plan-inspector';
-import {
-  selectDismissedWarningCount,
-  selectVisibleWarnings,
-} from './warnings';
+import { selectDismissedWarningCount, selectVisibleWarnings } from './warnings';
 
 export interface StatCardView {
   label: string;
@@ -45,6 +40,7 @@ export interface GanttViewModel {
   zoom: number;
   view: AppState['ui']['ganttView'];
   maxSlot: number;
+  slotsPerWeek: number;
   boardMinWidth: number;
   weekCount: number;
 }
@@ -61,10 +57,14 @@ export interface CurrentEpochBookView {
 
 export interface CurrentEpochViewModel {
   title: string;
-  dateKey: string | null;
+  startDateKey: string | null;
+  endDateKey: string | null;
   label: string;
   modeLabel: string;
   capacity: number;
+  epochIndex: number;
+  epochCount: number;
+  studyDayCount: number;
   books: CurrentEpochBookView[];
   hint: string;
 }
@@ -157,54 +157,149 @@ function selectGantt(state: AppState): GanttViewModel {
     ...rows.map((row) => Math.max(row.targetEnd, row.actualEnd ?? 0)),
   );
   const zoom = state.ui.ganttZoom;
+  const slotsPerWeek = Math.max(1, studyWeekdays(state.project).length);
   return {
     rows,
     diagnostics: state.ui.ganttView === 'diagnostics',
     zoom,
     view: state.ui.ganttView,
     maxSlot,
-    weekCount: Math.max(1, Math.ceil(maxSlot / 7)),
+    slotsPerWeek,
+    weekCount: Math.max(1, Math.ceil(maxSlot / slotsPerWeek)),
     boardMinWidth: Math.max(520, Math.round(maxSlot * 26 * zoom)),
   };
 }
 
-function selectCurrentEpoch(state: AppState): CurrentEpochViewModel {
+function entrySetKey(entries: CalendarEntry[]): string {
+  return [...new Set(entries.map((entry) => entry.bookId))]
+    .sort()
+    .join('\u0000');
+}
+
+interface EpochAccumulator {
+  startDateKey: string;
+  endDateKey: string;
+  setKey: string;
+  dates: string[];
+  entriesByBook: Map<string, CurrentEpochBookView>;
+}
+
+function createEpoch(
+  dateKey: string,
+  entries: CalendarEntry[],
+  selectedBookId: string | null,
+): EpochAccumulator {
+  const epoch: EpochAccumulator = {
+    startDateKey: dateKey,
+    endDateKey: dateKey,
+    setKey: entrySetKey(entries),
+    dates: [dateKey],
+    entriesByBook: new Map(),
+  };
+  mergeEpochEntries(epoch, entries, selectedBookId);
+  return epoch;
+}
+
+function mergeEpochEntries(
+  epoch: EpochAccumulator,
+  entries: CalendarEntry[],
+  selectedBookId: string | null,
+): void {
+  entries.forEach((entry) => {
+    const existing = epoch.entriesByBook.get(entry.bookId);
+    if (!existing) {
+      epoch.entriesByBook.set(entry.bookId, {
+        id: entry.bookId,
+        short: entry.short,
+        displayGroup: entry.displayGroup,
+        minutes: entry.mins,
+        pages: entry.readPages + entry.skimPages,
+        selected: selectedBookId === entry.bookId,
+        done: entry.done,
+      });
+      return;
+    }
+    existing.minutes += entry.mins;
+    existing.pages += entry.readPages + entry.skimPages;
+    existing.done = existing.done && entry.done;
+  });
+}
+
+function planEpochs(state: AppState): EpochAccumulator[] {
   const dates = Object.keys(state.snapshot.dayPlan.byDate).sort();
+  const epochs: EpochAccumulator[] = [];
+  dates.forEach((dateKey) => {
+    const entries = state.snapshot.dayPlan.byDate[dateKey] ?? [];
+    if (!entries.length) return;
+    const key = entrySetKey(entries);
+    const current = epochs[epochs.length - 1];
+    if (current && current.setKey === key) {
+      current.endDateKey = dateKey;
+      current.dates.push(dateKey);
+      mergeEpochEntries(current, entries, state.ui.selectedBookId);
+      return;
+    }
+    epochs.push(createEpoch(dateKey, entries, state.ui.selectedBookId));
+  });
+  return epochs;
+}
+
+function epochLabel(
+  startDateKey: string | null,
+  endDateKey: string | null,
+): string {
+  if (!startDateKey || !endDateKey) return 'No planned study window';
+  const start = formatPlanFullDate(parseLocalDateKey(startDateKey));
+  if (startDateKey === endDateKey) return start;
+  return `${start} - ${formatPlanFullDate(parseLocalDateKey(endDateKey))}`;
+}
+
+function selectCurrentEpoch(state: AppState): CurrentEpochViewModel {
+  const epochs = planEpochs(state);
   const todayKey = localDateKey();
-  const dateKey =
-    dates.find((candidate) => candidate >= todayKey) ??
-    (dates.length ? dates[dates.length - 1] : null);
-  const entries = dateKey ? (state.snapshot.dayPlan.byDate[dateKey] ?? []) : [];
+  const selectedIndex = epochs.findIndex(
+    (epoch) => epoch.startDateKey <= todayKey && epoch.endDateKey >= todayKey,
+  );
+  const nextIndex = epochs.findIndex((epoch) => epoch.startDateKey >= todayKey);
+  const epochIndex =
+    selectedIndex >= 0
+      ? selectedIndex
+      : nextIndex >= 0
+        ? nextIndex
+        : epochs.length - 1;
+  const epoch = epochIndex >= 0 ? epochs[epochIndex] : null;
   const modeLabel =
     state.project.constraints.dailyBookMode === 'daily_cohort'
-      ? 'Fixed N-book learning epoch'
+      ? 'Fixed N-book study stage'
       : 'Rotating eligible pool';
   const title =
-    dateKey === todayKey
+    epoch && epoch.startDateKey <= todayKey && epoch.endDateKey >= todayKey
       ? 'Current epoch'
-      : dateKey && dateKey > todayKey
-        ? 'Next study epoch'
+      : epoch && epoch.startDateKey > todayKey
+        ? 'Next epoch'
         : 'Last planned epoch';
+  const books = epoch
+    ? [...epoch.entriesByBook.values()].sort((left, right) =>
+        compareChain(
+          compareText(left.short, right.short),
+          compareText(left.id, right.id),
+        ),
+      )
+    : [];
   return {
     title,
-    dateKey,
-    label: dateKey
-      ? formatPlanFullDate(parseLocalDateKey(dateKey))
-      : 'No planned study date',
+    startDateKey: epoch?.startDateKey ?? null,
+    endDateKey: epoch?.endDateKey ?? null,
+    label: epochLabel(epoch?.startDateKey ?? null, epoch?.endDateKey ?? null),
     modeLabel,
     capacity: state.project.constraints.par,
-    books: entries.map((entry) => ({
-      id: entry.bookId,
-      short: entry.short,
-      displayGroup: entry.displayGroup,
-      minutes: entry.mins,
-      pages: entry.readPages + entry.skimPages,
-      selected: state.ui.selectedBookId === entry.bookId,
-      done: entry.done,
-    })),
-    hint: entries.length
-      ? `${entries.length}/${state.project.constraints.par} active book slot(s) for this epoch.`
-      : 'No active books are scheduled for this date.',
+    epochIndex: epoch ? epochIndex + 1 : 0,
+    epochCount: epochs.length,
+    studyDayCount: epoch?.dates.length ?? 0,
+    books,
+    hint: epoch
+      ? `Epoch ${epochIndex + 1}/${epochs.length}: ${books.length}/${state.project.constraints.par} active book slot(s), ${epoch.dates.length} study day(s).`
+      : 'No active books are scheduled in the plan.',
   };
 }
 

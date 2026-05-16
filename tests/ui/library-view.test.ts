@@ -201,4 +201,43 @@ describe('library view', () => {
     expect(view.textContent).toContain('10 learned section row(s)');
     expect(view.textContent).toContain('Chapter 10 Scope Topic');
   });
+
+  it('lazy-loads large learned reading-scope section lists', () => {
+    const chapters = Array.from(
+      { length: 30 },
+      (_, index) => `Chapter ${index + 1} Scope Topic`,
+    );
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          'book-1': makeBook({
+            enrichment: {
+              chapters,
+              topics: [],
+              description: '',
+              olSubjects: [],
+              tocSource: 'pdf',
+              chapterPageRanges: chapters.map((_, index) => ({
+                start: index * 10 + 1,
+                end: index === chapters.length - 1 ? null : (index + 1) * 10,
+              })),
+            },
+          }),
+        },
+      }),
+    });
+    store.commands.selectBook('book-1');
+    const view = renderLibraryView(store.selectors.getState(), store);
+
+    expect(view.textContent).toContain('Showing 24/30 learned section row(s)');
+    expect(view.textContent).toContain('Chapter 24 Scope Topic');
+    expect(view.textContent).not.toContain('Chapter 30 Scope Topic');
+
+    const showAll = Array.from(view.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Show all 30 section rows',
+    );
+    showAll?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(view.textContent).toContain('Chapter 30 Scope Topic');
+  });
 });

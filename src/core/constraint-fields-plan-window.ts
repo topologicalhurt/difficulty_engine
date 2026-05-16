@@ -34,12 +34,12 @@ export const PLAN_WINDOW_FIELDS: ConstraintField[] = [
     group: 'Plan Window',
     label: 'Active-book rotation',
     description:
-      'Whether the hard N-book cap behaves as a rotating pool or a fixed learning epoch.',
+      'Whether the hard N-book cap behaves as a rotating pool or a fixed study stage.',
     effect: 'schedule_policy',
     kind: 'select',
     options: [
       { value: 'interspersed', label: 'Rotating eligible pool' },
-      { value: 'daily_cohort', label: 'Fixed N-book learning epoch' },
+      { value: 'daily_cohort', label: 'Fixed N-book study stage' },
     ],
   },
   {

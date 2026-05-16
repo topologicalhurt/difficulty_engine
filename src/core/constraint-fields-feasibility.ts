@@ -60,7 +60,7 @@ export const PRACTICAL_FEASIBILITY_COSTUDY_FIELDS: ConstraintField[] = [
     kind: 'select',
     options: [
       { value: 'batch', label: 'Batch within hard cap' },
-      { value: 'strict', label: 'Require same epoch or block' },
+      { value: 'strict', label: 'Require same study stage or block' },
     ],
   },
 ];

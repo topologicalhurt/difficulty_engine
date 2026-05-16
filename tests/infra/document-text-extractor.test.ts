@@ -155,6 +155,8 @@ describe('document text extraction', () => {
         [
           '%PDF-1.4',
           '1 0 obj',
+          '0000000015 00000 n',
+          '0000000920 00000 n',
           '/Width 1041',
           '/Height 177',
           'stream',

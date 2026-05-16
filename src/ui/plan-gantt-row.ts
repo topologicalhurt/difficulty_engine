@@ -1,4 +1,3 @@
-import { DAYS_PER_WEEK } from '../core/date-constants';
 import type { PlannerStore, ScheduleRow } from '../core/types';
 import { compactItems } from '../core/utils';
 import { badge, el } from './dom';
@@ -26,6 +25,7 @@ export function renderGanttRow(
   row: ScheduleRow,
   color: string,
   maxSlot: number,
+  slotsPerWeek: number,
   diagnostics: boolean,
   selectedBookId: string | null,
   timelineLabel: (slot: number) => string,
@@ -43,7 +43,8 @@ export function renderGanttRow(
     Math.max(1, actualEndSlot - actualStartSlot) / safeMaxSlot,
   );
   const release = formatCssPercent(row.releaseSlot / safeMaxSlot);
-  const weekCount = Math.max(1, Math.ceil(maxSlot / DAYS_PER_WEEK));
+  const safeSlotsPerWeek = Math.max(1, slotsPerWeek);
+  const weekCount = Math.max(1, Math.ceil(maxSlot / safeSlotsPerWeek));
 
   return el(
     'div',
@@ -76,7 +77,7 @@ export function renderGanttRow(
         ...Array.from({ length: weekCount }, (_, index) => {
           const marker = el('div', { className: 'gantt-week-marker' });
           marker.style.left = formatCssPercent(
-            (index * DAYS_PER_WEEK) / safeMaxSlot,
+            (index * safeSlotsPerWeek) / safeMaxSlot,
           );
           return marker;
         }),

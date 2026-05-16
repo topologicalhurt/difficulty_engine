@@ -76,6 +76,19 @@ describe('chapter title detection', () => {
     ]);
   });
 
+  it('rejects sourced chapter markers without title content', () => {
+    expect(
+      sanitizeChapterTitles(
+        ['CHAPTER 1', 'Chapter 2', 'Appendix A', 'Chapter 3 Linear Maps'],
+        { source: 'structured' },
+      ),
+    ).toEqual(['Chapter 3 Linear Maps']);
+
+    const rejected = chapterTitleDecision('CHAPTER 1', 'structured');
+    expect(rejected.accepted).toBe(false);
+    expect(rejected.rejectedReasons).toContain('marker_only_without_title');
+  });
+
   it('requires structural evidence when extracting from unstructured descriptions', () => {
     const text = [
       'A comprehensive introduction to modern analysis for graduate students.',

@@ -17,6 +17,12 @@ export function renderCurrentEpochPanel(
         className: 'muted-copy',
         text: `${viewModel.currentEpoch.modeLabel} · ${viewModel.currentEpoch.hint}`,
       }),
+      viewModel.currentEpoch.books.length
+        ? el('span', {
+            className: 'muted-copy',
+            text: 'An epoch is the longest contiguous study window with the same active book set.',
+          })
+        : null,
     ),
     viewModel.currentEpoch.books.length
       ? el(

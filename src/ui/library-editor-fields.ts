@@ -4,12 +4,13 @@ import type {
   BookRecord,
   PlannerStore,
 } from '../core/types';
-import { badge, el } from './dom';
+import { badge, button, el } from './dom';
 import { inputField, selectInput, textAreaControl } from './form-controls';
 import { joinCsv, parseCsv } from './format';
 import { checkboxInput, numberInput, textInput } from './library-controls';
 
 type BookUpdate = (patch: Partial<BookRecord>) => void;
+const READING_SCOPE_SECTION_PREVIEW_LIMIT = 24;
 
 export function renderBookMetadataFields(
   book: BookRecord,
@@ -236,6 +237,8 @@ export function renderBookReadingScopeFields(
 ): HTMLElement {
   const analysis = readingScope;
   const sections = readingScope?.sections ?? [];
+  const previewSections = sections.slice(0, READING_SCOPE_SECTION_PREVIEW_LIMIT);
+  const hiddenSections = sections.slice(READING_SCOPE_SECTION_PREVIEW_LIMIT);
   return el(
     'div',
     { className: 'stack-layout compact-stack' },
@@ -265,9 +268,13 @@ export function renderBookReadingScopeFields(
       'div',
       { className: 'badge-row' },
       analysis
-        ? badge(`${analysis.effectivePages}/${analysis.physicalPages} effective pages`)
+        ? badge(
+            `${analysis.effectivePages}/${analysis.physicalPages} effective pages`,
+          )
         : badge(`${book.pages}/${book.pages} effective pages`),
-      analysis?.skippedPages ? badge(`${analysis.skippedPages} skipped`, 'warn') : null,
+      analysis?.skippedPages
+        ? badge(`${analysis.skippedPages} skipped`, 'warn')
+        : null,
       analysis?.bindingReason ? badge('scope diagnostic', 'neutral') : null,
     ),
     analysis?.bindingReason
@@ -277,28 +284,54 @@ export function renderBookReadingScopeFields(
       ? el(
           'div',
           { className: 'stack-list compact-stack' },
-          ...sections.slice(0, 8).map((section) =>
-            el(
-              'div',
-              { className: 'stack-row' },
-              badge(section.skipped ? 'skipped' : 'kept', section.skipped ? 'warn' : 'success'),
-              el('span', { text: section.title }),
-              el('span', {
-                className: 'muted-copy',
-                text: [
-                  section.kind,
-                  section.pageRange ? `pp. ${section.pageRange}` : '',
-                  section.estimatedPages
-                    ? `${section.estimatedPages} page(s)`
-                    : '',
-                ].filter(Boolean).join(' · '),
-              }),
-            ),
-          ),
+          el('div', {
+            className: 'muted-copy',
+            text: hiddenSections.length
+              ? `Showing ${previewSections.length}/${sections.length} learned section row(s) from this TOC.`
+              : `${sections.length} learned section row(s) from this TOC.`,
+          }),
+          ...previewSections.map(renderReadingScopeSection),
+          (hiddenSections.length
+            ? button(`Show all ${sections.length} section rows`, {
+                className: 'ghost-button',
+                onClick: (event) => {
+                  const buttonNode = event.currentTarget;
+                  if (!(buttonNode instanceof HTMLButtonElement)) return;
+                  hiddenSections.forEach((section) => {
+                    buttonNode.before(renderReadingScopeSection(section));
+                  });
+                  buttonNode.remove();
+                },
+              })
+            : null),
         )
       : el('div', {
           className: 'muted-copy',
           text: 'No learned chapter/section titles yet.',
         }),
+  );
+}
+
+function renderReadingScopeSection(
+  section: NonNullable<BookReadingScopeView>['sections'][number],
+): HTMLElement {
+  return el(
+    'div',
+    { className: 'stack-row' },
+    badge(
+      section.skipped ? 'skipped' : 'kept',
+      section.skipped ? 'warn' : 'success',
+    ),
+    el('span', { text: section.title }),
+    el('span', {
+      className: 'muted-copy',
+      text: [
+        section.kind,
+        section.pageRange ? `pp. ${section.pageRange}` : '',
+        section.estimatedPages ? `${section.estimatedPages} page(s)` : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    }),
   );
 }

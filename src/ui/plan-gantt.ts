@@ -1,5 +1,4 @@
 import type { GanttViewModel, PlanViewModel } from '../app/selectors/plan';
-import { DAYS_PER_WEEK } from '../core/date-constants';
 import type { PlannerStore } from '../core/types';
 import { el, emptyState } from './dom';
 import { collapsibleCard } from './collapsible-card';
@@ -9,13 +8,15 @@ import { renderGanttToolbar } from './plan-gantt-toolbar';
 function renderTimelineAxis(
   timelineLabel: (slot: number) => string,
   maxSlot: number,
+  slotsPerWeek: number,
 ): HTMLElement {
-  const weekCount = Math.max(1, Math.ceil(maxSlot / DAYS_PER_WEEK));
+  const safeSlotsPerWeek = Math.max(1, slotsPerWeek);
+  const weekCount = Math.max(1, Math.ceil(maxSlot / safeSlotsPerWeek));
   return el(
     'div',
     { className: 'gantt-axis' },
     ...Array.from({ length: weekCount }, (_, index) => {
-      const weekStart = index * DAYS_PER_WEEK;
+      const weekStart = index * safeSlotsPerWeek;
       const label = `Week ${index + 1}`;
       return el(
         'div',
@@ -82,7 +83,7 @@ export function renderGantt(
               className: 'gantt-head-meta muted-copy',
               text: 'Books',
             }),
-            renderTimelineAxis(timelineLabel, maxSlot),
+            renderTimelineAxis(timelineLabel, maxSlot, gantt.slotsPerWeek),
           ),
           ...rows.map((row) =>
             renderGanttRow(
@@ -90,6 +91,7 @@ export function renderGantt(
               row,
               colors.byBookId[row.id] || 'hsl(160 42% 55%)',
               maxSlot,
+              gantt.slotsPerWeek,
               diagnostics,
               selectedBookId,
               timelineLabel,

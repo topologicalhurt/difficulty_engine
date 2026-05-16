@@ -88,7 +88,7 @@ const OPTION_DETAILS: Partial<
     interspersed:
       'The planner may choose from the eligible pool each day while never exceeding the hard active-book cap.',
     daily_cohort:
-      'The same N-book learning epoch stays active until one book finishes and a slot opens.',
+      'The same N-book study stage stays active until one book finishes and a slot opens.',
   },
   emptyDayPolicy: {
     fill_when_possible:
@@ -190,7 +190,7 @@ const OPTION_DETAILS: Partial<
     batch:
       'Large co-study groups are split into batches that fit the hard active-book cap.',
     strict:
-      'Large co-study groups must stay together in one epoch; if they exceed the hard cap, they block with a diagnostic instead of spilling over.',
+      'Large co-study groups must stay together in one study stage; if they exceed the hard cap, they block with a diagnostic instead of spilling over.',
   },
 };
 

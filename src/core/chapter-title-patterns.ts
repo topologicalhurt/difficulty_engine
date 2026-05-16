@@ -20,6 +20,8 @@ export const STRUCTURAL_PREFIX_PATTERN =
   /^(?:contents?|chapter|ch\.?|part|book|volume|vol\.?|unit|section|appendix|lecture|lesson|module|week|session)\b/i;
 export const STRUCTURAL_PREFIX_ONLY_PATTERN =
   /^(?:chapter|ch\.?|part|book|volume|vol\.?|unit|section|appendix|lecture|lesson|module|week|session)$/i;
+export const STRUCTURAL_MARKER_ONLY_PATTERN =
+  /^(?:chapter|ch\.?|part|book|volume|vol\.?|unit|section|appendix|lecture|lesson|module|week|session)\s+(?:\d+|[ivxlcdm]+|[a-z]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)$/i;
 export const FRONT_BACK_MATTER_PATTERN =
   /^(?:preface|foreword|acknowledgements?|contents?|introduction|conclusion|epilogue|prologue|bibliography|references|notes|index|glossary|exercises|problems|solutions|further reading)\b/i;
 export const NUMBERED_TITLE_PATTERN =
@@ -31,7 +33,7 @@ export const URL_OR_ISBN_PATTERN =
   /\b(?:https?:\/\/|www\.|isbn|copyright|all rights reserved)\b/i;
 export const LETTER_PATTERN = /\p{L}/u;
 export const DOCUMENT_OBJECT_NOISE_PATTERN =
-  /^(?:%|(?:\d+\s+){1,2}obj\b|endobj\b|xref\b|trailer\b|stream\b|endstream\b|\/[a-z0-9]+|[a-z]:[\\/].+\.(?:eps|pdf|png|jpe?g|tiff?)\b)/i;
+  /^(?:%|startxref\b|(?:\d+\s+){1,2}obj\b|\d{5,}\s+\d{5}\s+[nf]\b|\d+\s+\d+\s+R\b|\d+\/[a-z0-9]+|\[?\/[a-z0-9]+|endobj\b|xref\b|trailer\b|stream\b|endstream\b)|(?:<<|>>|\/(?:DCTDecode|DecodeParms|FontWeight|Length|OutputIntents|ViewerPreferences)\b|[\u00b6\ufffd]|[a-z]:[\\/].+\.(?:eps|pdf|png|jpe?g|tiff?)\b)/i;
 export const CONTROL_HEAVY_TEXT_PATTERN = new RegExp(
   String.raw`[\u0000-\u0008\u000b-\u001f\u007f-\u009f]`,
 );
@@ -73,6 +75,14 @@ export const CHAPTER_TITLE_PATTERN_SPECS: ChapterTitlePatternSpec[] = [
     accepts: ['Chapter 1 Signals', 'Lecture 7 Stability'],
   },
   {
+    id: 'structural_marker_only',
+    role: 'reject',
+    pattern: STRUCTURAL_MARKER_ONLY_PATTERN,
+    purpose:
+      'Reject sourced TOC marker rows unless a following title was joined first.',
+    rejects: ['Chapter 1', 'Appendix A'],
+  },
+  {
     id: 'numbered_title',
     role: 'accept',
     pattern: NUMBERED_TITLE_PATTERN,
@@ -84,7 +94,13 @@ export const CHAPTER_TITLE_PATTERN_SPECS: ChapterTitlePatternSpec[] = [
     role: 'reject',
     pattern: DOCUMENT_OBJECT_NOISE_PATTERN,
     purpose: 'Reject raw PDF/object-stream fragments before title scoring.',
-    rejects: ['1 0 obj', '/Width 1041', 'stream'],
+    rejects: [
+      '1 0 obj',
+      '0000000015 00000 n',
+      '9036 0 R/Lang(en-US)',
+      '/Width 1041',
+      'stream',
+    ],
   },
   {
     id: 'narrative_or_marketing',

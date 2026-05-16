@@ -5,11 +5,35 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderPlanBookJump } from '../../src/ui/plan-book-jump';
 import { renderPlanView } from '../../src/ui/plan-view';
 import { makeStore } from '../app/store-test-utils';
+import { selectPlanViewModel } from '../../src/app/selectors/plan';
+import type { CalendarEntry } from '../../src/core/types';
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
+
+function entry(bookId: string, short = bookId): CalendarEntry {
+  return {
+    bookId,
+    short,
+    displayGroup: 'Core',
+    lane: 0,
+    track: 'Core',
+    mins: 30,
+    readPages: 5,
+    skimPages: 0,
+    boosted: false,
+    floorRelaxed: false,
+    effectiveMinPg: 1,
+    strictMinPg: 1,
+    backfilled: false,
+    prereqOverlap: false,
+    actualOverride: false,
+    done: false,
+  };
+}
 
 describe('plan view', () => {
   it('renders persisted Gantt and calendar collapsed states', () => {
@@ -22,7 +46,9 @@ describe('plan view', () => {
     expect(view.textContent).toContain('Gantt timeline');
     expect(view.textContent).toContain('Study calendar');
     expect(view.querySelectorAll('.collapsible-card.open')).toHaveLength(0);
-    expect(view.querySelectorAll('.collapsible-card.panel-card')).toHaveLength(2);
+    expect(view.querySelectorAll('.collapsible-card.panel-card')).toHaveLength(
+      2,
+    );
     expect(
       view.querySelectorAll('.collapsible-card .panel-toggle-button'),
     ).toHaveLength(2);
@@ -42,14 +68,60 @@ describe('plan view', () => {
     expect(sidePanel?.firstElementChild?.textContent).toContain('Log progress');
   });
 
-  it('shows the current or next study epoch in the Plan side panel', () => {
+  it('shows the current or next epoch in the Plan side panel', () => {
     const store = makeStore();
     const view = renderPlanView(store.selectors.getState(), store);
 
     expect(view.textContent).toMatch(
-      /Current epoch|Next study epoch|Last planned epoch/,
+      /Current epoch|Next epoch|Last planned epoch/,
     );
     expect(view.textContent).toContain('active book slot');
+  });
+
+  it('defines epochs as maximal windows with the same active book set', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-06T12:00:00'));
+    const store = makeStore();
+    const state = store.selectors.getState();
+    const viewModel = selectPlanViewModel({
+      ...state,
+      snapshot: {
+        ...state.snapshot,
+        dayPlan: {
+          ...state.snapshot.dayPlan,
+          byDate: {
+            '2026-01-05': [entry('a', 'A'), entry('b', 'B'), entry('c', 'C')],
+            '2026-01-06': [entry('b', 'B'), entry('c', 'C'), entry('a', 'A')],
+            '2026-01-07': [entry('a', 'A'), entry('b', 'B'), entry('d', 'D')],
+          },
+        },
+      },
+    });
+
+    expect(viewModel.currentEpoch.title).toBe('Current epoch');
+    expect(viewModel.currentEpoch.startDateKey).toBe('2026-01-05');
+    expect(viewModel.currentEpoch.endDateKey).toBe('2026-01-06');
+    expect(viewModel.currentEpoch.epochIndex).toBe(1);
+    expect(viewModel.currentEpoch.epochCount).toBe(2);
+    expect(viewModel.currentEpoch.studyDayCount).toBe(2);
+    expect(viewModel.currentEpoch.books.map((book) => book.id).sort()).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('uses study-day slots rather than seven slots per week in Gantt labels', () => {
+    const store = makeStore();
+    const state = store.selectors.getState();
+    const viewModel = selectPlanViewModel(state);
+
+    expect(viewModel.gantt.slotsPerWeek).toBe(
+      state.project.constraints.studyWeekdays.length,
+    );
+    expect(viewModel.gantt.weekCount).toBe(
+      Math.ceil(viewModel.gantt.maxSlot / viewModel.gantt.slotsPerWeek),
+    );
   });
 
   it('wires Plan jump controls to book selection', () => {
@@ -64,7 +136,9 @@ describe('plan view', () => {
     jump.dispatchEvent(new Event('change'));
 
     expect(store.selectors.getState().ui.selectedBookId).toBe('book-1');
-    expect(view.querySelector('[data-plan-gantt-book-id="book-1"]')).toBeTruthy();
+    expect(
+      view.querySelector('[data-plan-gantt-book-id="book-1"]'),
+    ).toBeTruthy();
   });
 
   it('scopes Plan jump scrolling to the current planner root', () => {
