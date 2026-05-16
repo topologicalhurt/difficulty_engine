@@ -137,9 +137,11 @@ describe('library view', () => {
     expect(text).toContain('Reveal location');
     expect(text).toContain('Remove');
     expect(text).toContain('Also delete downloaded files/content');
+    expect(text).toContain('Also delete active/completed downloaded PDFs/content');
     expect(text).toContain('Find ranked results');
     expect(text).toContain('Test Book seeded result');
     expect(text).toContain('Delete metadata');
+    expect(text).toContain('Stalled or 0-progress qBittorrent transfers');
     expect(
       view.querySelector(
         'input[placeholder="Paste magnet/HTTPS .torrent URL or type custom search"]',

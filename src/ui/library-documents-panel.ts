@@ -299,7 +299,7 @@ function renderMetadataCleanup(
     'Metadata cleanup',
     el('p', {
       className: 'muted-copy',
-      text: 'Clears enrichment, TOC, provider IDs, qBittorrent candidates, greylist entries, and document refs for this book. Progress and manual planning choices are preserved.',
+      text: 'Clears enrichment, TOC, provider IDs, qBittorrent candidates, greylist entries, and document refs for this book. Stalled or 0-progress qBittorrent transfers are removed automatically; progress and manual planning choices are preserved.',
     }),
     el(
       'label',
@@ -310,7 +310,9 @@ function renderMetadataCleanup(
           setPendingBooleanOption(store, optionKey, checked);
         },
       }),
-      el('span', { text: 'Also delete downloaded PDFs/content' }),
+      el('span', {
+        text: 'Also delete active/completed downloaded PDFs/content',
+      }),
     ),
     button('Delete metadata', {
       className: 'ghost-button danger-button',

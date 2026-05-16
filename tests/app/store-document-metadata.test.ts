@@ -10,7 +10,6 @@ import type {
 import {
   makeBook,
   makeProject,
-  makeStore,
   makeTestEnrichmentProvider,
   silentLogger,
 } from './store-test-utils';
@@ -145,8 +144,28 @@ describe('document metadata commands', () => {
   });
 
   it('clears book metadata while preserving progress and manual planning work', async () => {
-    const document = documentRef();
-    const store = makeStore({
+    const deleteTorrent = vi.fn();
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchImpl);
+    const document = documentRef({
+      status: 'stalled',
+      availability: {
+        seeders: 0,
+        peers: 0,
+        progress: 0,
+        state: 'stalledDL',
+        availability: 0,
+        downloadSpeedBytesPerSecond: 0,
+      },
+    });
+    const service: QbittorrentIntegrationService = {
+      testConnection: vi.fn(),
+      listPlugins: vi.fn(),
+      findDocumentCandidates: vi.fn(),
+      acquireDocumentCandidate: vi.fn(),
+      deleteTorrent,
+    };
+    const store = createPlannerStore({
       initialProject: makeProject({
         books: {
           'book-1': makeBook({
@@ -205,6 +224,14 @@ describe('document metadata commands', () => {
           },
         },
       }),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      qbittorrentService: service,
+      logger: silentLogger,
+      clock: plannerClock,
     });
 
     await store.commands.clearBookMetadata('book-1');
@@ -228,6 +255,99 @@ describe('document metadata commands', () => {
       done: true,
     });
     expect(state.project.enrichmentCache['book-1']?.status).toBe('idle');
+    expect(deleteTorrent).toHaveBeenCalledTimes(1);
+    expect(deleteTorrent).toHaveBeenCalledWith(
+      expect.anything(),
+      'abc123',
+      true,
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('clears project metadata and deletes stalled zero-progress transfers by default', async () => {
+    const deleteTorrent = vi.fn();
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchImpl);
+    const stalledDocument = documentRef({
+      id: 'stalled-doc',
+      torrentHash: 'stalledhash',
+      sourceUrl: 'magnet:?xt=urn:btih:stalledhash',
+      status: 'downloading',
+      storagePath: '/repo/output/data/documents/Stalled.pdf',
+      availability: {
+        seeders: 0,
+        peers: 0,
+        progress: 0,
+        state: 'downloading',
+        availability: 0,
+        downloadSpeedBytesPerSecond: 0,
+      },
+    });
+    const activeDocument = documentRef({
+      id: 'active-doc',
+      torrentHash: 'activehash',
+      sourceUrl: 'magnet:?xt=urn:btih:activehash',
+      status: 'downloading',
+      storagePath: '/repo/output/data/documents/Active.pdf',
+      availability: {
+        seeders: 4,
+        peers: 1,
+        progress: 0.35,
+        state: 'downloading',
+        availability: 1,
+        downloadSpeedBytesPerSecond: 900,
+      },
+    });
+    const service: QbittorrentIntegrationService = {
+      testConnection: vi.fn(),
+      listPlugins: vi.fn(),
+      findDocumentCandidates: vi.fn(),
+      acquireDocumentCandidate: vi.fn(),
+      deleteTorrent,
+    };
+    const store = createPlannerStore({
+      initialProject: makeProject({
+        books: {
+          'book-1': makeBook({
+            documents: [stalledDocument],
+            selectedDocumentId: stalledDocument.id,
+          }),
+          'book-2': makeBook({
+            id: 'book-2',
+            title: 'Second Book',
+            planOrder: 1,
+            documents: [activeDocument],
+            selectedDocumentId: activeDocument.id,
+          }),
+        },
+      }),
+      engine: createPlannerEngine({
+        clock: plannerClock,
+        logger: silentLogger,
+      }),
+      enrichmentProvider: makeTestEnrichmentProvider(),
+      qbittorrentService: service,
+      logger: silentLogger,
+      clock: plannerClock,
+    });
+
+    await store.commands.clearProjectMetadata();
+
+    expect(
+      store.selectors.getProject().library.books['book-1']?.documents,
+    ).toEqual([]);
+    expect(
+      store.selectors.getProject().library.books['book-2']?.documents,
+    ).toEqual([]);
+    expect(deleteTorrent).toHaveBeenCalledTimes(1);
+    expect(deleteTorrent).toHaveBeenCalledWith(
+      expect.anything(),
+      'stalledhash',
+      true,
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it('clears project metadata and optionally deletes each document once', async () => {

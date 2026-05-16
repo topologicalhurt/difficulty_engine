@@ -13,7 +13,8 @@ describe('project view', () => {
 
     expect(text).toContain('Project metadata maintenance');
     expect(text).toContain('Delete all metadata');
-    expect(text).toContain('Also delete downloaded PDFs/content');
+    expect(text).toContain('Stalled or 0-progress qBittorrent transfers');
+    expect(text).toContain('Also delete active/completed downloaded PDFs/content');
     expect(text).toContain('qBittorrent connection details are local-only');
   });
 

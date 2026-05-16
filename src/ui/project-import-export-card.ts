@@ -147,7 +147,7 @@ export function renderImportExportCard(
     el('p', {
       className: 'muted-copy',
       text:
-        'Clears enrichment, TOC, provider IDs, qBittorrent candidates, greylist entries, and document refs for every book. Reading progress and manual planning choices are preserved.',
+        'Clears enrichment, TOC, provider IDs, qBittorrent candidates, greylist entries, and document refs for every book. Stalled or 0-progress qBittorrent transfers are removed automatically; reading progress and manual planning choices are preserved.',
     }),
     el(
       'label',
@@ -165,7 +165,9 @@ export function renderImportExportCard(
           );
         },
       }),
-      el('span', { text: 'Also delete downloaded PDFs/content' }),
+      el('span', {
+        text: 'Also delete active/completed downloaded PDFs/content',
+      }),
     ),
     button('Delete all metadata', {
       className: 'ghost-button danger-button',

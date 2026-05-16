@@ -1,4 +1,5 @@
 import type {
+  BookDocumentRef,
   CreatePlannerStoreOptions,
   PlannerProjectV1,
   PlannerStoreCommands,
@@ -6,9 +7,17 @@ import type {
 import type { StoreCommandContext } from './store-command-context';
 import {
   deleteDocumentContent,
+  deleteQbittorrentHashes,
   idleCacheEntry,
   metadataClearedBook,
+  stalledOrZeroProgressQbittorrentDocuments,
 } from './store-document-state';
+
+function torrentHashesForDocuments(documents: BookDocumentRef[]): string[] {
+  return documents
+    .map((document) => document.torrentHash)
+    .filter((hash): hash is string => Boolean(hash));
+}
 
 export function createMetadataCommands(
   context: StoreCommandContext,
@@ -45,15 +54,27 @@ export function createMetadataCommands(
           message: `Cleared metadata for ${book.title}.`,
         },
       });
-      if (!options.deleteContent) return;
-      const errors = await deleteDocumentContent(
-        state.project,
-        new Set([bookId]),
-        state.ui.qbittorrentConnection.baseUrl,
-        services.qbittorrentService,
-        state.ui.qbittorrentConnection,
-        documents,
-      );
+      const documentsToDelete = options.deleteContent
+        ? documents
+        : stalledOrZeroProgressQbittorrentDocuments(documents);
+      if (!documentsToDelete.length) return;
+      const affectedBookIds = new Set([bookId]);
+      const errors = options.deleteContent
+        ? await deleteDocumentContent(
+            state.project,
+            affectedBookIds,
+            state.ui.qbittorrentConnection.baseUrl,
+            services.qbittorrentService,
+            state.ui.qbittorrentConnection,
+            documentsToDelete,
+          )
+        : await deleteQbittorrentHashes(
+            state.project,
+            affectedBookIds,
+            services.qbittorrentService,
+            state.ui.qbittorrentConnection,
+            torrentHashesForDocuments(documentsToDelete),
+          );
       if (errors.length) {
         context.commitUi('metadata.clearBook', {
           banner: {
@@ -96,15 +117,26 @@ export function createMetadataCommands(
           },
         },
       );
-      if (!options.deleteContent) return;
-      const errors = await deleteDocumentContent(
-        state.project,
-        affectedBookIds,
-        state.ui.qbittorrentConnection.baseUrl,
-        services.qbittorrentService,
-        state.ui.qbittorrentConnection,
-        documents,
-      );
+      const documentsToDelete = options.deleteContent
+        ? documents
+        : stalledOrZeroProgressQbittorrentDocuments(documents);
+      if (!documentsToDelete.length) return;
+      const errors = options.deleteContent
+        ? await deleteDocumentContent(
+            state.project,
+            affectedBookIds,
+            state.ui.qbittorrentConnection.baseUrl,
+            services.qbittorrentService,
+            state.ui.qbittorrentConnection,
+            documentsToDelete,
+          )
+        : await deleteQbittorrentHashes(
+            state.project,
+            affectedBookIds,
+            services.qbittorrentService,
+            state.ui.qbittorrentConnection,
+            torrentHashesForDocuments(documentsToDelete),
+          );
       if (errors.length) {
         context.commitUi('metadata.clearProject', {
           banner: {

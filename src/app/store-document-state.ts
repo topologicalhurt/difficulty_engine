@@ -147,6 +147,25 @@ export function staleQbittorrentCandidateHashes(
   return [...hashes].sort();
 }
 
+export function stalledOrZeroProgressQbittorrentDocuments(
+  documents: BookDocumentRef[] = [],
+): BookDocumentRef[] {
+  return documents.filter((document) => {
+    if (document.provider !== 'qbittorrent') return false;
+    if (document.status === 'stalled' || document.status === 'failed') {
+      return true;
+    }
+    const availability = document.availability;
+    return (
+      document.status !== 'complete' &&
+      (availability.progress ?? 0) <= 0 &&
+      (availability.seeders ?? 0) <= 0 &&
+      (availability.availability ?? 0) <= 0 &&
+      (availability.downloadSpeedBytesPerSecond ?? 0) <= 0
+    );
+  });
+}
+
 export function projectWithCandidateQueue(
   project: PlannerProjectV1,
   bookId: string,
