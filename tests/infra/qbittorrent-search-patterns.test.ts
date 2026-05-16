@@ -5,10 +5,12 @@ import type { SourceContentKind } from '../../src/core/types';
 import { defaultDocumentAcquisitionPolicy } from '../../src/infra/document-acquisition';
 import {
   classifySearchResults,
-  qbittorrentSearchPatterns,
-  qbittorrentSearchQueries,
   sortSearchCandidates,
 } from '../../src/infra/qbittorrent-search';
+import {
+  qbittorrentSearchPatterns,
+  qbittorrentSearchQueries,
+} from '../../src/infra/qbittorrent-search-queries';
 
 describe('qBittorrent search patterns and ordering', () => {
   it('orders search candidates with the shared document content preference', () => {
@@ -79,6 +81,7 @@ describe('qBittorrent search patterns and ordering', () => {
       'practical electronics for inventors',
       'practical electronics for inventors scherz',
       'scherz electronics inventors',
+      'scherz practical electronics for inventors',
       'practical electronics inventors',
       'practical electronics',
     ]);
@@ -113,6 +116,32 @@ describe('qBittorrent search patterns and ordering', () => {
         },
       ]),
     );
+  });
+
+  it('partitions author-prefixed subtitle titles into recall-friendly searches', () => {
+    const patterns = qbittorrentSearchPatterns({
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Kline M. Calculus. An Intuitive and Physical Approach 2ed 1998',
+        short: 'Calculus',
+        authors: ['Morris Kline'],
+        isbn: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+      },
+    });
+
+    expect(patterns).toEqual(
+      expect.arrayContaining([
+        'an intuitive and physical approach',
+        'intuitive physical approach',
+        'kline calculus',
+        'calculus intuitive physical approach',
+      ]),
+    );
+    expect(patterns.join(' ')).not.toMatch(/\b(?:1998|2ed)\b/i);
   });
 
   it('keeps known non-PDF qBittorrent hits blocked from acquisition', () => {

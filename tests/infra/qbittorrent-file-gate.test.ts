@@ -182,6 +182,101 @@ describe('qBittorrent selected file gate', () => {
     expect(resumeCalls).toHaveLength(1);
   });
 
+  it('rejects a search candidate when live qBittorrent availability is zero', async () => {
+    const deleteCalls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/v2/auth/login')) {
+        return new Response('Ok.', {
+          status: 200,
+          headers: { 'set-cookie': 'SID=abc; HttpOnly' },
+        });
+      }
+      if (url.endsWith('/api/v2/torrents/info')) {
+        return Response.json([
+          {
+            hash: 'klinehash',
+            name: 'Kline M Calculus An Intuitive and Physical Approach',
+            save_path: 'output/data/documents',
+            state: 'stalledDL',
+            progress: 0,
+            num_seeds: 0,
+            num_leechs: 0,
+            availability: 0,
+            dlspeed: 0,
+          },
+        ]);
+      }
+      if (url.includes('/api/v2/torrents/files?')) {
+        return Response.json([
+          {
+            index: 0,
+            name: 'Morris Kline Calculus An Intuitive and Physical Approach.pdf',
+            size: 10_000,
+            progress: 0,
+          },
+        ]);
+      }
+      if (url.endsWith('/api/v2/torrents/filePrio')) {
+        return new Response('Ok.', { status: 200 });
+      }
+      if (
+        url.endsWith('/api/v2/torrents/start') ||
+        url.endsWith('/api/v2/torrents/resume')
+      ) {
+        return new Response('Ok.', { status: 200 });
+      }
+      if (url.endsWith('/api/v2/torrents/delete')) {
+        const body = init?.body as URLSearchParams;
+        deleteCalls.push(`${body.get('hashes')}:${body.get('deleteFiles')}`);
+        return new Response('Ok.', { status: 200 });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    const provider = createQBittorrentProvider({
+      baseUrl: 'http://127.0.0.1:8787',
+      username: 'user',
+      password: 'pass',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      savePath: 'output/data/documents',
+    });
+    const sourceSettings = createDefaultSourceSettings();
+    const candidate = {
+      id: 'kline-search',
+      provider: 'qbittorrent',
+      title: 'Kline M. Calculus. An Intuitive and Physical Approach 2ed 1998',
+      sourceUrl: 'magnet:?xt=urn:btih:klinehash',
+      contentKind: 'pdf' as const,
+      accessBasis: 'user_owned' as const,
+      confidence: 0.92,
+      matchScore: 1,
+      seeders: 2,
+      peers: 0,
+      searchAvailability: {
+        seeders: 2,
+        peers: 0,
+        pattern: 'calculus an intuitive and physical approach',
+      },
+      availabilitySource: 'search_result' as const,
+    };
+
+    await expect(
+      provider.acquire(candidate, {
+        book: {
+          ...EXAMPLE_BOOK,
+          title: 'Calculus: An Intuitive and Physical Approach',
+          authors: ['Morris Kline'],
+          sourcePath: null,
+        },
+        policy: {
+          ...defaultDocumentAcquisitionPolicy(),
+          enabled: true,
+          sourceSettings,
+        },
+      }),
+    ).rejects.toThrow('no live seeders');
+    expect(deleteCalls).toEqual(['klinehash:true']);
+  });
+
   it('keeps a queued ref while qBittorrent file metadata is pending', async () => {
     const priorityCalls: string[] = [];
     const resumeCalls: string[] = [];

@@ -1,5 +1,6 @@
 import { normalizeMatcherText } from './matchers';
 import type { BookDocumentCandidateOption } from './types';
+import { candidateRankingSeeders } from './document-candidate-availability';
 
 export const DOCUMENT_CANDIDATE_QUEUE_LIMIT = 10;
 
@@ -38,8 +39,7 @@ export function compareQueuedCandidates(
   return (
     (right.qualityScore ?? 0) - (left.qualityScore ?? 0) ||
     (right.matchScore ?? 0) - (left.matchScore ?? 0) ||
-    (right.seeders ?? right.availability?.seeders ?? 0) -
-      (left.seeders ?? left.availability?.seeders ?? 0) ||
+    candidateRankingSeeders(right) - candidateRankingSeeders(left) ||
     left.title.localeCompare(right.title) ||
     left.id.localeCompare(right.id)
   );

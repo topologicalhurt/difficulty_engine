@@ -224,6 +224,7 @@ export function candidateFromLiveTorrent(
     matchScore,
     seeders: torrent.availability.seeders,
     peers: torrent.availability.peers,
+    availabilitySource: 'live_qbit' as const,
     sizeBytes: torrent.availability.sizeBytes ?? undefined,
     availability: torrent.availability,
     qualityReason:

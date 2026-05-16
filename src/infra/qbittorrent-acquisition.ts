@@ -213,8 +213,8 @@ export async function acquireTorrentDocument(
         status: 'queued',
         matchScore: candidate.matchScore ?? candidate.confidence,
         availability: {
-          seeders: candidate.seeders ?? null,
-          peers: candidate.peers ?? null,
+          seeders: null,
+          peers: null,
           progress: 0,
           state: 'metadata_pending',
           reason:
@@ -252,6 +252,7 @@ export async function acquireTorrentDocument(
         seeders: availability.seeders,
         peers: availability.peers,
         availability,
+        availabilitySource: 'live_qbit',
       };
       if (!candidateHasDownloadEvidence(liveCandidate)) {
         await rejectDeadPendingTorrent(
@@ -345,6 +346,24 @@ export async function acquireTorrentDocument(
   const fileName = basename(storagePath);
   const progress = selected?.progress ?? info?.progress ?? 0;
   const availability = { ...torrentAvailability(info), progress };
+  const liveCandidate: DocumentCandidate = {
+    ...candidate,
+    seeders: availability.seeders,
+    peers: availability.peers,
+    availability,
+    availabilitySource: 'live_qbit',
+  };
+  if (
+    rawStatus !== 'complete' &&
+    candidate.accessBasis !== 'user_provided' &&
+    !candidateHasDownloadEvidence(liveCandidate)
+  ) {
+    await rejectDeadPendingTorrent(
+      client,
+      info?.hash,
+      'qBittorrent reports no live seeders, availability, progress, or download speed for this result; trying the next candidate.',
+    );
+  }
   const contentKind = 'pdf';
   const preliminaryStatus: BookDocumentStatus =
     rawStatus === 'complete' && !completedFileExists

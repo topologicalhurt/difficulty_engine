@@ -120,6 +120,20 @@ describe('library view', () => {
                   confidence: 0.9,
                   matchScore: 0.95,
                   seeders: 12,
+                  searchAvailability: {
+                    seeders: 12,
+                    peers: 1,
+                    pattern: 'test book',
+                  },
+                  availabilitySource: 'live_qbit',
+                  availability: {
+                    seeders: 0,
+                    peers: 0,
+                    progress: 0,
+                    state: 'live_unavailable',
+                    availability: 0,
+                    downloadSpeedBytesPerSecond: 0,
+                  },
                   qualityScore: 0.91,
                   rank: 1,
                 },
@@ -137,9 +151,17 @@ describe('library view', () => {
     expect(text).toContain('Reveal location');
     expect(text).toContain('Remove');
     expect(text).toContain('Also delete downloaded files/content');
-    expect(text).toContain('Also delete active/completed downloaded PDFs/content');
+    expect(text).toContain(
+      'Also delete active/completed downloaded PDFs/content',
+    );
     expect(text).toContain('Find ranked results');
     expect(text).toContain('Test Book seeded result');
+    expect(text).toContain('live 0 seeders');
+    expect(text).toContain('plugin reported 12 seeders');
+    expect(text).toContain(
+      'Plugin reported seeders, but qBittorrent currently reports no live availability.',
+    );
+    expect(text).toContain('Add and verify');
     expect(text).toContain('Delete metadata');
     expect(text).toContain('Stalled or 0-progress qBittorrent transfers');
     expect(
@@ -147,5 +169,36 @@ describe('library view', () => {
         'input[placeholder="Paste magnet/HTTPS .torrent URL or type custom search"]',
       ),
     ).toBeTruthy();
+  });
+
+  it('does not truncate learned reading-scope section rows', () => {
+    const chapters = Array.from(
+      { length: 10 },
+      (_, index) => `Chapter ${index + 1} Scope Topic`,
+    );
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          'book-1': makeBook({
+            enrichment: {
+              chapters,
+              topics: [],
+              description: '',
+              olSubjects: [],
+              tocSource: 'pdf',
+              chapterPageRanges: chapters.map((_, index) => ({
+                start: index * 10 + 1,
+                end: index === chapters.length - 1 ? null : (index + 1) * 10,
+              })),
+            },
+          }),
+        },
+      }),
+    });
+    store.commands.selectBook('book-1');
+    const view = renderLibraryView(store.selectors.getState(), store);
+
+    expect(view.textContent).toContain('10 learned section row(s)');
+    expect(view.textContent).toContain('Chapter 10 Scope Topic');
   });
 });

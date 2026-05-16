@@ -12,6 +12,11 @@ import {
   compareQueuedCandidates,
   rankAndLimitCandidateQueue,
 } from './document-candidate-queue';
+import {
+  candidateHasLiveAvailability,
+  candidateHasPositiveDownloadEvidence,
+  candidateRankingSeeders,
+} from './document-candidate-availability';
 import { currentIsoTimestamp } from './time';
 
 const DOCUMENT_BLOCKED_CANDIDATE_LIMIT = 20;
@@ -22,7 +27,8 @@ const GREYLIST_PENALTY_DECAY = 0.09;
 const GREYLIST_MAX_PENALTY = 0.72;
 const GREYLIST_MIN_RETAINED_PENALTY = 0.02;
 
-const STALLED_STATE_PATTERN = /(?:stalledDL|error|missingFiles|unknown)/i;
+const STALLED_STATE_PATTERN =
+  /(?:stalledDL|error|missingFiles|unknown|live_unavailable)/i;
 const USER_PAUSED_STATE_PATTERN = /(?:paused|stopped|queued)/i;
 
 export function emptyDocumentAcquisitionState(): BookDocumentAcquisitionState {
@@ -129,15 +135,10 @@ export function documentRefIsGreylistable(docRef: BookDocumentRef): boolean {
 function candidateIsCleanObservation(
   candidate: BookDocumentCandidateOption,
 ): boolean {
-  const availability = candidate.availability;
-  if (!availability) return (candidate.seeders ?? 0) > 0;
-  if (USER_PAUSED_STATE_PATTERN.test(availability.state ?? '')) return false;
-  return (
-    (candidate.seeders ?? availability.seeders ?? 0) > 0 ||
-    (availability.availability ?? 0) > 0 ||
-    (availability.downloadSpeedBytesPerSecond ?? 0) > 0 ||
-    (availability.progress ?? 0) >= 1
-  );
+  if (USER_PAUSED_STATE_PATTERN.test(candidate.availability?.state ?? '')) {
+    return false;
+  }
+  return candidateHasPositiveDownloadEvidence(candidate);
 }
 
 function greylistReason(
@@ -190,7 +191,7 @@ function nextGreylistEntry(
 function fallbackCandidateQuality(
   candidate: BookDocumentCandidateOption,
 ): number {
-  const seeders = candidate.seeders ?? candidate.availability?.seeders ?? 0;
+  const seeders = candidateRankingSeeders(candidate);
   const seederScore = Math.min(
     1,
     Math.log1p(Math.max(0, seeders)) / Math.log1p(60),
@@ -205,7 +206,7 @@ function fallbackCandidateQuality(
   );
   return (
     (candidate.matchScore ?? candidate.confidence) * 0.6 +
-    seederScore * 0.25 +
+    seederScore * (candidateHasLiveAvailability(candidate) ? 0.25 : 0.18) +
     Math.max(availabilityScore, progressScore) * 0.15
   );
 }
@@ -384,7 +385,7 @@ function mergeBlockedCandidates(
     const previous = byKey.get(key);
     if (
       !previous ||
-      (candidate.seeders ?? 0) > (previous.seeders ?? 0) ||
+      candidateRankingSeeders(candidate) > candidateRankingSeeders(previous) ||
       (candidate.matchScore ?? 0) > (previous.matchScore ?? 0)
     ) {
       byKey.set(key, candidate);
@@ -402,7 +403,7 @@ function compareBlockedCandidates(
   return (
     Number(right.retryableAsUserOwned) - Number(left.retryableAsUserOwned) ||
     (right.matchScore ?? 0) - (left.matchScore ?? 0) ||
-    (right.seeders ?? 0) - (left.seeders ?? 0) ||
+    candidateRankingSeeders(right) - candidateRankingSeeders(left) ||
     left.title.localeCompare(right.title) ||
     left.id.localeCompare(right.id)
   );

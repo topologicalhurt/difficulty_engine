@@ -1,4 +1,8 @@
 import type { DocumentCandidate } from './document-acquisition';
+import {
+  candidateHasLiveAvailability,
+  candidateRankingSeeders,
+} from '../core/document-candidate-availability';
 
 export const EXACT_DOCUMENT_MATCH_SCORE = 0.92;
 export const SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA = 0.15;
@@ -13,40 +17,42 @@ function bounded(value: number, min = 0, max = 1): number {
 function availabilityQuality(
   candidate: Pick<
     DocumentCandidate,
-    'seeders' | 'availability' | 'sizeBytes'
+    | 'seeders'
+    | 'availability'
+    | 'sizeBytes'
+    | 'availabilitySource'
+    | 'searchAvailability'
   >,
 ): number {
   const availability = candidate.availability;
-  const seeders =
-    candidate.seeders ??
-    availability?.seeders ??
-    (availability?.progress === 1 ? 1 : null);
+  const hasLiveAvailability = candidateHasLiveAvailability(candidate);
+  const seeders = candidateRankingSeeders(candidate);
   const seederScore =
-    seeders == null
-      ? 0.35
-      : Math.min(
-          1,
-          Math.log1p(Math.max(0, seeders)) /
-            Math.log1p(DOCUMENT_SEEDER_SCORE_CAP),
-        );
+    Math.min(
+      1,
+      Math.log1p(Math.max(0, seeders)) /
+        Math.log1p(DOCUMENT_SEEDER_SCORE_CAP),
+    ) * (hasLiveAvailability ? 1 : 0.9);
   const liveAvailability =
-    availability?.availability == null
+    !hasLiveAvailability || availability?.availability == null
       ? null
       : bounded(availability.availability);
   const speed =
-    availability?.downloadSpeedBytesPerSecond == null
+    !hasLiveAvailability || availability?.downloadSpeedBytesPerSecond == null
       ? null
       : Math.max(0, availability.downloadSpeedBytesPerSecond);
   const speedScore =
     speed == null
       ? null
       : bounded(speed / DOCUMENT_SPEED_SCORE_CAP_BYTES_PER_SECOND);
-  const eta = availability?.etaSeconds;
+  const eta = hasLiveAvailability ? availability?.etaSeconds : null;
   const etaScore =
     eta == null || eta < 0 || !Number.isFinite(eta)
       ? null
       : bounded(1 - eta / DOCUMENT_REASONABLE_ETA_SECONDS);
-  const progressScore = bounded(availability?.progress ?? 0);
+  const progressScore = hasLiveAvailability
+    ? bounded(availability?.progress ?? 0)
+    : 0;
   const knownScores = [
     liveAvailability,
     speedScore,
@@ -62,8 +68,14 @@ function availabilityQuality(
 export function documentCandidateQualityScore(
   candidate: Pick<
     DocumentCandidate,
-    'matchScore' | 'seeders' | 'confidence' | 'contentKind' | 'accessBasis'
+    | 'matchScore'
+    | 'seeders'
+    | 'confidence'
+    | 'contentKind'
+    | 'accessBasis'
     | 'availability'
+    | 'availabilitySource'
+    | 'searchAvailability'
     | 'sizeBytes'
     | 'greylistPenalty'
   >,
@@ -71,10 +83,7 @@ export function documentCandidateQualityScore(
 ): number {
   const hasMatchEvidence = candidate.matchScore != null;
   const matchScore = candidate.matchScore ?? 0.5;
-  const seeders =
-    candidate.seeders ??
-    candidate.availability?.seeders ??
-    (candidate.availability?.progress === 1 ? 1 : null);
+  const seeders = candidateRankingSeeders(candidate);
   const liveQualityScore = availabilityQuality(candidate);
   const contentScore = Math.max(
     0,
@@ -94,8 +103,9 @@ export function documentCandidateQualityScore(
       contentScore * 0.6 + provenanceScore * 0.2 + candidate.confidence * 0.2
     );
   }
-  const exactBoost = matchScore >= EXACT_DOCUMENT_MATCH_SCORE ? 0.08 : 0;
+  const exactBoost = matchScore >= EXACT_DOCUMENT_MATCH_SCORE ? 0.04 : 0;
   const noAvailability =
+    candidateHasLiveAvailability(candidate) &&
     seeders === 0 &&
     (candidate.availability?.availability ?? 0) <= 0 &&
     (candidate.availability?.progress ?? 0) < 1;
@@ -124,6 +134,8 @@ export function compareDocumentCandidateQuality(
     | 'id'
     | 'accessBasis'
     | 'availability'
+    | 'availabilitySource'
+    | 'searchAvailability'
     | 'sizeBytes'
     | 'greylistPenalty'
   >,
@@ -137,6 +149,8 @@ export function compareDocumentCandidateQuality(
     | 'id'
     | 'accessBasis'
     | 'availability'
+    | 'availabilitySource'
+    | 'searchAvailability'
     | 'sizeBytes'
     | 'greylistPenalty'
   >,
@@ -144,6 +158,17 @@ export function compareDocumentCandidateQuality(
 ): number {
   const leftMatch = left.matchScore ?? 0;
   const rightMatch = right.matchScore ?? 0;
+  const leftSeeders = candidateRankingSeeders(left);
+  const rightSeeders = candidateRankingSeeders(right);
+  const seederDelta = rightSeeders - leftSeeders;
+  if (
+    leftMatch >= 0.55 &&
+    rightMatch >= 0.55 &&
+    Math.abs(rightMatch - leftMatch) <= 0.35 &&
+    Math.abs(seederDelta) >= 10
+  ) {
+    return seederDelta;
+  }
   const scoreDelta =
     documentCandidateQualityScore(right, contentKindPriority) -
     documentCandidateQualityScore(left, contentKindPriority);
@@ -158,9 +183,6 @@ export function compareDocumentCandidateQuality(
       return matchDelta;
     }
   }
-  const seederDelta =
-    (right.seeders ?? right.availability?.seeders ?? 0) -
-    (left.seeders ?? left.availability?.seeders ?? 0);
   if (seederDelta !== 0) return seederDelta;
   const kindDelta =
     contentKindPriority(left.contentKind) -

@@ -18,6 +18,7 @@ import {
   projectWithCandidateQueue,
   projectWithDocumentAdded,
   projectWithDocumentRemoved,
+  projectWithLiveUnavailableCandidate,
   replacedQbittorrentDocuments,
   staleQbittorrentCandidateHashes,
 } from './store-document-state';
@@ -327,15 +328,27 @@ export function createDocumentCommands(
         });
         await acquireCandidate(bookId, candidateId, candidates);
       } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Could not acquire this qBittorrent result.';
+        if (/no live seeders|no live availability/i.test(message)) {
+          context.commitProject(
+            'document.candidates',
+            projectWithLiveUnavailableCandidate(
+              context.getState().project,
+              bookId,
+              candidateId,
+              candidates,
+            ),
+          );
+        }
         context.commitUi('document.candidates', {
           documentCandidates: {
             ...context.getState().ui.documentCandidates,
             bookId,
             status: 'failed',
-            error:
-              error instanceof Error
-                ? error.message
-                : 'Could not acquire this qBittorrent result.',
+            error: message,
           },
         });
       }

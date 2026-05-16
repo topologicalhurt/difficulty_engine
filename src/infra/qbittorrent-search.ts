@@ -9,12 +9,10 @@ import type {
 import {
   authorAppearsInText,
   isbnAppearsInText,
-  normalizeMatcherText,
-  sharesAnyMatchToken,
 } from '../core/matchers';
 import { isSafeTorrentSource } from '../core/document-source-safety';
 import type { QbittorrentPluginInfo } from '../core/types';
-import { uniqueCompactStrings } from '../core/utils';
+import { currentIsoTimestamp } from '../core/time';
 import {
   BAD_FILE_NAME_PATTERN,
   bookMatchScore,
@@ -22,7 +20,6 @@ import {
   hasRequiredQbittorrentTitleEvidence,
   MIN_PLUGIN_SEEDERS,
   MIN_TORRENT_MATCH_SCORE,
-  normalizedBookIsbn,
 } from './qbittorrent-selection';
 import {
   compareDocumentCandidateQuality,
@@ -39,27 +36,13 @@ import {
   peersFromSearchResult,
   seedersFromSearchResult,
 } from './qbittorrent-search-result-fields';
+import type { QbittorrentSearchQuery } from './qbittorrent-search-queries';
 import type { SearchResult } from './qbittorrent-types';
 
-const MAX_QBITTORRENT_SEARCH_PATTERNS = 10;
 const MIN_USER_OWNED_RETRY_SCORE = 0.55;
 const NON_PDF_ONLY_SEARCH_RESULT_PATTERN =
   /\b(?:epub|mobi|azw3|djvu|txt|text)\b/i;
 const PDF_SEARCH_RESULT_PATTERN = /\bpdf\b/i;
-
-// Search plugins are literal-string matchers more often than semantic searchers.
-// Keep variants precise, but remove edition/noise words that commonly hide hits.
-const SEARCH_NOISE_WORD_PATTERN =
-  /\b(?:\d+(?:st|nd|rd|th)?\s*,\s*)?(?:(?:\d+(?:st|nd|rd|th)?|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\s+(?:edition|ed\.?)|(?:edition|ed\.?)\s*\d+|revised|updated|international|student|instructor'?s?|solutions?|manual|workbook|companion)\b/gi;
-const TITLE_TRAILING_DETAIL_PATTERN = /\s*(?::|\(|\s[-–—]\s).*$/;
-const MIN_SEARCH_TOKEN_LENGTH = 3;
-const AUTHOR_SEPARATOR_PATTERN = /\s*(?:\/|;|,|&|\band\b)\s*/i;
-const INITIAL_PATTERN = /^[a-z]$/i;
-
-export interface QbittorrentSearchQuery {
-  intent: QbittorrentSearchIntent;
-  pattern: string;
-}
 
 export interface QbittorrentSearchExtraction {
   candidates: DocumentCandidate[];
@@ -74,34 +57,6 @@ export interface QbittorrentPluginSearchTrace {
   error?: string;
   acceptedCount: number;
   blockedCandidates: BookDocumentBlockedCandidateOption[];
-}
-
-function compactSearchText(value: string): string {
-  return normalizeMatcherText(
-    value
-      .replace(SEARCH_NOISE_WORD_PATTERN, ' ')
-      .replace(/[,:;]+/g, ' ')
-      .replace(/[()[\]{}]/g, ' '),
-  );
-}
-
-function dehyphenatedSearchText(value: string): string {
-  return compactSearchText(value.replace(/[-‐‑‒–—]/g, ' '));
-}
-
-function titleCore(title: string, fallback: string): string {
-  const withoutDetail = title.replace(TITLE_TRAILING_DETAIL_PATTERN, '');
-  return dehyphenatedSearchText(withoutDetail || fallback || title);
-}
-
-function titleWithoutSubtitle(title: string): string {
-  return dehyphenatedSearchText(title.replace(TITLE_TRAILING_DETAIL_PATTERN, ''));
-}
-
-function sharesSearchToken(left: string, right: string): boolean {
-  return (
-    left.length >= MIN_SEARCH_TOKEN_LENGTH && sharesAnyMatchToken(left, right)
-  );
 }
 
 function sourceUrl(result: SearchResult): string {
@@ -128,140 +83,6 @@ function hasRequiredAuthorEvidence(
     authorAppearsInText(request.book.authors, evidenceText) ||
     hasExactQbittorrentTitlePhrase(result.fileName ?? '', request)
   );
-}
-
-function titleSearchVariants(title: string, shortTitle: string): string[] {
-  const compactTitle = compactSearchText(title);
-  const titleWithoutTrailingDetail = compactSearchText(
-    title.replace(TITLE_TRAILING_DETAIL_PATTERN, ''),
-  );
-  return uniqueCompactStrings(
-    [
-      compactTitle,
-      titleWithoutTrailingDetail,
-      sharesSearchToken(compactTitle, shortTitle) ? shortTitle : '',
-    ].map(compactSearchText),
-  );
-}
-
-function authorSurnameTokens(value: string): string[] {
-  const rawTokens = value.replace(/[.]/g, ' ').split(/\s+/).filter(Boolean);
-  const afterInitials = rawTokens
-    .flatMap((token, index) =>
-      INITIAL_PATTERN.test(token) && rawTokens[index + 1]
-        ? [rawTokens[index + 1]]
-        : [],
-    )
-    .map(compactSearchText)
-    .filter((token) => token.length > 2);
-  if (afterInitials.length) return afterInitials;
-  const normalized = compactSearchText(value);
-  const parts = normalized.split(/\s+/).filter(Boolean);
-  return parts.length ? [parts[parts.length - 1]].filter(Boolean) : [];
-}
-
-function authorSearchVariants(authors: string[]): string[] {
-  const segments = authors.flatMap((author) =>
-    String(author)
-      .split(AUTHOR_SEPARATOR_PATTERN)
-      .map((part) => part.trim())
-      .filter(Boolean),
-  );
-  const surnames = segments.flatMap(authorSurnameTokens);
-  return uniqueCompactStrings(surnames.map(compactSearchText)).filter(
-    (author) => author.length > 2,
-  );
-}
-
-function distinctiveTitleTokens(title: string): string[] {
-  return title
-    .split(/\s+/)
-    .filter((token) => token.length >= MIN_SEARCH_TOKEN_LENGTH)
-    .filter(
-      (token) => !/^(?:the|and|for|with|from|into|edition|ed)$/.test(token),
-    )
-    .slice(0, 4);
-}
-
-function distinctiveTokenQuery(title: string): string {
-  return distinctiveTitleTokens(title).join(' ');
-}
-
-function pushQuery(
-  queries: QbittorrentSearchQuery[],
-  seen: Set<string>,
-  intent: QbittorrentSearchIntent,
-  pattern: string,
-): void {
-  const compact = compactSearchText(pattern);
-  if (!compact || seen.has(compact)) return;
-  seen.add(compact);
-  queries.push({ intent, pattern: compact });
-}
-
-export function customQbittorrentSearchQuery(
-  pattern: string,
-): QbittorrentSearchQuery {
-  return { intent: 'custom_query', pattern: compactSearchText(pattern) };
-}
-
-export function qbittorrentSearchQueries(
-  request: DocumentAcquisitionRequest,
-): QbittorrentSearchQuery[] {
-  const isbn = normalizedBookIsbn(request.book.isbn);
-  const seen = new Set<string>();
-  const queries: QbittorrentSearchQuery[] = [];
-  const canonicalTitle = compactSearchText(request.book.title);
-  const coreTitle = titleCore(request.book.title, request.book.short);
-  const withoutSubtitle = titleWithoutSubtitle(request.book.title);
-  const dehyphenatedTitle = dehyphenatedSearchText(request.book.title);
-  const hyphenatedTitle = compactSearchText(
-    request.book.title.replace(SEARCH_NOISE_WORD_PATTERN, ' '),
-  );
-  const titles = titleSearchVariants(request.book.title, request.book.short);
-  const authors = authorSearchVariants(request.book.authors);
-  const authorPhrase = authors.slice(0, 2).join(' ');
-  const topicPhrase = distinctiveTitleTokens(coreTitle).slice(-2).join(' ');
-
-  pushQuery(queries, seen, 'isbn_exact', isbn);
-  if (!canonicalTitle.includes('-')) {
-    pushQuery(queries, seen, 'canonical_title', canonicalTitle);
-  }
-  pushQuery(queries, seen, 'core_title', coreTitle);
-  pushQuery(queries, seen, 'title_without_subtitle', withoutSubtitle);
-  pushQuery(queries, seen, 'dehyphenated_title', dehyphenatedTitle);
-  if (authorPhrase) {
-    pushQuery(
-      queries,
-      seen,
-      'core_title_author',
-      `${coreTitle} ${authorPhrase}`,
-    );
-    pushQuery(
-      queries,
-      seen,
-      'author_topic',
-      `${authorPhrase} ${topicPhrase || coreTitle}`,
-    );
-  }
-  if (hyphenatedTitle.includes('-')) {
-    pushQuery(queries, seen, 'hyphenated_title', hyphenatedTitle);
-  }
-  pushQuery(
-    queries,
-    seen,
-    'distinctive_tokens',
-    distinctiveTokenQuery(coreTitle),
-  );
-  for (const title of titles) pushQuery(queries, seen, 'broad_recall', title);
-
-  return queries.slice(0, MAX_QBITTORRENT_SEARCH_PATTERNS);
-}
-
-export function qbittorrentSearchPatterns(
-  request: DocumentAcquisitionRequest,
-): string[] {
-  return qbittorrentSearchQueries(request).map((query) => query.pattern);
 }
 
 function searchResultPluginName(
@@ -320,6 +141,13 @@ function blockedCandidate(
   if (!url && !title) return null;
   const seeders = seedersFromSearchResult(result);
   const peers = peersFromSearchResult(result);
+  const searchAvailability = {
+    seeders,
+    peers,
+    observedAt: currentIsoTimestamp(),
+    plugin: meta.plugin,
+    pattern: meta.pattern,
+  };
   const numericSeeders = seeders ?? 0;
   const matchScore = bookMatchScore(title, request);
   const contentKind = contentKindFromUrl(title || url);
@@ -349,6 +177,8 @@ function blockedCandidate(
     siteUrl: result.siteUrl,
     seeders,
     peers,
+    searchAvailability,
+    availabilitySource: 'search_result',
     matchScore,
     qualityReason: reasons.join(', '),
     retryableAsUserOwned,
@@ -381,6 +211,13 @@ export function classifySearchResults(
     const detectedContentKind = contentKindFromUrl(title || sourceUrl(result));
     const seeders = seedersFromSearchResult(result);
     const peers = peersFromSearchResult(result);
+    const searchAvailability = {
+      seeders,
+      peers,
+      observedAt: currentIsoTimestamp(),
+      plugin: meta.plugin,
+      pattern: meta.pattern,
+    };
     const numericSeeders = seeders ?? 0;
     const matchScore = bookMatchScore(title, request);
     const pluginName =
@@ -439,6 +276,8 @@ export function classifySearchResults(
       matchScore,
       seeders,
       peers,
+      searchAvailability,
+      availabilitySource: 'search_result' as const,
       availability: {
         seeders,
         peers,

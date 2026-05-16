@@ -22,6 +22,16 @@ export interface BookDocumentAvailability {
   reason?: string;
 }
 
+export type BookDocumentAvailabilitySource = 'search_result' | 'live_qbit';
+
+export interface BookDocumentSearchAvailability {
+  seeders: number | null;
+  peers: number | null;
+  observedAt?: string;
+  plugin?: string;
+  pattern?: string;
+}
+
 export interface BookDocumentRef {
   id: string;
   provider: string;
@@ -53,6 +63,8 @@ export interface BookDocumentCandidateOption {
   sizeBytes?: number;
   seeders?: number | null;
   peers?: number | null;
+  searchAvailability?: BookDocumentSearchAvailability;
+  availabilitySource?: BookDocumentAvailabilitySource;
   matchScore?: number;
   qualityScore?: number;
   qualityReason?: string;
@@ -72,6 +84,11 @@ export type QbittorrentSearchIntent =
   | 'dehyphenated_title'
   | 'core_title'
   | 'title_without_subtitle'
+  | 'subtitle_phrase'
+  | 'subtitle_distinctive'
+  | 'title_subtitle_core'
+  | 'author_title_core'
+  | 'author_subtitle'
   | 'core_title_author'
   | 'author_topic'
   | 'hyphenated_title'
@@ -93,6 +110,8 @@ export interface BookDocumentBlockedCandidateOption {
   siteUrl?: string;
   seeders?: number | null;
   peers?: number | null;
+  searchAvailability?: BookDocumentSearchAvailability;
+  availabilitySource?: BookDocumentAvailabilitySource;
   matchScore?: number;
   qualityScore?: number;
   qualityReason?: string;

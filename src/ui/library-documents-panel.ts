@@ -6,6 +6,12 @@ import type {
   BookRecord,
   PlannerStore,
 } from '../core/types';
+import {
+  candidateHasLiveAvailability,
+  candidateLiveSeeders,
+  candidatePeersForDisplay,
+  candidateSearchSeeders,
+} from '../core/document-candidate-availability';
 import { badge, button, card, el, emptyState } from './dom';
 import { checkboxControl, textInputControl } from './form-controls';
 import { formatOneDecimal, formatPercent } from './format';
@@ -18,6 +24,28 @@ import {
   seedersLabel,
 } from './document-source-actions';
 import { renderBlockedCandidates } from './library-blocked-candidates';
+
+function candidateSeederLabels(
+  candidate: BookDocumentCandidateOption,
+): string[] {
+  const liveSeeders = candidateLiveSeeders(candidate);
+  const searchSeeders = candidateSearchSeeders(candidate);
+  const labels = candidateHasLiveAvailability(candidate)
+    ? [
+        liveSeeders == null
+          ? 'live seeders unknown'
+          : `live ${liveSeeders} seeders`,
+        searchSeeders == null
+          ? null
+          : `plugin reported ${searchSeeders} seeders`,
+      ]
+    : [
+        searchSeeders == null
+          ? 'plugin seeders unknown'
+          : `plugin reported ${searchSeeders} seeders`,
+      ];
+  return labels.filter((label): label is string => Boolean(label));
+}
 function statusTone(
   status: BookDocumentRef['status'],
 ): 'neutral' | 'success' | 'warn' | 'danger' {
@@ -230,6 +258,7 @@ function renderCandidateQueueItem(
   status: AppState['ui']['documentCandidates']['status'],
   store: PlannerStore,
 ): HTMLElement {
+  const peers = candidatePeersForDisplay(candidate);
   return el(
     'div',
     { className: 'document-card' },
@@ -250,10 +279,8 @@ function renderCandidateQueueItem(
     el('div', {
       className: 'muted-copy',
       text: [
-        candidate.seeders == null
-          ? 'unknown seeders'
-          : `${candidate.seeders} seeders`,
-        candidate.peers == null ? null : `${candidate.peers} peers`,
+        ...candidateSeederLabels(candidate),
+        peers == null ? null : `${peers} peers`,
         candidate.availability?.etaSeconds == null
           ? null
           : `ETA ${formatDuration(candidate.availability.etaSeconds)}`,
@@ -268,6 +295,14 @@ function renderCandidateQueueItem(
         .filter(Boolean)
         .join(' · '),
     }),
+    candidateHasLiveAvailability(candidate) &&
+    (candidateLiveSeeders(candidate) ?? 0) <= 0 &&
+    (candidateSearchSeeders(candidate) ?? 0) > 0
+      ? el('div', {
+          className: 'muted-copy',
+          text: 'Plugin reported seeders, but qBittorrent currently reports no live availability.',
+        })
+      : null,
     candidate.greylistReason
       ? el('div', {
           className: 'muted-copy',
@@ -281,7 +316,7 @@ function renderCandidateQueueItem(
         })
       : null,
     el('div', { className: 'muted-copy', text: candidate.sourceUrl }),
-    button('Use this result', {
+    button('Add and verify', {
       className: 'ghost-button',
       disabled: status === 'acquiring',
       onClick: () =>

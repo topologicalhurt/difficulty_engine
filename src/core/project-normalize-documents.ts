@@ -1,7 +1,6 @@
 import { normalizeProvenance } from './project-normalize-provenance';
 import type {
   BookDocumentAcquisitionState,
-  BookDocumentAvailability,
   BookDocumentBlockedCandidateOption,
   BookDocumentCandidateOption,
   BookDocumentGreylistEntry,
@@ -11,16 +10,22 @@ import type {
   QbittorrentSearchIntent,
   SourceContentKind,
 } from './types';
-import { compactItems, safeNumber } from './utils';
+import { compactItems } from './utils';
 import {
   normalizeNumber,
   normalizeString,
 } from './project-normalize-primitives';
+import {
+  legacySearchAvailability,
+  normalizeDocumentAvailability,
+  normalizeSearchAvailability,
+} from './project-normalize-document-availability';
 import { EPOCH_ISO_TIMESTAMP } from './time';
 import {
   documentGreylistKey,
   normalizeDocumentAcquisitionState,
 } from './document-acquisition-state';
+import { candidateHasLiveAvailability } from './document-candidate-availability';
 
 function normalizeDocumentStatus(
   value: unknown,
@@ -49,42 +54,6 @@ function normalizeContentKind(value: unknown): SourceContentKind {
     : 'pdf';
 }
 
-function normalizeDocumentAvailability(
-  value: unknown,
-): BookDocumentAvailability {
-  const raw =
-    value && typeof value === 'object'
-      ? (value as Record<string, unknown>)
-      : {};
-  const nullableCount = (input: unknown): number | null =>
-    input == null || input === ''
-      ? null
-      : Math.max(0, Math.round(safeNumber(input, 0)));
-  return {
-    seeders: nullableCount(raw.seeders),
-    peers: nullableCount(raw.peers),
-    progress: normalizeNumber(raw.progress, 0, 0, 1),
-    state: normalizeString(raw.state),
-    etaSeconds:
-      raw.etaSeconds == null
-        ? null
-        : normalizeNumber(raw.etaSeconds, 0, 0, 365 * 24 * 60 * 60),
-    downloadSpeedBytesPerSecond:
-      raw.downloadSpeedBytesPerSecond == null
-        ? null
-        : normalizeNumber(raw.downloadSpeedBytesPerSecond, 0, 0),
-    availability:
-      raw.availability == null ? null : normalizeNumber(raw.availability, 0, 0),
-    sizeBytes:
-      raw.sizeBytes == null ? null : normalizeNumber(raw.sizeBytes, 0, 0),
-    qualityScore:
-      raw.qualityScore == null
-        ? undefined
-        : normalizeNumber(raw.qualityScore, 0, 0, 1),
-    reason: normalizeString(raw.reason) || undefined,
-  };
-}
-
 function normalizeCandidateOption(
   input: unknown,
 ): BookDocumentCandidateOption | null {
@@ -96,6 +65,22 @@ function normalizeCandidateOption(
   const sourceUrl = normalizeString(raw.sourceUrl);
   const title = normalizeString(raw.title);
   if (!id || !sourceUrl || !title) return null;
+  const availability = normalizeDocumentAvailability(raw.availability);
+  const searchAvailability =
+    normalizeSearchAvailability(raw.searchAvailability) ??
+    legacySearchAvailability(raw, availability);
+  const availabilitySource =
+    raw.availabilitySource === 'live_qbit' ||
+    raw.availabilitySource === 'search_result'
+      ? raw.availabilitySource
+      : candidateHasLiveAvailability({
+            availability,
+            searchAvailability,
+          })
+        ? 'live_qbit'
+        : searchAvailability
+          ? 'search_result'
+          : undefined;
   const candidate: BookDocumentCandidateOption = {
     id,
     provider: normalizeString(raw.provider, 'qbittorrent') || 'qbittorrent',
@@ -121,10 +106,14 @@ function normalizeCandidateOption(
       raw.sizeBytes == null ? undefined : normalizeNumber(raw.sizeBytes, 0, 0),
     seeders:
       raw.seeders == null
-        ? null
+        ? (searchAvailability?.seeders ?? null)
         : normalizeNumber(raw.seeders, 0, 0, 100000, true),
     peers:
-      raw.peers == null ? null : normalizeNumber(raw.peers, 0, 0, 100000, true),
+      raw.peers == null
+        ? (searchAvailability?.peers ?? null)
+        : normalizeNumber(raw.peers, 0, 0, 100000, true),
+    searchAvailability,
+    availabilitySource,
     matchScore:
       raw.matchScore == null
         ? undefined
@@ -147,7 +136,7 @@ function normalizeCandidateOption(
     retryable: raw.retryable == null ? true : Boolean(raw.retryable),
     queuedAt: normalizeString(raw.queuedAt) || undefined,
     lastSeenAt: normalizeString(raw.lastSeenAt) || undefined,
-    availability: normalizeDocumentAvailability(raw.availability),
+    availability,
   };
   return {
     ...candidate,
@@ -161,11 +150,17 @@ function normalizeSearchIntent(value: unknown): QbittorrentSearchIntent {
     value === 'dehyphenated_title' ||
     value === 'core_title' ||
     value === 'title_without_subtitle' ||
+    value === 'subtitle_phrase' ||
+    value === 'subtitle_distinctive' ||
+    value === 'title_subtitle_core' ||
+    value === 'author_title_core' ||
+    value === 'author_subtitle' ||
     value === 'core_title_author' ||
     value === 'author_topic' ||
     value === 'hyphenated_title' ||
     value === 'distinctive_tokens' ||
-    value === 'broad_recall'
+    value === 'broad_recall' ||
+    value === 'custom_query'
     ? value
     : 'broad_recall';
 }
@@ -181,6 +176,22 @@ function normalizeBlockedCandidateOption(
   const sourceUrl = normalizeString(raw.sourceUrl);
   const title = normalizeString(raw.title);
   if (!id || !sourceUrl || !title) return null;
+  const availability = normalizeDocumentAvailability(raw.availability);
+  const searchAvailability =
+    normalizeSearchAvailability(raw.searchAvailability) ??
+    legacySearchAvailability(raw, availability);
+  const availabilitySource =
+    raw.availabilitySource === 'live_qbit' ||
+    raw.availabilitySource === 'search_result'
+      ? raw.availabilitySource
+      : candidateHasLiveAvailability({
+            availability,
+            searchAvailability,
+          })
+        ? 'live_qbit'
+        : searchAvailability
+          ? 'search_result'
+          : undefined;
   const blockedReasons = Array.isArray(raw.blockedReasons)
     ? compactItems(raw.blockedReasons.map((reason) => normalizeString(reason)))
     : [];
@@ -208,10 +219,14 @@ function normalizeBlockedCandidateOption(
     siteUrl: normalizeString(raw.siteUrl) || undefined,
     seeders:
       raw.seeders == null
-        ? null
+        ? (searchAvailability?.seeders ?? null)
         : normalizeNumber(raw.seeders, 0, 0, 100000, true),
     peers:
-      raw.peers == null ? null : normalizeNumber(raw.peers, 0, 0, 100000, true),
+      raw.peers == null
+        ? (searchAvailability?.peers ?? null)
+        : normalizeNumber(raw.peers, 0, 0, 100000, true),
+    searchAvailability,
+    availabilitySource,
     matchScore:
       raw.matchScore == null
         ? undefined
@@ -224,7 +239,7 @@ function normalizeBlockedCandidateOption(
     retryableAsUserOwned: Boolean(raw.retryableAsUserOwned),
     sizeBytes:
       raw.sizeBytes == null ? undefined : normalizeNumber(raw.sizeBytes, 0, 0),
-    availability: normalizeDocumentAvailability(raw.availability),
+    availability,
   };
 }
 

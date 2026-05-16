@@ -23,7 +23,7 @@ import type {
 import { defaultDocumentAcquisitionPolicy } from '../src/infra/document-acquisition';
 import { isoTimestamp } from '../src/infra/cache-time';
 import { createQBittorrentIntegrationService } from '../src/infra/qbittorrent-provider';
-import { qbittorrentSearchQueries } from '../src/infra/qbittorrent-search';
+import { qbittorrentSearchQueries } from '../src/infra/qbittorrent-search-queries';
 
 const WORKSPACE_ROOT = process.cwd();
 const DEFAULT_AUDIT_ROOT = resolve(WORKSPACE_ROOT, 'output', 'audits');
@@ -39,6 +39,12 @@ const fixtures = [
     title: 'Practical Electronics for Inventors, 4th Edition',
     short: 'Practical Electronics',
     authors: ['Paul Scherz'],
+    isbn: null,
+  },
+  {
+    title: 'Kline M. Calculus. An Intuitive and Physical Approach 2ed 1998',
+    short: 'Calculus',
+    authors: ['Morris Kline'],
     isbn: null,
   },
 ];

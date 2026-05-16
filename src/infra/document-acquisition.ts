@@ -1,7 +1,9 @@
 import type {
   BookDocumentAvailability,
   BookDocumentAcquisitionState,
+  BookDocumentAvailabilitySource,
   BookDocumentRef,
+  BookDocumentSearchAvailability,
   BookRecord,
 } from '../core/types';
 import type { PageAnchorEvidence } from './toc-page-ranges';
@@ -20,6 +22,7 @@ import {
   documentGreylistKey,
   mergeDocumentCandidateQueue,
 } from '../core/document-acquisition-state';
+import { candidateHasPositiveDownloadEvidence } from '../core/document-candidate-availability';
 
 export type DocumentAccessBasis =
   | 'public_domain'
@@ -48,6 +51,8 @@ export interface DocumentCandidate {
   sizeBytes?: number;
   seeders?: number | null;
   peers?: number | null;
+  searchAvailability?: BookDocumentSearchAvailability;
+  availabilitySource?: BookDocumentAvailabilitySource;
   matchScore?: number;
   qualityScore?: number;
   qualityReason?: string;
@@ -131,18 +136,17 @@ export function isLawfulDocumentCandidate(
 export function candidateHasDownloadEvidence(
   candidate: Pick<
     DocumentCandidate,
-    'provider' | 'accessBasis' | 'seeders' | 'availability'
+    | 'provider'
+    | 'accessBasis'
+    | 'seeders'
+    | 'availability'
+    | 'availabilitySource'
+    | 'searchAvailability'
   >,
 ): boolean {
   if (candidate.provider !== 'qbittorrent') return true;
   if (candidate.accessBasis === 'user_provided') return true;
-  const availability = candidate.availability;
-  return Boolean(
-    (candidate.seeders ?? availability?.seeders ?? 0) > 0 ||
-      (availability?.availability ?? 0) > 0 ||
-      (availability?.downloadSpeedBytesPerSecond ?? 0) > 0 ||
-      (availability?.progress ?? 0) >= 1,
-  );
+  return candidateHasPositiveDownloadEvidence(candidate);
 }
 
 export function choosePreferredDocumentCandidate(

@@ -11,10 +11,12 @@ import type {
 import type { QBittorrentClient } from './qbittorrent-client';
 import {
   classifySearchResults,
-  customQbittorrentSearchQuery,
-  qbittorrentSearchQueries,
   sortSearchCandidates,
 } from './qbittorrent-search';
+import {
+  customQbittorrentSearchQuery,
+  qbittorrentSearchQueries,
+} from './qbittorrent-search-queries';
 import { pluginIsAllowed } from './qbittorrent-source-policy';
 import { systemNowMs } from './cache-time';
 import type { SearchResultsResponse } from './qbittorrent-types';

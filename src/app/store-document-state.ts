@@ -199,6 +199,39 @@ export function projectWithCandidateQueue(
   };
 }
 
+export function projectWithLiveUnavailableCandidate(
+  project: PlannerProjectV1,
+  bookId: string,
+  candidateId: string,
+  candidates: BookDocumentCandidateOption[],
+): PlannerProjectV1 {
+  return projectWithCandidateQueue(
+    project,
+    bookId,
+    candidates.map((candidate) =>
+      candidate.id === candidateId
+        ? {
+            ...candidate,
+            seeders: 0,
+            peers: 0,
+            availabilitySource: 'live_qbit',
+            availability: {
+              seeders: 0,
+              peers: 0,
+              progress: 0,
+              state: 'live_unavailable',
+              availability: 0,
+              downloadSpeedBytesPerSecond: 0,
+              reason:
+                'Plugin-reported seeders could not be verified by live qBittorrent availability.',
+            },
+            qualityScore: 0,
+          }
+        : candidate,
+    ),
+  );
+}
+
 export function bookCandidateContextKey(
   book: PlannerProjectV1['library']['books'][string],
 ): string {

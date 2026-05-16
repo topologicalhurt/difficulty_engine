@@ -3,11 +3,11 @@ import type {
   BookRecord,
   PlannerStore,
 } from '../core/types';
+import { candidateSearchSeeders } from '../core/document-candidate-availability';
 import { badge, button, el } from './dom';
 import { formatOneDecimal } from './format';
 import {
   blockedCandidateCanBeAdded,
-  seedersLabel,
 } from './document-source-actions';
 
 export function renderBlockedCandidates(
@@ -40,7 +40,9 @@ export function renderBlockedCandidates(
           el('div', {
             className: 'muted-copy',
             text: [
-              seedersLabel(candidate.seeders, candidate.availability),
+              candidateSearchSeeders(candidate) == null
+                ? 'plugin seeders unknown'
+                : `plugin reported ${candidateSearchSeeders(candidate)} seeders`,
               candidate.matchScore == null
                 ? null
                 : `match ${formatOneDecimal(candidate.matchScore * 10)}/10`,
