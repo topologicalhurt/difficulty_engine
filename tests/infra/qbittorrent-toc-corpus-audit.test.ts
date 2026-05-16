@@ -134,6 +134,53 @@ describe('qBittorrent TOC corpus audit', () => {
     expect(audit.summary.ocrNeeded).toBe(1);
   });
 
+  it('reports persisted qBittorrent refs that are missing from live inventory', () => {
+    const audit = buildQbittorrentTocCorpusAudit({
+      project: project([
+        book('queued', {
+          documents: [
+            {
+              id: 'doc',
+              provider: 'qbittorrent',
+              fileName: 'Fixture Systems.pdf',
+              storagePath: '/repo/output/data/documents/Fixture Systems.pdf',
+              torrentHash: 'abc',
+              contentKind: 'pdf',
+              contentType: 'application/pdf',
+              accessBasis: 'user_owned',
+              status: 'queued',
+              matchScore: 1,
+              availability: {
+                seeders: 1,
+                peers: 0,
+                progress: 0,
+                state: 'queuedDL',
+              },
+              provenance: {
+                provider: 'qbittorrent',
+                sourceUrl: 'magnet:?xt=urn:btih:abc',
+                fetchedAt: '2026-01-01T00:00:00.000Z',
+                confidence: 1,
+              },
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        }),
+      ]),
+      inventory: { torrents: [], errors: [] },
+      generatedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    expect(audit.books[0]?.failureClass).toBe('pdf_unavailable');
+    expect(audit.books[0]?.diagnostics).toContain(
+      'Project has persisted qBittorrent refs, but the live qBittorrent API returned no matching torrent. Verify the bridge target, qBittorrent profile, and category.',
+    );
+    expect(audit.errors).toContain(
+      'qBittorrent API returned zero torrents while the project has persisted qBittorrent document refs.',
+    );
+  });
+
   it('carries OCR sidecar metadata for local PDF audit rows', () => {
     const audit = buildQbittorrentTocCorpusAudit({
       project: project([]),

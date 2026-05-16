@@ -1,8 +1,19 @@
 import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { join, relative, resolve } from 'node:path';
+
+import {
   createDefaultQbittorrentConnectionSettings,
   createDefaultSourceSettings,
   EXAMPLE_BOOK,
 } from '../src/core/defaults';
+import { parseProject } from '../src/core/project-file';
 import type {
   BookDocumentBlockedCandidateOption,
   BookDocumentCandidateOption,
@@ -13,6 +24,9 @@ import { defaultDocumentAcquisitionPolicy } from '../src/infra/document-acquisit
 import { isoTimestamp } from '../src/infra/cache-time';
 import { createQBittorrentIntegrationService } from '../src/infra/qbittorrent-provider';
 import { qbittorrentSearchQueries } from '../src/infra/qbittorrent-search';
+
+const WORKSPACE_ROOT = process.cwd();
+const DEFAULT_AUDIT_ROOT = resolve(WORKSPACE_ROOT, 'output', 'audits');
 
 const fixtures = [
   {
@@ -50,27 +64,66 @@ function boolOption(args: string[], name: string, fallback: boolean): boolean {
   return !/^(?:0|false|no)$/i.test(value);
 }
 
-function fixtureBooks(args: string[]): BookRecord[] {
+function projectJsonFiles(root: string): string[] {
+  if (!existsSync(root)) return [];
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) return projectJsonFiles(path);
+    return entry.isFile() && entry.name.endsWith('.json') ? [path] : [];
+  });
+}
+
+function latestBackupProjectPath(args: string[]): string | undefined {
+  const backupRoot = resolve(
+    WORKSPACE_ROOT,
+    optionValue(args, '--backup-root') ?? 'output/backups',
+  );
+  return projectJsonFiles(backupRoot)
+    .map((path) => ({ path, mtime: statSync(path).mtimeMs }))
+    .sort((left, right) => right.mtime - left.mtime)[0]?.path;
+}
+
+function projectBooksFromPath(path: string): BookRecord[] {
+  const project = parseProject(readFileSync(path, 'utf8'));
+  return Object.values(project.library.books);
+}
+
+function booksForAudit(args: string[]): { books: BookRecord[]; source: string } {
+  const projectPath = optionValue(args, '--project');
+  if (projectPath) {
+    const path = resolve(WORKSPACE_ROOT, projectPath);
+    return { books: projectBooksFromPath(path), source: path };
+  }
+  if (args.includes('--scan-backups')) {
+    const path = latestBackupProjectPath(args);
+    if (path) return { books: projectBooksFromPath(path), source: path };
+  }
   const title = optionValue(args, '--title');
   if (!title) {
-    return fixtures.map((fixture, index) => ({
-      ...EXAMPLE_BOOK,
-      ...fixture,
-      id: `qbit-audit-${index + 1}`,
-      sourcePath: null,
-    }));
+    return {
+      source: 'fixture://default',
+      books: fixtures.map((fixture, index) => ({
+        ...EXAMPLE_BOOK,
+        ...fixture,
+        id: `qbit-audit-${index + 1}`,
+        sourcePath: null,
+      })),
+    };
   }
-  return [
-    {
-      ...EXAMPLE_BOOK,
-      id: 'qbit-audit-custom',
-      title,
-      short: optionValue(args, '--short') ?? title,
-      authors: optionValues(args, '--author'),
-      isbn: optionValue(args, '--isbn') ?? null,
-      sourcePath: null,
-    },
-  ];
+  return {
+    source: 'fixture://custom',
+    books: [
+      {
+        ...EXAMPLE_BOOK,
+        id: 'qbit-audit-custom',
+        title,
+        short: optionValue(args, '--short') ?? title,
+        authors: optionValues(args, '--author'),
+        isbn: optionValue(args, '--isbn') ?? null,
+        sourcePath: null,
+      },
+    ],
+  };
 }
 
 function printQueries(book: BookRecord): void {
@@ -119,6 +172,7 @@ function summarizeBlocked(
 }
 
 async function liveAudit(args: string[]): Promise<void> {
+  const auditBooks = booksForAudit(args);
   const service = createQBittorrentIntegrationService();
   const defaults = createDefaultQbittorrentConnectionSettings();
   const settings: QbittorrentConnectionSettings = {
@@ -158,11 +212,24 @@ async function liveAudit(args: string[]): Promise<void> {
       sourceSettings.qbittorrent.allowedPlugins = allowPlugins;
     if (allowSites.length) sourceSettings.qbittorrent.allowedSites = allowSites;
   }
+  const generatedAt = isoTimestamp();
+  const rows: Array<{
+    bookId: string;
+    title: string;
+    acceptedCount: number;
+    blockedCount: number;
+    rawCount: number;
+    searchAttempts: unknown[];
+    candidates: string[];
+    blocked: string[];
+  }> = [];
   console.log(
     JSON.stringify(
       {
-        generatedAt: isoTimestamp(),
+        generatedAt,
         mode: 'live-dry-run',
+        projectSource: auditBooks.source,
+        bookCount: auditBooks.books.length,
         pluginsSearched: sourceSettings.qbittorrent.allowedPlugins.length
           ? sourceSettings.qbittorrent.allowedPlugins
           : sourceSettings.qbittorrent.allowedSites,
@@ -174,7 +241,7 @@ async function liveAudit(args: string[]): Promise<void> {
       2,
     ),
   );
-  for (const book of fixtureBooks(args)) {
+  for (const book of auditBooks.books) {
     printQueries(book);
     const result = await service.findDocumentCandidates(settings, {
       book,
@@ -195,6 +262,41 @@ async function liveAudit(args: string[]): Promise<void> {
     result.blockedCandidates.slice(0, 10).forEach((candidate, index) => {
       console.log(`  blocked ${index + 1}: ${summarizeBlocked(candidate)}`);
     });
+    rows.push({
+      bookId: book.id,
+      title: book.title,
+      acceptedCount: result.candidates.length,
+      blockedCount: result.blockedCandidates.length,
+      rawCount: result.searchAttempts.reduce(
+        (sum, attempt) => sum + attempt.resultCount,
+        0,
+      ),
+      searchAttempts: result.searchAttempts,
+      candidates: result.candidates.slice(0, 10).map(summarizeCandidate),
+      blocked: result.blockedCandidates.slice(0, 10).map(summarizeBlocked),
+    });
+  }
+  if (args.includes('--write')) {
+    mkdirSync(DEFAULT_AUDIT_ROOT, { recursive: true });
+    const path = join(
+      DEFAULT_AUDIT_ROOT,
+      `qbit-live-search-dry-run-${generatedAt.replace(/[:.]/g, '-')}.json`,
+    );
+    writeFileSync(
+      path,
+      JSON.stringify(
+        {
+          generatedAt,
+          mode: 'live-dry-run',
+          projectSource: auditBooks.source,
+          rows,
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    );
+    console.error(`Wrote ${relative(WORKSPACE_ROOT, path)}`);
   }
 }
 
@@ -202,5 +304,5 @@ const args = process.argv.slice(2);
 if (args.includes('--live')) {
   await liveAudit(args);
 } else {
-  for (const book of fixtureBooks(args)) printQueries(book);
+  for (const book of booksForAudit(args).books) printQueries(book);
 }

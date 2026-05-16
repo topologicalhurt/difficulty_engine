@@ -198,11 +198,20 @@ function auditDocumentRefSummary(document: BookDocumentRef): {
   };
 }
 
-function classifyBook(row: Omit<CorpusAuditBookRow, 'failureClass'>): {
+function classifyBook(
+  row: Omit<CorpusAuditBookRow, 'failureClass'>,
+  options: { persistedQbittorrentRefMissingLive: boolean },
+): {
   failureClass: QbittorrentTocFailureClass;
   diagnostics: string[];
 } {
   const diagnostics: string[] = [];
+  if (options.persistedQbittorrentRefMissingLive) {
+    diagnostics.push(
+      'Project has persisted qBittorrent refs, but the live qBittorrent API returned no matching torrent. Verify the bridge target, qBittorrent profile, and category.',
+    );
+    return { failureClass: 'pdf_unavailable', diagnostics };
+  }
   if (row.chapterCount > 0 && row.tocSource === 'manual') {
     return { failureClass: 'manual_toc_ready', diagnostics };
   }
@@ -328,6 +337,15 @@ export function buildQbittorrentTocCorpusAudit(input: {
   const policy = input.policy ?? defaultDocumentAcquisitionPolicy();
   const inventory = input.inventory ?? { torrents: [], errors: [] };
   const books = Object.values(input.project.library.books);
+  const liveHashes = new Set(inventory.torrents.map((torrent) => torrent.hash));
+  const persistedQbittorrentRefCount = books.reduce(
+    (sum, book) =>
+      sum +
+      (book.documents ?? []).filter(
+        (document) => document.provider === 'qbittorrent' && document.torrentHash,
+      ).length,
+    0,
+  );
   const localDocuments = (input.localDocuments ?? []).map(auditLocalDocument);
   localDocuments.forEach((document) => {
     document.matchedBookIds = books
@@ -374,7 +392,15 @@ export function buildQbittorrentTocCorpusAudit(input: {
       ),
       diagnostics: [] as string[],
     };
-    const classification = classifyBook(baseRow);
+    const persistedQbittorrentRefMissingLive = (book.documents ?? []).some(
+      (document) =>
+        document.provider === 'qbittorrent' &&
+        Boolean(document.torrentHash) &&
+        !liveHashes.has(String(document.torrentHash).toLowerCase()),
+    );
+    const classification = classifyBook(baseRow, {
+      persistedQbittorrentRefMissingLive,
+    });
     return { ...baseRow, ...classification };
   });
   return {
@@ -406,6 +432,12 @@ export function buildQbittorrentTocCorpusAudit(input: {
         ),
       ).length,
     },
-    errors: [...(input.errors ?? []), ...inventory.errors],
+    errors: [
+      ...(input.errors ?? []),
+      ...inventory.errors,
+      inventory.torrents.length === 0 && persistedQbittorrentRefCount > 0
+        ? 'qBittorrent API returned zero torrents while the project has persisted qBittorrent document refs.'
+        : '',
+    ].filter(Boolean),
   };
 }
