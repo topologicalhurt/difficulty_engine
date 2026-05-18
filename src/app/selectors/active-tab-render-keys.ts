@@ -6,9 +6,7 @@ function selectedCalendarEntryKey(state: AppState): string {
   return entry ? `${entry.dateKey}:${entry.bookId}` : '';
 }
 
-export function selectActiveTabRenderKeys(
-  state: AppState,
-): readonly unknown[] {
+export function selectActiveTabRenderKeys(state: AppState): readonly unknown[] {
   const activeView = selectRenderableActiveView(state);
   switch (activeView) {
     case 'library':
@@ -34,6 +32,15 @@ export function selectActiveTabRenderKeys(
         state.snapshot,
         state.ui.openConstraintGroups,
         state.ui.selectedConstraintKey,
+      ];
+    case 'calendar':
+      return [
+        activeView,
+        state.snapshot.dayPlan,
+        state.project.manualOverrides.timeBlocks ?? {},
+        state.project.library.books,
+        state.ui.planColorMode,
+        selectedCalendarEntryKey(state),
       ];
     case 'ai':
       return [

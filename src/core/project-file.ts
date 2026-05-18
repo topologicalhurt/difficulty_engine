@@ -13,6 +13,7 @@ import {
   normalizeActualOverrides,
   normalizeBookIdMap,
   normalizeManualSchedule,
+  normalizeTimeBlockOverrides,
 } from './project-normalize-overrides';
 import { normalizeBookRelations } from './project-normalize-relations';
 import { normalizeReadingScopeSettings } from './project-normalize-reading-scope';
@@ -23,7 +24,12 @@ export function createEmptyProject(): PlannerProjectV1 {
   return {
     version: 1,
     library: { books: {} },
-    manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+    manualOverrides: {
+      schedule: {},
+      deferred: {},
+      actuals: {},
+      timeBlocks: {},
+    },
     constraints: createDefaultConstraints(),
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
     sourceSettings: normalizeSourceSettings(undefined),
@@ -81,6 +87,10 @@ export function normalizeProject(
       schedule: normalizeManualSchedule(manualOverrides.schedule, validIds),
       deferred: normalizeBookIdMap(manualOverrides.deferred, validIds),
       actuals: normalizeActualOverrides(manualOverrides.actuals, validIds),
+      timeBlocks: normalizeTimeBlockOverrides(
+        manualOverrides.timeBlocks,
+        validIds,
+      ),
     },
     constraints: normalizeConstraints(raw.constraints),
     aiRecommendationSettings: normalizeAiRecommendationSettings(

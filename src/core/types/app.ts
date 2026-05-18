@@ -24,6 +24,7 @@ export type AppView =
   | 'library'
   | 'constraints'
   | 'plan'
+  | 'calendar'
   | 'ai'
   | 'graphs'
   | 'diagnostics'

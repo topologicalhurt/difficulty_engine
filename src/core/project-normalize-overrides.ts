@@ -9,6 +9,10 @@ import {
 
 const MAX_ACTUAL_MINUTES_PER_ENTRY = 24 * 60;
 const MAX_ACTUAL_PAGES_PER_ENTRY = 10000;
+const DAY_MINUTES = 24 * 60;
+const TIME_BLOCK_GRANULARITY_MINUTES = 60;
+const MIN_TIME_BLOCK_DURATION_MINUTES = 15;
+const MAX_TIME_BLOCK_DURATION_MINUTES = 12 * 60;
 
 export function normalizeManualSchedule(
   value: unknown,
@@ -125,6 +129,66 @@ export function normalizeActualOverrides(
                       override.pages != null ||
                       override.done != null,
                   ),
+              )
+            : {};
+        return [date, byBook] as const;
+      })
+      .filter(
+        ([dateKey, byBook]) =>
+          Boolean(dateKey) && Object.keys(byBook).length > 0,
+      ),
+  );
+}
+
+function normalizeClockMinute(value: unknown): number {
+  const minute = normalizeNumber(value, 0, 0, DAY_MINUTES - 1, true);
+  return Math.min(
+    DAY_MINUTES - TIME_BLOCK_GRANULARITY_MINUTES,
+    Math.round(minute / TIME_BLOCK_GRANULARITY_MINUTES) *
+      TIME_BLOCK_GRANULARITY_MINUTES,
+  );
+}
+
+export function normalizeTimeBlockOverrides(
+  value: unknown,
+  validIds: Set<string>,
+): PlannerProjectV1['manualOverrides']['timeBlocks'] {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .map(([dateKey, rawByBook]) => {
+        const date = normalizeDateKey(dateKey, '');
+        const byBook =
+          rawByBook && typeof rawByBook === 'object'
+            ? Object.fromEntries(
+                Object.entries(rawByBook as Record<string, unknown>)
+                  .filter(([id]) => validIds.has(id))
+                  .map(([id, rawBlock]) => {
+                    const raw =
+                      rawBlock && typeof rawBlock === 'object'
+                        ? (rawBlock as Record<string, unknown>)
+                        : {};
+                    const startMinute = normalizeClockMinute(raw.startMinute);
+                    const durationMinutes = normalizeNumber(
+                      raw.durationMinutes,
+                      TIME_BLOCK_GRANULARITY_MINUTES,
+                      MIN_TIME_BLOCK_DURATION_MINUTES,
+                      MAX_TIME_BLOCK_DURATION_MINUTES,
+                      true,
+                    );
+                    return [
+                      id,
+                      {
+                        startMinute,
+                        durationMinutes: Math.min(
+                          durationMinutes,
+                          DAY_MINUTES - startMinute,
+                        ),
+                      },
+                    ] as const;
+                  }),
               )
             : {};
         return [date, byBook] as const;

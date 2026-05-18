@@ -14,6 +14,12 @@ export const APP_VIEW_DEFINITIONS: Array<{
     description: 'Main study surface with the solved Gantt and calendar.',
   },
   {
+    id: 'calendar',
+    label: 'Calendar',
+    description:
+      'Hour-by-hour study blocks for deciding when each book is read.',
+  },
+  {
     id: 'library',
     label: 'Library',
     description:
@@ -64,7 +70,9 @@ export interface ShellViewModel {
 }
 
 export function visibleAppViews(state: AppState): typeof APP_VIEW_DEFINITIONS {
-  return APP_VIEW_DEFINITIONS.filter((view) => !view.debugOnly || state.ui.debugUi);
+  return APP_VIEW_DEFINITIONS.filter(
+    (view) => !view.debugOnly || state.ui.debugUi,
+  );
 }
 
 export function selectRenderableActiveView(state: AppState): AppView {

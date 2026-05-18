@@ -253,7 +253,7 @@ export const EMPTY_PROJECT: PlannerProjectV1 = {
   version: 1,
   library: { books: {} },
   enrichmentCache: {},
-  manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+  manualOverrides: { schedule: {}, deferred: {}, actuals: {}, timeBlocks: {} },
   constraints: DEFAULT_CONSTRAINTS,
   aiRecommendationSettings: createDefaultAiRecommendationSettings(),
   sourceSettings: createDefaultSourceSettings(),

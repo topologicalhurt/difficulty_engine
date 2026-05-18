@@ -6,6 +6,10 @@ export interface ElementProps {
   htmlFor?: string;
   title?: string;
   id?: string;
+  href?: string;
+  download?: string;
+  target?: string;
+  rel?: string;
   value?: string;
   list?: string;
   type?: string;
@@ -14,6 +18,7 @@ export interface ElementProps {
   name?: string;
   autocomplete?: string;
   disabled?: boolean;
+  draggable?: boolean;
   open?: boolean;
   min?: string;
   max?: string;
@@ -30,6 +35,9 @@ export interface ElementProps {
   onChange?: (event: Event) => void;
   onBlur?: (event: FocusEvent) => void;
   onToggle?: (event: Event) => void;
+  onDragStart?: (event: DragEvent) => void;
+  onDragOver?: (event: DragEvent) => void;
+  onDrop?: (event: DragEvent) => void;
 }
 
 function append(parent: HTMLElement, child: Child): void {
@@ -54,6 +62,10 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   if (props.htmlFor) (node as HTMLLabelElement).htmlFor = props.htmlFor;
   if (props.title) node.title = props.title;
   if (props.id) node.id = props.id;
+  if (props.href) (node as HTMLAnchorElement).href = props.href;
+  if (props.download) (node as HTMLAnchorElement).download = props.download;
+  if (props.target) (node as HTMLAnchorElement).target = props.target;
+  if (props.rel) (node as HTMLAnchorElement).rel = props.rel;
   if (props.value != null)
     (node as HTMLInputElement | HTMLTextAreaElement).value = props.value;
   if (props.list) node.setAttribute('list', props.list);
@@ -63,10 +75,10 @@ export function el<K extends keyof HTMLElementTagNameMap>(
     (node as HTMLInputElement | HTMLTextAreaElement).placeholder =
       props.placeholder;
   if (props.name) (node as HTMLInputElement).name = props.name;
-  if (props.autocomplete)
-    node.setAttribute('autocomplete', props.autocomplete);
+  if (props.autocomplete) node.setAttribute('autocomplete', props.autocomplete);
   if (props.disabled != null)
     (node as HTMLButtonElement | HTMLInputElement).disabled = props.disabled;
+  if (props.draggable != null) node.draggable = props.draggable;
   if (props.open != null) (node as HTMLDetailsElement).open = props.open;
   if (props.min != null) (node as HTMLInputElement).min = props.min;
   if (props.max != null) (node as HTMLInputElement).max = props.max;
@@ -91,6 +103,12 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   if (props.onBlur)
     node.addEventListener('blur', props.onBlur as EventListener);
   if (props.onToggle) node.addEventListener('toggle', props.onToggle);
+  if (props.onDragStart)
+    node.addEventListener('dragstart', props.onDragStart as EventListener);
+  if (props.onDragOver)
+    node.addEventListener('dragover', props.onDragOver as EventListener);
+  if (props.onDrop)
+    node.addEventListener('drop', props.onDrop as EventListener);
   children.forEach((child) => append(node, child));
   return node;
 }
@@ -131,10 +149,7 @@ function setPanelCollapsed(
   if (!toggle) return;
   toggle.textContent = collapsed ? 'Show' : 'Hide';
   toggle.setAttribute('aria-expanded', String(!collapsed));
-  toggle.setAttribute(
-    'aria-label',
-    `${collapsed ? 'Show' : 'Hide'} ${title}`,
-  );
+  toggle.setAttribute('aria-label', `${collapsed ? 'Show' : 'Hide'} ${title}`);
 }
 
 export function panel(

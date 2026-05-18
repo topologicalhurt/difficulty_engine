@@ -2,6 +2,7 @@ import type { AppState, PlannerStore } from '../core/types';
 import { selectActiveTabRenderKeys } from '../app/selectors/active-tab-render-keys';
 import { selectRenderableActiveView } from '../app/selectors/shell';
 import { renderAiView } from './ai-view';
+import { renderCalendarView } from './calendar-view';
 import { renderConstraintsView } from './constraints-view';
 import { renderDiagnosticsView } from './diagnostics-view';
 import { renderGraphsView } from './graphs-view';
@@ -23,6 +24,8 @@ function renderBody(state: AppState, store: PlannerStore): HTMLElement {
       return renderLibraryView(state, store);
     case 'constraints':
       return renderConstraintsView(state, store);
+    case 'calendar':
+      return renderCalendarView(state, store);
     case 'ai':
       return renderAiView(state, store);
     case 'graphs':

@@ -4,8 +4,10 @@ import {
   withCalendarEntryDone,
   withCalendarEntryMinutes,
   withCalendarEntryPages,
+  withCalendarTimeBlock,
   withDeferredCalendarEntry,
   withoutCalendarEntryOverride,
+  withoutCalendarTimeBlock,
 } from './calendar-overrides';
 import type { StoreCommandContext } from './store-command-context';
 
@@ -18,6 +20,8 @@ export function createCalendarCommands(
   | 'setCalendarEntryMinutes'
   | 'setCalendarEntryPages'
   | 'clearCalendarEntryActual'
+  | 'setCalendarTimeBlock'
+  | 'clearCalendarTimeBlock'
 > {
   return {
     deferCalendarEntry(dateKey: string, bookId: string): void {
@@ -86,6 +90,45 @@ export function createCalendarCommands(
           dateKey,
           bookId,
         ),
+      );
+    },
+    setCalendarTimeBlock(
+      dateKey: string,
+      bookId: string,
+      startMinute: number,
+      durationMinutes: number,
+    ): void {
+      const state = context.getState();
+      if (!state.project.library.books[bookId]) return;
+      context.commitProject(
+        'calendar.timeBlock',
+        withCalendarTimeBlock(
+          state.project,
+          dateKey,
+          bookId,
+          startMinute,
+          durationMinutes,
+        ),
+        {
+          banner: {
+            tone: 'success',
+            message: 'Calendar time block saved.',
+          },
+        },
+        false,
+      );
+    },
+    clearCalendarTimeBlock(dateKey: string, bookId: string): void {
+      context.commitProject(
+        'calendar.clearTimeBlock',
+        withoutCalendarTimeBlock(context.getState().project, dateKey, bookId),
+        {
+          banner: {
+            tone: 'success',
+            message: 'Calendar time block reset to automatic placement.',
+          },
+        },
+        false,
       );
     },
   };

@@ -1214,6 +1214,85 @@ body.difficulty-engine-standalone #app {
   overflow: hidden;
 }
 
+.hourly-calendar-board .calendar-week-grid {
+  grid-template-columns: repeat(7, minmax(180px, 1fr));
+  overflow-x: auto;
+}
+
+.hourly-calendar-day {
+  min-height: 560px;
+}
+
+.hourly-calendar-slots {
+  display: grid;
+  gap: 5px;
+}
+
+.hourly-calendar-slot {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 6px;
+  min-height: 44px;
+  padding: 5px;
+  border: 1px dashed rgba(148, 163, 184, 0.22);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.hourly-calendar-slot.has-blocks {
+  border-style: solid;
+  background: rgba(72, 187, 153, 0.035);
+}
+
+.hourly-calendar-slot-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hourly-calendar-slot-body {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.hourly-calendar-block {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid rgba(72, 187, 153, 0.28);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-xs);
+  background: rgba(72, 187, 153, 0.08);
+  cursor: grab;
+}
+
+.hourly-calendar-block.persisted {
+  border-color: rgba(96, 165, 250, 0.46);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.hourly-calendar-block:active {
+  cursor: grabbing;
+}
+
+.hourly-calendar-block-head,
+.hourly-calendar-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.hourly-calendar-block-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .calendar-log-panel {
   display: grid;
   gap: 8px;

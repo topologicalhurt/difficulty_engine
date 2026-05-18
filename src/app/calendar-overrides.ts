@@ -29,6 +29,21 @@ export function removeBookFromActuals(
   );
 }
 
+export function removeBookFromTimeBlocks(
+  entries: PlannerProjectV1['manualOverrides']['timeBlocks'],
+  bookId: string,
+): PlannerProjectV1['manualOverrides']['timeBlocks'] {
+  return Object.fromEntries(
+    Object.entries(entries ?? {})
+      .map(([dateKey, byBook]) => {
+        const next = { ...byBook };
+        delete next[bookId];
+        return [dateKey, next] as const;
+      })
+      .filter(([, byBook]) => Object.keys(byBook).length > 0),
+  );
+}
+
 function withoutDeferredBook(
   project: PlannerProjectV1,
   dateKey: string,
@@ -196,6 +211,57 @@ export function withoutCalendarEntryOverride(
       ...project.manualOverrides,
       actuals,
       deferred: withoutDeferredBook(project, dateKey, bookId),
+    },
+  };
+}
+
+function normalizeHourMinute(value: number): number {
+  return Math.max(0, Math.min(23 * 60, Math.round(value / 60) * 60));
+}
+
+export function withCalendarTimeBlock(
+  project: PlannerProjectV1,
+  dateKey: string,
+  bookId: string,
+  startMinute: number,
+  durationMinutes: number,
+): PlannerProjectV1 {
+  const start = normalizeHourMinute(startMinute);
+  const duration = Math.max(15, Math.min(12 * 60, Math.round(durationMinutes)));
+  const timeBlocksByDate = project.manualOverrides.timeBlocks ?? {};
+  const byDate = { ...(timeBlocksByDate[dateKey] ?? {}) };
+  byDate[bookId] = {
+    startMinute: start,
+    durationMinutes: Math.min(duration, 24 * 60 - start),
+  };
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      timeBlocks: {
+        ...timeBlocksByDate,
+        [dateKey]: byDate,
+      },
+    },
+  };
+}
+
+export function withoutCalendarTimeBlock(
+  project: PlannerProjectV1,
+  dateKey: string,
+  bookId: string,
+): PlannerProjectV1 {
+  const timeBlocksByDate = project.manualOverrides.timeBlocks ?? {};
+  const byDate = { ...(timeBlocksByDate[dateKey] ?? {}) };
+  delete byDate[bookId];
+  const timeBlocks = { ...timeBlocksByDate };
+  if (Object.keys(byDate).length) timeBlocks[dateKey] = byDate;
+  else delete timeBlocks[dateKey];
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      timeBlocks,
     },
   };
 }

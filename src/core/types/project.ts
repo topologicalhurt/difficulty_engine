@@ -21,10 +21,16 @@ export interface CalendarActualOverride {
   autoFilledFromPlan?: boolean;
 }
 
+export interface CalendarTimeBlockOverride {
+  startMinute: number;
+  durationMinutes: number;
+}
+
 export interface ManualOverrides {
   schedule: Record<string, ManualScheduleOverride>;
   deferred: Record<string, string[]>;
   actuals: Record<string, Record<string, CalendarActualOverride>>;
+  timeBlocks?: Record<string, Record<string, CalendarTimeBlockOverride>>;
 }
 
 export interface UiPreferences {
