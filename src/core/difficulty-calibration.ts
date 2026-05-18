@@ -9,6 +9,10 @@ const MIN_TARGET_SPREAD = 0.85;
 const MAX_TARGET_SPREAD = 2.4;
 const MAX_CALIBRATION_SHIFT = 0.95;
 
+// Calibration is deliberately confidence-gated. Rank-normal spacing is used
+// only after the cohort already has enough measured spread and confidence; it
+// must not manufacture Gaussian-looking differences for genuinely uniform or
+// weakly evidenced books.
 interface CalibrationInput {
   id: string;
   estimate: LatentWorkloadEstimate;

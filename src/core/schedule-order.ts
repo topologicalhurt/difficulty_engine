@@ -7,6 +7,10 @@ import {
 import type { PlannerProjectV1, SchedulePlanItem } from './types';
 import { maxOr } from './utils';
 
+// Scheduling is RCPSP-like: precedence constraints, finite parallel lanes, and
+// competing objectives. This module orders candidates for the deterministic
+// heuristic; it does not claim exact global optimization. See:
+// https://www.sciencedirect.com/science/article/pii/S0377221721003982
 function criticalPathLengths(
   ids: string[],
   items: SchedulePlanItem[],

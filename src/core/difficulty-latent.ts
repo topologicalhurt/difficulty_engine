@@ -30,6 +30,12 @@ const LATENT_NEUTRAL_WEIGHT_SCALE = 0.3;
 const LATENT_NEUTRAL_WEIGHT_MIN = 0.04;
 const LATENT_NEUTRAL_WEIGHT_MAX = 0.3;
 
+// Research note: this is an IRT/Rasch-inspired latent workload estimate, not
+// a fitted psychometric model. We aggregate observable evidence into one
+// latent item-like burden and shrink toward neutral when confidence is weak.
+// See:
+// - https://www.publichealth.columbia.edu/research/population-health-methods/item-response-theory
+// - https://www.publichealth.columbia.edu/research/population-health-methods/rasch-modeling
 export interface LatentWorkloadEstimate {
   latentWorkload: number;
   workloadUncertainty: number;

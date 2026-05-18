@@ -23,6 +23,9 @@ import {
   connectedWorkloadComponents,
 } from './workload-similarity';
 
+// Workload clusters are nearest-neighbor evidence groups. They support
+// confidence-weighted local priors; they are not a domain lexicon and should
+// not encode book-specific difficulty rules.
 function clusterTopPhrases(ids: string[], topicIndex: TopicIndex): string[] {
   const scores: Record<string, number> = {};
   ids.forEach((id) => {

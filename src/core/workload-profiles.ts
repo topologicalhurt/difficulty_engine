@@ -17,6 +17,10 @@ import {
   METADATA_CONFIDENCE,
 } from './workload-cluster-config';
 
+// Workload profiles create local evidence cohorts for shrinkage and comparison.
+// The graph depth term is intentionally small and heuristic: future changes
+// should require independent same-topic/progressive-chain evidence before
+// interpreting depth as difficulty rather than only order.
 export interface WorkloadProfile {
   id: string;
   topicWeights: Record<string, number>;

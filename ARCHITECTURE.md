@@ -79,10 +79,15 @@ The planner contract is strict:
 - Source metadata is immutable planner evidence. Reading-scope skips produce derived effective pages and excluded evidence; they must not delete chapters, document refs, enrichment, or reading logs.
 - Title-level cues are local only. Intro/expert words become workload evidence only against a high-confidence same-topic comparator; otherwise the evidence reason must say the cue was ignored globally.
 - Learner profiles are bounded policy presets from `src/core/profile-policy.ts`. They may change desired challenge, pacing spread, ramp shape, uncertainty tolerance, learner feedback strength, and prerequisite bias, but they must not override manual locks or infeasible hard constraints.
+- Logged actuals are scoped by `constraints.actualsPropagationMode`. `book_only` is the default; epoch/project partial pooling may only contribute after multiple books show consistent logged pace evidence, and shared evidence must stay weaker than direct book evidence.
 - Nonlinear reading ramp belongs in day allocation. `src/core/reading-ramp.ts` is the single owner for early/building/steady ramp factors, and total remaining work must stay conserved.
 - Pacing has three separate stages: `desiredPagesPerDay`, `feasibleMinPagesPerDay`/`feasibleMaxPagesPerDay`, and `finalPagesPerDay`.
 - Hard constraints win over desired pacing. When a floor, max page cap, time budget, manual window, or parallel slot binds, the item must expose `pacingBindingReason`.
 - Raw difficulty clustering is acceptable when evidence is genuinely similar, but it must be diagnosable through uncertainty or low-variance warnings.
+
+Formula-level rationale and future-change constraints live in
+`docs/DIFFICULTY_MODEL_RESEARCH_GUIDE.md`. Read that guide before changing
+latent workload, graph propagation, pacing, ramping, or scheduler formulas.
 
 ## AI And Autopilot Contract
 

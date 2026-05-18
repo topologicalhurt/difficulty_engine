@@ -11,6 +11,9 @@ import {
 import { packVisualLanes } from './schedule-visual-lanes';
 import type { SchedulePlanItem } from './types';
 
+// Lane packing is the resource-capacity side of the RCPSP-like planner model:
+// keep prerequisite release times and the parallel-book capacity separate from
+// display lane assignment.
 export function packLanePreservingSchedule(
   input: SchedulePackingInput,
 ): SchedulePackingResult {

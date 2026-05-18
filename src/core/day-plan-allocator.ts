@@ -47,6 +47,9 @@ export interface DayAllocationResult {
   prereqCandidates: PlanningState[];
 }
 
+// Daily allocation is the per-day resource projection of the schedule:
+// precedence, time budget, and hard parallel capacity all bind before desired
+// pacing can place work on the calendar.
 export function allocateDayEntries(
   input: DayAllocationInput,
 ): DayAllocationResult {

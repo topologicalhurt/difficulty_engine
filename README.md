@@ -41,10 +41,16 @@ The planner separates workload truth from presentation:
 - Reading scope never deletes source metadata. Learned non-core sections such as TOC rows, appendices, indexes, solutions, and duplicate/reference material are classified separately and can reduce `effectiveReadingPages` only when section/page evidence is trusted.
 - Title words such as “Introduction”, “Beginner”, “Advanced”, and “Expert” are local cohort cues only. They can adjust rank against a close same-topic comparator, but they do not globally make an unrelated technical book easy or hard.
 - Learner profiles are bounded policy presets. They alter challenge, pacing spread, ramp shape, uncertainty tolerance, learner feedback strength, and prerequisite strictness bias without overriding manual locks or hard constraints.
+- Logged actuals are book-local by default. The optional study-epoch/project modes use partial pooling only after multiple books show consistent evidence, so one book read ahead does not automatically recalibrate the whole plan.
 - Day allocation uses a nonlinear per-book ramp: early sessions usually allocate less work, later sessions approach the base target, and very hard material dampens the ramp.
 - Page targets are also staged: desired pages/day, feasible page range, and final allocated pages/day. If a hard constraint binds, the snapshot explains the binding reason.
 
 This split is intentional. Display compression can make the UI easier to read, but it must not change hours, finish date, or calendar allocation.
+
+For formula-level rationale and future-change constraints, see
+`docs/DIFFICULTY_MODEL_RESEARCH_GUIDE.md`. It documents the research basis,
+heuristic limits, and the rule that DAG depth is not global difficulty evidence
+without independent progressive-chain support.
 
 ## Autopilot And AI Context
 

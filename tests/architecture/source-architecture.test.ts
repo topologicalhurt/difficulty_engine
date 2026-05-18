@@ -150,6 +150,42 @@ describe('source architecture guardrails', () => {
     );
   });
 
+  it('ships a research guide for the difficulty, DAG, and pacing model', () => {
+    const guidePath = join(ROOT, 'docs', 'DIFFICULTY_MODEL_RESEARCH_GUIDE.md');
+    expect(existsSync(guidePath)).toBe(true);
+    const guide = readFileSync(guidePath, 'utf8');
+    const requiredTerms = [
+      'difficulty-evidence',
+      'difficulty-latent',
+      'difficulty-calibration',
+      'difficulty-graph',
+      'difficulty-learner',
+      'learner-actuals',
+      'workload-profiles',
+      'workload-clusters',
+      'relation-graph-utils',
+      'schedule-order',
+      'relative-pacing',
+      'reading-ramp',
+      'Item Response Theory',
+      'Rasch',
+      'cognitive load',
+      'Knowledge Graph',
+      'Bayesian Knowledge Tracing',
+      'RCPSP',
+      'DAG depth is an availability/order signal by default',
+      'must not force spread',
+      'must not saturate difficulty by construction',
+      'book_only',
+      'epoch_partial_pooling',
+      'project_partial_pooling',
+    ];
+
+    expect(
+      requiredTerms.filter((term) => !guide.includes(term)),
+    ).toEqual([]);
+  });
+
   it('keeps AI and autopilot apply domains separated', () => {
     const recommenderApply = readFileSync(
       join(ROOT, 'src', 'app', 'store-ai-apply.ts'),

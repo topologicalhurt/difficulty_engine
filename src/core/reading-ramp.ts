@@ -9,6 +9,10 @@ export interface ReadingRampState {
   reason: string;
 }
 
+// Early sessions are eased by a practice-curve style ramp and then converge to
+// the base target. The hard-content threshold dampens this effect so high-load
+// material is not treated as quickly becoming easy. See spacing/practice
+// synthesis: https://laplab.ucsd.edu/articles/Cepeda_etal_2006.pdf
 export function readingRampForState(
   state: PlanningState,
   project: PlannerProjectV1,

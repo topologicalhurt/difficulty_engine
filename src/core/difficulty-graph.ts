@@ -10,6 +10,12 @@ import type { PlannerProjectV1 } from './types';
 import { clamp, mean, round2, safeNumber } from './utils';
 import { learnerProfile } from './difficulty-profiles';
 
+// Research note: graph signals are treated as prerequisite/knowledge-graph
+// evidence, not as proof that later/deeper nodes are intrinsically harder.
+// Depth and parent workload are capped and confidence-weighted so a deferred
+// research/reference book does not climb toward the ceiling merely because it
+// appears late in the DAG. See learning-path/prerequisite graph surveys:
+// https://www.mdpi.com/2079-9292/15/1/238
 export interface GraphWorkloadResult {
   graphBurden: number;
   noveltyLoad: number;

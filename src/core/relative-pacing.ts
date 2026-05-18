@@ -38,6 +38,10 @@ export interface PacingBookTarget {
   pacingBindingReason: PacingBindingReason;
 }
 
+// Pacing maps cognitive workload into pages/day, then projects it through hard
+// feasibility bounds. This follows cognitive-load framing (element
+// interactivity increases intrinsic load) while keeping display compression out
+// of planner truth. See: https://pmc.ncbi.nlm.nih.gov/articles/PMC6099118/
 function percentileByRank(index: number, count: number): number {
   return count <= 1 ? 0.5 : index / Math.max(1, count - 1);
 }
