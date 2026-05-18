@@ -12,6 +12,10 @@ export type LearnerProfileMode =
   | 'fast_track'
   | 'deep_mastery'
   | 'manual';
+export type ActualsPropagationMode =
+  | 'book_only'
+  | 'epoch_partial_pooling'
+  | 'project_partial_pooling';
 export type DailyBookMode = 'interspersed' | 'daily_cohort';
 export type EmptyDayPolicy = 'fill_when_possible' | 'preserve_schedule_gaps';
 export type BookOrderPolicy = 'auto' | 'prefer' | 'enforce';
@@ -53,6 +57,7 @@ export interface ConstraintSet {
   relativePacingCurve: RelativePacingCurve;
   learnerProfileMode: LearnerProfileMode;
   learnerAdaptivityStrength: number;
+  actualsPropagationMode: ActualsPropagationMode;
   targetChallenge: number;
   subjectWorkloadStrength: number;
   dailyBookMode: DailyBookMode;

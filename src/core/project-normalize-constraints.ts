@@ -14,6 +14,7 @@ import {
 } from './constants';
 import {
   normalizeBackfillMode,
+  normalizeActualsPropagationMode,
   normalizeBookOrderPolicy,
   normalizeCompressCurve,
   normalizeDailyBookMode,
@@ -101,6 +102,10 @@ export function normalizeConstraints(value: unknown): ConstraintSet {
       defaults.learnerAdaptivityStrength,
       LEARNER_ADAPTIVITY_MIN,
       LEARNER_ADAPTIVITY_MAX,
+    ),
+    actualsPropagationMode: normalizeActualsPropagationMode(
+      normalizeString(raw.actualsPropagationMode) ||
+        defaults.actualsPropagationMode,
     ),
     targetChallenge: normalizeNumber(
       raw.targetChallenge,

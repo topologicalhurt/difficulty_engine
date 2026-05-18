@@ -347,6 +347,7 @@ describe('project-file boundary', () => {
         feasibilityMode: 'oops',
         learnerProfileMode: 'oops',
         learnerAdaptivityStrength: 500,
+        actualsPropagationMode: 'oops',
         targetChallenge: -20,
         relativePacingCurve: 'oops',
         dailyBookMode: 'oops',
@@ -393,6 +394,7 @@ describe('project-file boundary', () => {
     expect(project.constraints.feasibilityMode).toBe('strict_floor');
     expect(project.constraints.learnerProfileMode).toBe('balanced_adaptive');
     expect(project.constraints.learnerAdaptivityStrength).toBe(100);
+    expect(project.constraints.actualsPropagationMode).toBe('book_only');
     expect(project.constraints.targetChallenge).toBe(0);
     expect(project.constraints.relativePacingStrength).toBe(50);
     expect(project.constraints.relativePacingCurve).toBe('smoothstep');

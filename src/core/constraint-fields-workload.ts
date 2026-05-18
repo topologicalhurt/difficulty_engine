@@ -42,6 +42,30 @@ export const DAILY_WORKLOAD_PACING_FIELDS: ConstraintField[] = [
     step: 5,
   },
   {
+    key: 'actualsPropagationMode',
+    group: 'Pacing Model',
+    label: 'Use actuals across study group',
+    description:
+      'Controls whether logged pace evidence stays book-local or partially pools after repeated group evidence.',
+    detail:
+      'A single book never changes every book. Epoch/project pooling only activates after enough books in the group show consistent logged pace evidence.',
+    effect: 'difficulty_model',
+    kind: 'select',
+    options: [
+      { value: 'book_only', label: 'One book only' },
+      { value: 'epoch_partial_pooling', label: 'Current study epoch' },
+      { value: 'project_partial_pooling', label: 'All active books' },
+    ],
+    optionDetails: {
+      book_only:
+        'The safest default: one book’s actuals never imply anything about other books.',
+      epoch_partial_pooling:
+        'Consistent evidence across multiple books in the same study epoch can lightly adjust the rest of that epoch.',
+      project_partial_pooling:
+        'Consistent evidence across the active project can apply a weaker global prior. This is intentionally conservative.',
+    },
+  },
+  {
     key: 'minPg',
     group: 'Daily Workload',
     label: 'Minimum pages/day',

@@ -5,6 +5,7 @@ import { applyGraphWorkloadPropagation } from './difficulty-graph';
 import { applyLearnerCalibration } from './difficulty-learner';
 import { estimateLatentWorkload } from './difficulty-latent';
 import { effectiveReadingPagesById } from './effective-pages';
+import type { LearnerActualsEvidence } from './learner-actuals';
 import { profilePolicy } from './profile-policy';
 import {
   difficultyDistributionStats,
@@ -75,6 +76,7 @@ export function computeDifficultyModel(
   relationInfo: RelationInfo,
   project: PlannerProjectV1,
   workloadClusters?: WorkloadClusterSnapshot,
+  learnerActuals?: LearnerActualsEvidence,
 ): DifficultyModelSnapshot {
   const ids = corpus.books.map((book) => book.id);
   const depths = topologicalDepth(ids, relationInfo.prereqById);
@@ -150,6 +152,7 @@ export function computeDifficultyModel(
       bookId: id,
       baseDifficulty: profileAdjustedDifficulty,
       lockDiff: book.lockDiff,
+      learnerActuals: learnerActuals?.byBookId[id],
     });
     const scheduleDifficulty = book.lockDiff
       ? round1(evidence.seed)
@@ -195,6 +198,12 @@ export function computeDifficultyModel(
       graphBurden: graph.graphBurden,
       graphWorkloadLift,
       learnerCalibrationLift: learner.learnerCalibrationLift,
+      actualsScope: learner.actualsScope,
+      bookActualConfidence: learner.bookActualConfidence,
+      groupActualConfidence: learner.groupActualConfidence,
+      groupActualBookCount: learner.groupActualBookCount,
+      groupObservedMinutesPerPage: learner.groupObservedMinutesPerPage,
+      groupResidualDirection: learner.groupResidualDirection,
       profileAdjustedDifficulty: round1(profileAdjustedDifficulty),
       difficultyBindingReason: difficultyBindingReason({
         locked: book.lockDiff,

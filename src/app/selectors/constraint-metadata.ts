@@ -70,6 +70,8 @@ const DETAILS: Partial<Record<keyof ConstraintSet, string>> = {
     'Selects adaptive defaults for challenge, pacing spread, uncertainty tolerance, and how much logged reading behavior can recalibrate the model.',
   learnerAdaptivityStrength:
     'Controls how strongly actual logged minutes/pages adjust future workload estimates after enough evidence exists.',
+  actualsPropagationMode:
+    'Controls whether logged pace evidence stays book-local or partially pools into the current study epoch/project after repeated consistent evidence.',
   targetChallenge:
     'Controls desired workload before hard feasibility constraints are applied. Binding floors, time limits, and manual windows can still override it.',
   propMix:
@@ -149,6 +151,14 @@ const OPTION_DETAILS: Partial<
       'Allows slower, more conservative progress on high-uncertainty or concept-heavy books.',
     manual:
       'Uses the explicit advanced controls without profile-level defaults changing them.',
+  },
+  actualsPropagationMode: {
+    book_only:
+      'The safest default: one book’s actuals never imply anything about other books.',
+    epoch_partial_pooling:
+      'Uses Bayesian-style shrinkage across the current study epoch only after multiple books show consistent pace evidence.',
+    project_partial_pooling:
+      'Uses a weaker project-wide prior after broader consistent evidence; useful when your logged pace is consistently ahead/behind across all active books.',
   },
   blendMode: {
     geometric:

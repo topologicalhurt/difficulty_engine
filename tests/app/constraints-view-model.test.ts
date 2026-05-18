@@ -55,6 +55,9 @@ describe('constraints view model', () => {
     expect(pacingGroup?.fields.map((field) => field.key)).toContain(
       'learnerProfileMode',
     );
+    expect(pacingGroup?.fields.map((field) => field.key)).toContain(
+      'actualsPropagationMode',
+    );
     expect(pacingGroup?.hiddenAdvancedCount).toBeGreaterThan(0);
 
     plannerStore.commands.toggleConstraintAdvancedGroup('Difficulty Mapping');
@@ -78,6 +81,22 @@ describe('constraints view model', () => {
     expect(viewModel.explanation.title).toBe('Display map mode');
     expect(viewModel.explanation.selectedOptionDetail).toContain(
       'current library',
+    );
+  });
+
+  it('explains actuals propagation as conservative by default', () => {
+    const plannerStore = constraintsStore();
+    plannerStore.commands.selectConstraintField('actualsPropagationMode');
+
+    const viewModel = selectConstraintsViewModel(
+      plannerStore.selectors.getState(),
+    );
+
+    expect(viewModel.explanation.title).toBe(
+      'Use actuals across study group',
+    );
+    expect(viewModel.explanation.selectedOptionDetail).toContain(
+      'one book’s actuals never imply anything about other books',
     );
   });
 

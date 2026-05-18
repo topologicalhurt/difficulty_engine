@@ -50,6 +50,7 @@ export function createDefaultConstraints(): ConstraintSet {
     relativePacingCurve: 'smoothstep',
     learnerProfileMode: 'balanced_adaptive',
     learnerAdaptivityStrength: LEARNER_ADAPTIVITY_DEFAULT,
+    actualsPropagationMode: 'book_only',
     targetChallenge: TARGET_CHALLENGE_DEFAULT,
     subjectWorkloadStrength: SUBJECT_WORKLOAD_DEFAULT,
     dailyBookMode: 'interspersed',

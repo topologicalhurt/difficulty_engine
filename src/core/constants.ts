@@ -175,6 +175,10 @@ export const LEARNER_CALIBRATION_MIN_PAGES = 20;
 export const LEARNER_CALIBRATION_PAGE_NORMALIZER = 160;
 // A single outlier should never move schedule difficulty by more than this amount.
 export const LEARNER_CALIBRATION_LIFT_CAP = 1.2;
+// Shared actuals are partial-pooling priors; they must stay weaker than direct book evidence.
+export const LEARNER_ACTUALS_EPOCH_GROUP_SHARE = 0.45;
+export const LEARNER_ACTUALS_PROJECT_GROUP_SHARE = 0.25;
+export const LEARNER_ACTUALS_GROUP_DIRECTION_EPSILON = 0.12;
 // Low-confidence evidence still contributes, but diagnostics should make the uncertainty visible.
 export const DIFFICULTY_HIGH_UNCERTAINTY = 0.55;
 // Cohort mode favors continuing active books before rotating in fresh starts.

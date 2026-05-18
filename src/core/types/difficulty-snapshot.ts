@@ -17,6 +17,12 @@ export interface DifficultyBreakdown {
   graphBurden: number;
   graphWorkloadLift: number;
   learnerCalibrationLift: number;
+  actualsScope?: string;
+  bookActualConfidence?: number;
+  groupActualConfidence?: number;
+  groupActualBookCount?: number;
+  groupObservedMinutesPerPage?: number | null;
+  groupResidualDirection?: string;
   profileAdjustedDifficulty: number;
   difficultyBindingReason: string | null;
   difficultyEvidence: string[];

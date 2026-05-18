@@ -11,6 +11,7 @@ import {
 } from './engine-public-mappers';
 import type { PlannerServices } from './internal-types';
 import { inferRelations } from './relations';
+import { buildLearnerActualsEvidence } from './learner-actuals';
 import { buildRenderModel } from './render-model';
 import { computeScheduleArtifacts } from './schedule-optimizer';
 import { plannerClock } from './time';
@@ -65,7 +66,7 @@ export function computePlannerSnapshot(
     project,
     workloadClusterInfo,
   );
-  const { schedulePlan, overlapClusters, dayPlan, scheduleStats } =
+  let { schedulePlan, overlapClusters, dayPlan, scheduleStats } =
     computeScheduleArtifacts(
       project,
       corpus,
@@ -74,9 +75,40 @@ export function computePlannerSnapshot(
       topicIndex,
       clock,
     );
+  let resolvedDifficultyModel = difficultyModel;
+  if (project.constraints.actualsPropagationMode !== 'book_only') {
+    const learnerActuals = buildLearnerActualsEvidence({
+      project,
+      byDate: dayPlan.byDate,
+      expectedDifficultyByBook: Object.fromEntries(
+        Object.entries(difficultyModel.byId).map(([bookId, entry]) => [
+          bookId,
+          entry.profileAdjustedDifficulty,
+        ]),
+      ),
+      activeBookIds: schedulePlan.activeIds,
+    });
+    resolvedDifficultyModel = computeDifficultyModel(
+      corpus,
+      topicIndex,
+      relationInfo,
+      project,
+      workloadClusterInfo,
+      learnerActuals,
+    );
+    ({ schedulePlan, overlapClusters, dayPlan, scheduleStats } =
+      computeScheduleArtifacts(
+        project,
+        corpus,
+        relationInfo,
+        resolvedDifficultyModel,
+        topicIndex,
+        clock,
+      ));
+  }
   const { topics, topicsById } = toPublicTopics(topicIndex);
-  const publicDifficulty = toPublicDifficulty(difficultyModel);
-  const sortedBooks = buildSortedBooks(project, corpus, difficultyModel);
+  const publicDifficulty = toPublicDifficulty(resolvedDifficultyModel);
+  const sortedBooks = buildSortedBooks(project, corpus, resolvedDifficultyModel);
 
   const snapshotWithoutRender: Omit<
     EngineSnapshot,

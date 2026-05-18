@@ -1,5 +1,6 @@
 import { AUTO_RD_MIN_CHAIN_FLOOR } from './constants';
 import type {
+  ActualsPropagationMode,
   BackfillMode,
   BookOrderPolicy,
   CompressCurve,
@@ -59,6 +60,17 @@ export function normalizeLearnerProfileMode(
   )
     return value;
   return 'balanced_adaptive';
+}
+
+export function normalizeActualsPropagationMode(
+  value: string | undefined,
+): ActualsPropagationMode {
+  if (
+    value === 'epoch_partial_pooling' ||
+    value === 'project_partial_pooling'
+  )
+    return value;
+  return 'book_only';
 }
 
 export function normalizeCompressCurve(
