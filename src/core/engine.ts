@@ -31,6 +31,16 @@ const NOOP_LOGGER: Logger = {
   error(): void {},
 };
 
+function projectWithoutActualLogs(project: PlannerProjectV1): PlannerProjectV1 {
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      actuals: {},
+    },
+  };
+}
+
 function servicesWithDefaults(
   services?: Partial<PlannerServices>,
 ): PlannerServices {
@@ -66,7 +76,8 @@ export function computePlannerSnapshot(
     project,
     workloadClusterInfo,
   );
-  let { schedulePlan, overlapClusters, dayPlan, scheduleStats } =
+  let resolvedDifficultyModel = difficultyModel;
+  let scheduleArtifacts =
     computeScheduleArtifacts(
       project,
       corpus,
@@ -75,18 +86,25 @@ export function computePlannerSnapshot(
       topicIndex,
       clock,
     );
-  let resolvedDifficultyModel = difficultyModel;
   if (project.constraints.actualsPropagationMode !== 'book_only') {
+    const automaticScheduleArtifacts = computeScheduleArtifacts(
+      projectWithoutActualLogs(project),
+      corpus,
+      relationInfo,
+      difficultyModel,
+      topicIndex,
+      clock,
+    );
     const learnerActuals = buildLearnerActualsEvidence({
       project,
-      byDate: dayPlan.byDate,
+      byDate: automaticScheduleArtifacts.dayPlan.byDate,
       expectedDifficultyByBook: Object.fromEntries(
         Object.entries(difficultyModel.byId).map(([bookId, entry]) => [
           bookId,
           entry.profileAdjustedDifficulty,
         ]),
       ),
-      activeBookIds: schedulePlan.activeIds,
+      activeBookIds: automaticScheduleArtifacts.schedulePlan.activeIds,
     });
     resolvedDifficultyModel = computeDifficultyModel(
       corpus,
@@ -96,16 +114,17 @@ export function computePlannerSnapshot(
       workloadClusterInfo,
       learnerActuals,
     );
-    ({ schedulePlan, overlapClusters, dayPlan, scheduleStats } =
-      computeScheduleArtifacts(
-        project,
-        corpus,
-        relationInfo,
-        resolvedDifficultyModel,
-        topicIndex,
-        clock,
-      ));
+    scheduleArtifacts = computeScheduleArtifacts(
+      project,
+      corpus,
+      relationInfo,
+      resolvedDifficultyModel,
+      topicIndex,
+      clock,
+    );
   }
+  const { schedulePlan, overlapClusters, dayPlan, scheduleStats } =
+    scheduleArtifacts;
   const { topics, topicsById } = toPublicTopics(topicIndex);
   const publicDifficulty = toPublicDifficulty(resolvedDifficultyModel);
   const sortedBooks = buildSortedBooks(project, corpus, resolvedDifficultyModel);

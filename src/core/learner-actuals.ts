@@ -99,11 +99,9 @@ function plannedBookIdsForDate(
   return [
     ...new Set(
       [...entries]
+        .filter((entry) => !entry.actualOverride)
         .sort((left, right) => {
-          const actualOrder =
-            Number(left.actualOverride) - Number(right.actualOverride);
           return (
-            actualOrder ||
             left.short.localeCompare(right.short) ||
             left.bookId.localeCompare(right.bookId)
           );

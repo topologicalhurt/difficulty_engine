@@ -107,6 +107,30 @@ describe('learner actuals partial pooling', () => {
     expect(result.group.residualLift).toBe(0);
   });
 
+  it('does not let manual-only actual rows define an epoch', () => {
+    const result = buildLearnerActualsEvidence({
+      project: project('epoch_partial_pooling', {
+        '2026-01-05': {
+          intro: { minutes: 5, pages: 40, done: true },
+          systems: { minutes: 8, pages: 40, done: true },
+        },
+      }),
+      byDate: {
+        '2026-01-05': [
+          entry('intro', true),
+          entry('systems', true),
+          entry('advanced', true),
+        ],
+      },
+      expectedDifficultyByBook: { intro: 5, systems: 5, advanced: 5 },
+      activeBookIds: ['intro', 'systems', 'advanced'],
+    }).byBookId.advanced;
+
+    expect(result.group.confidence).toBe(0);
+    expect(result.group.bookCount).toBe(0);
+    expect(result.group.residualLift).toBe(0);
+  });
+
   it('quarantines mixed faster/slower epoch evidence', () => {
     const result = evidence('epoch_partial_pooling', {
       '2026-01-05': {
