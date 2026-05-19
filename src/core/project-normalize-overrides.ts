@@ -1,10 +1,12 @@
-import type { PlannerProjectV1 } from './types';
+import type { CalendarActivityMode, PlannerProjectV1 } from './types';
 import { unique } from './utils';
 import {
   normalizeBoolean,
   normalizeDateKey,
   normalizeNumber,
+  normalizeString,
   normalizeStringArray,
+  normalizeWeekdays,
 } from './project-normalize-primitives';
 
 const MAX_ACTUAL_MINUTES_PER_ENTRY = 24 * 60;
@@ -13,6 +15,10 @@ const DAY_MINUTES = 24 * 60;
 const TIME_BLOCK_GRANULARITY_MINUTES = 60;
 const MIN_TIME_BLOCK_DURATION_MINUTES = 15;
 const MAX_TIME_BLOCK_DURATION_MINUTES = 12 * 60;
+const DEFAULT_ACTIVITY_COLOR = '#4fb3ff';
+const MAX_ACTIVITY_TITLE_LENGTH = 80;
+const MAX_ACTIVITY_WEEKLY_MINUTES = 7 * 12 * 60;
+const MAX_ACTIVITY_SESSIONS_PER_WEEK = 21;
 
 export function normalizeManualSchedule(
   value: unknown,
@@ -197,5 +203,78 @@ export function normalizeTimeBlockOverrides(
         ([dateKey, byBook]) =>
           Boolean(dateKey) && Object.keys(byBook).length > 0,
       ),
+  );
+}
+
+function normalizeActivityColor(value: unknown): string {
+  const normalized = normalizeString(value, DEFAULT_ACTIVITY_COLOR);
+  return /^#[0-9a-f]{6}$/i.test(normalized)
+    ? normalized.toLowerCase()
+    : DEFAULT_ACTIVITY_COLOR;
+}
+
+function normalizeActivityMode(value: unknown): CalendarActivityMode {
+  return value === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly';
+}
+
+export function normalizeCalendarActivityOverrides(
+  value: unknown,
+): PlannerProjectV1['manualOverrides']['calendarActivities'] {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .map(([fallbackId, rawActivity]) => {
+        const raw =
+          rawActivity && typeof rawActivity === 'object'
+            ? (rawActivity as Record<string, unknown>)
+            : {};
+        const id = normalizeString(raw.id, fallbackId).replace(
+          /[^a-z0-9_-]/gi,
+          '',
+        );
+        const title = normalizeString(raw.title, 'Activity').slice(
+          0,
+          MAX_ACTIVITY_TITLE_LENGTH,
+        );
+        const mode = normalizeActivityMode(raw.mode);
+        const durationMinutes = normalizeNumber(
+          raw.durationMinutes,
+          2 * TIME_BLOCK_GRANULARITY_MINUTES,
+          MIN_TIME_BLOCK_DURATION_MINUTES,
+          MAX_TIME_BLOCK_DURATION_MINUTES,
+          true,
+        );
+        const weeklyMinutes = normalizeNumber(
+          raw.weeklyMinutes,
+          durationMinutes,
+          MIN_TIME_BLOCK_DURATION_MINUTES,
+          MAX_ACTIVITY_WEEKLY_MINUTES,
+          true,
+        );
+        const sessionsPerWeek = normalizeNumber(
+          raw.sessionsPerWeek,
+          Math.max(1, Math.ceil(weeklyMinutes / durationMinutes)),
+          1,
+          MAX_ACTIVITY_SESSIONS_PER_WEEK,
+          true,
+        );
+        return [
+          id,
+          {
+            id,
+            title: title || 'Activity',
+            color: normalizeActivityColor(raw.color),
+            mode,
+            days: normalizeWeekdays(raw.days, [1, 2, 3, 4, 5]),
+            startMinute: normalizeClockMinute(raw.startMinute),
+            durationMinutes,
+            weeklyMinutes,
+            sessionsPerWeek,
+          },
+        ] as const;
+      })
+      .filter(([id]) => Boolean(id)),
   );
 }

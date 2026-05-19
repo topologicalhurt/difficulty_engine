@@ -38,7 +38,9 @@ export function selectActiveTabRenderKeys(state: AppState): readonly unknown[] {
         activeView,
         state.snapshot.dayPlan,
         state.project.manualOverrides.timeBlocks ?? {},
+        state.project.manualOverrides.calendarActivities ?? {},
         state.project.library.books,
+        state.ui.calendarLearningMode,
         state.ui.planColorMode,
         state.ui.calendarWeekIndex,
       ];

@@ -13,6 +13,7 @@ import type {
   ConstraintSet,
   EnrichmentCacheEntry,
   GanttView,
+  CalendarLearningMode,
   PlanColorMode,
   PlannerProjectV1,
   QbittorrentConnectionSettings,
@@ -65,6 +66,7 @@ export interface UiState {
   calendarWeekIndex: number;
   ganttView: GanttView;
   ganttZoom: number;
+  calendarLearningMode: CalendarLearningMode;
   planColorMode: PlanColorMode;
   openConstraintGroups: string[];
   selectedConstraintKey: keyof ConstraintSet | null;

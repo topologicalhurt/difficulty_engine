@@ -12,6 +12,7 @@ import { normalizeBook, normalizeCacheEntry } from './project-normalize-book';
 import {
   normalizeActualOverrides,
   normalizeBookIdMap,
+  normalizeCalendarActivityOverrides,
   normalizeManualSchedule,
   normalizeTimeBlockOverrides,
 } from './project-normalize-overrides';
@@ -29,6 +30,7 @@ export function createEmptyProject(): PlannerProjectV1 {
       deferred: {},
       actuals: {},
       timeBlocks: {},
+      calendarActivities: {},
     },
     constraints: createDefaultConstraints(),
     aiRecommendationSettings: createDefaultAiRecommendationSettings(),
@@ -90,6 +92,9 @@ export function normalizeProject(
       timeBlocks: normalizeTimeBlockOverrides(
         manualOverrides.timeBlocks,
         validIds,
+      ),
+      calendarActivities: normalizeCalendarActivityOverrides(
+        manualOverrides.calendarActivities,
       ),
     },
     constraints: normalizeConstraints(raw.constraints),

@@ -1,20 +1,37 @@
-import type { AppState, CalendarEntry } from '../../core/types';
+import type {
+  AppState,
+  CalendarEntry,
+  CalendarLearningMode,
+} from '../../core/types';
+import { minutesPerPage } from '../../core/constraints';
 import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
-import {
-  addLocalDays,
-  dateKeyFromDate,
-  parseLocalDateKey,
-} from '../../core/time';
 import { round1 } from '../../core/utils';
+import {
+  activityRows,
+  activitySummaries,
+  fixedActivityBlocksForDay,
+  flexibleActivityBlocksForWeek,
+  intervalFromActivity,
+  type HourlyCalendarActivityBlock,
+} from './calendar-activity-blocks';
+import { buildHourlyCalendarIcs } from './calendar-ics';
+import {
+  calendarDateTime,
+  clampStartMinute,
+  durationForEntry,
+  formatClockMinute,
+  HOUR_END,
+  HOUR_MINUTES,
+  HOUR_START,
+  nextAvailableStart,
+  type OccupiedInterval,
+} from './calendar-time';
 import { buildCalendarWeeks, type CalendarWeek } from './calendar-weeks';
 import { formatPlanFullDate } from './date-labels';
 import { memoizeSelector } from './memo';
 import { selectPlanColors } from './plan-colors';
 
-const DEFAULT_DAY_START_MINUTE = 9 * 60;
-const HOUR_START = 0;
-const HOUR_END = 23;
-const HOUR_MINUTES = 60;
+export { formatClockMinute };
 
 export interface HourlyCalendarBlock {
   id: string;
@@ -33,6 +50,9 @@ export interface HourlyCalendarBlock {
   plannedPages: number;
   googleCalendarUrl: string;
   persisted: boolean;
+  performanceTone: 'neutral' | 'ahead' | 'behind';
+  performanceLabel: string;
+  performanceRatio: number | null;
 }
 
 export interface HourlyCalendarDay {
@@ -40,6 +60,7 @@ export interface HourlyCalendarDay {
   label: string;
   statusLabel: string;
   blocks: HourlyCalendarBlock[];
+  activityBlocks: HourlyCalendarActivityBlock[];
 }
 
 export interface HourlyCalendarWeek {
@@ -54,37 +75,25 @@ export interface CalendarViewModel {
   icsText: string;
   icsDataUrl: string;
   exportSummary: string;
+  activitySummaries: string[];
+  activityRows: Array<{
+    id: string;
+    title: string;
+    color: string;
+    summary: string;
+  }>;
+  learningMode: CalendarLearningMode;
+  bookWindows: Array<{
+    bookId: string;
+    label: string;
+    startWeekIndex: number;
+    endWeekIndex: number;
+  }>;
   selectedWeekIndex: number;
   weekCount: number;
   selectedWeekLabel: string;
   canGoPrevious: boolean;
   canGoNext: boolean;
-}
-
-function clampStartMinute(value: number): number {
-  return Math.max(0, Math.min(23 * HOUR_MINUTES, Math.round(value / 60) * 60));
-}
-
-function durationForEntry(entry: CalendarEntry): number {
-  return Math.max(30, Math.min(12 * 60, Math.round(entry.mins || 30)));
-}
-
-export function formatClockMinute(minute: number): string {
-  const hours = Math.floor(minute / 60);
-  const minutes = minute % 60;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
-
-function calendarDateTime(dateKey: string, minute: number): string {
-  const dayOffset = Math.floor(minute / (24 * 60));
-  const localMinute = minute % (24 * 60);
-  const resolvedDate = dayOffset
-    ? dateKeyFromDate(addLocalDays(parseLocalDateKey(dateKey), dayOffset))
-    : dateKey;
-  const compactDate = resolvedDate.replaceAll('-', '');
-  const hours = String(Math.floor(localMinute / 60)).padStart(2, '0');
-  const minutes = String(localMinute % 60).padStart(2, '0');
-  return `${compactDate}T${hours}${minutes}00`;
 }
 
 function googleEventUrl(
@@ -99,24 +108,82 @@ function googleEventUrl(
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+function performanceForEntry(input: {
+  state: AppState;
+  dateKey: string;
+  entry: CalendarEntry;
+  expectedMinutesPerPage: number;
+}): Pick<
+  HourlyCalendarBlock,
+  'performanceTone' | 'performanceLabel' | 'performanceRatio'
+> {
+  const actual =
+    input.state.project.manualOverrides.actuals[input.dateKey]?.[
+      input.entry.bookId
+    ];
+  if (
+    !actual ||
+    actual.minutes == null ||
+    actual.pages == null ||
+    actual.minutes <= 0 ||
+    actual.pages <= 0 ||
+    input.expectedMinutesPerPage <= 0
+  ) {
+    return {
+      performanceTone: 'neutral',
+      performanceLabel: 'No actuals yet',
+      performanceRatio: null,
+    };
+  }
+  const observedMinutesPerPage = actual.minutes / actual.pages;
+  const ratio = input.expectedMinutesPerPage / observedMinutesPerPage;
+  if (ratio >= 1.15) {
+    return {
+      performanceTone: 'ahead',
+      performanceLabel: `${Math.round((ratio - 1) * 100)}% ahead of expected pace`,
+      performanceRatio: ratio,
+    };
+  }
+  if (ratio <= 0.85) {
+    return {
+      performanceTone: 'behind',
+      performanceLabel: `${Math.round((1 - ratio) * 100)}% slower than expected pace`,
+      performanceRatio: ratio,
+    };
+  }
+  return {
+    performanceTone: 'neutral',
+    performanceLabel: 'Near expected pace',
+    performanceRatio: ratio,
+  };
+}
+
 function blockForEntry(input: {
   state: AppState;
   dateKey: string;
   entry: CalendarEntry;
-  index: number;
   color: string;
+  startMinute: number;
+  durationMinutes: number;
+  persisted: boolean;
 }): HourlyCalendarBlock {
-  const override =
-    input.state.project.manualOverrides.timeBlocks?.[input.dateKey]?.[
-      input.entry.bookId
-    ];
-  const defaultStart = DEFAULT_DAY_START_MINUTE + input.index * HOUR_MINUTES;
-  const startMinute = clampStartMinute(override?.startMinute ?? defaultStart);
+  const startMinute = clampStartMinute(input.startMinute);
   const durationMinutes = Math.min(
-    override?.durationMinutes ?? durationForEntry(input.entry),
+    input.durationMinutes,
     24 * 60 - startMinute,
   );
   const plannedPages = input.entry.readPages + input.entry.skimPages;
+  const expectedMinutesPerPage = minutesPerPage(
+    input.state.snapshot.difficultyModel[input.entry.bookId]
+      ?.scheduleDifficulty ?? 5,
+    input.state.project.constraints,
+  );
+  const performance = performanceForEntry({
+    state: input.state,
+    dateKey: input.dateKey,
+    entry: input.entry,
+    expectedMinutesPerPage,
+  });
   const base = {
     id: `${input.dateKey}:${input.entry.bookId}`,
     dateKey: input.dateKey,
@@ -136,7 +203,8 @@ function blockForEntry(input: {
     timeLabel: '',
     plannedMinutes: input.entry.mins,
     plannedPages,
-    persisted: Boolean(override),
+    persisted: input.persisted,
+    ...performance,
   };
   const block = {
     ...base,
@@ -146,7 +214,44 @@ function blockForEntry(input: {
   return { ...block, googleCalendarUrl: googleEventUrl(block) };
 }
 
-function dayBlocks(state: AppState, week: CalendarWeek): HourlyCalendarWeek {
+function bookWindows(
+  sourceWeeks: CalendarWeek[],
+  state: AppState,
+): CalendarViewModel['bookWindows'] {
+  const windows = new Map<
+    string,
+    {
+      bookId: string;
+      label: string;
+      startWeekIndex: number;
+      endWeekIndex: number;
+    }
+  >();
+  sourceWeeks.forEach((week, weekIndex) => {
+    week.days.forEach((day) => {
+      day.entries.forEach((entry) => {
+        const existing = windows.get(entry.bookId);
+        const label =
+          state.project.library.books[entry.bookId]?.short ?? entry.short;
+        windows.set(entry.bookId, {
+          bookId: entry.bookId,
+          label,
+          startWeekIndex: existing?.startWeekIndex ?? weekIndex,
+          endWeekIndex: weekIndex,
+        });
+      });
+    });
+  });
+  return [...windows.values()].sort((left, right) =>
+    compareText(left.label, right.label),
+  );
+}
+
+function dayBlocks(
+  state: AppState,
+  week: CalendarWeek,
+  activityBlocksByDate: Map<string, HourlyCalendarActivityBlock[]>,
+): HourlyCalendarWeek {
   const colors = selectPlanColors(state);
   return {
     key: week.key,
@@ -160,56 +265,46 @@ function dayBlocks(state: AppState, week: CalendarWeek): HourlyCalendarWeek {
             compareText(left.short, right.short),
           ),
         );
+      const occupied = (activityBlocksByDate.get(day.key) ?? []).map(
+        intervalFromActivity,
+      );
+      const blocks = entries.map((entry) => {
+        const override =
+          state.project.manualOverrides.timeBlocks?.[day.key]?.[entry.bookId];
+        const durationMinutes = Math.min(
+          override?.durationMinutes ?? durationForEntry(entry),
+          24 * 60,
+        );
+        const startMinute =
+          override?.startMinute ??
+          nextAvailableStart(
+            durationMinutes,
+            occupied,
+            state.ui.calendarLearningMode,
+          );
+        occupied.push({
+          startMinute,
+          endMinute: Math.min(24 * 60, startMinute + durationMinutes),
+        });
+        return blockForEntry({
+          state,
+          dateKey: day.key,
+          entry,
+          color: colors.byBookId[entry.bookId] || 'hsl(160 42% 55%)',
+          startMinute,
+          durationMinutes,
+          persisted: Boolean(override),
+        });
+      });
       return {
         key: day.key,
         label: `${day.dayLabel} ${day.dayNumber}`,
         statusLabel: day.statusLabel,
-        blocks: entries.map((entry, index) =>
-          blockForEntry({
-            state,
-            dateKey: day.key,
-            entry,
-            index,
-            color: colors.byBookId[entry.bookId] || 'hsl(160 42% 55%)',
-          }),
-        ),
+        activityBlocks: activityBlocksByDate.get(day.key) ?? [],
+        blocks,
       };
     }),
   };
-}
-
-function escapeIcsText(value: string): string {
-  return value
-    .replaceAll('\\', '\\\\')
-    .replaceAll(';', '\\;')
-    .replaceAll(',', '\\,')
-    .replaceAll('\n', '\\n');
-}
-
-function icsDate(dateKey: string, minute: number): string {
-  return calendarDateTime(dateKey, minute).replace(/[-:]/g, '');
-}
-
-function buildIcs(blocks: HourlyCalendarBlock[]): string {
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Difficulty Engine//Hourly Study Calendar//EN',
-    'CALSCALE:GREGORIAN',
-  ];
-  blocks.forEach((block) => {
-    lines.push(
-      'BEGIN:VEVENT',
-      `UID:${escapeIcsText(block.id)}@difficulty-engine`,
-      `SUMMARY:${escapeIcsText(`Study: ${block.short}`)}`,
-      `DESCRIPTION:${escapeIcsText(`${block.title}\n${block.plannedMinutes} minute(s), ${round1(block.plannedPages)} page(s).`)}`,
-      `DTSTART:${icsDate(block.dateKey, block.startMinute)}`,
-      `DTEND:${icsDate(block.dateKey, block.endMinute)}`,
-      'END:VEVENT',
-    );
-  });
-  lines.push('END:VCALENDAR');
-  return `${lines.join('\r\n')}\r\n`;
 }
 
 const selectCalendarViewModelMemo = memoizeSelector(
@@ -217,7 +312,10 @@ const selectCalendarViewModelMemo = memoizeSelector(
   (state: AppState) => [
     state.snapshot.dayPlan,
     state.project.manualOverrides.timeBlocks ?? {},
+    state.project.manualOverrides.actuals,
+    state.project.manualOverrides.calendarActivities ?? {},
     state.project.library.books,
+    state.ui.calendarLearningMode,
     state.ui.planColorMode,
     state.ui.calendarWeekIndex,
   ],
@@ -228,11 +326,42 @@ const selectCalendarViewModelMemo = memoizeSelector(
       ? Math.min(Math.max(0, state.ui.calendarWeekIndex), weekCount - 1)
       : 0;
     const selectedWeek = sourceWeeks[selectedWeekIndex];
-    const weeks = selectedWeek ? [dayBlocks(state, selectedWeek)] : [];
+    const activities = Object.values(
+      state.project.manualOverrides.calendarActivities ?? {},
+    );
+    const occupiedByDate = new Map<string, OccupiedInterval[]>();
+    const activityBlocksByDate = new Map<
+      string,
+      HourlyCalendarActivityBlock[]
+    >();
+    if (selectedWeek) {
+      selectedWeek.days.forEach((day) => {
+        const fixed = fixedActivityBlocksForDay(activities, day.key);
+        activityBlocksByDate.set(day.key, fixed);
+        occupiedByDate.set(day.key, fixed.map(intervalFromActivity));
+      });
+      flexibleActivityBlocksForWeek(
+        activities,
+        selectedWeek,
+        occupiedByDate,
+        state.ui.calendarLearningMode,
+      ).forEach((block) => {
+        activityBlocksByDate.set(block.dateKey, [
+          ...(activityBlocksByDate.get(block.dateKey) ?? []),
+          block,
+        ]);
+      });
+    }
+    const weeks = selectedWeek
+      ? [dayBlocks(state, selectedWeek, activityBlocksByDate)]
+      : [];
     const blocks = weeks.flatMap((week) =>
       week.days.flatMap((day) => day.blocks),
     );
-    const icsText = buildIcs(blocks);
+    const activityBlocks = weeks.flatMap((week) =>
+      week.days.flatMap((day) => day.activityBlocks),
+    );
+    const icsText = buildHourlyCalendarIcs(blocks, activityBlocks);
     return {
       weeks,
       hourLabels: Array.from(
@@ -247,6 +376,10 @@ const selectCalendarViewModelMemo = memoizeSelector(
       exportSummary: blocks.length
         ? `${blocks.length} study block(s) in ${selectedWeek?.label ?? 'selected week'} · plan finish ${formatPlanFullDate(state.snapshot.scheduleStats.finishDate)}`
         : 'No study blocks to export yet.',
+      activitySummaries: activitySummaries(activities),
+      activityRows: activityRows(activities),
+      learningMode: state.ui.calendarLearningMode,
+      bookWindows: bookWindows(sourceWeeks, state),
       selectedWeekIndex,
       weekCount,
       selectedWeekLabel: selectedWeek?.label ?? 'No planned week',

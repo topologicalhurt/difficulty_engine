@@ -1,11 +1,13 @@
 import type { PlannerStoreCommands } from '../core/types';
 import { round1 } from '../core/utils';
 import {
+  withCalendarActivity,
   withCalendarEntryDone,
   withCalendarEntryMinutes,
   withCalendarEntryPages,
   withCalendarTimeBlock,
   withDeferredCalendarEntry,
+  withoutCalendarActivity,
   withoutCalendarEntryOverride,
   withoutCalendarTimeBlock,
 } from './calendar-overrides';
@@ -22,6 +24,8 @@ export function createCalendarCommands(
   | 'clearCalendarEntryActual'
   | 'setCalendarTimeBlock'
   | 'clearCalendarTimeBlock'
+  | 'addCalendarActivity'
+  | 'removeCalendarActivity'
 > {
   return {
     deferCalendarEntry(dateKey: string, bookId: string): void {
@@ -126,6 +130,32 @@ export function createCalendarCommands(
           banner: {
             tone: 'success',
             message: 'Calendar time block reset to automatic placement.',
+          },
+        },
+        false,
+      );
+    },
+    addCalendarActivity(input): void {
+      context.commitProject(
+        'calendar.activity.add',
+        withCalendarActivity(context.getState().project, input),
+        {
+          banner: {
+            tone: 'success',
+            message: 'Calendar activity added.',
+          },
+        },
+        false,
+      );
+    },
+    removeCalendarActivity(activityId: string): void {
+      context.commitProject(
+        'calendar.activity.remove',
+        withoutCalendarActivity(context.getState().project, activityId),
+        {
+          banner: {
+            tone: 'warn',
+            message: 'Calendar activity removed.',
           },
         },
         false,

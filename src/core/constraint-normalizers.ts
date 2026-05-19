@@ -3,6 +3,7 @@ import type {
   ActualsPropagationMode,
   BackfillMode,
   BookOrderPolicy,
+  CalendarLearningMode,
   CompressCurve,
   DailyBookMode,
   EmptyDayPolicy,
@@ -42,6 +43,13 @@ export function normalizePlanColorMode(
   return 'category_mono';
 }
 
+export function normalizeCalendarLearningMode(
+  value: string | undefined,
+): CalendarLearningMode {
+  if (value === 'morning_focus' || value === 'evening_focus') return value;
+  return 'cognitive_default';
+}
+
 export function normalizeRelativePacingCurve(
   value: string | undefined,
 ): RelativePacingCurve {
@@ -65,10 +73,7 @@ export function normalizeLearnerProfileMode(
 export function normalizeActualsPropagationMode(
   value: string | undefined,
 ): ActualsPropagationMode {
-  if (
-    value === 'epoch_partial_pooling' ||
-    value === 'project_partial_pooling'
-  )
+  if (value === 'epoch_partial_pooling' || value === 'project_partial_pooling')
     return value;
   return 'book_only';
 }

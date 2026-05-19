@@ -1,5 +1,9 @@
 import type { PlannerProjectV1 } from '../core/types';
 
+type CalendarActivityMap = NonNullable<
+  PlannerProjectV1['manualOverrides']['calendarActivities']
+>;
+
 export function removeBookFromDeferred(
   entries: Record<string, string[]>,
   bookId: string,
@@ -42,6 +46,88 @@ export function removeBookFromTimeBlocks(
       })
       .filter(([, byBook]) => Object.keys(byBook).length > 0),
   );
+}
+
+function nextCalendarActivityId(project: PlannerProjectV1): string {
+  const existing = new Set(
+    Object.keys(project.manualOverrides.calendarActivities ?? {}),
+  );
+  let index = existing.size + 1;
+  while (existing.has(`activity-${index}`)) index += 1;
+  return `activity-${index}`;
+}
+
+function normalizeActivityColor(color: string | undefined): string {
+  return color && /^#[0-9a-f]{6}$/i.test(color)
+    ? color.toLowerCase()
+    : '#4fb3ff';
+}
+
+export function withCalendarActivity(
+  project: PlannerProjectV1,
+  input: Partial<CalendarActivityMap[string]>,
+): PlannerProjectV1 {
+  const activities = project.manualOverrides.calendarActivities ?? {};
+  const id = input.id?.trim() || nextCalendarActivityId(project);
+  const durationMinutes = Math.max(
+    15,
+    Math.min(12 * 60, Math.round(input.durationMinutes ?? 120)),
+  );
+  const weeklyMinutes = Math.max(
+    15,
+    Math.min(7 * 12 * 60, Math.round(input.weeklyMinutes ?? durationMinutes)),
+  );
+  const sessionsPerWeek = Math.max(
+    1,
+    Math.min(
+      21,
+      Math.round(
+        input.sessionsPerWeek ?? Math.ceil(weeklyMinutes / durationMinutes),
+      ),
+    ),
+  );
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      calendarActivities: {
+        ...activities,
+        [id]: {
+          id,
+          title: input.title?.trim() || 'Activity',
+          color: normalizeActivityColor(input.color),
+          mode:
+            input.mode === 'flexible_weekly'
+              ? 'flexible_weekly'
+              : 'fixed_weekly',
+          days: input.days?.length
+            ? [...new Set(input.days)].sort()
+            : [1, 2, 3, 4, 5],
+          startMinute: normalizeHourMinute(input.startMinute ?? 18 * 60),
+          durationMinutes,
+          weeklyMinutes,
+          sessionsPerWeek,
+        },
+      },
+    },
+  };
+}
+
+export function withoutCalendarActivity(
+  project: PlannerProjectV1,
+  activityId: string,
+): PlannerProjectV1 {
+  const calendarActivities = {
+    ...(project.manualOverrides.calendarActivities ?? {}),
+  };
+  delete calendarActivities[activityId];
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      calendarActivities,
+    },
+  };
 }
 
 function withoutDeferredBook(

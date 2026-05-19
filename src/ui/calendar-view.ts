@@ -1,12 +1,16 @@
 import {
   formatClockMinute,
   selectCalendarViewModel,
+  type CalendarViewModel,
   type HourlyCalendarBlock,
   type HourlyCalendarDay,
 } from '../app/selectors/calendar';
+import type { HourlyCalendarActivityBlock } from '../app/selectors/calendar-activity-blocks';
 import type { AppState, PlannerStore } from '../core/types';
 import { button, el, emptyState, panel } from './dom';
 import { renderCalendarSurface } from './calendar-surface';
+import { renderActivitySettings } from './calendar-settings-panel';
+import { selectInput } from './form-controls';
 
 const DRAG_MIME = 'application/x-difficulty-calendar-block';
 
@@ -75,6 +79,10 @@ function renderBlock(
       className: 'muted-copy',
       text: `${Math.round(block.plannedMinutes)}m · ${block.plannedPages.toFixed(1)} pages`,
     }),
+    el('div', {
+      className: `hourly-calendar-performance performance-${block.performanceTone}`,
+      text: block.performanceLabel,
+    }),
     el(
       'div',
       { className: 'hourly-calendar-actions' },
@@ -99,6 +107,34 @@ function renderBlock(
   return node;
 }
 
+function renderActivityBlock(block: HourlyCalendarActivityBlock): HTMLElement {
+  const node = el(
+    'article',
+    {
+      className: `hourly-activity-block activity-${block.mode}`,
+      title: `${block.title} · ${block.timeLabel}`,
+      dataset: {
+        activityId: block.activityId,
+      },
+    },
+    el(
+      'div',
+      { className: 'hourly-calendar-block-head' },
+      el('strong', { text: block.title }),
+      el('span', { className: 'muted-copy', text: block.timeLabel }),
+    ),
+    el('div', {
+      className: 'muted-copy',
+      text:
+        block.mode === 'flexible_weekly'
+          ? 'Flexible weekly activity'
+          : 'Fixed weekly activity',
+    }),
+  );
+  node.style.setProperty('--calendar-activity-color', block.color);
+  return node;
+}
+
 function groupBlocksByHour(
   blocks: HourlyCalendarBlock[],
 ): Map<number, HourlyCalendarBlock[]> {
@@ -112,10 +148,24 @@ function groupBlocksByHour(
   return byHour;
 }
 
+function groupActivityBlocksByHour(
+  blocks: HourlyCalendarActivityBlock[],
+): Map<number, HourlyCalendarActivityBlock[]> {
+  const byHour = new Map<number, HourlyCalendarActivityBlock[]>();
+  blocks.forEach((block) => {
+    const hour = Math.floor(block.startMinute / 60) * 60;
+    const existing = byHour.get(hour) ?? [];
+    existing.push(block);
+    byHour.set(hour, existing);
+  });
+  return byHour;
+}
+
 function renderHourSlot(
   day: HourlyCalendarDay,
   minute: number,
   blocks: HourlyCalendarBlock[],
+  activityBlocks: HourlyCalendarActivityBlock[],
   store: PlannerStore,
 ): HTMLElement {
   return el(
@@ -149,6 +199,7 @@ function renderHourSlot(
     el(
       'div',
       { className: 'hourly-calendar-slot-body' },
+      ...activityBlocks.map((block) => renderActivityBlock(block)),
       ...blocks.map((block) => renderBlock(block, store)),
     ),
   );
@@ -160,6 +211,7 @@ function renderDay(
   store: PlannerStore,
 ): HTMLElement {
   const blocksByHour = groupBlocksByHour(day.blocks);
+  const activityBlocksByHour = groupActivityBlocksByHour(day.activityBlocks);
   return el(
     'div',
     {
@@ -178,9 +230,52 @@ function renderDay(
       'div',
       { className: 'hourly-calendar-slots' },
       ...hourLabels.map(({ minute }) =>
-        renderHourSlot(day, minute, blocksByHour.get(minute) ?? [], store),
+        renderHourSlot(
+          day,
+          minute,
+          blocksByHour.get(minute) ?? [],
+          activityBlocksByHour.get(minute) ?? [],
+          store,
+        ),
       ),
     ),
+  );
+}
+
+function renderBookJump(
+  viewModel: CalendarViewModel,
+  store: PlannerStore,
+): HTMLElement | null {
+  if (!viewModel.bookWindows.length) return null;
+  const select = selectInput(
+    viewModel.bookWindows[0]?.bookId ?? '',
+    viewModel.bookWindows.map((window) => ({
+      value: window.bookId,
+      label: window.label,
+    })),
+    { className: 'calendar-book-jump-select' },
+  );
+  const jump = (edge: 'start' | 'finish'): void => {
+    const window = viewModel.bookWindows.find(
+      (entry) => entry.bookId === select.value,
+    );
+    if (!window) return;
+    store.commands.setCalendarWeekIndex(
+      edge === 'start' ? window.startWeekIndex : window.endWeekIndex,
+    );
+  };
+  return el(
+    'div',
+    { className: 'hourly-calendar-book-jump' },
+    select,
+    button('Jump to start', {
+      className: 'ghost-button calendar-action-button',
+      onClick: () => jump('start'),
+    }),
+    button('Jump to finish', {
+      className: 'ghost-button calendar-action-button',
+      onClick: () => jump('finish'),
+    }),
   );
 }
 
@@ -202,6 +297,7 @@ export function renderCalendarView(
   return el(
     'div',
     { className: 'stack-layout calendar-tab-view' },
+    renderActivitySettings(viewModel, store),
     panel(
       'Hourly calendar',
       {
@@ -244,6 +340,7 @@ export function renderCalendarView(
           className: 'muted-copy',
           text: 'Drag a study block onto an hour slot to persist when in the day you intend to read it.',
         }),
+        renderBookJump(viewModel, store),
         el('div', { className: 'detail-spacer' }),
         el('a', {
           className: 'ghost-button',

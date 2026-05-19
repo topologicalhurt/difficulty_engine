@@ -48,4 +48,36 @@ describe('calendar time block commands', () => {
       store.selectors.getProject().manualOverrides.timeBlocks?.[dateKey],
     ).toBeUndefined();
   });
+
+  it('persists repeating activities without recomputing the plan', () => {
+    const store = makeStore();
+    const snapshotBefore = store.selectors.getSnapshot();
+
+    store.commands.addCalendarActivity({
+      title: 'Repairs',
+      color: '#ff8800',
+      mode: 'fixed_weekly',
+      days: [2, 4],
+      startMinute: 18 * 60,
+      durationMinutes: 120,
+      weeklyMinutes: 240,
+      sessionsPerWeek: 2,
+    });
+
+    const activity = Object.values(
+      store.selectors.getProject().manualOverrides.calendarActivities ?? {},
+    )[0];
+    expect(activity).toMatchObject({
+      title: 'Repairs',
+      color: '#ff8800',
+      mode: 'fixed_weekly',
+      days: [2, 4],
+    });
+    expect(store.selectors.getSnapshot()).toBe(snapshotBefore);
+
+    store.commands.removeCalendarActivity(activity.id);
+    expect(
+      store.selectors.getProject().manualOverrides.calendarActivities,
+    ).toEqual({});
+  });
 });

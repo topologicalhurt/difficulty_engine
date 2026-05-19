@@ -26,6 +26,7 @@ export function createUiCommands(
   | 'setDialog'
   | 'setGanttView'
   | 'setGanttZoom'
+  | 'setCalendarLearningMode'
   | 'setPlanColorMode'
   | 'setPlanSectionOpen'
   | 'setLibraryListWidth'
@@ -95,6 +96,13 @@ export function createUiCommands(
         'ui.ganttZoom',
         { ganttZoom: nextZoom },
         { ganttZoom: nextZoom },
+      );
+    },
+    setCalendarLearningMode(mode): void {
+      commitUiPreference(
+        'ui.calendarLearningMode',
+        { calendarLearningMode: mode },
+        { calendarLearningMode: mode },
       );
     },
     setPlanColorMode(planColorMode: UiState['planColorMode']): void {

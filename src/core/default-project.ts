@@ -166,6 +166,7 @@ export function createDefaultAutopilotWizardState(
 const DEFAULT_UI_PREFERENCES: UiPreferences = {
   ganttView: 'plan',
   ganttZoom: 1,
+  calendarLearningMode: 'cognitive_default',
   planColorMode: 'category_mono',
   planSections: {
     gantt: true,
@@ -191,6 +192,7 @@ export const DEFAULT_UI_STATE: UiState = {
   calendarWeekIndex: 0,
   ganttView: DEFAULT_UI_PREFERENCES.ganttView,
   ganttZoom: DEFAULT_UI_PREFERENCES.ganttZoom,
+  calendarLearningMode: DEFAULT_UI_PREFERENCES.calendarLearningMode,
   planColorMode: DEFAULT_UI_PREFERENCES.planColorMode,
   planSections: { ...DEFAULT_UI_PREFERENCES.planSections },
   libraryListWidthPx: DEFAULT_UI_PREFERENCES.libraryListWidthPx,
@@ -254,7 +256,13 @@ export const EMPTY_PROJECT: PlannerProjectV1 = {
   version: 1,
   library: { books: {} },
   enrichmentCache: {},
-  manualOverrides: { schedule: {}, deferred: {}, actuals: {}, timeBlocks: {} },
+  manualOverrides: {
+    schedule: {},
+    deferred: {},
+    actuals: {},
+    timeBlocks: {},
+    calendarActivities: {},
+  },
   constraints: DEFAULT_CONSTRAINTS,
   aiRecommendationSettings: createDefaultAiRecommendationSettings(),
   sourceSettings: createDefaultSourceSettings(),

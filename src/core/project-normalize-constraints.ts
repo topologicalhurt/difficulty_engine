@@ -16,6 +16,7 @@ import {
   normalizeBackfillMode,
   normalizeActualsPropagationMode,
   normalizeBookOrderPolicy,
+  normalizeCalendarLearningMode,
   normalizeCompressCurve,
   normalizeDailyBookMode,
   normalizeEmptyDayPolicy,
@@ -249,6 +250,9 @@ export function normalizeUiPreferences(
       PLAN_ZOOM_MIN,
       PLAN_ZOOM_MAX,
     ),
+    calendarLearningMode: normalizeCalendarLearningMode(
+      normalizeString(input.calendarLearningMode),
+    ),
     planColorMode: normalizePlanColorMode(normalizeString(input.planColorMode)),
     planSections: {
       gantt:
@@ -275,6 +279,8 @@ export function normalizeUiPreferences(
       ),
     ).sort(),
     backupsEnabled:
-      input.backupsEnabled == null ? true : normalizeBoolean(input.backupsEnabled),
+      input.backupsEnabled == null
+        ? true
+        : normalizeBoolean(input.backupsEnabled),
   };
 }

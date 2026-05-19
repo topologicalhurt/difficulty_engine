@@ -319,7 +319,11 @@ body.difficulty-engine-standalone #app {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 50% 20%, rgba(93, 144, 255, 0.16), transparent 34%),
+    radial-gradient(
+      circle at 50% 20%,
+      rgba(93, 144, 255, 0.16),
+      transparent 34%
+    ),
     rgba(2, 6, 18, 0.72);
   backdrop-filter: blur(10px);
 }
@@ -331,8 +335,11 @@ body.difficulty-engine-standalone #app {
   padding: 24px;
   border: 1px solid rgba(151, 169, 202, 0.28);
   border-radius: var(--radius);
-  background:
-    linear-gradient(145deg, rgba(17, 26, 45, 0.98), rgba(9, 14, 28, 0.98));
+  background: linear-gradient(
+    145deg,
+    rgba(17, 26, 45, 0.98),
+    rgba(9, 14, 28, 0.98)
+  );
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
 }
 
@@ -1300,6 +1307,32 @@ body.difficulty-engine-standalone #app {
   background: rgba(96, 165, 250, 0.08);
 }
 
+.hourly-activity-block {
+  display: grid;
+  gap: 5px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid
+    color-mix(in srgb, var(--calendar-activity-color, #4fb3ff) 45%, transparent);
+  border-left: 3px solid var(--calendar-activity-color, #4fb3ff);
+  border-radius: var(--radius-xs);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(
+        in srgb,
+        var(--calendar-activity-color, #4fb3ff) 20%,
+        transparent
+      ),
+      rgba(15, 23, 42, 0.5)
+    ),
+    rgba(79, 179, 255, 0.08);
+  overflow: hidden;
+}
+
 .hourly-calendar-block:active {
   cursor: grabbing;
 }
@@ -1338,6 +1371,94 @@ body.difficulty-engine-standalone #app {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.hourly-calendar-performance {
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hourly-calendar-performance.performance-ahead {
+  color: var(--success);
+  background: rgba(72, 187, 153, 0.11);
+}
+
+.hourly-calendar-performance.performance-behind {
+  color: var(--warn);
+  background: rgba(249, 204, 99, 0.11);
+}
+
+.calendar-settings-panel .card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-activity-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.calendar-setting-field {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.calendar-setting-field input,
+.calendar-setting-field select,
+.calendar-book-jump-select,
+.calendar-learning-select {
+  min-height: 34px;
+}
+
+.calendar-setting-field.compact-field {
+  min-width: 104px;
+}
+
+.calendar-weekday-picker,
+.calendar-activity-list,
+.calendar-activity-row,
+.hourly-calendar-book-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.calendar-weekday-option {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.calendar-activity-row {
+  padding: 6px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.calendar-activity-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .calendar-log-panel {

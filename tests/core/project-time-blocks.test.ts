@@ -56,4 +56,49 @@ describe('hourly calendar time blocks', () => {
       },
     });
   });
+
+  it('normalizes repeating calendar activities', () => {
+    const project = normalizeProject({
+      version: 1,
+      library: { books: {} },
+      manualOverrides: {
+        schedule: {},
+        deferred: {},
+        actuals: {},
+        calendarActivities: {
+          'activity weird': {
+            id: 'activity weird',
+            title: 'Deep work',
+            color: 'not-a-color',
+            mode: 'flexible_weekly',
+            days: [1, 1, 3, 99],
+            startMinute: 9 * 60 + 31,
+            durationMinutes: 120,
+            weeklyMinutes: 600,
+            sessionsPerWeek: 5,
+          },
+        },
+      },
+      constraints: {},
+      enrichmentCache: {},
+      uiPreferences: {
+        calendarLearningMode: 'evening_focus',
+      },
+    });
+
+    expect(project.uiPreferences.calendarLearningMode).toBe('evening_focus');
+    expect(project.manualOverrides.calendarActivities).toEqual({
+      activityweird: {
+        id: 'activityweird',
+        title: 'Deep work',
+        color: '#4fb3ff',
+        mode: 'flexible_weekly',
+        days: [1, 3],
+        startMinute: 10 * 60,
+        durationMinutes: 120,
+        weeklyMinutes: 600,
+        sessionsPerWeek: 5,
+      },
+    });
+  });
 });

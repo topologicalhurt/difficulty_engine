@@ -78,7 +78,8 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     renderEffects: ['project', 'plan'],
     recomputePolicy: 'ui_only',
     testIds: ['tests/app/autopilot.test.ts'],
-    notes: 'Autopilot first creates a reviewable proposal and does not mutate planner truth.',
+    notes:
+      'Autopilot first creates a reviewable proposal and does not mutate planner truth.',
   },
   {
     id: 'autopilot.apply',
@@ -145,6 +146,22 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
       'tests/app/parameter-matrix.test.ts',
     ],
     notes: 'Persisted display preference; the solved schedule is unchanged.',
+  },
+  {
+    id: 'ui.calendarLearningMode',
+    surface: 'calendar',
+    control: 'Hourly learning model',
+    command: 'setCalendarLearningMode',
+    projectReads: ['uiPreferences.calendarLearningMode'],
+    projectWrites: ['uiPreferences.calendarLearningMode'],
+    uiReads: ['calendarLearningMode'],
+    uiWrites: ['calendarLearningMode'],
+    snapshotEffects: [],
+    renderEffects: ['hourly calendar default placement'],
+    recomputePolicy: 'persistence_only',
+    testIds: ['tests/ui/calendar-view.test.ts'],
+    notes:
+      'Calendar learning mode controls default time-of-day placement only; user-dragged blocks remain authoritative.',
   },
   {
     id: 'ui.selectCalendarEntry',
@@ -238,7 +255,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: ['document diagnostics'],
     renderEffects: ['book inspector'],
     recomputePolicy: 'snapshot',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/library-view.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/ui/library-view.test.ts',
+    ],
     notes:
       'Candidate browsing persists the per-book ranked queue and greylist penalties; visible loading/error state remains UI-only.',
   },
@@ -254,7 +274,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: ['document diagnostics'],
     renderEffects: ['book inspector'],
     recomputePolicy: 'snapshot',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/library-view.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/ui/library-view.test.ts',
+    ],
     notes:
       'Candidate acquisition writes one canonical document ref after qBittorrent selects a trusted file.',
   },
@@ -270,7 +293,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: ['document diagnostics'],
     renderEffects: ['book inspector'],
     recomputePolicy: 'snapshot',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/library-view.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/ui/library-view.test.ts',
+    ],
     notes:
       'Manual magnet or HTTPS torrent URLs are persisted on the book source path and acquired through the same trusted file gate.',
   },
@@ -286,7 +312,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['book inspector'],
     recomputePolicy: 'ui_only',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/library-view.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/ui/library-view.test.ts',
+    ],
     notes: 'The manual source input is transient until submitted.',
   },
   {
@@ -372,7 +401,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['gantt', 'calendar'],
     recomputePolicy: 'persistence_only',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/plan-view.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/ui/plan-view.test.ts',
+    ],
     notes:
       'Persisted section visibility only changes which Plan panels are mounted.',
   },
@@ -388,7 +420,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['library split layout'],
     recomputePolicy: 'persistence_only',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/library-view.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/ui/library-view.test.ts',
+    ],
     notes:
       'Persisted library split width is display-only and does not recompute planner truth.',
   },
@@ -420,7 +455,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['warnings'],
     recomputePolicy: 'persistence_only',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/plan-view.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/ui/plan-view.test.ts',
+    ],
     notes:
       'Only non-blocking warning codes can be hidden; fail severity remains visible.',
   },
@@ -436,7 +474,10 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
     snapshotEffects: [],
     renderEffects: ['warnings'],
     recomputePolicy: 'persistence_only',
-    testIds: ['tests/app/wiring-contracts.test.ts', 'tests/ui/plan-view.test.ts'],
+    testIds: [
+      'tests/app/wiring-contracts.test.ts',
+      'tests/ui/plan-view.test.ts',
+    ],
     notes: 'Clears display-only warning dismissal preferences.',
   },
 ];

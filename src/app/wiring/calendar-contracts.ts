@@ -110,4 +110,36 @@ export const CALENDAR_CONTRACTS: WiringContract[] = [
     notes:
       'Clearing a time-of-day override returns the block to automatic placement only.',
   },
+  {
+    id: 'calendar.activity.add',
+    surface: 'calendar',
+    control: 'Add repeating calendar activity',
+    command: 'addCalendarActivity',
+    projectReads: ['manualOverrides.calendarActivities'],
+    projectWrites: ['manualOverrides.calendarActivities'],
+    uiReads: [],
+    uiWrites: ['banner'],
+    snapshotEffects: [],
+    renderEffects: ['calendar hourly grid'],
+    recomputePolicy: 'persistence_only',
+    testIds: ['tests/app/calendar-time-blocks.test.ts'],
+    notes:
+      'Calendar activities are persisted scheduling context for hourly placement; planner truth is unchanged.',
+  },
+  {
+    id: 'calendar.activity.remove',
+    surface: 'calendar',
+    control: 'Remove repeating calendar activity',
+    command: 'removeCalendarActivity',
+    projectReads: ['manualOverrides.calendarActivities'],
+    projectWrites: ['manualOverrides.calendarActivities'],
+    uiReads: [],
+    uiWrites: ['banner'],
+    snapshotEffects: [],
+    renderEffects: ['calendar hourly grid'],
+    recomputePolicy: 'persistence_only',
+    testIds: ['tests/app/calendar-time-blocks.test.ts'],
+    notes:
+      'Removing an activity only clears calendar context and does not mutate planner outputs.',
+  },
 ];

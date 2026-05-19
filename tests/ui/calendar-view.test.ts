@@ -40,7 +40,9 @@ describe('calendar view', () => {
     expect(initial.weekCount).toBeGreaterThanOrEqual(initial.weeks.length);
     if (!initial.canGoNext) return;
 
-    const next = root.querySelectorAll('button')[1];
+    const next = [...root.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Next week',
+    );
     if (!(next instanceof HTMLButtonElement)) {
       throw new Error('Expected the next-week button.');
     }
@@ -65,6 +67,78 @@ describe('calendar view', () => {
     renderActiveTabBody(root, store.selectors.getState(), store);
 
     expect(root.firstElementChild).toBe(initialBody);
+  });
+
+  it('shows activities and places automatic study blocks around them', () => {
+    const store = makeStore();
+    store.commands.addCalendarActivity({
+      title: 'Repairs',
+      color: '#ff8800',
+      mode: 'fixed_weekly',
+      days: [1],
+      startMinute: 9 * 60,
+      durationMinutes: 120,
+    });
+
+    const viewModel = selectCalendarViewModel(store.selectors.getState());
+    const monday = viewModel.weeks[0]?.days.find((day) =>
+      day.activityBlocks.some((block) => block.title === 'Repairs'),
+    );
+    const firstStudyBlock = monday?.blocks[0];
+
+    expect(monday?.activityBlocks[0]?.timeLabel).toBe('09:00-11:00');
+    expect(firstStudyBlock?.startMinute).not.toBe(9 * 60);
+  });
+
+  it('shows reading pace indicators from logged actuals', () => {
+    const store = makeStore();
+    const firstBlock = selectCalendarViewModel(store.selectors.getState())
+      .weeks[0]?.days.flatMap((day) => day.blocks)
+      .find((block) => block.plannedPages > 0 && block.plannedMinutes > 1);
+    if (!firstBlock) throw new Error('Expected a calendar block.');
+
+    store.commands.setCalendarEntryMinutes(
+      firstBlock.dateKey,
+      firstBlock.bookId,
+      Math.max(1, Math.round(firstBlock.plannedMinutes / 2)),
+    );
+    store.commands.setCalendarEntryPages(
+      firstBlock.dateKey,
+      firstBlock.bookId,
+      firstBlock.plannedPages,
+    );
+
+    const updatedBlock = selectCalendarViewModel(store.selectors.getState())
+      .weeks[0]?.days.flatMap((day) => day.blocks)
+      .find((block) => block.id === firstBlock.id);
+
+    expect(updatedBlock?.performanceTone).toBe('ahead');
+    expect(updatedBlock?.performanceLabel).toContain('ahead');
+  });
+
+  it('adds activities from the Calendar settings controls', () => {
+    const store = makeStore();
+    store.commands.setActiveView('calendar');
+    const root = document.createElement('section');
+
+    renderActiveTabBody(root, store.selectors.getState(), store);
+    const title = root.querySelector<HTMLInputElement>(
+      '.calendar-activity-title-input',
+    );
+    const add = [...root.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Add activity',
+    );
+    if (!title || !(add instanceof HTMLButtonElement)) {
+      throw new Error('Expected activity controls.');
+    }
+    title.value = 'Gym';
+    add.click();
+
+    expect(
+      Object.values(
+        store.selectors.getProject().manualOverrides.calendarActivities ?? {},
+      )[0]?.title,
+    ).toBe('Gym');
   });
 
   it('persists a dropped study block on the target hour', () => {

@@ -2,6 +2,7 @@ import type { BookRecord } from './books';
 import type { AiRecommendationSettings } from './ai';
 import type { EnrichmentCacheEntry } from './enrichment';
 import type {
+  CalendarLearningMode,
   ConstraintSet,
   GanttView,
   PlanColorMode,
@@ -26,16 +27,32 @@ export interface CalendarTimeBlockOverride {
   durationMinutes: number;
 }
 
+export type CalendarActivityMode = 'fixed_weekly' | 'flexible_weekly';
+
+export interface CalendarActivityOverride {
+  id: string;
+  title: string;
+  color: string;
+  mode: CalendarActivityMode;
+  days: number[];
+  startMinute: number;
+  durationMinutes: number;
+  weeklyMinutes: number;
+  sessionsPerWeek: number;
+}
+
 export interface ManualOverrides {
   schedule: Record<string, ManualScheduleOverride>;
   deferred: Record<string, string[]>;
   actuals: Record<string, Record<string, CalendarActualOverride>>;
   timeBlocks?: Record<string, Record<string, CalendarTimeBlockOverride>>;
+  calendarActivities?: Record<string, CalendarActivityOverride>;
 }
 
 export interface UiPreferences {
   ganttView: GanttView;
   ganttZoom: number;
+  calendarLearningMode: CalendarLearningMode;
   planColorMode: PlanColorMode;
   planSections: {
     gantt: boolean;

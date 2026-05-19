@@ -44,6 +44,7 @@ export interface PlannerStoreCommands {
   setDialog(dialog: UiState['dialog']): void;
   setGanttView(ganttView: UiState['ganttView']): void;
   setGanttZoom(ganttZoom: number): void;
+  setCalendarLearningMode(mode: UiState['calendarLearningMode']): void;
   setPlanColorMode(planColorMode: UiState['planColorMode']): void;
   setPlanSectionOpen(
     section: keyof UiState['planSections'],
@@ -95,6 +96,14 @@ export interface PlannerStoreCommands {
     durationMinutes: number,
   ): void;
   clearCalendarTimeBlock(dateKey: string, bookId: string): void;
+  addCalendarActivity(
+    input: Partial<
+      NonNullable<
+        PlannerProjectV1['manualOverrides']['calendarActivities']
+      >[string]
+    >,
+  ): void;
+  removeCalendarActivity(activityId: string): void;
   setBookSearchQuery(query: string): void;
   clearBookSearch(): void;
   searchCatalog(query?: string): Promise<void>;

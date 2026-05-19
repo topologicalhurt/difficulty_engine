@@ -89,6 +89,8 @@ export function buildUi(
     ),
     ganttView: ui.ganttView ?? project.uiPreferences.ganttView,
     ganttZoom: ui.ganttZoom ?? project.uiPreferences.ganttZoom,
+    calendarLearningMode:
+      ui.calendarLearningMode ?? project.uiPreferences.calendarLearningMode,
     planColorMode: ui.planColorMode ?? project.uiPreferences.planColorMode,
     planSections: ui.planSections ?? project.uiPreferences.planSections,
     libraryListWidthPx:
@@ -135,7 +137,8 @@ export function buildUi(
     aiRelationshipProposal:
       ui.aiRelationshipProposal ?? DEFAULT_UI_STATE.aiRelationshipProposal,
     autopilotDraft:
-      ui.autopilotDraft ?? createDefaultAutopilotWizardState(project.constraints),
+      ui.autopilotDraft ??
+      createDefaultAutopilotWizardState(project.constraints),
     autopilotProposal:
       ui.autopilotProposal ?? DEFAULT_UI_STATE.autopilotProposal,
     debugUi: ui.debugUi ?? DEFAULT_UI_STATE.debugUi,
