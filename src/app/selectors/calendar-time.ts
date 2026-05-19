@@ -122,7 +122,10 @@ export function nextAvailableStart(
   durationMinutes: number,
   occupied: OccupiedInterval[],
   mode: CalendarLearningMode,
-): number {
+): number | null {
+  if (durationMinutes > DAY_MINUTES) {
+    return null;
+  }
   const window = focusWindow(mode);
   const candidates = [
     ...denseCandidates(window, durationMinutes, occupied),
@@ -136,7 +139,7 @@ export function nextAvailableStart(
     seen.add(start);
     if (!overlaps(start, durationMinutes, occupied)) return start;
   }
-  return clampStartMinute(23 * HOUR_MINUTES);
+  return null;
 }
 
 export function formatClockMinute(minute: number): string {

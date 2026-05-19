@@ -56,11 +56,22 @@ export interface HourlyCalendarBlock {
   performanceRatio: number | null;
 }
 
+export interface HourlyCalendarUnscheduledBlock {
+  id: string;
+  dateKey: string;
+  bookId: string;
+  short: string;
+  title: string;
+  durationMinutes: number;
+  reason: string;
+}
+
 export interface HourlyCalendarDay {
   key: string;
   label: string;
   statusLabel: string;
   blocks: HourlyCalendarBlock[];
+  unscheduledBlocks: HourlyCalendarUnscheduledBlock[];
   activityBlocks: HourlyCalendarActivityBlock[];
 }
 
@@ -269,7 +280,9 @@ function dayBlocks(
       const occupied = (activityBlocksByDate.get(day.key) ?? []).map(
         intervalFromActivity,
       );
-      const blocks = entries.map((entry) => {
+      const blocks: HourlyCalendarBlock[] = [];
+      const unscheduledBlocks: HourlyCalendarUnscheduledBlock[] = [];
+      entries.forEach((entry) => {
         const override =
           state.project.manualOverrides.timeBlocks?.[day.key]?.[entry.bookId];
         const durationMinutes = Math.min(
@@ -288,29 +301,65 @@ function dayBlocks(
                 occupied,
                 state.ui.calendarLearningMode,
               );
+        if (startMinute == null) {
+          unscheduledBlocks.push({
+            id: `${day.key}:${entry.bookId}:unscheduled`,
+            dateKey: day.key,
+            bookId: entry.bookId,
+            short: entry.short,
+            title:
+              state.project.library.books[entry.bookId]?.title ?? entry.short,
+            durationMinutes,
+            reason:
+              'No free same-day slot remains after fixed activities and study blocks.',
+          });
+          return;
+        }
         occupied.push({
           startMinute,
           endMinute: Math.min(24 * 60, startMinute + durationMinutes),
         });
-        return blockForEntry({
-          state,
-          dateKey: day.key,
-          entry,
-          color: colors.byBookId[entry.bookId] || 'hsl(160 42% 55%)',
-          startMinute,
-          durationMinutes,
-          persisted: Boolean(override),
-        });
+        blocks.push(
+          blockForEntry({
+            state,
+            dateKey: day.key,
+            entry,
+            color: colors.byBookId[entry.bookId] || 'hsl(160 42% 55%)',
+            startMinute,
+            durationMinutes,
+            persisted: Boolean(override),
+          }),
+        );
       });
+      const statusLabel = unscheduledBlocks.length
+        ? `${day.statusLabel} · ${unscheduledBlocks.length} unscheduled`
+        : day.statusLabel;
       return {
         key: day.key,
         label: `${day.dayLabel} ${day.dayNumber}`,
-        statusLabel: day.statusLabel,
+        statusLabel,
         activityBlocks: activityBlocksByDate.get(day.key) ?? [],
+        unscheduledBlocks,
         blocks,
       };
     }),
   };
+}
+
+function calendarExportSummary(input: {
+  blockCount: number;
+  unscheduledCount: number;
+  weekLabel: string;
+  finishDate?: Date;
+}): string {
+  if (!input.blockCount && !input.unscheduledCount) {
+    return 'No study blocks to export yet.';
+  }
+  const unscheduled =
+    input.unscheduledCount > 0
+      ? ` · ${input.unscheduledCount} unscheduled`
+      : '';
+  return `${input.blockCount} study block(s) in ${input.weekLabel}${unscheduled} · plan finish ${formatPlanFullDate(input.finishDate)}`;
 }
 
 const selectCalendarViewModelMemo = memoizeSelector(
@@ -368,6 +417,9 @@ const selectCalendarViewModelMemo = memoizeSelector(
     const blocks = weeks.flatMap((week) =>
       week.days.flatMap((day) => day.blocks),
     );
+    const unscheduledBlocks = weeks.flatMap((week) =>
+      week.days.flatMap((day) => day.unscheduledBlocks),
+    );
     const activityBlocks = weeks.flatMap((week) =>
       week.days.flatMap((day) => day.activityBlocks),
     );
@@ -383,9 +435,12 @@ const selectCalendarViewModelMemo = memoizeSelector(
       ),
       icsText,
       icsDataUrl: `data:text/calendar;charset=utf-8,${encodeURIComponent(icsText)}`,
-      exportSummary: blocks.length
-        ? `${blocks.length} study block(s) in ${selectedWeek?.label ?? 'selected week'} · plan finish ${formatPlanFullDate(state.snapshot.scheduleStats.finishDate)}`
-        : 'No study blocks to export yet.',
+      exportSummary: calendarExportSummary({
+        blockCount: blocks.length,
+        unscheduledCount: unscheduledBlocks.length,
+        weekLabel: selectedWeek?.label ?? 'selected week',
+        finishDate: state.snapshot.scheduleStats.finishDate,
+      }),
       activitySummaries: activitySummaries(activities),
       activityRows: activityRows(activities),
       learningMode: state.ui.calendarLearningMode,

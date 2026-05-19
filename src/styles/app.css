@@ -1395,6 +1395,29 @@ body.difficulty-engine-standalone #app {
   background: rgba(249, 204, 99, 0.11);
 }
 
+.hourly-calendar-unscheduled {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid rgba(249, 204, 99, 0.32);
+  border-radius: var(--radius-xs);
+  background: rgba(249, 204, 99, 0.08);
+}
+
+.hourly-calendar-unscheduled-item {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hourly-calendar-unscheduled-item strong,
+.hourly-calendar-unscheduled-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .calendar-settings-panel .card-body {
   display: grid;
   gap: 12px;

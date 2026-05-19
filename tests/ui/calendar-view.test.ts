@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { selectCalendarViewModel } from '../../src/app/selectors/calendar';
+import { parseLocalDateKey } from '../../src/core/time';
 import { renderActiveTabBody } from '../../src/ui/active-tab-host';
 import { renderCalendarView } from '../../src/ui/calendar-view';
 import { makeStore } from '../app/store-test-utils';
@@ -186,6 +187,64 @@ describe('calendar view', () => {
     expect(firstActivityDay?.label).toContain('Tue');
     expect(firstActivityDay?.activityBlocks[0]?.timeLabel).toBe('08:00-14:00');
     expect(secondActivityDay?.label).toContain('Wed');
+  });
+
+  it('schedules flexible weekly activities only on selected weekdays', () => {
+    const store = makeStore();
+    store.commands.addCalendarActivity({
+      title: 'Weekend practice',
+      color: '#44cc88',
+      mode: 'flexible_weekly',
+      days: [0, 6],
+      durationMinutes: 60,
+      sessionsPerWeek: 2,
+    });
+
+    const activityDays = selectCalendarViewModel(store.selectors.getState())
+      .weeks[0]?.days.filter((day) =>
+        day.activityBlocks.some((block) => block.title === 'Weekend practice'),
+      )
+      .map((day) => parseLocalDateKey(day.key).getDay());
+
+    expect(activityDays?.sort()).toEqual([0, 6]);
+  });
+
+  it('surfaces unscheduled study blocks when activities fill the day', () => {
+    const store = makeStore();
+    const initialDay = selectCalendarViewModel(
+      store.selectors.getState(),
+    ).weeks[0]?.days.find((day) => day.blocks.length > 0);
+    if (!initialDay) throw new Error('Expected a planned calendar day.');
+    const weekday = parseLocalDateKey(initialDay.key).getDay();
+
+    store.commands.addCalendarActivity({
+      title: 'All-day first half',
+      color: '#ff8800',
+      mode: 'fixed_weekly',
+      days: [weekday],
+      startMinute: 0,
+      durationMinutes: 12 * 60,
+      dailyDurations: { [String(weekday)]: 12 * 60 },
+    });
+    store.commands.addCalendarActivity({
+      title: 'All-day second half',
+      color: '#4488ff',
+      mode: 'fixed_weekly',
+      days: [weekday],
+      startMinute: 12 * 60,
+      durationMinutes: 12 * 60,
+      dailyDurations: { [String(weekday)]: 12 * 60 },
+    });
+
+    const updatedDay = selectCalendarViewModel(
+      store.selectors.getState(),
+    ).weeks[0]?.days.find((day) => day.key === initialDay.key);
+    const view = renderCalendarView(store.selectors.getState(), store);
+
+    expect(updatedDay?.blocks).toHaveLength(0);
+    expect(updatedDay?.unscheduledBlocks.length).toBeGreaterThan(0);
+    expect(view.textContent).toContain('Unscheduled study');
+    expect(view.textContent).toContain('No free same-day slot');
   });
 
   it('shows reading pace indicators from logged actuals', () => {

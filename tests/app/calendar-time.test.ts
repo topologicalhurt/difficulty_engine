@@ -31,4 +31,14 @@ describe('hourly calendar focus windows', () => {
     expect(nextAvailableStart(60, [], 'evening_focus')).toBe(17 * 60);
     expect(nextAvailableStart(60, [], 'night_focus')).toBe(20 * 60);
   });
+
+  it('returns no placement instead of forcing an overlap when the day is full', () => {
+    expect(
+      nextAvailableStart(
+        60,
+        [{ startMinute: 0, endMinute: 24 * 60 }],
+        'cognitive_default',
+      ),
+    ).toBeNull();
+  });
 });

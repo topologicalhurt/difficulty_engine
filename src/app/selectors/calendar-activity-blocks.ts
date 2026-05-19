@@ -102,6 +102,11 @@ export function flexibleActivityBlocksForWeek(
     .filter((activity) => activity.mode === 'flexible_weekly')
     .forEach((activity) => {
       let remainingMinutes = activity.weeklyMinutes;
+      const selectedDays = new Set(activity.days);
+      const eligibleDays = week.days.filter((day) =>
+        selectedDays.has(parseLocalDateKey(day.key).getDay()),
+      );
+      if (!eligibleDays.length) return;
       const sessionCount = Math.min(
         activity.sessionsPerWeek,
         Math.ceil(activity.weeklyMinutes / activity.durationMinutes),
@@ -111,22 +116,30 @@ export function flexibleActivityBlocksForWeek(
         session < sessionCount && remainingMinutes > 0;
         session += 1
       ) {
-        const day = week.days[session % week.days.length];
-        if (!day) continue;
-        const occupied = occupiedByDate.get(day.key) ?? [];
         const duration = Math.min(activity.durationMinutes, remainingMinutes);
-        const start = nextAvailableStart(duration, occupied, mode);
-        const block = activityBlockFor(
-          activity,
-          day.key,
-          session,
-          start,
-          duration,
-        );
-        blocks.push(block);
-        occupied.push(intervalFromActivity(block));
-        occupiedByDate.set(day.key, occupied);
-        remainingMinutes -= duration;
+        for (
+          let dayOffset = 0;
+          dayOffset < eligibleDays.length;
+          dayOffset += 1
+        ) {
+          const day = eligibleDays[(session + dayOffset) % eligibleDays.length];
+          if (!day) continue;
+          const occupied = occupiedByDate.get(day.key) ?? [];
+          const start = nextAvailableStart(duration, occupied, mode);
+          if (start == null) continue;
+          const block = activityBlockFor(
+            activity,
+            day.key,
+            session * eligibleDays.length + dayOffset,
+            start,
+            duration,
+          );
+          blocks.push(block);
+          occupied.push(intervalFromActivity(block));
+          occupiedByDate.set(day.key, occupied);
+          remainingMinutes -= duration;
+          break;
+        }
       }
     });
   return blocks;

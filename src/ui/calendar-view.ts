@@ -4,6 +4,7 @@ import {
   type CalendarViewModel,
   type HourlyCalendarBlock,
   type HourlyCalendarDay,
+  type HourlyCalendarUnscheduledBlock,
 } from '../app/selectors/calendar';
 import type { HourlyCalendarActivityBlock } from '../app/selectors/calendar-activity-blocks';
 import type { AppState, PlannerStore } from '../core/types';
@@ -156,6 +157,23 @@ function renderActivityBlock(block: HourlyCalendarActivityBlock): HTMLElement {
   return node;
 }
 
+function renderUnscheduledBlock(
+  block: HourlyCalendarUnscheduledBlock,
+): HTMLElement {
+  return el(
+    'div',
+    {
+      className: 'hourly-calendar-unscheduled-item',
+      title: `${block.title} · ${block.reason}`,
+    },
+    el('strong', { text: block.short }),
+    el('span', {
+      className: 'muted-copy',
+      text: `${Math.round(block.durationMinutes)}m · ${block.reason}`,
+    }),
+  );
+}
+
 function renderHourSlot(
   day: HourlyCalendarDay,
   minute: number,
@@ -220,6 +238,14 @@ function renderDay(
       ...day.activityBlocks.map((block) => renderActivityBlock(block)),
       ...day.blocks.map((block) => renderBlock(block, store)),
     ),
+    day.unscheduledBlocks.length
+      ? el(
+          'div',
+          { className: 'hourly-calendar-unscheduled' },
+          el('strong', { text: 'Unscheduled study' }),
+          ...day.unscheduledBlocks.map(renderUnscheduledBlock),
+        )
+      : null,
   );
 }
 
