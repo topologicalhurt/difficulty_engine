@@ -2,7 +2,9 @@ export type GanttView = 'plan' | 'diagnostics';
 export type CalendarLearningMode =
   | 'cognitive_default'
   | 'morning_focus'
-  | 'evening_focus';
+  | 'afternoon_focus'
+  | 'evening_focus'
+  | 'night_focus';
 export type PlanColorMode =
   | 'category_mono'
   | 'detected_genre'

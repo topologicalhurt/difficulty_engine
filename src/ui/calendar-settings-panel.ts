@@ -162,9 +162,11 @@ function renderLearningModeControl(
   const select = selectInput(
     viewModel.learningMode,
     [
-      { value: 'cognitive_default', label: 'Cognitive default' },
-      { value: 'morning_focus', label: 'Morning focus' },
-      { value: 'evening_focus', label: 'Evening focus' },
+      { value: 'cognitive_default', label: 'Balanced day (08:00-22:00)' },
+      { value: 'morning_focus', label: 'Morning to afternoon (07:00-15:00)' },
+      { value: 'afternoon_focus', label: 'Afternoon to evening (12:00-20:00)' },
+      { value: 'evening_focus', label: 'Evening to night (17:00-24:00)' },
+      { value: 'night_focus', label: 'Night focus (20:00-24:00)' },
     ],
     {
       className: 'calendar-learning-select',
@@ -173,7 +175,9 @@ function renderLearningModeControl(
         if (
           value === 'cognitive_default' ||
           value === 'morning_focus' ||
-          value === 'evening_focus'
+          value === 'afternoon_focus' ||
+          value === 'evening_focus' ||
+          value === 'night_focus'
         ) {
           store.commands.setCalendarLearningMode(value);
         }

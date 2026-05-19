@@ -52,7 +52,7 @@ describe('hourly calendar time blocks', () => {
 
     expect(project.manualOverrides.timeBlocks).toEqual({
       '2026-01-06': {
-        book: { startMinute: 10 * 60, durationMinutes: 12 * 60 },
+        book: { startMinute: 9 * 60 + 30, durationMinutes: 12 * 60 },
       },
     });
   });
@@ -97,7 +97,7 @@ describe('hourly calendar time blocks', () => {
         color: '#4fb3ff',
         mode: 'flexible_weekly',
         days: [1, 3],
-        startMinute: 10 * 60,
+        startMinute: 9 * 60 + 30,
         durationMinutes: 120,
         dailyDurations: { '1': 360, '3': 120 },
         weeklyMinutes: 600,
@@ -106,5 +106,29 @@ describe('hourly calendar time blocks', () => {
         rotationIntervalWeeks: 2,
       },
     });
+  });
+
+  it('normalizes the added calendar focus modes', () => {
+    expect(
+      normalizeProject({
+        version: 1,
+        library: { books: {} },
+        manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+        constraints: {},
+        enrichmentCache: {},
+        uiPreferences: { calendarLearningMode: 'afternoon_focus' },
+      }).uiPreferences.calendarLearningMode,
+    ).toBe('afternoon_focus');
+
+    expect(
+      normalizeProject({
+        version: 1,
+        library: { books: {} },
+        manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+        constraints: {},
+        enrichmentCache: {},
+        uiPreferences: { calendarLearningMode: 'night_focus' },
+      }).uiPreferences.calendarLearningMode,
+    ).toBe('night_focus');
   });
 });

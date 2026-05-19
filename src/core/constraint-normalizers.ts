@@ -46,7 +46,13 @@ export function normalizePlanColorMode(
 export function normalizeCalendarLearningMode(
   value: string | undefined,
 ): CalendarLearningMode {
-  if (value === 'morning_focus' || value === 'evening_focus') return value;
+  if (
+    value === 'morning_focus' ||
+    value === 'afternoon_focus' ||
+    value === 'evening_focus' ||
+    value === 'night_focus'
+  )
+    return value;
   return 'cognitive_default';
 }
 

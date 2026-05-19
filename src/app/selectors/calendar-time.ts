@@ -8,6 +8,8 @@ import {
 export const HOUR_START = 0;
 export const HOUR_END = 23;
 export const HOUR_MINUTES = 60;
+const DAY_MINUTES = 24 * HOUR_MINUTES;
+const PLACEMENT_GRANULARITY_MINUTES = 15;
 
 export interface OccupiedInterval {
   startMinute: number;
@@ -15,27 +17,89 @@ export interface OccupiedInterval {
 }
 
 export function clampStartMinute(value: number): number {
-  return Math.max(0, Math.min(23 * HOUR_MINUTES, Math.round(value / 60) * 60));
+  return Math.max(
+    0,
+    Math.min(
+      DAY_MINUTES - PLACEMENT_GRANULARITY_MINUTES,
+      Math.round(value / PLACEMENT_GRANULARITY_MINUTES) *
+        PLACEMENT_GRANULARITY_MINUTES,
+    ),
+  );
 }
 
 export function durationForEntry(entry: CalendarEntry): number {
   return Math.max(30, Math.min(12 * 60, Math.round(entry.mins || 30)));
 }
 
-function preferredStarts(mode: CalendarLearningMode): number[] {
+interface FocusWindow {
+  startMinute: number;
+  endMinute: number;
+}
+
+function focusWindow(mode: CalendarLearningMode): FocusWindow {
   if (mode === 'morning_focus') {
-    return [8, 9, 10, 11, 13, 14, 15, 16, 7, 17, 18, 19, 20, 21, 22].map(
-      (hour) => hour * HOUR_MINUTES,
-    );
+    return { startMinute: 7 * HOUR_MINUTES, endMinute: 15 * HOUR_MINUTES };
+  }
+  if (mode === 'afternoon_focus') {
+    return { startMinute: 12 * HOUR_MINUTES, endMinute: 20 * HOUR_MINUTES };
   }
   if (mode === 'evening_focus') {
-    return [18, 19, 20, 21, 17, 16, 14, 15, 9, 10, 11, 8, 22, 7].map(
-      (hour) => hour * HOUR_MINUTES,
-    );
+    return { startMinute: 17 * HOUR_MINUTES, endMinute: DAY_MINUTES };
   }
-  return [9, 10, 14, 15, 18, 19, 8, 11, 16, 20, 7, 13, 21, 22].map(
-    (hour) => hour * HOUR_MINUTES,
-  );
+  if (mode === 'night_focus') {
+    return { startMinute: 20 * HOUR_MINUTES, endMinute: DAY_MINUTES };
+  }
+  return { startMinute: 8 * HOUR_MINUTES, endMinute: 22 * HOUR_MINUTES };
+}
+
+function denseCandidates(
+  window: FocusWindow,
+  durationMinutes: number,
+  occupied: OccupiedInterval[],
+): number[] {
+  const candidates: number[] = [];
+  for (
+    let start = window.startMinute;
+    start + durationMinutes <= window.endMinute;
+    start += PLACEMENT_GRANULARITY_MINUTES
+  ) {
+    candidates.push(start);
+  }
+  occupied.forEach((entry) => {
+    const start = clampStartMinute(entry.endMinute);
+    if (
+      start >= window.startMinute &&
+      start + durationMinutes <= window.endMinute
+    ) {
+      candidates.push(start);
+    }
+  });
+  return [...new Set(candidates)].sort((left, right) => left - right);
+}
+
+function fallbackCandidates(
+  window: FocusWindow,
+  durationMinutes: number,
+): number[] {
+  const candidates: number[] = [];
+  for (
+    let start = window.endMinute;
+    start + durationMinutes <= DAY_MINUTES;
+    start += PLACEMENT_GRANULARITY_MINUTES
+  ) {
+    candidates.push(start);
+  }
+  for (
+    let start = Math.min(
+      window.startMinute - PLACEMENT_GRANULARITY_MINUTES,
+      DAY_MINUTES - durationMinutes,
+    );
+    start >= 0;
+    start -= PLACEMENT_GRANULARITY_MINUTES
+  ) {
+    candidates.push(start);
+  }
+  return candidates;
 }
 
 export function overlaps(
@@ -54,13 +118,14 @@ export function nextAvailableStart(
   occupied: OccupiedInterval[],
   mode: CalendarLearningMode,
 ): number {
+  const window = focusWindow(mode);
   const candidates = [
-    ...preferredStarts(mode),
-    ...Array.from({ length: 24 }, (_, hour) => hour * HOUR_MINUTES),
+    ...denseCandidates(window, durationMinutes, occupied),
+    ...fallbackCandidates(window, durationMinutes),
   ];
   const seen = new Set<number>();
   for (const start of candidates) {
-    if (seen.has(start) || start + durationMinutes > 24 * HOUR_MINUTES) {
+    if (seen.has(start) || start + durationMinutes > DAY_MINUTES) {
       continue;
     }
     seen.add(start);

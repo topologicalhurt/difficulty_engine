@@ -1237,6 +1237,7 @@ body.difficulty-engine-standalone #app {
 }
 
 .hourly-calendar-slots {
+  position: relative;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   grid-template-rows: repeat(24, minmax(46px, 1fr));
@@ -1266,15 +1267,16 @@ body.difficulty-engine-standalone #app {
 }
 
 .hourly-calendar-block {
+  position: absolute;
   display: grid;
-  grid-column: 2;
-  align-self: stretch;
   gap: 5px;
   box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
+  left: 54px;
+  right: 4px;
+  top: calc(var(--calendar-block-top, 0%) + 3px);
+  height: max(38px, calc(var(--calendar-block-height, 4.1667%) - 6px));
   min-width: 0;
-  margin: 3px 4px;
+  max-width: calc(100% - 58px);
   padding: 7px;
   border: 1px solid rgba(72, 187, 153, 0.28);
   border-left: 3px solid var(--calendar-book-color, var(--accent));
@@ -1301,15 +1303,16 @@ body.difficulty-engine-standalone #app {
 }
 
 .hourly-activity-block {
+  position: absolute;
   display: grid;
-  grid-column: 2;
-  align-self: stretch;
   gap: 5px;
   box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
+  left: 54px;
+  right: 4px;
+  top: calc(var(--calendar-block-top, 0%) + 3px);
+  height: max(38px, calc(var(--calendar-block-height, 4.1667%) - 6px));
   min-width: 0;
-  margin: 3px 4px;
+  max-width: calc(100% - 58px);
   padding: 7px;
   border: 1px solid
     color-mix(in srgb, var(--calendar-activity-color, #4fb3ff) 45%, transparent);

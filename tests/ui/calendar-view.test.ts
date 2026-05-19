@@ -20,6 +20,8 @@ describe('calendar view', () => {
 
     expect(root.dataset.activeView).toBe('calendar');
     expect(root.textContent).toContain('Hourly calendar');
+    expect(root.textContent).toContain('Afternoon to evening');
+    expect(root.textContent).toContain('Night focus');
     expect(viewModel.hourLabels.map((hour) => hour.label)).toContain('23:00');
     expect(viewModel.weeks).toHaveLength(1);
     expect(root.querySelector('.panel-toggle-button')).toBeNull();
@@ -106,6 +108,9 @@ describe('calendar view', () => {
     const activity = view.querySelector<HTMLElement>('.hourly-activity-block');
 
     expect(activity?.style.gridRow).toBe('10 / span 3');
+    expect(activity?.style.getPropertyValue('--calendar-block-height')).toBe(
+      '12.5%',
+    );
   });
 
   it('moves a dragged book away from a newly added activity conflict', () => {

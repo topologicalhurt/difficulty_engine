@@ -4,6 +4,8 @@ type CalendarActivityMap = NonNullable<
   PlannerProjectV1['manualOverrides']['calendarActivities']
 >;
 
+const CALENDAR_TIME_GRANULARITY_MINUTES = 15;
+
 export function removeBookFromDeferred(
   entries: Record<string, string[]>,
   bookId: string,
@@ -338,7 +340,14 @@ export function withoutCalendarEntryOverride(
 }
 
 function normalizeHourMinute(value: number): number {
-  return Math.max(0, Math.min(23 * 60, Math.round(value / 60) * 60));
+  return Math.max(
+    0,
+    Math.min(
+      24 * 60 - CALENDAR_TIME_GRANULARITY_MINUTES,
+      Math.round(value / CALENDAR_TIME_GRANULARITY_MINUTES) *
+        CALENDAR_TIME_GRANULARITY_MINUTES,
+    ),
+  );
 }
 
 export function withCalendarTimeBlock(

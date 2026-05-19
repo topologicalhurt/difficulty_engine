@@ -13,6 +13,25 @@ import { renderActivitySettings } from './calendar-settings-panel';
 import { selectInput } from './form-controls';
 
 const DRAG_MIME = 'application/x-difficulty-calendar-block';
+const DAY_MINUTES = 24 * 60;
+
+function applyTimedLayout(
+  node: HTMLElement,
+  startMinute: number,
+  durationMinutes: number,
+): void {
+  const startRow = Math.floor(startMinute / 60) + 1;
+  const spanRows = Math.max(1, Math.ceil(durationMinutes / 60));
+  node.style.gridRow = `${startRow} / span ${spanRows}`;
+  node.style.setProperty(
+    '--calendar-block-top',
+    `${(startMinute / DAY_MINUTES) * 100}%`,
+  );
+  node.style.setProperty(
+    '--calendar-block-height',
+    `${(durationMinutes / DAY_MINUTES) * 100}%`,
+  );
+}
 
 function dragPayload(block: HourlyCalendarBlock): string {
   return JSON.stringify({
@@ -51,8 +70,6 @@ function renderBlock(
   block: HourlyCalendarBlock,
   store: PlannerStore,
 ): HTMLElement {
-  const startRow = Math.floor(block.startMinute / 60) + 1;
-  const spanRows = Math.max(1, Math.ceil(block.durationMinutes / 60));
   const node = el(
     'article',
     {
@@ -106,13 +123,11 @@ function renderBlock(
     ),
   );
   node.style.setProperty('--calendar-book-color', block.color);
-  node.style.gridRow = `${startRow} / span ${spanRows}`;
+  applyTimedLayout(node, block.startMinute, block.durationMinutes);
   return node;
 }
 
 function renderActivityBlock(block: HourlyCalendarActivityBlock): HTMLElement {
-  const startRow = Math.floor(block.startMinute / 60) + 1;
-  const spanRows = Math.max(1, Math.ceil(block.durationMinutes / 60));
   const node = el(
     'article',
     {
@@ -137,7 +152,7 @@ function renderActivityBlock(block: HourlyCalendarActivityBlock): HTMLElement {
     }),
   );
   node.style.setProperty('--calendar-activity-color', block.color);
-  node.style.gridRow = `${startRow} / span ${spanRows}`;
+  applyTimedLayout(node, block.startMinute, block.durationMinutes);
   return node;
 }
 

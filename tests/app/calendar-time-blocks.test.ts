@@ -14,7 +14,7 @@ function firstPlannedEntry(store: ReturnType<typeof makeStore>): {
 }
 
 describe('calendar time block commands', () => {
-  it('persists hourly study blocks without recomputing the plan', () => {
+  it('persists quarter-hour study blocks without recomputing the plan', () => {
     const store = makeStore();
     const { dateKey, bookId } = firstPlannedEntry(store);
     const events: string[] = [];
@@ -27,7 +27,7 @@ describe('calendar time block commands', () => {
     expect(
       state.project.manualOverrides.timeBlocks?.[dateKey]?.[bookId],
     ).toEqual({
-      startMinute: 13 * 60,
+      startMinute: 13 * 60 + 15,
       durationMinutes: 75,
     });
     expect(state.snapshot).toBe(snapshotBefore);
