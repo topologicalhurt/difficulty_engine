@@ -155,6 +155,24 @@ function normalizeClockMinute(value: unknown): number {
   );
 }
 
+function normalizeCalendarDuration(value: unknown, fallback: number): number {
+  const duration = normalizeNumber(
+    value,
+    fallback,
+    MIN_TIME_BLOCK_DURATION_MINUTES,
+    MAX_TIME_BLOCK_DURATION_MINUTES,
+    true,
+  );
+  return Math.max(
+    MIN_TIME_BLOCK_DURATION_MINUTES,
+    Math.min(
+      MAX_TIME_BLOCK_DURATION_MINUTES,
+      Math.round(duration / TIME_BLOCK_GRANULARITY_MINUTES) *
+        TIME_BLOCK_GRANULARITY_MINUTES,
+    ),
+  );
+}
+
 export function normalizeTimeBlockOverrides(
   value: unknown,
   validIds: Set<string>,
@@ -177,12 +195,9 @@ export function normalizeTimeBlockOverrides(
                         ? (rawBlock as Record<string, unknown>)
                         : {};
                     const startMinute = normalizeClockMinute(raw.startMinute);
-                    const durationMinutes = normalizeNumber(
+                    const durationMinutes = normalizeCalendarDuration(
                       raw.durationMinutes,
                       TIME_BLOCK_GRANULARITY_MINUTES,
-                      MIN_TIME_BLOCK_DURATION_MINUTES,
-                      MAX_TIME_BLOCK_DURATION_MINUTES,
-                      true,
                     );
                     return [
                       id,
@@ -229,13 +244,7 @@ function normalizeActivityDailyDurations(
   return Object.fromEntries(
     days.map((day) => [
       String(day),
-      normalizeNumber(
-        source[String(day)],
-        fallbackMinutes,
-        MIN_TIME_BLOCK_DURATION_MINUTES,
-        MAX_TIME_BLOCK_DURATION_MINUTES,
-        true,
-      ),
+      normalizeCalendarDuration(source[String(day)], fallbackMinutes),
     ]),
   );
 }
@@ -262,12 +271,9 @@ export function normalizeCalendarActivityOverrides(
           MAX_ACTIVITY_TITLE_LENGTH,
         );
         const mode = normalizeActivityMode(raw.mode);
-        const durationMinutes = normalizeNumber(
+        const durationMinutes = normalizeCalendarDuration(
           raw.durationMinutes,
           2 * TIME_BLOCK_GRANULARITY_MINUTES,
-          MIN_TIME_BLOCK_DURATION_MINUTES,
-          MAX_TIME_BLOCK_DURATION_MINUTES,
-          true,
         );
         const days = normalizeWeekdays(raw.days, [1, 2, 3, 4, 5]);
         const sessionsPerWeek = normalizeNumber(

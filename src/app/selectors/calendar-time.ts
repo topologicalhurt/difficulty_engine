@@ -28,7 +28,12 @@ export function clampStartMinute(value: number): number {
 }
 
 export function durationForEntry(entry: CalendarEntry): number {
-  return Math.max(30, Math.min(12 * 60, Math.round(entry.mins || 30)));
+  const estimatedMinutes = Math.max(30, Math.round(entry.mins || 30));
+  return Math.min(
+    12 * HOUR_MINUTES,
+    Math.ceil(estimatedMinutes / PLACEMENT_GRANULARITY_MINUTES) *
+      PLACEMENT_GRANULARITY_MINUTES,
+  );
 }
 
 interface FocusWindow {

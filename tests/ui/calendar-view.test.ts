@@ -92,6 +92,22 @@ describe('calendar view', () => {
     expect(firstStudyBlock?.startMinute).not.toBe(9 * 60);
   });
 
+  it('rounds automatic study blocks to visible quarter-hour boundaries', () => {
+    const store = makeStore();
+    store.commands.setCalendarLearningMode('evening_focus');
+
+    const blocks = selectCalendarViewModel(
+      store.selectors.getState(),
+    ).weeks[0]?.days.flatMap((day) => day.blocks);
+
+    expect(blocks?.length).toBeGreaterThan(0);
+    blocks?.forEach((block) => {
+      expect(block.startMinute % 15).toBe(0);
+      expect(block.endMinute % 15).toBe(0);
+      expect(block.timeLabel).not.toContain(':59');
+    });
+  });
+
   it('spans activity blocks across their full duration', () => {
     const store = makeStore();
     store.commands.addCalendarActivity({

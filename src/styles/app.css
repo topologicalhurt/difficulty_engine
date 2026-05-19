@@ -1274,7 +1274,7 @@ body.difficulty-engine-standalone #app {
   left: 54px;
   right: 4px;
   top: calc(var(--calendar-block-top, 0%) + 3px);
-  height: max(38px, calc(var(--calendar-block-height, 4.1667%) - 6px));
+  height: max(4px, calc(var(--calendar-block-height, 4.1667%) - 6px));
   min-width: 0;
   max-width: calc(100% - 58px);
   padding: 7px;
@@ -1310,7 +1310,7 @@ body.difficulty-engine-standalone #app {
   left: 54px;
   right: 4px;
   top: calc(var(--calendar-block-top, 0%) + 3px);
-  height: max(38px, calc(var(--calendar-block-height, 4.1667%) - 6px));
+  height: max(4px, calc(var(--calendar-block-height, 4.1667%) - 6px));
   min-width: 0;
   max-width: calc(100% - 58px);
   padding: 7px;

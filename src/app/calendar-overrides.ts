@@ -6,6 +6,13 @@ type CalendarActivityMap = NonNullable<
 
 const CALENDAR_TIME_GRANULARITY_MINUTES = 15;
 
+function snapCalendarMinutes(value: number): number {
+  return (
+    Math.round(value / CALENDAR_TIME_GRANULARITY_MINUTES) *
+    CALENDAR_TIME_GRANULARITY_MINUTES
+  );
+}
+
 export function removeBookFromDeferred(
   entries: Record<string, string[]>,
   bookId: string,
@@ -83,7 +90,7 @@ function normalizeDailyDurations(
       const raw = dailyDurations?.[String(day)] ?? dailyDurations?.[day];
       const minutes =
         typeof raw === 'number' && Number.isFinite(raw)
-          ? Math.round(raw)
+          ? snapCalendarMinutes(raw)
           : fallbackMinutes;
       return [String(day), Math.max(15, Math.min(12 * 60, minutes))];
     }),
@@ -101,7 +108,7 @@ export function withCalendarActivity(
   const days = normalizeActivityDays(input.days);
   const durationMinutes = Math.max(
     15,
-    Math.min(12 * 60, Math.round(input.durationMinutes ?? 120)),
+    Math.min(12 * 60, snapCalendarMinutes(input.durationMinutes ?? 120)),
   );
   const dailyDurations = normalizeDailyDurations(
     days,
@@ -344,8 +351,7 @@ function normalizeHourMinute(value: number): number {
     0,
     Math.min(
       24 * 60 - CALENDAR_TIME_GRANULARITY_MINUTES,
-      Math.round(value / CALENDAR_TIME_GRANULARITY_MINUTES) *
-        CALENDAR_TIME_GRANULARITY_MINUTES,
+      snapCalendarMinutes(value),
     ),
   );
 }
@@ -358,7 +364,10 @@ export function withCalendarTimeBlock(
   durationMinutes: number,
 ): PlannerProjectV1 {
   const start = normalizeHourMinute(startMinute);
-  const duration = Math.max(15, Math.min(12 * 60, Math.round(durationMinutes)));
+  const duration = Math.max(
+    15,
+    Math.min(12 * 60, snapCalendarMinutes(durationMinutes)),
+  );
   const timeBlocksByDate = project.manualOverrides.timeBlocks ?? {};
   const byDate = { ...(timeBlocksByDate[dateKey] ?? {}) };
   byDate[bookId] = {
