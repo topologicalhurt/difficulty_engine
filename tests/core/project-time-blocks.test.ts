@@ -76,6 +76,9 @@ describe('hourly calendar time blocks', () => {
             durationMinutes: 120,
             weeklyMinutes: 600,
             sessionsPerWeek: 5,
+            dailyDurations: { '1': 360, '3': 120 },
+            rotationStepDays: 1,
+            rotationIntervalWeeks: 2,
           },
         },
       },
@@ -96,8 +99,11 @@ describe('hourly calendar time blocks', () => {
         days: [1, 3],
         startMinute: 10 * 60,
         durationMinutes: 120,
+        dailyDurations: { '1': 360, '3': 120 },
         weeklyMinutes: 600,
         sessionsPerWeek: 5,
+        rotationStepDays: 1,
+        rotationIntervalWeeks: 2,
       },
     });
   });

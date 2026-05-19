@@ -24,6 +24,7 @@ import {
   HOUR_MINUTES,
   HOUR_START,
   nextAvailableStart,
+  overlaps,
   type OccupiedInterval,
 } from './calendar-time';
 import { buildCalendarWeeks, type CalendarWeek } from './calendar-weeks';
@@ -275,13 +276,18 @@ function dayBlocks(
           override?.durationMinutes ?? durationForEntry(entry),
           24 * 60,
         );
+        const overrideStart = override?.startMinute;
+        const overrideFits =
+          overrideStart != null &&
+          !overlaps(overrideStart, durationMinutes, occupied);
         const startMinute =
-          override?.startMinute ??
-          nextAvailableStart(
-            durationMinutes,
-            occupied,
-            state.ui.calendarLearningMode,
-          );
+          overrideFits && overrideStart != null
+            ? overrideStart
+            : nextAvailableStart(
+                durationMinutes,
+                occupied,
+                state.ui.calendarLearningMode,
+              );
         occupied.push({
           startMinute,
           endMinute: Math.min(24 * 60, startMinute + durationMinutes),
@@ -336,7 +342,11 @@ const selectCalendarViewModelMemo = memoizeSelector(
     >();
     if (selectedWeek) {
       selectedWeek.days.forEach((day) => {
-        const fixed = fixedActivityBlocksForDay(activities, day.key);
+        const fixed = fixedActivityBlocksForDay(
+          activities,
+          day.key,
+          selectedWeekIndex,
+        );
         activityBlocksByDate.set(day.key, fixed);
         occupiedByDate.set(day.key, fixed.map(intervalFromActivity));
       });

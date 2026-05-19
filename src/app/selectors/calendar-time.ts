@@ -38,7 +38,7 @@ function preferredStarts(mode: CalendarLearningMode): number[] {
   );
 }
 
-function overlaps(
+export function overlaps(
   startMinute: number,
   durationMinutes: number,
   occupied: OccupiedInterval[],

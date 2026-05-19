@@ -49,6 +49,50 @@ function selectedActivityDays(container: HTMLElement): number[] {
   return days.length ? days : [1, 2, 3, 4, 5];
 }
 
+function selectedDailyDurations(
+  container: HTMLElement,
+): Record<string, number> {
+  const selected = new Set(selectedActivityDays(container).map(String));
+  return Object.fromEntries(
+    [
+      ...container.querySelectorAll<HTMLInputElement>(
+        '[data-activity-day-hours]',
+      ),
+    ]
+      .filter((input) => selected.has(input.dataset.activityDayHours ?? ''))
+      .map((input) => {
+        const value = Number(input.value);
+        return [
+          input.dataset.activityDayHours ?? '',
+          Math.max(0.25, Number.isFinite(value) ? value : 2) * 60,
+        ];
+      }),
+  );
+}
+
+function setCheckedDays(container: HTMLElement, days: number[]): void {
+  const selected = new Set(days.map(String));
+  container
+    .querySelectorAll<HTMLInputElement>('[data-activity-day]')
+    .forEach((input) => {
+      input.checked = selected.has(input.value);
+    });
+}
+
+function copyDurationToSelectedDays(container: HTMLElement): void {
+  const duration = String(
+    numericInput(container, '.calendar-activity-duration-input', 2),
+  );
+  const selected = new Set(selectedActivityDays(container).map(String));
+  container
+    .querySelectorAll<HTMLInputElement>('[data-activity-day-hours]')
+    .forEach((input) => {
+      if (selected.has(input.dataset.activityDayHours ?? '')) {
+        input.value = duration;
+      }
+    });
+}
+
 function inertTextInput(options: {
   className: string;
   value: string;
@@ -88,6 +132,26 @@ function weekdayCheckbox(day: { value: number; label: string }): HTMLElement {
     { className: 'calendar-weekday-option' },
     checkbox,
     el('span', { text: day.label }),
+  );
+}
+
+function weekdayHoursInput(day: { value: number; label: string }): HTMLElement {
+  const input = inertNumberInput({
+    className: 'calendar-activity-day-hours-input',
+    value: 2,
+    min: 0.25,
+    max: 12,
+    step: '0.25',
+  });
+  input.dataset.activityDayHours = String(day.value);
+  return el(
+    'label',
+    {
+      className:
+        'calendar-setting-field compact-field calendar-day-hours-field',
+    },
+    el('span', { text: `${day.label} h` }),
+    input,
   );
 }
 
@@ -204,9 +268,44 @@ function renderActivityForm(
       ),
     ),
     el(
+      'label',
+      { className: 'calendar-setting-field' },
+      el('span', { text: 'Rotation' }),
+      selectInput(
+        '0',
+        [
+          { value: '0', label: 'No rotation' },
+          { value: '1', label: 'Rotate +1 day each cycle' },
+          { value: '2', label: 'Rotate +2 days each cycle' },
+          { value: '3', label: 'Rotate +3 days each cycle' },
+        ],
+        { className: 'calendar-activity-rotation-select' },
+      ),
+    ),
+    el(
       'div',
       { className: 'calendar-weekday-picker' },
       ...CALENDAR_WEEKDAY_OPTIONS.map(weekdayCheckbox),
+    ),
+    el(
+      'div',
+      { className: 'calendar-activity-utility-row' },
+      button('Weekdays', {
+        className: 'ghost-button calendar-action-button',
+        onClick: () => setCheckedDays(form, [1, 2, 3, 4, 5]),
+      }),
+      button('Weekend', {
+        className: 'ghost-button calendar-action-button',
+        onClick: () => setCheckedDays(form, [0, 6]),
+      }),
+      button('All days', {
+        className: 'ghost-button calendar-action-button',
+        onClick: () => setCheckedDays(form, [0, 1, 2, 3, 4, 5, 6]),
+      }),
+      button('Even selected hours', {
+        className: 'ghost-button calendar-action-button',
+        onClick: () => copyDurationToSelectedDays(form),
+      }),
     ),
     el(
       'label',
@@ -218,6 +317,18 @@ function renderActivityForm(
         max: 23,
         step: 1,
         value: 18,
+      }),
+    ),
+    el(
+      'label',
+      { className: 'calendar-setting-field compact-field' },
+      el('span', { text: 'Rotate every wk' }),
+      inertNumberInput({
+        className: 'calendar-activity-rotation-interval-input',
+        min: 1,
+        max: 12,
+        step: 1,
+        value: 1,
       }),
     ),
     el(
@@ -245,17 +356,14 @@ function renderActivityForm(
       }),
     ),
     el(
-      'label',
-      { className: 'calendar-setting-field compact-field' },
-      el('span', { text: 'Weekly h' }),
-      inertNumberInput({
-        className: 'calendar-activity-weekly-input',
-        min: 0.25,
-        max: 84,
-        step: '0.25',
-        value: 10,
-      }),
+      'div',
+      { className: 'calendar-day-hours-grid' },
+      ...CALENDAR_WEEKDAY_OPTIONS.map(weekdayHoursInput),
     ),
+    el('p', {
+      className: 'muted-copy calendar-weekly-summary',
+      text: 'Weekly hours are generated from selected days and their per-day practice hours.',
+    }),
   );
   form.append(
     button('Add activity', {
@@ -264,6 +372,11 @@ function renderActivityForm(
         const mode = form.querySelector<HTMLSelectElement>(
           '.calendar-activity-mode-select',
         )?.value;
+        const rotationStepDays = Number(
+          form.querySelector<HTMLSelectElement>(
+            '.calendar-activity-rotation-select',
+          )?.value ?? 0,
+        );
         store.commands.addCalendarActivity({
           title: readTextControl(
             form,
@@ -277,6 +390,7 @@ function renderActivityForm(
           ),
           mode: mode === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly',
           days: selectedActivityDays(form),
+          dailyDurations: selectedDailyDurations(form),
           startMinute:
             Math.max(
               0,
@@ -292,8 +406,12 @@ function renderActivityForm(
             '.calendar-activity-sessions-input',
             5,
           ),
-          weeklyMinutes:
-            numericInput(form, '.calendar-activity-weekly-input', 10) * 60,
+          rotationStepDays,
+          rotationIntervalWeeks: numericInput(
+            form,
+            '.calendar-activity-rotation-interval-input',
+            1,
+          ),
         });
       },
     }),

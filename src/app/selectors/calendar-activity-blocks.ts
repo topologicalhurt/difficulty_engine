@@ -34,6 +34,7 @@ export function intervalFromActivity(
 function activityBlockFor(
   activity: CalendarActivityOverride,
   dateKey: string,
+  sourceDay: number,
   startMinute: number,
   durationMinutes: number,
 ): HourlyCalendarActivityBlock {
@@ -41,7 +42,7 @@ function activityBlockFor(
   const duration = Math.min(durationMinutes, 24 * 60 - start);
   const endMinute = Math.min(24 * 60, start + duration);
   return {
-    id: `${dateKey}:${activity.id}:${start}`,
+    id: `${dateKey}:${activity.id}:${sourceDay}:${start}`,
     activityId: activity.id,
     title: activity.title,
     color: activity.color,
@@ -54,24 +55,40 @@ function activityBlockFor(
   };
 }
 
+function rotationOffset(
+  activity: CalendarActivityOverride,
+  weekIndex: number,
+): number {
+  if (!activity.rotationStepDays) return 0;
+  const interval = Math.max(1, activity.rotationIntervalWeeks || 1);
+  return (
+    (Math.floor(Math.max(0, weekIndex) / interval) *
+      activity.rotationStepDays) %
+    7
+  );
+}
+
 export function fixedActivityBlocksForDay(
   activities: CalendarActivityOverride[],
   dateKey: string,
+  weekIndex: number,
 ): HourlyCalendarActivityBlock[] {
   const weekday = parseLocalDateKey(dateKey).getDay();
-  return activities
-    .filter(
-      (activity) =>
-        activity.mode === 'fixed_weekly' && activity.days.includes(weekday),
-    )
-    .map((activity) =>
-      activityBlockFor(
+  return activities.flatMap((activity) => {
+    if (activity.mode !== 'fixed_weekly') return [];
+    const offset = rotationOffset(activity, weekIndex);
+    return activity.days.flatMap((sourceDay) => {
+      const rotatedDay = (sourceDay + offset) % 7;
+      if (rotatedDay !== weekday) return [];
+      return activityBlockFor(
         activity,
         dateKey,
+        sourceDay,
         activity.startMinute,
-        activity.durationMinutes,
-      ),
-    );
+        activity.dailyDurations[String(sourceDay)] ?? activity.durationMinutes,
+      );
+    });
+  });
 }
 
 export function flexibleActivityBlocksForWeek(
@@ -99,7 +116,13 @@ export function flexibleActivityBlocksForWeek(
         const occupied = occupiedByDate.get(day.key) ?? [];
         const duration = Math.min(activity.durationMinutes, remainingMinutes);
         const start = nextAvailableStart(duration, occupied, mode);
-        const block = activityBlockFor(activity, day.key, start, duration);
+        const block = activityBlockFor(
+          activity,
+          day.key,
+          session,
+          start,
+          duration,
+        );
         blocks.push(block);
         occupied.push(intervalFromActivity(block));
         occupiedByDate.set(day.key, occupied);
@@ -112,11 +135,15 @@ export function flexibleActivityBlocksForWeek(
 export function activitySummaries(
   activities: CalendarActivityOverride[],
 ): string[] {
-  return activities.map((activity) =>
-    activity.mode === 'fixed_weekly'
-      ? `${activity.title}: ${activity.days.length} fixed day(s), ${Math.round(activity.durationMinutes / 60)}h each`
-      : `${activity.title}: flexible ${round1(activity.weeklyMinutes / 60)}h/week`,
-  );
+  return activities.map((activity) => {
+    const rotate =
+      activity.rotationStepDays > 0
+        ? ` · rotates +${activity.rotationStepDays}d/${activity.rotationIntervalWeeks}w`
+        : '';
+    return activity.mode === 'fixed_weekly'
+      ? `${activity.title}: ${activity.days.length} fixed day(s), ${round1(activity.weeklyMinutes / 60)}h/week${rotate}`
+      : `${activity.title}: flexible ${round1(activity.weeklyMinutes / 60)}h/week`;
+  });
 }
 
 export function activityRows(activities: CalendarActivityOverride[]): Array<{
@@ -131,7 +158,9 @@ export function activityRows(activities: CalendarActivityOverride[]): Array<{
     color: activity.color,
     summary:
       activity.mode === 'fixed_weekly'
-        ? `${activity.days.length} fixed day(s)`
+        ? `${round1(activity.weeklyMinutes / 60)}h/wk · ${activity.days.length} fixed day(s)${
+            activity.rotationStepDays > 0 ? ' · rotating' : ''
+          }`
         : `${Math.round(activity.weeklyMinutes / 60)}h flexible/wk`,
   }));
 }

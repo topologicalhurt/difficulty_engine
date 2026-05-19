@@ -37,8 +37,11 @@ export interface CalendarActivityOverride {
   days: number[];
   startMinute: number;
   durationMinutes: number;
+  dailyDurations: Record<string, number>;
   weeklyMinutes: number;
   sessionsPerWeek: number;
+  rotationStepDays: number;
+  rotationIntervalWeeks: number;
 }
 
 export interface ManualOverrides {

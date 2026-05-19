@@ -63,29 +63,58 @@ function normalizeActivityColor(color: string | undefined): string {
     : '#4fb3ff';
 }
 
+function normalizeActivityDays(days: number[] | undefined): number[] {
+  return days?.length
+    ? [...new Set(days)]
+        .filter((day) => Number.isFinite(day) && day >= 0 && day <= 6)
+        .sort()
+    : [1, 2, 3, 4, 5];
+}
+
+function normalizeDailyDurations(
+  days: number[],
+  dailyDurations: Record<string, number> | undefined,
+  fallbackMinutes: number,
+): Record<string, number> {
+  return Object.fromEntries(
+    days.map((day) => {
+      const raw = dailyDurations?.[String(day)] ?? dailyDurations?.[day];
+      const minutes =
+        typeof raw === 'number' && Number.isFinite(raw)
+          ? Math.round(raw)
+          : fallbackMinutes;
+      return [String(day), Math.max(15, Math.min(12 * 60, minutes))];
+    }),
+  );
+}
+
 export function withCalendarActivity(
   project: PlannerProjectV1,
   input: Partial<CalendarActivityMap[string]>,
 ): PlannerProjectV1 {
   const activities = project.manualOverrides.calendarActivities ?? {};
   const id = input.id?.trim() || nextCalendarActivityId(project);
+  const mode =
+    input.mode === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly';
+  const days = normalizeActivityDays(input.days);
   const durationMinutes = Math.max(
     15,
     Math.min(12 * 60, Math.round(input.durationMinutes ?? 120)),
   );
-  const weeklyMinutes = Math.max(
-    15,
-    Math.min(7 * 12 * 60, Math.round(input.weeklyMinutes ?? durationMinutes)),
+  const dailyDurations = normalizeDailyDurations(
+    days,
+    input.dailyDurations,
+    durationMinutes,
   );
   const sessionsPerWeek = Math.max(
     1,
-    Math.min(
-      21,
-      Math.round(
-        input.sessionsPerWeek ?? Math.ceil(weeklyMinutes / durationMinutes),
-      ),
-    ),
+    Math.min(21, Math.round(input.sessionsPerWeek ?? days.length)),
   );
+  const fixedWeeklyMinutes = days.reduce(
+    (total, day) => total + (dailyDurations[String(day)] ?? durationMinutes),
+    0,
+  );
+  const flexibleWeeklyMinutes = durationMinutes * sessionsPerWeek;
   return {
     ...project,
     manualOverrides: {
@@ -96,17 +125,24 @@ export function withCalendarActivity(
           id,
           title: input.title?.trim() || 'Activity',
           color: normalizeActivityColor(input.color),
-          mode:
-            input.mode === 'flexible_weekly'
-              ? 'flexible_weekly'
-              : 'fixed_weekly',
-          days: input.days?.length
-            ? [...new Set(input.days)].sort()
-            : [1, 2, 3, 4, 5],
+          mode,
+          days,
           startMinute: normalizeHourMinute(input.startMinute ?? 18 * 60),
           durationMinutes,
-          weeklyMinutes,
+          dailyDurations,
+          weeklyMinutes:
+            mode === 'fixed_weekly'
+              ? fixedWeeklyMinutes
+              : flexibleWeeklyMinutes,
           sessionsPerWeek,
+          rotationStepDays: Math.max(
+            0,
+            Math.min(6, Math.round(input.rotationStepDays ?? 0)),
+          ),
+          rotationIntervalWeeks: Math.max(
+            1,
+            Math.min(12, Math.round(input.rotationIntervalWeeks ?? 1)),
+          ),
         },
       },
     },

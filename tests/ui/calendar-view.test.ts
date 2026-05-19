@@ -90,6 +90,83 @@ describe('calendar view', () => {
     expect(firstStudyBlock?.startMinute).not.toBe(9 * 60);
   });
 
+  it('spans activity blocks across their full duration', () => {
+    const store = makeStore();
+    store.commands.addCalendarActivity({
+      title: 'Practice',
+      color: '#4488ff',
+      mode: 'fixed_weekly',
+      days: [1],
+      startMinute: 9 * 60,
+      durationMinutes: 180,
+      dailyDurations: { '1': 180 },
+    });
+
+    const view = renderCalendarView(store.selectors.getState(), store);
+    const activity = view.querySelector<HTMLElement>('.hourly-activity-block');
+
+    expect(activity?.style.gridRow).toBe('10 / span 3');
+  });
+
+  it('moves a dragged book away from a newly added activity conflict', () => {
+    const store = makeStore();
+    const firstBlock = selectCalendarViewModel(
+      store.selectors.getState(),
+    ).weeks[0]?.days.flatMap((day) => day.blocks)[0];
+    if (!firstBlock) throw new Error('Expected a calendar block.');
+
+    store.commands.setCalendarTimeBlock(
+      firstBlock.dateKey,
+      firstBlock.bookId,
+      9 * 60,
+      120,
+    );
+    store.commands.addCalendarActivity({
+      title: 'Lab',
+      color: '#ff8800',
+      mode: 'fixed_weekly',
+      days: [1],
+      startMinute: 9 * 60,
+      durationMinutes: 120,
+      dailyDurations: { '1': 120 },
+    });
+
+    const movedBlock = selectCalendarViewModel(store.selectors.getState())
+      .weeks[0]?.days.flatMap((day) => day.blocks)
+      .find((block) => block.id === firstBlock.id);
+
+    expect(movedBlock?.startMinute).not.toBe(9 * 60);
+  });
+
+  it('uses per-day activity hours and rotates fixed days by week', () => {
+    const store = makeStore();
+    store.commands.addCalendarActivity({
+      title: 'Drumming',
+      color: '#44cc88',
+      mode: 'fixed_weekly',
+      days: [2],
+      startMinute: 8 * 60,
+      durationMinutes: 120,
+      dailyDurations: { '2': 360 },
+      rotationStepDays: 1,
+      rotationIntervalWeeks: 1,
+    });
+
+    const firstWeek = selectCalendarViewModel(store.selectors.getState());
+    const firstActivityDay = firstWeek.weeks[0]?.days.find((day) =>
+      day.activityBlocks.some((block) => block.title === 'Drumming'),
+    );
+    store.commands.setCalendarWeekIndex(1);
+    const secondWeek = selectCalendarViewModel(store.selectors.getState());
+    const secondActivityDay = secondWeek.weeks[0]?.days.find((day) =>
+      day.activityBlocks.some((block) => block.title === 'Drumming'),
+    );
+
+    expect(firstActivityDay?.label).toContain('Tue');
+    expect(firstActivityDay?.activityBlocks[0]?.timeLabel).toBe('08:00-14:00');
+    expect(secondActivityDay?.label).toContain('Wed');
+  });
+
   it('shows reading pace indicators from logged actuals', () => {
     const store = makeStore();
     const firstBlock = selectCalendarViewModel(store.selectors.getState())
@@ -125,6 +202,7 @@ describe('calendar view', () => {
     const title = root.querySelector<HTMLInputElement>(
       '.calendar-activity-title-input',
     );
+    const weeklyHours = root.querySelector('.calendar-activity-weekly-input');
     const add = [...root.querySelectorAll('button')].find(
       (button) => button.textContent === 'Add activity',
     );
@@ -134,6 +212,7 @@ describe('calendar view', () => {
     title.value = 'Gym';
     add.click();
 
+    expect(weeklyHours).toBeNull();
     expect(
       Object.values(
         store.selectors.getProject().manualOverrides.calendarActivities ?? {},

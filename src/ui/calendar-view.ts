@@ -51,6 +51,8 @@ function renderBlock(
   block: HourlyCalendarBlock,
   store: PlannerStore,
 ): HTMLElement {
+  const startRow = Math.floor(block.startMinute / 60) + 1;
+  const spanRows = Math.max(1, Math.ceil(block.durationMinutes / 60));
   const node = el(
     'article',
     {
@@ -104,10 +106,13 @@ function renderBlock(
     ),
   );
   node.style.setProperty('--calendar-book-color', block.color);
+  node.style.gridRow = `${startRow} / span ${spanRows}`;
   return node;
 }
 
 function renderActivityBlock(block: HourlyCalendarActivityBlock): HTMLElement {
+  const startRow = Math.floor(block.startMinute / 60) + 1;
+  const spanRows = Math.max(1, Math.ceil(block.durationMinutes / 60));
   const node = el(
     'article',
     {
@@ -132,46 +137,19 @@ function renderActivityBlock(block: HourlyCalendarActivityBlock): HTMLElement {
     }),
   );
   node.style.setProperty('--calendar-activity-color', block.color);
+  node.style.gridRow = `${startRow} / span ${spanRows}`;
   return node;
-}
-
-function groupBlocksByHour(
-  blocks: HourlyCalendarBlock[],
-): Map<number, HourlyCalendarBlock[]> {
-  const byHour = new Map<number, HourlyCalendarBlock[]>();
-  blocks.forEach((block) => {
-    const hour = Math.floor(block.startMinute / 60) * 60;
-    const existing = byHour.get(hour) ?? [];
-    existing.push(block);
-    byHour.set(hour, existing);
-  });
-  return byHour;
-}
-
-function groupActivityBlocksByHour(
-  blocks: HourlyCalendarActivityBlock[],
-): Map<number, HourlyCalendarActivityBlock[]> {
-  const byHour = new Map<number, HourlyCalendarActivityBlock[]>();
-  blocks.forEach((block) => {
-    const hour = Math.floor(block.startMinute / 60) * 60;
-    const existing = byHour.get(hour) ?? [];
-    existing.push(block);
-    byHour.set(hour, existing);
-  });
-  return byHour;
 }
 
 function renderHourSlot(
   day: HourlyCalendarDay,
   minute: number,
-  blocks: HourlyCalendarBlock[],
-  activityBlocks: HourlyCalendarActivityBlock[],
   store: PlannerStore,
 ): HTMLElement {
-  return el(
+  const node = el(
     'div',
     {
-      className: `hourly-calendar-slot${blocks.length ? ' has-blocks' : ''}`,
+      className: 'hourly-calendar-slot',
       dataset: {
         dateKey: day.key,
         minute: String(minute),
@@ -196,13 +174,9 @@ function renderHourSlot(
       className: 'hourly-calendar-slot-label',
       text: formatClockMinute(minute),
     }),
-    el(
-      'div',
-      { className: 'hourly-calendar-slot-body' },
-      ...activityBlocks.map((block) => renderActivityBlock(block)),
-      ...blocks.map((block) => renderBlock(block, store)),
-    ),
   );
+  node.style.gridRow = `${Math.floor(minute / 60) + 1}`;
+  return node;
 }
 
 function renderDay(
@@ -210,8 +184,6 @@ function renderDay(
   hourLabels: Array<{ minute: number; label: string }>,
   store: PlannerStore,
 ): HTMLElement {
-  const blocksByHour = groupBlocksByHour(day.blocks);
-  const activityBlocksByHour = groupActivityBlocksByHour(day.activityBlocks);
   return el(
     'div',
     {
@@ -229,15 +201,9 @@ function renderDay(
     el(
       'div',
       { className: 'hourly-calendar-slots' },
-      ...hourLabels.map(({ minute }) =>
-        renderHourSlot(
-          day,
-          minute,
-          blocksByHour.get(minute) ?? [],
-          activityBlocksByHour.get(minute) ?? [],
-          store,
-        ),
-      ),
+      ...hourLabels.map(({ minute }) => renderHourSlot(day, minute, store)),
+      ...day.activityBlocks.map((block) => renderActivityBlock(block)),
+      ...day.blocks.map((block) => renderBlock(block, store)),
     ),
   );
 }

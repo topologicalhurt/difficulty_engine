@@ -60,8 +60,10 @@ describe('calendar time block commands', () => {
       days: [2, 4],
       startMinute: 18 * 60,
       durationMinutes: 120,
-      weeklyMinutes: 240,
+      dailyDurations: { '2': 180, '4': 120 },
       sessionsPerWeek: 2,
+      rotationStepDays: 1,
+      rotationIntervalWeeks: 1,
     });
 
     const activity = Object.values(
@@ -72,6 +74,9 @@ describe('calendar time block commands', () => {
       color: '#ff8800',
       mode: 'fixed_weekly',
       days: [2, 4],
+      dailyDurations: { '2': 180, '4': 120 },
+      weeklyMinutes: 300,
+      rotationStepDays: 1,
     });
     expect(store.selectors.getSnapshot()).toBe(snapshotBefore);
 

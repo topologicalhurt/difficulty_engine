@@ -217,6 +217,29 @@ function normalizeActivityMode(value: unknown): CalendarActivityMode {
   return value === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly';
 }
 
+function normalizeActivityDailyDurations(
+  value: unknown,
+  days: number[],
+  fallbackMinutes: number,
+): Record<string, number> {
+  const source =
+    value && typeof value === 'object'
+      ? (value as Record<string, unknown>)
+      : {};
+  return Object.fromEntries(
+    days.map((day) => [
+      String(day),
+      normalizeNumber(
+        source[String(day)],
+        fallbackMinutes,
+        MIN_TIME_BLOCK_DURATION_MINUTES,
+        MAX_TIME_BLOCK_DURATION_MINUTES,
+        true,
+      ),
+    ]),
+  );
+}
+
 export function normalizeCalendarActivityOverrides(
   value: unknown,
 ): PlannerProjectV1['manualOverrides']['calendarActivities'] {
@@ -246,20 +269,41 @@ export function normalizeCalendarActivityOverrides(
           MAX_TIME_BLOCK_DURATION_MINUTES,
           true,
         );
-        const weeklyMinutes = normalizeNumber(
-          raw.weeklyMinutes,
-          durationMinutes,
-          MIN_TIME_BLOCK_DURATION_MINUTES,
-          MAX_ACTIVITY_WEEKLY_MINUTES,
-          true,
-        );
+        const days = normalizeWeekdays(raw.days, [1, 2, 3, 4, 5]);
         const sessionsPerWeek = normalizeNumber(
           raw.sessionsPerWeek,
-          Math.max(1, Math.ceil(weeklyMinutes / durationMinutes)),
+          Math.max(
+            1,
+            raw.weeklyMinutes == null
+              ? days.length
+              : Math.ceil(
+                  normalizeNumber(
+                    raw.weeklyMinutes,
+                    durationMinutes,
+                    MIN_TIME_BLOCK_DURATION_MINUTES,
+                    MAX_ACTIVITY_WEEKLY_MINUTES,
+                    true,
+                  ) / durationMinutes,
+                ),
+          ),
           1,
           MAX_ACTIVITY_SESSIONS_PER_WEEK,
           true,
         );
+        const dailyDurations = normalizeActivityDailyDurations(
+          raw.dailyDurations,
+          days,
+          durationMinutes,
+        );
+        const fixedWeeklyMinutes = days.reduce(
+          (total, day) =>
+            total + (dailyDurations[String(day)] ?? durationMinutes),
+          0,
+        );
+        const weeklyMinutes =
+          mode === 'fixed_weekly'
+            ? fixedWeeklyMinutes
+            : durationMinutes * sessionsPerWeek;
         return [
           id,
           {
@@ -267,11 +311,26 @@ export function normalizeCalendarActivityOverrides(
             title: title || 'Activity',
             color: normalizeActivityColor(raw.color),
             mode,
-            days: normalizeWeekdays(raw.days, [1, 2, 3, 4, 5]),
+            days,
             startMinute: normalizeClockMinute(raw.startMinute),
             durationMinutes,
+            dailyDurations,
             weeklyMinutes,
             sessionsPerWeek,
+            rotationStepDays: normalizeNumber(
+              raw.rotationStepDays,
+              0,
+              0,
+              6,
+              true,
+            ),
+            rotationIntervalWeeks: normalizeNumber(
+              raw.rotationIntervalWeeks,
+              1,
+              1,
+              12,
+              true,
+            ),
           },
         ] as const;
       })
