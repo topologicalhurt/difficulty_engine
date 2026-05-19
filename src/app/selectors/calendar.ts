@@ -54,6 +54,11 @@ export interface CalendarViewModel {
   icsText: string;
   icsDataUrl: string;
   exportSummary: string;
+  selectedWeekIndex: number;
+  weekCount: number;
+  selectedWeekLabel: string;
+  canGoPrevious: boolean;
+  canGoNext: boolean;
 }
 
 function clampStartMinute(value: number): number {
@@ -214,11 +219,16 @@ const selectCalendarViewModelMemo = memoizeSelector(
     state.project.manualOverrides.timeBlocks ?? {},
     state.project.library.books,
     state.ui.planColorMode,
+    state.ui.calendarWeekIndex,
   ],
   (state: AppState): CalendarViewModel => {
-    const weeks = buildCalendarWeeks(state).map((week) =>
-      dayBlocks(state, week),
-    );
+    const sourceWeeks = buildCalendarWeeks(state);
+    const weekCount = sourceWeeks.length;
+    const selectedWeekIndex = weekCount
+      ? Math.min(Math.max(0, state.ui.calendarWeekIndex), weekCount - 1)
+      : 0;
+    const selectedWeek = sourceWeeks[selectedWeekIndex];
+    const weeks = selectedWeek ? [dayBlocks(state, selectedWeek)] : [];
     const blocks = weeks.flatMap((week) =>
       week.days.flatMap((day) => day.blocks),
     );
@@ -235,8 +245,13 @@ const selectCalendarViewModelMemo = memoizeSelector(
       icsText,
       icsDataUrl: `data:text/calendar;charset=utf-8,${encodeURIComponent(icsText)}`,
       exportSummary: blocks.length
-        ? `${blocks.length} study block(s), first finish ${formatPlanFullDate(state.snapshot.scheduleStats.finishDate)}`
+        ? `${blocks.length} study block(s) in ${selectedWeek?.label ?? 'selected week'} · plan finish ${formatPlanFullDate(state.snapshot.scheduleStats.finishDate)}`
         : 'No study blocks to export yet.',
+      selectedWeekIndex,
+      weekCount,
+      selectedWeekLabel: selectedWeek?.label ?? 'No planned week',
+      canGoPrevious: selectedWeekIndex > 0,
+      canGoNext: selectedWeekIndex < weekCount - 1,
     };
   },
 );

@@ -188,6 +188,7 @@ export const DEFAULT_UI_STATE: UiState = {
   activeView: 'plan',
   selectedBookId: null,
   selectedCalendarEntry: null,
+  calendarWeekIndex: 0,
   ganttView: DEFAULT_UI_PREFERENCES.ganttView,
   ganttZoom: DEFAULT_UI_PREFERENCES.ganttZoom,
   planColorMode: DEFAULT_UI_PREFERENCES.planColorMode,

@@ -62,6 +62,7 @@ export interface UiState {
   activeView: AppView;
   selectedBookId: string | null;
   selectedCalendarEntry: CalendarEntrySelection | null;
+  calendarWeekIndex: number;
   ganttView: GanttView;
   ganttZoom: number;
   planColorMode: PlanColorMode;

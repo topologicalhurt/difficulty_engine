@@ -39,6 +39,7 @@ export interface PlannerStoreCommands {
   setActiveView(activeView: AppView): void;
   selectBook(bookId: string | null): void;
   selectCalendarEntry(dateKey: string, bookId: string): void;
+  setCalendarWeekIndex(index: number): void;
   setBanner(banner: UiState['banner']): void;
   setDialog(dialog: UiState['dialog']): void;
   setGanttView(ganttView: UiState['ganttView']): void;

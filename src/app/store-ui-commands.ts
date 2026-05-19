@@ -21,6 +21,7 @@ export function createUiCommands(
   | 'setActiveView'
   | 'selectBook'
   | 'selectCalendarEntry'
+  | 'setCalendarWeekIndex'
   | 'setBanner'
   | 'setDialog'
   | 'setGanttView'
@@ -69,6 +70,11 @@ export function createUiCommands(
       context.commitUi('ui.selectCalendarEntry', {
         selectedBookId: bookId,
         selectedCalendarEntry: { dateKey, bookId },
+      });
+    },
+    setCalendarWeekIndex(index: number): void {
+      context.commitUi('ui.calendarWeekIndex', {
+        calendarWeekIndex: Math.max(0, Math.round(index)),
       });
     },
     setBanner(banner: UiState['banner']): void {

@@ -21,11 +21,50 @@ describe('calendar view', () => {
     expect(root.dataset.activeView).toBe('calendar');
     expect(root.textContent).toContain('Hourly calendar');
     expect(viewModel.hourLabels.map((hour) => hour.label)).toContain('23:00');
+    expect(viewModel.weeks).toHaveLength(1);
+    expect(root.querySelector('.panel-toggle-button')).toBeNull();
     const exportLink = root.querySelector('a[download$=".ics"]');
     expect(exportLink?.getAttribute('href')).toContain('BEGIN%3AVCALENDAR');
     expect(
       root.querySelector('a[href^="https://calendar.google.com"]'),
     ).toBeTruthy();
+  });
+
+  it('pages the hourly calendar by week instead of mounting the full plan', () => {
+    const store = makeStore();
+    store.commands.setActiveView('calendar');
+    const root = document.createElement('section');
+
+    renderActiveTabBody(root, store.selectors.getState(), store);
+    const initial = selectCalendarViewModel(store.selectors.getState());
+    expect(initial.weekCount).toBeGreaterThanOrEqual(initial.weeks.length);
+    if (!initial.canGoNext) return;
+
+    const next = root.querySelectorAll('button')[1];
+    if (!(next instanceof HTMLButtonElement)) {
+      throw new Error('Expected the next-week button.');
+    }
+    next.click();
+
+    expect(store.selectors.getState().ui.calendarWeekIndex).toBe(1);
+  });
+
+  it('does not rebuild the hourly grid for simple block selection', () => {
+    const store = makeStore();
+    store.commands.setActiveView('calendar');
+    const root = document.createElement('section');
+
+    renderActiveTabBody(root, store.selectors.getState(), store);
+    const initialBody = root.firstElementChild;
+    const block = root.querySelector('.hourly-calendar-block');
+    if (!(block instanceof HTMLElement)) {
+      throw new Error('Expected an hourly block.');
+    }
+
+    block.click();
+    renderActiveTabBody(root, store.selectors.getState(), store);
+
+    expect(root.firstElementChild).toBe(initialBody);
   });
 
   it('persists a dropped study block on the target hour', () => {

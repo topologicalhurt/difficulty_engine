@@ -40,7 +40,7 @@ export function selectActiveTabRenderKeys(state: AppState): readonly unknown[] {
         state.project.manualOverrides.timeBlocks ?? {},
         state.project.library.books,
         state.ui.planColorMode,
-        selectedCalendarEntryKey(state),
+        state.ui.calendarWeekIndex,
       ];
     case 'ai':
       return [

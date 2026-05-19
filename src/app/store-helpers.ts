@@ -83,6 +83,10 @@ export function buildUi(
       ui.selectedBookId ?? DEFAULT_UI_STATE.selectedBookId,
     ),
     selectedCalendarEntry,
+    calendarWeekIndex: Math.max(
+      0,
+      Math.round(ui.calendarWeekIndex ?? DEFAULT_UI_STATE.calendarWeekIndex),
+    ),
     ganttView: ui.ganttView ?? project.uiPreferences.ganttView,
     ganttZoom: ui.ganttZoom ?? project.uiPreferences.ganttZoom,
     planColorMode: ui.planColorMode ?? project.uiPreferences.planColorMode,

@@ -163,6 +163,22 @@ export const PLAN_DISPLAY_CONTRACTS: WiringContract[] = [
       'Calendar selection is UI-only but keeps the exact date/book log drawer open across rerenders.',
   },
   {
+    id: 'ui.calendarWeekIndex',
+    surface: 'calendar',
+    control: 'Hourly calendar week viewport',
+    command: 'setCalendarWeekIndex',
+    projectReads: [],
+    projectWrites: [],
+    uiReads: ['calendarWeekIndex'],
+    uiWrites: ['calendarWeekIndex'],
+    snapshotEffects: [],
+    renderEffects: ['hourly calendar viewport'],
+    recomputePolicy: 'ui_only',
+    testIds: ['tests/ui/calendar-view.test.ts'],
+    notes:
+      'The hourly calendar renders one week at a time to avoid mounting thousands of drop zones.',
+  },
+  {
     id: 'ui.documentOpen',
     surface: 'library',
     control: 'Open or reveal offline document',

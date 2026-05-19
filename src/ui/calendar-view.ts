@@ -47,7 +47,7 @@ function renderBlock(
   block: HourlyCalendarBlock,
   store: PlannerStore,
 ): HTMLElement {
-  return el(
+  const node = el(
     'article',
     {
       className: `hourly-calendar-block${block.persisted ? ' persisted' : ''}`,
@@ -95,6 +95,21 @@ function renderBlock(
       }),
     ),
   );
+  node.style.setProperty('--calendar-book-color', block.color);
+  return node;
+}
+
+function groupBlocksByHour(
+  blocks: HourlyCalendarBlock[],
+): Map<number, HourlyCalendarBlock[]> {
+  const byHour = new Map<number, HourlyCalendarBlock[]>();
+  blocks.forEach((block) => {
+    const hour = Math.floor(block.startMinute / 60) * 60;
+    const existing = byHour.get(hour) ?? [];
+    existing.push(block);
+    byHour.set(hour, existing);
+  });
+  return byHour;
 }
 
 function renderHourSlot(
@@ -144,6 +159,7 @@ function renderDay(
   hourLabels: Array<{ minute: number; label: string }>,
   store: PlannerStore,
 ): HTMLElement {
+  const blocksByHour = groupBlocksByHour(day.blocks);
   return el(
     'div',
     {
@@ -162,15 +178,7 @@ function renderDay(
       'div',
       { className: 'hourly-calendar-slots' },
       ...hourLabels.map(({ minute }) =>
-        renderHourSlot(
-          day,
-          minute,
-          day.blocks.filter(
-            (block) =>
-              block.startMinute >= minute && block.startMinute < minute + 60,
-          ),
-          store,
-        ),
+        renderHourSlot(day, minute, blocksByHour.get(minute) ?? [], store),
       ),
     ),
   );
@@ -184,7 +192,7 @@ export function renderCalendarView(
   if (!viewModel.weeks.length) {
     return panel(
       'Hourly calendar',
-      { id: 'calendar:hourly' },
+      { id: 'calendar:hourly', collapsible: false },
       emptyState(
         'No study blocks yet',
         'Solve the plan first; hourly blocks are derived from planned study days.',
@@ -196,10 +204,42 @@ export function renderCalendarView(
     { className: 'stack-layout calendar-tab-view' },
     panel(
       'Hourly calendar',
-      { id: 'calendar:hourly' },
+      {
+        id: 'calendar:hourly',
+        className: 'hourly-calendar-panel',
+        collapsible: false,
+      },
       el(
         'div',
         { className: 'toolbar-row calendar-toolbar' },
+        el(
+          'div',
+          { className: 'hourly-calendar-week-controls' },
+          button('Previous week', {
+            className: 'ghost-button calendar-action-button',
+            disabled: !viewModel.canGoPrevious,
+            onClick: () =>
+              store.commands.setCalendarWeekIndex(
+                viewModel.selectedWeekIndex - 1,
+              ),
+          }),
+          el('strong', {
+            className: 'hourly-calendar-week-label',
+            text: viewModel.selectedWeekLabel,
+          }),
+          button('Next week', {
+            className: 'ghost-button calendar-action-button',
+            disabled: !viewModel.canGoNext,
+            onClick: () =>
+              store.commands.setCalendarWeekIndex(
+                viewModel.selectedWeekIndex + 1,
+              ),
+          }),
+          el('span', {
+            className: 'muted-copy',
+            text: `${viewModel.selectedWeekIndex + 1} / ${viewModel.weekCount}`,
+          }),
+        ),
         el('div', {
           className: 'muted-copy',
           text: 'Drag a study block onto an hour slot to persist when in the day you intend to read it.',

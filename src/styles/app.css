@@ -1215,28 +1215,39 @@ body.difficulty-engine-standalone #app {
 }
 
 .hourly-calendar-board .calendar-week-grid {
-  grid-template-columns: repeat(7, minmax(180px, 1fr));
+  grid-template-columns: repeat(7, minmax(172px, 1fr));
+  align-items: stretch;
   overflow-x: auto;
 }
 
 .hourly-calendar-day {
-  min-height: 560px;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 1120px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.74), rgba(8, 13, 24, 0.86)),
+    rgba(255, 255, 255, 0.035);
 }
 
 .hourly-calendar-slots {
   display: grid;
+  grid-template-rows: repeat(24, minmax(42px, 1fr));
   gap: 5px;
+  min-height: 0;
 }
 
 .hourly-calendar-slot {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 6px;
-  min-height: 44px;
+  min-width: 0;
+  min-height: 0;
   padding: 5px;
   border: 1px dashed rgba(148, 163, 184, 0.22);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.018);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .hourly-calendar-slot.has-blocks {
@@ -1254,18 +1265,34 @@ body.difficulty-engine-standalone #app {
   display: grid;
   gap: 5px;
   min-width: 0;
+  max-width: 100%;
+  overflow: auto;
 }
 
 .hourly-calendar-block {
   display: grid;
   gap: 5px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   padding: 7px;
   border: 1px solid rgba(72, 187, 153, 0.28);
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--calendar-book-color, var(--accent));
   border-radius: var(--radius-xs);
-  background: rgba(72, 187, 153, 0.08);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(
+        in srgb,
+        var(--calendar-book-color, var(--accent)) 16%,
+        transparent
+      ),
+      rgba(15, 23, 42, 0.34)
+    ),
+    rgba(72, 187, 153, 0.05);
   cursor: grab;
+  overflow: hidden;
 }
 
 .hourly-calendar-block.persisted {
@@ -1280,10 +1307,30 @@ body.difficulty-engine-standalone #app {
 .hourly-calendar-block-head,
 .hourly-calendar-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   justify-content: space-between;
   min-width: 0;
+}
+
+.hourly-calendar-actions .calendar-action-button {
+  padding: 3px 7px;
+  font-size: 0.72rem;
+}
+
+.hourly-calendar-week-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hourly-calendar-week-label {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hourly-calendar-block-head strong {
