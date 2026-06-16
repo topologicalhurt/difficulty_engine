@@ -16,6 +16,12 @@ const TIME_BLOCK_GRANULARITY_MINUTES = 15;
 const MIN_TIME_BLOCK_DURATION_MINUTES = 15;
 const MAX_TIME_BLOCK_DURATION_MINUTES = 12 * 60;
 const DEFAULT_ACTIVITY_COLOR = '#4fb3ff';
+// Shared activity defaults so the add/edit command path and the load/normalize
+// path agree. Previously a missing startMinute defaulted to 18:00 when added
+// but 00:00 on reload, and durationMinutes to 120 vs 30 — silently changing an
+// imported/AI-authored activity's placement across a save+reload.
+export const DEFAULT_ACTIVITY_START_MINUTE = 18 * 60;
+export const DEFAULT_ACTIVITY_DURATION_MINUTES = 2 * 60;
 const MAX_ACTIVITY_TITLE_LENGTH = 80;
 const MAX_ACTIVITY_WEEKLY_MINUTES = 7 * 12 * 60;
 const MAX_ACTIVITY_SESSIONS_PER_WEEK = 21;
@@ -262,10 +268,12 @@ export function normalizeCalendarActivityOverrides(
           rawActivity && typeof rawActivity === 'object'
             ? (rawActivity as Record<string, unknown>)
             : {};
-        const id = normalizeString(raw.id, fallbackId).replace(
-          /[^a-z0-9_-]/gi,
-          '',
-        );
+        // Prefer the (already-unique) map key when the activity's own id
+        // sanitizes to empty, so an activity is never silently discarded on
+        // load.
+        const id =
+          normalizeString(raw.id, fallbackId).replace(/[^a-z0-9_-]/gi, '') ||
+          fallbackId.replace(/[^a-z0-9_-]/gi, '');
         const title = normalizeString(raw.title, 'Activity').slice(
           0,
           MAX_ACTIVITY_TITLE_LENGTH,
@@ -273,7 +281,7 @@ export function normalizeCalendarActivityOverrides(
         const mode = normalizeActivityMode(raw.mode);
         const durationMinutes = normalizeCalendarDuration(
           raw.durationMinutes,
-          2 * TIME_BLOCK_GRANULARITY_MINUTES,
+          DEFAULT_ACTIVITY_DURATION_MINUTES,
         );
         const days = normalizeWeekdays(raw.days, [1, 2, 3, 4, 5]);
         const sessionsPerWeek = normalizeNumber(
@@ -318,7 +326,9 @@ export function normalizeCalendarActivityOverrides(
             color: normalizeActivityColor(raw.color),
             mode,
             days,
-            startMinute: normalizeClockMinute(raw.startMinute),
+            startMinute: normalizeClockMinute(
+              raw.startMinute ?? DEFAULT_ACTIVITY_START_MINUTE,
+            ),
             durationMinutes,
             dailyDurations,
             weeklyMinutes,

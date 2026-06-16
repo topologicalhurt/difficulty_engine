@@ -37,6 +37,37 @@ describe('document text topic extraction', () => {
     ]);
   });
 
+  it('keeps word-prefixed "Chapter N" headers as chapters beside decimal topics', () => {
+    const extraction = extractExplicitTocChapters(
+      [
+        'Contents',
+        'Chapter 1 Foundations 1',
+        '1.1 Intro 2',
+        '1.2 More 8',
+        'Chapter 2 Methods 20',
+        '2.1 Stuff 21',
+        '2.2 Things 30',
+        'Chapter 3 Results 45',
+        '3.1 Data 46',
+        '3.2 Plots 55',
+      ].join('\n'),
+    );
+
+    expect(extraction?.chapters).toEqual([
+      'Chapter 1 Foundations',
+      'Chapter 2 Methods',
+      'Chapter 3 Results',
+    ]);
+    expect(extraction?.topics).toEqual([
+      '1.1 Intro',
+      '1.2 More',
+      '2.1 Stuff',
+      '2.2 Things',
+      '3.1 Data',
+      '3.2 Plots',
+    ]);
+  });
+
   it('keeps subsection-only explicit TOCs as topics, not chapters', () => {
     const extraction = extractExplicitTocChapters(
       [

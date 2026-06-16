@@ -1,4 +1,8 @@
 import type { PlannerProjectV1 } from '../core/types';
+import {
+  DEFAULT_ACTIVITY_DURATION_MINUTES,
+  DEFAULT_ACTIVITY_START_MINUTE,
+} from '../core/project-normalize-overrides';
 
 type CalendarActivityMap = NonNullable<
   PlannerProjectV1['manualOverrides']['calendarActivities']
@@ -102,13 +106,23 @@ export function withCalendarActivity(
   input: Partial<CalendarActivityMap[string]>,
 ): PlannerProjectV1 {
   const activities = project.manualOverrides.calendarActivities ?? {};
-  const id = input.id?.trim() || nextCalendarActivityId(project);
+  // Sanitize a supplied id the same way the load/normalize path does, so an
+  // id with special characters round-trips identically and stays addressable
+  // by removeCalendarActivity after a save+reload.
+  const id =
+    (input.id ?? '').trim().replace(/[^a-z0-9_-]/gi, '') ||
+    nextCalendarActivityId(project);
   const mode =
     input.mode === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly';
   const days = normalizeActivityDays(input.days);
   const durationMinutes = Math.max(
     15,
-    Math.min(12 * 60, snapCalendarMinutes(input.durationMinutes ?? 120)),
+    Math.min(
+      12 * 60,
+      snapCalendarMinutes(
+        input.durationMinutes ?? DEFAULT_ACTIVITY_DURATION_MINUTES,
+      ),
+    ),
   );
   const dailyDurations = normalizeDailyDurations(
     days,
@@ -136,7 +150,9 @@ export function withCalendarActivity(
           color: normalizeActivityColor(input.color),
           mode,
           days,
-          startMinute: normalizeHourMinute(input.startMinute ?? 18 * 60),
+          startMinute: normalizeHourMinute(
+            input.startMinute ?? DEFAULT_ACTIVITY_START_MINUTE,
+          ),
           durationMinutes,
           dailyDurations,
           weeklyMinutes:
