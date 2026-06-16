@@ -16,6 +16,7 @@ import type {
 } from './toc-page-ranges';
 
 const DIRECT_DOCUMENT_MAX_BYTES = 8 * 1024 * 1024;
+const DIRECT_DOCUMENT_TIMEOUT_MS = 30_000;
 const RESPONSE_CHUNK_MISSING_LENGTH = -1;
 
 export interface SourceDocumentContext {
@@ -147,9 +148,20 @@ export async function sourceDocumentCandidate(
   if (!sourcePath || !context.fetchImpl) return null;
   if (!allowedDirectDocumentUrl(sourcePath)) return null;
   if (!documentSourceEnabled(context.sourceSettings, 'directUrl')) return null;
+  // Bound the direct download with our own timeout (linked to the caller's
+  // signal) so a slow or stalled HTTPS source cannot hang acquisition. The
+  // body is also size-capped by readLimitedResponseBytes.
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(
+    () => controller.abort(new Error('Direct document fetch timed out')),
+    DIRECT_DOCUMENT_TIMEOUT_MS,
+  );
+  const onParentAbort = (): void => controller.abort(context.signal?.reason);
+  if (context.signal?.aborted) controller.abort(context.signal.reason);
+  else context.signal?.addEventListener('abort', onParentAbort, { once: true });
   try {
     const response = await context.fetchImpl(sourcePath, {
-      signal: context.signal,
+      signal: controller.signal,
       headers: {
         Accept: 'application/pdf,text/plain,text/html;q=0.9,*/*;q=0.5',
       },
@@ -177,6 +189,9 @@ export async function sourceDocumentCandidate(
       : null;
   } catch {
     return null;
+  } finally {
+    globalThis.clearTimeout(timeout);
+    context.signal?.removeEventListener('abort', onParentAbort);
   }
 }
 
