@@ -67,6 +67,44 @@ describe('TOC topic merge', () => {
     ).toBe('estimated');
   });
 
+  it('keeps chapter page ranges aligned when sanitization strips title suffixes', () => {
+    const resolution = mergeStrategyCandidates(makeBook(), [
+      {
+        provider: 'direct_url',
+        sourceUrl: 'https://example.test/book.pdf',
+        confidence: 0.85,
+        // Trailing page numbers are stripped by sanitization, so matching
+        // sanitized titles against the raw titles by string equality used to
+        // drop every range. Ranges must follow their chapter by position.
+        chapters: [
+          'Chapter 1 Foundations 5',
+          'Chapter 2 Methods 20',
+          'Chapter 3 Results 41',
+        ],
+        chapterPageRanges: [
+          { start: 5, end: 19 },
+          { start: 20, end: 40 },
+          { start: 41, end: 60 },
+        ],
+        chapterPageRangeTrust: ['trusted', 'trusted', 'trusted'],
+        pageRangeTrustStatus: 'trusted',
+        tocSource: 'pdf',
+        strategy: 'explicit_toc_region',
+      },
+    ]);
+
+    expect(resolution.enrichment.chapters).toEqual([
+      'Chapter 1 Foundations',
+      'Chapter 2 Methods',
+      'Chapter 3 Results',
+    ]);
+    expect(resolution.enrichment.chapterPageRanges).toEqual([
+      { start: 5, end: 19 },
+      { start: 20, end: 40 },
+      { start: 41, end: 60 },
+    ]);
+  });
+
   it('keeps a PDF source when only topic rows were extracted', () => {
     const resolution = mergeStrategyCandidates(makeBook(), [
       {
