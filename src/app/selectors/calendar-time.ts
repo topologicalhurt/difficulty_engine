@@ -1,5 +1,10 @@
 import type { CalendarEntry, CalendarLearningMode } from '../../core/types';
 import {
+  DAY_MINUTES,
+  TIME_BLOCK_GRANULARITY_MINUTES as PLACEMENT_GRANULARITY_MINUTES,
+  snapToTimeGrid,
+} from '../../core/date-constants';
+import {
   addLocalDays,
   dateKeyFromDate,
   parseLocalDateKey,
@@ -8,8 +13,6 @@ import {
 export const HOUR_START = 0;
 export const HOUR_END = 23;
 export const HOUR_MINUTES = 60;
-const DAY_MINUTES = 24 * HOUR_MINUTES;
-const PLACEMENT_GRANULARITY_MINUTES = 15;
 
 export interface OccupiedInterval {
   startMinute: number;
@@ -19,11 +22,7 @@ export interface OccupiedInterval {
 export function clampStartMinute(value: number): number {
   return Math.max(
     0,
-    Math.min(
-      DAY_MINUTES - PLACEMENT_GRANULARITY_MINUTES,
-      Math.round(value / PLACEMENT_GRANULARITY_MINUTES) *
-        PLACEMENT_GRANULARITY_MINUTES,
-    ),
+    Math.min(DAY_MINUTES - PLACEMENT_GRANULARITY_MINUTES, snapToTimeGrid(value)),
   );
 }
 

@@ -1,3 +1,12 @@
+import {
+  DAY_MINUTES,
+  MAX_TIME_BLOCK_DURATION_MINUTES,
+  MIN_TIME_BLOCK_DURATION_MINUTES,
+  TIME_BLOCK_GRANULARITY_MINUTES,
+  snapToTimeGrid as snapCalendarMinutes,
+} from '../core/date-constants';
+import { DEFAULT_ACTIVITY_COLOR, normalizeHexColor } from '../core/display-colors';
+import { compareNumberAsc } from '../core/sort';
 import type { PlannerProjectV1 } from '../core/types';
 import {
   DEFAULT_ACTIVITY_DURATION_MINUTES,
@@ -7,15 +16,6 @@ import {
 type CalendarActivityMap = NonNullable<
   PlannerProjectV1['manualOverrides']['calendarActivities']
 >;
-
-const CALENDAR_TIME_GRANULARITY_MINUTES = 15;
-
-function snapCalendarMinutes(value: number): number {
-  return (
-    Math.round(value / CALENDAR_TIME_GRANULARITY_MINUTES) *
-    CALENDAR_TIME_GRANULARITY_MINUTES
-  );
-}
 
 export function removeBookFromDeferred(
   entries: Record<string, string[]>,
@@ -70,17 +70,11 @@ function nextCalendarActivityId(project: PlannerProjectV1): string {
   return `activity-${index}`;
 }
 
-function normalizeActivityColor(color: string | undefined): string {
-  return color && /^#[0-9a-f]{6}$/i.test(color)
-    ? color.toLowerCase()
-    : '#4fb3ff';
-}
-
 function normalizeActivityDays(days: number[] | undefined): number[] {
   return days?.length
     ? [...new Set(days)]
         .filter((day) => Number.isFinite(day) && day >= 0 && day <= 6)
-        .sort()
+        .sort(compareNumberAsc)
     : [1, 2, 3, 4, 5];
 }
 
@@ -96,7 +90,13 @@ function normalizeDailyDurations(
         typeof raw === 'number' && Number.isFinite(raw)
           ? snapCalendarMinutes(raw)
           : fallbackMinutes;
-      return [String(day), Math.max(15, Math.min(12 * 60, minutes))];
+      return [
+        String(day),
+        Math.max(
+          MIN_TIME_BLOCK_DURATION_MINUTES,
+          Math.min(MAX_TIME_BLOCK_DURATION_MINUTES, minutes),
+        ),
+      ];
     }),
   );
 }
@@ -116,9 +116,9 @@ export function withCalendarActivity(
     input.mode === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly';
   const days = normalizeActivityDays(input.days);
   const durationMinutes = Math.max(
-    15,
+    MIN_TIME_BLOCK_DURATION_MINUTES,
     Math.min(
-      12 * 60,
+      MAX_TIME_BLOCK_DURATION_MINUTES,
       snapCalendarMinutes(
         input.durationMinutes ?? DEFAULT_ACTIVITY_DURATION_MINUTES,
       ),
@@ -147,7 +147,7 @@ export function withCalendarActivity(
         [id]: {
           id,
           title: input.title?.trim() || 'Activity',
-          color: normalizeActivityColor(input.color),
+          color: normalizeHexColor(input.color, DEFAULT_ACTIVITY_COLOR),
           mode,
           days,
           startMinute: normalizeHourMinute(
@@ -365,10 +365,7 @@ export function withoutCalendarEntryOverride(
 function normalizeHourMinute(value: number): number {
   return Math.max(
     0,
-    Math.min(
-      24 * 60 - CALENDAR_TIME_GRANULARITY_MINUTES,
-      snapCalendarMinutes(value),
-    ),
+    Math.min(DAY_MINUTES - TIME_BLOCK_GRANULARITY_MINUTES, snapCalendarMinutes(value)),
   );
 }
 
@@ -381,14 +378,14 @@ export function withCalendarTimeBlock(
 ): PlannerProjectV1 {
   const start = normalizeHourMinute(startMinute);
   const duration = Math.max(
-    15,
-    Math.min(12 * 60, snapCalendarMinutes(durationMinutes)),
+    MIN_TIME_BLOCK_DURATION_MINUTES,
+    Math.min(MAX_TIME_BLOCK_DURATION_MINUTES, snapCalendarMinutes(durationMinutes)),
   );
   const timeBlocksByDate = project.manualOverrides.timeBlocks ?? {};
   const byDate = { ...(timeBlocksByDate[dateKey] ?? {}) };
   byDate[bookId] = {
     startMinute: start,
-    durationMinutes: Math.min(duration, 24 * 60 - start),
+    durationMinutes: Math.min(duration, DAY_MINUTES - start),
   };
   return {
     ...project,

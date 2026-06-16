@@ -7,6 +7,7 @@ import {
   type HourlyCalendarUnscheduledBlock,
 } from '../app/selectors/calendar';
 import type { HourlyCalendarActivityBlock } from '../app/selectors/calendar-activity-blocks';
+import { DAY_MINUTES } from '../core/date-constants';
 import type { AppState, PlannerStore } from '../core/types';
 import { button, el, emptyState, panel } from './dom';
 import { renderCalendarSurface } from './calendar-surface';
@@ -14,7 +15,6 @@ import { renderActivitySettings } from './calendar-settings-panel';
 import { selectInput } from './form-controls';
 
 const DRAG_MIME = 'application/x-difficulty-calendar-block';
-const DAY_MINUTES = 24 * 60;
 
 function applyTimedLayout(
   node: HTMLElement,

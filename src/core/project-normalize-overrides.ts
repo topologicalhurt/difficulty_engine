@@ -1,3 +1,11 @@
+import {
+  DAY_MINUTES,
+  MAX_TIME_BLOCK_DURATION_MINUTES,
+  MIN_TIME_BLOCK_DURATION_MINUTES,
+  TIME_BLOCK_GRANULARITY_MINUTES,
+  snapToTimeGrid,
+} from './date-constants';
+import { DEFAULT_ACTIVITY_COLOR, normalizeHexColor } from './display-colors';
 import type { CalendarActivityMode, PlannerProjectV1 } from './types';
 import { unique } from './utils';
 import {
@@ -11,11 +19,6 @@ import {
 
 const MAX_ACTUAL_MINUTES_PER_ENTRY = 24 * 60;
 const MAX_ACTUAL_PAGES_PER_ENTRY = 10000;
-const DAY_MINUTES = 24 * 60;
-const TIME_BLOCK_GRANULARITY_MINUTES = 15;
-const MIN_TIME_BLOCK_DURATION_MINUTES = 15;
-const MAX_TIME_BLOCK_DURATION_MINUTES = 12 * 60;
-const DEFAULT_ACTIVITY_COLOR = '#4fb3ff';
 // Shared activity defaults so the add/edit command path and the load/normalize
 // path agree. Previously a missing startMinute defaulted to 18:00 when added
 // but 00:00 on reload, and durationMinutes to 120 vs 30 — silently changing an
@@ -156,8 +159,7 @@ function normalizeClockMinute(value: unknown): number {
   const minute = normalizeNumber(value, 0, 0, DAY_MINUTES - 1, true);
   return Math.min(
     DAY_MINUTES - TIME_BLOCK_GRANULARITY_MINUTES,
-    Math.round(minute / TIME_BLOCK_GRANULARITY_MINUTES) *
-      TIME_BLOCK_GRANULARITY_MINUTES,
+    snapToTimeGrid(minute),
   );
 }
 
@@ -171,11 +173,7 @@ function normalizeCalendarDuration(value: unknown, fallback: number): number {
   );
   return Math.max(
     MIN_TIME_BLOCK_DURATION_MINUTES,
-    Math.min(
-      MAX_TIME_BLOCK_DURATION_MINUTES,
-      Math.round(duration / TIME_BLOCK_GRANULARITY_MINUTES) *
-        TIME_BLOCK_GRANULARITY_MINUTES,
-    ),
+    Math.min(MAX_TIME_BLOCK_DURATION_MINUTES, snapToTimeGrid(duration)),
   );
 }
 
@@ -225,13 +223,6 @@ export function normalizeTimeBlockOverrides(
           Boolean(dateKey) && Object.keys(byBook).length > 0,
       ),
   );
-}
-
-function normalizeActivityColor(value: unknown): string {
-  const normalized = normalizeString(value, DEFAULT_ACTIVITY_COLOR);
-  return /^#[0-9a-f]{6}$/i.test(normalized)
-    ? normalized.toLowerCase()
-    : DEFAULT_ACTIVITY_COLOR;
 }
 
 function normalizeActivityMode(value: unknown): CalendarActivityMode {
@@ -323,7 +314,7 @@ export function normalizeCalendarActivityOverrides(
           {
             id,
             title: title || 'Activity',
-            color: normalizeActivityColor(raw.color),
+            color: normalizeHexColor(raw.color, DEFAULT_ACTIVITY_COLOR),
             mode,
             days,
             startMinute: normalizeClockMinute(

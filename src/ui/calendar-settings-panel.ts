@@ -1,4 +1,5 @@
 import type { CalendarViewModel } from '../app/selectors/calendar';
+import { DEFAULT_ACTIVITY_COLOR } from '../core/display-colors';
 import type { PlannerStore } from '../core/types';
 import { button, el, panel } from './dom';
 import {
@@ -260,7 +261,7 @@ function renderActivityForm(
       inertTextInput({
         type: 'color',
         className: 'calendar-activity-color-input',
-        value: '#4fb3ff',
+        value: DEFAULT_ACTIVITY_COLOR,
       }),
     ),
     el(
@@ -395,7 +396,7 @@ function renderActivityForm(
           color: readTextControl(
             form,
             '.calendar-activity-color-input',
-            '#4fb3ff',
+            DEFAULT_ACTIVITY_COLOR,
           ),
           mode: mode === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly',
           days: selectedActivityDays(form),
