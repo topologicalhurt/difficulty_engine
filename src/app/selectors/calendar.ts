@@ -366,6 +366,10 @@ const selectCalendarViewModelMemo = memoizeSelector(
   'calendar.viewModel',
   (state: AppState) => [
     state.snapshot.dayPlan,
+    // scheduleStats and constraints feed the export summary (finish date) and
+    // week/pace layout; include them so the memo cannot serve a stale view.
+    state.snapshot.scheduleStats,
+    state.project.constraints,
     state.project.manualOverrides.timeBlocks ?? {},
     state.project.manualOverrides.actuals,
     state.project.manualOverrides.calendarActivities ?? {},

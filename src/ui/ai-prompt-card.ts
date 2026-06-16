@@ -71,6 +71,7 @@ export function renderAiPromptCard(
       inputField(
         'AI work mode',
         selectInput(settings.workMode, AI_WORK_MODE_OPTIONS, {
+          focusKey: 'ai:workMode',
           onChange: (event) => {
             if (event.target instanceof HTMLSelectElement) {
               store.commands.updateAiRecommendationSettings({

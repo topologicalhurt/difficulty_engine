@@ -28,6 +28,11 @@ describe('calendar view', () => {
     expect(root.querySelector('.panel-toggle-button')).toBeNull();
     const exportLink = root.querySelector('a[download$=".ics"]');
     expect(exportLink?.getAttribute('href')).toContain('BEGIN%3AVCALENDAR');
+    // The export is single-week, so the label and filename say so.
+    expect(exportLink?.getAttribute('download')).toBe(
+      'difficulty-engine-study-week.ics',
+    );
+    expect(exportLink?.textContent).toContain('Export this week');
     expect(
       root.querySelector('a[href^="https://calendar.google.com"]'),
     ).toBeTruthy();

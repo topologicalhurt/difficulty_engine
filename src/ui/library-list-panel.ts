@@ -93,6 +93,7 @@ export function renderReadingListPanel(
         ],
         {
           className: 'select-input compact-select',
+          focusKey: 'library:orderPolicy',
           onChange: (event) =>
             store.commands.updateConstraint(
               'bookOrderPolicy',

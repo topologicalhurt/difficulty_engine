@@ -352,8 +352,10 @@ export function renderCalendarView(
         el('a', {
           className: 'ghost-button',
           href: viewModel.icsDataUrl,
-          download: 'difficulty-engine-study-calendar.ics',
-          text: 'Export .ics',
+          // The export contains only the selected week (see exportSummary), so
+          // label and filename make that scope explicit.
+          download: 'difficulty-engine-study-week.ics',
+          text: 'Export this week (.ics)',
         }),
       ),
       el('p', { className: 'muted-copy', text: viewModel.exportSummary }),
