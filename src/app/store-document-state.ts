@@ -7,18 +7,18 @@ import {
   mergeDocumentCandidateQueue,
   observeDocumentGreylist,
 } from '../core/document-acquisition-state';
-import type {
-  BookDocumentCandidateOption,
-  BookDocumentBlockedCandidateOption,
-  BookDocumentSearchAttempt,
-  BookDocumentRef,
-  PlannerProjectV1,
-  QbittorrentIntegrationService,
-} from '../core/types';
+import type { PlannerProjectV1 } from '../core/types';
 import {
   bridgeEndpoint,
   chooseSelectedDocumentId,
   mergeDocumentRefs,
+} from '../infra/documents';
+import type {
+  BookDocumentBlockedCandidateOption,
+  BookDocumentCandidateOption,
+  BookDocumentRef,
+  BookDocumentSearchAttempt,
+  QbittorrentIntegrationService,
 } from '../infra/documents';
 
 export function projectWithDocumentRemoved(

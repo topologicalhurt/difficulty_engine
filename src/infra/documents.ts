@@ -44,3 +44,35 @@ export {
   bridgeDocumentEndpoint,
   bridgeEndpoint,
 } from './document-bridge-url';
+
+// ── Module domain types ──
+// The document / qBittorrent / TOC vocabulary, presented from the module entry
+// so callers (and a future standalone extraction) get these shapes from here
+// rather than reaching into core/types. The shared document DTO contract lives
+// in core/types/{book-documents,source-settings} so the planner host and this
+// module agree on identical shapes; on extraction those definitions travel
+// with the module and the host maps its own book/settings types onto them.
+export type { QBittorrentProviderOptions } from './qbittorrent-client';
+export type {
+  BookDocumentAvailability,
+  BookDocumentBlockedCandidateOption,
+  BookDocumentCandidateOption,
+  BookDocumentRef,
+  BookDocumentSearchAttempt,
+  BookDocumentStatus,
+  QbittorrentConnectionSettings,
+  QbittorrentIntegrationService,
+} from '../core/types';
+
+// ── Host contract ──
+// To run this module standalone the host must supply:
+//   • A book entity (core's BookRecord) — the module reads identity fields
+//     only (id, title, short, authors, isbn, sourcePath, subjects) plus the
+//     document state it owns on each book (documents, documentAcquisition).
+//   • SourceSettings — which metadata/document sources and qBittorrent plugins
+//     are enabled; drives the source masks.
+//   • A Logger — injected structured logger (carried on
+//     DocumentAcquisitionRequest).
+//   • Injected runtime: fetch (QBittorrentProviderOptions.fetchImpl), a clock
+//     for timestamps, and a DocumentStorageAdapter for persistence.
+// The module imports nothing from the host's app/store/UI layers.
