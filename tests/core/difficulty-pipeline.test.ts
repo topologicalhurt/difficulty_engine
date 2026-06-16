@@ -180,6 +180,48 @@ describe('latent difficulty pipeline', () => {
     expect(locked.difficultyBindingReason).toBe('manual_lock');
   });
 
+  it('applies no graph workload lift to a book with no prerequisites', () => {
+    // Even with graph propagation cranked wide open, a foundational book that
+    // has no prerequisites must receive zero graph lift — otherwise mean([])
+    // makes novelty maximal and inflates scheduleDifficulty (planner truth).
+    const snapshot = computeSnapshot(
+      project({
+        propMix: 1,
+        damp: 0,
+        alphaCap: 1,
+        absFloor: 10,
+        propLiftCap: 10,
+      }),
+    );
+
+    const intro = snapshot.difficultyModel.intro;
+    const advanced = snapshot.difficultyModel.advanced;
+
+    expect(intro.graphWorkloadLift).toBe(0);
+    // The real graph path still works: a book with a prerequisite is unaffected.
+    expect(advanced.graphWorkloadLift).toBeGreaterThan(0);
+  });
+
+  it('reports time_bound when the whole-day budget cannot fit the page floor', () => {
+    // strict_floor pins the floor at minPg (60). With a tiny daily budget the
+    // full-day time bound falls below the floor, which must read as time_bound
+    // (a time-budget shortfall) rather than parallel_slot — the latter arm was
+    // previously unreachable because it compared only the per-slot budget.
+    const snapshot = computeSnapshot(
+      project({
+        feasibilityMode: 'strict_floor',
+        par: 1,
+        minPg: 60,
+        maxPg: 120,
+        hpd: 1,
+      }),
+    );
+
+    expect(snapshot.schedulePlan.byId.systems.pacingBindingReason).toBe(
+      'time_bound',
+    );
+  });
+
   it('makes pacing sliders materially responsive under adaptive profiles', () => {
     const lowSpread = computeSnapshot(
       project({

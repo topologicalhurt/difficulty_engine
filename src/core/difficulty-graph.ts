@@ -53,11 +53,17 @@ export function applyGraphWorkloadPropagation(input: {
   project: PlannerProjectV1;
   evidenceConfidence: number;
 }): GraphWorkloadResult {
+  // Graph propagation is prerequisite evidence: a book with no prerequisites
+  // has no graph-derived novelty/breadth/retention load. Gating every term on
+  // hasPrereqs (mirroring graphBurden below) keeps the lift at 0 for
+  // foundational books — otherwise mean([]) makes novelty maximal (=1) and
+  // silently inflates scheduleDifficulty for books that have no graph at all.
+  const hasPrereqs = input.prereqs.length > 0;
   const parentScores = input.prereqs.map(
     (parent) => input.parentModel[parent]?.scheduleDifficulty || 0,
   );
   const graphBurden = round2(
-    input.prereqs.length
+    hasPrereqs
       ? (mean(parentScores) - input.seed) * GRAPH_BURDEN_PARENT_WEIGHT +
           (input.depths[input.id] || 0) * GRAPH_BURDEN_DEPTH_WEIGHT
       : 0,
@@ -65,19 +71,23 @@ export function applyGraphWorkloadPropagation(input: {
   const transferSignals = input.prereqs.map((parent) =>
     prerequisiteCoverage(input.relationInfo, parent, input.id),
   );
-  const novelty = round2(clamp(1 - mean(transferSignals), 0, 1.2));
-  const breadth = round2(
-    clamp(Math.log2(input.prereqs.length + 1) / 2.8, 0, 1.5),
-  );
-  const retention = round2(
-    clamp(
-      (mean(parentScores) *
-        safeNumber(input.project.constraints.prereqRetention, 0.45)) /
-        10,
-      0,
-      1.5,
-    ),
-  );
+  const novelty = hasPrereqs
+    ? round2(clamp(1 - mean(transferSignals), 0, 1.2))
+    : 0;
+  const breadth = hasPrereqs
+    ? round2(clamp(Math.log2(input.prereqs.length + 1) / 2.8, 0, 1.5))
+    : 0;
+  const retention = hasPrereqs
+    ? round2(
+        clamp(
+          (mean(parentScores) *
+            safeNumber(input.project.constraints.prereqRetention, 0.45)) /
+            10,
+          0,
+          1.5,
+        ),
+      )
+    : 0;
   const noveltyLoad = round2(
     novelty *
       safeNumber(input.project.constraints.propNovelty, 0.18) *

@@ -448,6 +448,14 @@ describe('page floors and relative pacing', () => {
         (warning) => warning.code === 'strict-parallel-floor-conflict',
       ),
     ).toBe(true);
-    expect(relaxed.dayPlan.byDate[relaxedFirstDate]).toHaveLength(3);
+    // Practical floors let prereq-free cohort books share the first day, so
+    // relaxed always stacks more than the strict floor-conflicted single book.
+    // Two of the three symmetric books fit the daily budget (the third defers);
+    // these books carry no phantom zero-prerequisite graph lift.
+    const relaxedDay1 = relaxed.dayPlan.byDate[relaxedFirstDate];
+    expect(relaxedDay1.length).toBeGreaterThan(
+      strict.dayPlan.byDate[strictFirstDate].length,
+    );
+    expect(relaxedDay1).toHaveLength(2);
   });
 });

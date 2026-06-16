@@ -86,4 +86,47 @@ describe('AI recommendation context', () => {
     expect(serializedContext).not.toContain('apiKey');
     expect(serializedContext).not.toContain('password');
   }, 15_000);
+
+  it('does not reorder the shared snapshot relations when building context', () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          'book-1': makeBook({ id: 'book-1', title: 'Book 1', planOrder: 0 }),
+          'book-2': makeBook({
+            id: 'book-2',
+            title: 'Book 2',
+            planOrder: 1,
+            manualPrereqs: ['book-1'],
+          }),
+          'book-3': makeBook({
+            id: 'book-3',
+            title: 'Book 3',
+            planOrder: 2,
+            manualPrereqs: ['book-2'],
+          }),
+        },
+      }),
+    });
+    const state = store.selectors.getState();
+    expect(state.snapshot.relations.length).toBeGreaterThan(1);
+
+    // Put relations into a deliberately reversed order so an in-place sort
+    // inside buildAiRecommendationContext would be observable here.
+    state.snapshot.relations.sort(
+      (left, right) =>
+        right.from.localeCompare(left.from) ||
+        right.to.localeCompare(left.to) ||
+        right.type.localeCompare(left.type),
+    );
+    const orderBefore = state.snapshot.relations.map(
+      (relation) => `${relation.from}|${relation.to}|${relation.type}`,
+    );
+
+    buildAiRecommendationContext(state);
+
+    const orderAfter = state.snapshot.relations.map(
+      (relation) => `${relation.from}|${relation.to}|${relation.type}`,
+    );
+    expect(orderAfter).toEqual(orderBefore);
+  });
 });

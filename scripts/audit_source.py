@@ -142,6 +142,7 @@ def main() -> int:
 
     ignored_artifact_roots = {
         ".git",
+        ".claude",
         "node_modules",
         "coverage",
         "test-results",

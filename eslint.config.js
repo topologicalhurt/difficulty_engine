@@ -14,6 +14,7 @@ export default [
       'src/js/**',
       'coverage/**',
       'tests/engine_v2.test.js',
+      '.claude/**',
     ],
   },
   js.configs.recommended,
