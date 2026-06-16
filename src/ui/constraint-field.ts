@@ -198,6 +198,12 @@ function renderNumberField(
         field.key,
         nextValue as ConstraintSet[typeof field.key],
       ),
+    onEmpty: (target) => {
+      // Clearing the field then blurring must not commit Number('') === 0,
+      // which normalizeConstraints would clamp up to the field minimum and
+      // write as a real planner input (e.g. hours/day). Restore the value.
+      target.value = String(value);
+    },
     min: field.min,
     max: field.max,
     step: field.step,

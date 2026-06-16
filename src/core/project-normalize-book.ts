@@ -1,4 +1,5 @@
-import { sanitizeChapterTitles } from './chapter-titles';
+import { sanitizeChapterEntries } from './chapter-titles';
+import type { ChapterTitleEntry } from './chapter-titles';
 import { normalizedIsbn } from './isbn';
 import { normalizeOpenLibraryKey } from './openlibrary-keys';
 import {
@@ -59,14 +60,21 @@ function normalizeChapterPageRange(value: unknown): ChapterPageRange | null {
   };
 }
 
-function normalizeChapterPageRanges(
+// Page ranges are positionally keyed to the *original* chapter array, but
+// sanitizeChapterEntries filters/dedups entries and re-indexes them. Realign
+// each surviving entry's range by its sourceIndex so removing a middle chapter
+// does not shift every later range onto the wrong chapter (which corrupts
+// effectiveReadingPages — planner truth).
+function alignedPageRanges(
   value: unknown,
-  chapterCount: number,
+  entries: ChapterTitleEntry[],
 ): BookEnrichment['chapterPageRanges'] {
   if (!Array.isArray(value)) return undefined;
-  return value
-    .slice(0, chapterCount)
-    .map(normalizeChapterPageRange);
+  return entries.map((entry) =>
+    normalizeChapterPageRange(
+      entry.sourceIndex != null ? value[entry.sourceIndex] : undefined,
+    ),
+  );
 }
 
 export function normalizeBookEnrichment(input: unknown): BookEnrichment {
@@ -74,23 +82,21 @@ export function normalizeBookEnrichment(input: unknown): BookEnrichment {
     input && typeof input === 'object'
       ? (input as Record<string, unknown>)
       : {};
-  const chapters = sanitizeChapterTitles(normalizeStringArray(raw.chapters), {
-    source: 'imported',
-  });
-  const topics = sanitizeChapterTitles(normalizeStringArray(raw.topics), {
-    source: 'imported',
-  });
+  const chapterEntries = sanitizeChapterEntries(
+    normalizeStringArray(raw.chapters),
+    { source: 'imported' },
+  );
+  const topicEntries = sanitizeChapterEntries(
+    normalizeStringArray(raw.topics),
+    { source: 'imported' },
+  );
+  const chapters = chapterEntries.map((entry) => entry.title);
+  const topics = topicEntries.map((entry) => entry.title);
   return {
     chapters,
-    chapterPageRanges: normalizeChapterPageRanges(
-      raw.chapterPageRanges,
-      chapters.length,
-    ),
+    chapterPageRanges: alignedPageRanges(raw.chapterPageRanges, chapterEntries),
     topics,
-    topicPageRanges: normalizeChapterPageRanges(
-      raw.topicPageRanges,
-      topics.length,
-    ),
+    topicPageRanges: alignedPageRanges(raw.topicPageRanges, topicEntries),
     description: normalizeString(raw.description),
     olSubjects: normalizeStringArray(raw.olSubjects),
     tocSource: normalizeTocSource(raw.tocSource),

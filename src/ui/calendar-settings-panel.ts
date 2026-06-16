@@ -24,7 +24,12 @@ function numericInput(
   fallback: number,
 ): number {
   const input = container.querySelector<HTMLInputElement>(selector);
-  const parsed = Number(input?.value);
+  // An empty/blank field must fall back to the intended default. Number('')
+  // is 0 (finite), so without this guard a cleared "Start hour" would silently
+  // become 00:00 instead of the 18:00 default.
+  const raw = input?.value?.trim();
+  if (!raw) return fallback;
+  const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
