@@ -1,7 +1,24 @@
+import { isLoopbackHost } from './url-security';
+
 export const DEFAULT_QBITTORRENT_TIMEOUT_MS = 10_000;
 
 const DIRECT_WEB_UI_PORT_PATTERN = /:8080(?:\/|$)/;
 const ABSOLUTE_PATH_PATTERN = /^\/|^[a-z]:[\\/]/i;
+
+// The qBittorrent channel carries credentials (login body) and a session
+// cookie, so — like the AI endpoint and direct-document URL surfaces — it is
+// restricted to https or http on a loopback host. This refuses to exfiltrate
+// credentials to an arbitrary plaintext-HTTP host if a remote baseUrl is
+// entered or pasted.
+export function isAllowedQbittorrentBaseUrl(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl);
+    if (url.protocol === 'https:') return true;
+    return url.protocol === 'http:' && isLoopbackHost(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 export function trimQbittorrentBaseUrl(value: string): string {
   return value.replace(/\/+$/, '');
@@ -53,6 +70,13 @@ export async function requestQbittorrentApi(
   cookie: string,
   timeoutMs: number,
 ): Promise<Response> {
+  if (!isAllowedQbittorrentBaseUrl(baseUrl)) {
+    throw new Error(
+      'qBittorrent bridge URL must be https or http on a loopback host ' +
+        '(e.g. http://127.0.0.1:8787). Refusing to send credentials to a ' +
+        'non-loopback HTTP host.',
+    );
+  }
   try {
     return await withQbittorrentTimeout(async (signal) => {
       const response = await fetchImpl(`${baseUrl}/api/v2${path}`, {

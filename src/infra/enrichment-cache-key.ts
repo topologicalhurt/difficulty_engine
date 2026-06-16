@@ -16,11 +16,15 @@ function sourceMaskKey(request: EnrichmentRequest): string {
       allowedSites: sorted(request.sourceSettings.qbittorrent.allowedSites),
       categories: sorted(request.sourceSettings.qbittorrent.categories),
     },
+    // Only whether qBittorrent is enabled participates in cache identity.
+    // baseUrl/savePath/category are connection-only (they don't change the
+    // metadata enrichment result; document state is fingerprinted separately
+    // in documentCacheKey). Keeping them out of the key prevents the absolute
+    // local savePath from being persisted into enrichmentCache[*].cacheKey and
+    // exported in project JSON, and stops benign connection edits from
+    // invalidating every cached enrichment entry.
     qbittorrentConnection: {
       enabled: Boolean(request.qbittorrentConnection?.enabled),
-      baseUrl: request.qbittorrentConnection?.baseUrl ?? '',
-      savePath: request.qbittorrentConnection?.savePath ?? '',
-      category: request.qbittorrentConnection?.category ?? '',
     },
     bridgeDocuments: request.skipBridgeDocuments ? 'metadata-only' : 'enabled',
   });
