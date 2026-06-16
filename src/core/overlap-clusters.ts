@@ -45,15 +45,10 @@ function overlapComponents(
         components.union(left, right);
     }
   }
-  const grouped: Record<string, string[]> = {};
-  bookIds.forEach((id) => {
-    const root = components.find(id);
-    if (!grouped[root]) grouped[root] = [];
-    grouped[root].push(id);
-  });
-  return Object.entries(grouped)
-    .map(([root, ids]) => ({ root, ids }))
-    .filter((group) => group.ids.length >= 2);
+  return components
+    .groups(bookIds)
+    .filter((ids) => ids.length >= 2)
+    .map((ids) => ({ root: components.find(ids[0]), ids }));
 }
 
 function primaryBookId(

@@ -24,6 +24,7 @@ import {
   qbittorrentUserTorrentsEnabled,
 } from '../core/source-settings-policy';
 import { acquireTorrentDocument } from './qbittorrent-acquisition';
+import { isSafeTorrentSource } from '../core/document-source-safety';
 import {
   QBittorrentClient,
   settingsToOptions,
@@ -132,18 +133,6 @@ function acquisitionRequest(
   };
 }
 
-function isSafeUserProvidedTorrentSource(value: string): boolean {
-  if (/^magnet:/i.test(value)) return true;
-  try {
-    const parsed = new URL(value);
-    return (
-      parsed.protocol === 'https:' && /\.torrent(?:$|\?)/i.test(parsed.pathname)
-    );
-  } catch {
-    return false;
-  }
-}
-
 function userProvidedTorrentCandidate(
   request: DocumentAcquisitionRequest,
 ): DocumentCandidate | null {
@@ -151,7 +140,7 @@ function userProvidedTorrentCandidate(
   if (
     !qbittorrentUserTorrentsEnabled(request.policy.sourceSettings) ||
     !sourcePath ||
-    !isSafeUserProvidedTorrentSource(sourcePath)
+    !isSafeTorrentSource(sourcePath)
   ) {
     return null;
   }
