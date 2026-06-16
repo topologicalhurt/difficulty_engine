@@ -76,3 +76,16 @@ export type {
 //   • Injected runtime: fetch (QBittorrentProviderOptions.fetchImpl), a clock
 //     for timestamps, and a DocumentStorageAdapter for persistence.
 // The module imports nothing from the host's app/store/UI layers.
+//
+// ── Module logical boundary ──
+// A few document-domain modules intentionally live in core, not infra, because
+// the planner's project-load/normalization path shares them with this module
+// (core must not import infra, so the shared contract lives in the neutral
+// layer). On extraction these travel WITH the module and the planner host
+// would depend on the module for them:
+//   • core/types/book-documents.ts          (document DTO contract)
+//   • core/document-source-safety.ts         (magnet/.torrent source policy)
+//   • core/document-candidate-availability.ts (live torrent activity)
+//   • core/document-acquisition-state.ts      (greylist / blocked-candidate state)
+//   • core/document-candidate-queue.ts        (persisted candidate queue)
+// They have no dependency on app/store/UI and form a clean cut line.
