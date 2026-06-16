@@ -21,16 +21,6 @@ export function colorForGroup(group: string): string {
   return groupColor(group);
 }
 
-export function formatDate(value?: Date): string {
-  if (!value) {
-    return '—';
-  }
-  return value.toLocaleDateString('en-AU', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
 
 export function parseCsv(value: string): string[] {
   return compactStrings(value.split(','));

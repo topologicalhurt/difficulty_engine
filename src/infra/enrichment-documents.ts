@@ -143,7 +143,6 @@ async function acquireCandidateDocuments(
       policy,
       signal: request.signal,
     });
-    const deferredDocuments: AcquiredDocument[] = [];
     let latestRejected: AcquiredDocument | null = null;
     for (const candidate of rankDocumentCandidates(
       candidates,
@@ -158,7 +157,7 @@ async function acquireCandidateDocuments(
         });
         if (acquired) latestRejected = acquired;
         if (acquired && isTerminalAcquiredDocument(acquired)) {
-          return { documents: [...deferredDocuments, acquired], candidates };
+          return { documents: [acquired], candidates };
         }
         if (
           acquired &&
@@ -176,11 +175,7 @@ async function acquireCandidateDocuments(
       }
     }
     return {
-      documents: deferredDocuments.length
-        ? deferredDocuments
-        : latestRejected
-          ? [latestRejected]
-          : [],
+      documents: latestRejected ? [latestRejected] : [],
       candidates,
     };
   } catch (error) {

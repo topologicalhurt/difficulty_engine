@@ -15,10 +15,3 @@ export const GRAPH_NETWORK_LAYOUT = {
   hubRadiusX: 72,
   hubRadiusY: 52,
 };
-
-export const GRAPH_HYPERGRAPH_LAYOUT = {
-  width: 720,
-  minHeight: 320,
-  clusterHeight: 190,
-  hubX: 250,
-};

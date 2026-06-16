@@ -107,7 +107,3 @@ export function learnerProfile(constraints: ConstraintSet): LearnerProfile {
     feedbackStrength,
   };
 }
-
-export function challengeMultiplier(profile: LearnerProfile): number {
-  return clamp(0.75 + profile.targetChallenge / 200, 0.75, 1.25);
-}

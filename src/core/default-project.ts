@@ -8,7 +8,6 @@ import { defaultAiModel } from './ai-provider-registry';
 import {
   createDefaultQbittorrentConnectionSettings,
   createDefaultQbittorrentStatus,
-  createDefaultSourceSettings,
 } from './default-source-settings';
 import type {
   AiConnectionSettings,
@@ -18,7 +17,6 @@ import type {
   BookRecord,
   ConstraintSet,
   ReadingScopeSettings,
-  PlannerProjectV1,
   UiState,
   UiPreferences,
 } from './types';
@@ -250,24 +248,6 @@ export const DEFAULT_UI_STATE: UiState = {
   debugUi: false,
   banner: null,
   dialog: null,
-};
-
-export const EMPTY_PROJECT: PlannerProjectV1 = {
-  version: 1,
-  library: { books: {} },
-  enrichmentCache: {},
-  manualOverrides: {
-    schedule: {},
-    deferred: {},
-    actuals: {},
-    timeBlocks: {},
-    calendarActivities: {},
-  },
-  constraints: DEFAULT_CONSTRAINTS,
-  aiRecommendationSettings: createDefaultAiRecommendationSettings(),
-  sourceSettings: createDefaultSourceSettings(),
-  readingScopeSettings: createDefaultReadingScopeSettings(),
-  uiPreferences: createDefaultUiPreferences(),
 };
 
 export const EXAMPLE_BOOK: BookRecord = {

@@ -256,16 +256,6 @@ export function selectLibraryViewModel(state: AppState): LibraryViewModel {
   return selectLibraryViewModelMemo(state);
 }
 
-export function selectBookEditorViewModel(
-  state: AppState,
-  bookId: string | null,
-): BookEditorViewModel {
-  return bookEditorViewModelFromProgress(
-    state,
-    bookId,
-    selectProgressByBook(state),
-  );
-}
 
 function bookEditorViewModelFromProgress(
   state: AppState,
