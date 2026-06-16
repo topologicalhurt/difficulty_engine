@@ -85,6 +85,19 @@ function setCheckedDays(container: HTMLElement, days: number[]): void {
     });
 }
 
+function applyRotationVisibility(form: HTMLElement, mode: string): void {
+  const hidden = mode === 'flexible_weekly';
+  [
+    form.querySelector('.calendar-activity-rotation-select'),
+    form.querySelector('.calendar-activity-rotation-interval-input'),
+  ].forEach((control) => {
+    const field = control?.closest('label');
+    if (field instanceof HTMLElement) {
+      field.style.display = hidden ? 'none' : '';
+    }
+  });
+}
+
 function copyDurationToSelectedDays(container: HTMLElement): void {
   const duration = String(
     numericInput(container, '.calendar-activity-duration-input', 2),
@@ -274,7 +287,19 @@ function renderActivityForm(
           { value: 'fixed_weekly', label: 'Fixed weekly days' },
           { value: 'flexible_weekly', label: 'Flexible weekly target' },
         ],
-        { className: 'calendar-activity-mode-select' },
+        {
+          className: 'calendar-activity-mode-select',
+          // Rotation only applies to fixed-weekly activities; hide its controls
+          // for flexible mode so the UI does not imply a setting that is
+          // ignored when placing flexible sessions.
+          onChange: (event) => {
+            const target = event.target as HTMLSelectElement;
+            const formEl = target.closest('.calendar-activity-form');
+            if (formEl instanceof HTMLElement) {
+              applyRotationVisibility(formEl, target.value);
+            }
+          },
+        },
       ),
     ),
     el(

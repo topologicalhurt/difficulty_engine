@@ -6,6 +6,7 @@ import { selectCalendarViewModel } from '../../src/app/selectors/calendar';
 import { parseLocalDateKey } from '../../src/core/time';
 import { renderActiveTabBody } from '../../src/ui/active-tab-host';
 import { renderCalendarView } from '../../src/ui/calendar-view';
+import { renderActivitySettings } from '../../src/ui/calendar-settings-panel';
 import { makeStore } from '../app/store-test-utils';
 
 const DRAG_MIME = 'application/x-difficulty-calendar-block';
@@ -36,6 +37,33 @@ describe('calendar view', () => {
     expect(
       root.querySelector('a[href^="https://calendar.google.com"]'),
     ).toBeTruthy();
+  });
+
+  it('hides rotation controls for flexible weekly activities', () => {
+    const store = makeStore();
+    const form = renderActivitySettings(
+      selectCalendarViewModel(store.selectors.getState()),
+      store,
+    );
+    const modeSelect = form.querySelector(
+      '.calendar-activity-mode-select',
+    ) as HTMLSelectElement;
+    const rotationField = form
+      .querySelector('.calendar-activity-rotation-select')
+      ?.closest('label') as HTMLElement;
+    expect(modeSelect).toBeTruthy();
+    expect(rotationField).toBeTruthy();
+    // Fixed weekly (default) shows rotation; flexible hides it (rotation is
+    // ignored when placing flexible sessions).
+    expect(rotationField.style.display).toBe('');
+
+    modeSelect.value = 'flexible_weekly';
+    modeSelect.dispatchEvent(new Event('change'));
+    expect(rotationField.style.display).toBe('none');
+
+    modeSelect.value = 'fixed_weekly';
+    modeSelect.dispatchEvent(new Event('change'));
+    expect(rotationField.style.display).toBe('');
   });
 
   it('pages the hourly calendar by week instead of mounting the full plan', () => {
