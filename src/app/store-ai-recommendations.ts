@@ -409,17 +409,22 @@ export function createAiRecommendationCommands(
           contextDigest: requestSnapshot.digest,
           maxSuggestions: state.project.aiRecommendationSettings.maxSuggestions,
         });
+        const hasActionableBooks =
+          proposal.books.length > 0 ||
+          proposal.removeBookIds.length > 0 ||
+          proposal.bookOrder.length > 0;
         context.commitUi('ai.request', {
           aiProposal: proposal,
-          aiStatus: proposal.books.length || proposal.projectSettings.length
-            ? {
-                state: 'ready',
-                message: `${proposal.books.length} book recommendation(s) and ${proposal.projectSettings.length} project setting suggestion(s) ready for review.`,
-              }
-            : {
-                state: 'failed',
-                message: 'The provider returned no usable book proposals.',
-              },
+          aiStatus:
+            hasActionableBooks || proposal.projectSettings.length
+              ? {
+                  state: 'ready',
+                  message: `${proposal.books.length} addition(s), ${proposal.removeBookIds.length} removal(s), and ${proposal.projectSettings.length} project setting suggestion(s) ready for review.`,
+                }
+              : {
+                  state: 'failed',
+                  message: 'The provider returned no usable book proposals.',
+                },
         });
       } catch (error) {
         if (!requests.isCurrent(requestSequence)) return;
