@@ -240,7 +240,7 @@ export function classifySearchResults(
       searchResultLooksNonPdfOnly(result)
         ? 'qBittorrent document acquisition requires PDF files'
         : '',
-      numericSeeders < MIN_PLUGIN_SEEDERS ? 'zero seeders' : '',
+      seeders != null && seeders < MIN_PLUGIN_SEEDERS ? 'zero seeders' : '',
       matchScore < MIN_TORRENT_MATCH_SCORE ? 'weak title match' : '',
       !hasRequiredQbittorrentTitleEvidence(
         searchResultEvidenceText(result),

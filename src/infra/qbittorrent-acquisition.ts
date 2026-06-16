@@ -120,15 +120,19 @@ const TORRENT_STALL_GRACE_MS = 10 * 60 * 1000;
 function hasNoActiveDownloadProgress(
   availability: BookDocumentAvailability,
 ): boolean {
+  // Any incomplete torrent (progress < 1) with no live download activity is
+  // stalled — not just one still at 0%. Using progress <= 0 left a torrent
+  // that downloaded part-way and then lost all peers stuck on 'downloading'
+  // forever, even though the greylist already treats it as unavailable.
   return (
-    availability.progress <= 0 &&
+    availability.progress < 1 &&
     (availability.seeders ?? 0) <= 0 &&
     (availability.availability ?? 0) <= 0 &&
     (availability.downloadSpeedBytesPerSecond ?? 0) <= 0
   );
 }
 
-function statusAfterGrace(
+export function statusAfterGrace(
   status: BookDocumentStatus,
   availability: BookDocumentAvailability,
   createdAt: string,

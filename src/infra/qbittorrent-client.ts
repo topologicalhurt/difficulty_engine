@@ -166,13 +166,25 @@ export class QBittorrentClient {
       );
       if (exact) return exact;
     }
+    // No resolvable hash (e.g. an HTTPS .torrent source): match by name, but
+    // only among torrents this app added (its category). Otherwise a short or
+    // generic candidate title (e.g. "Physics") could bind to an unrelated
+    // pre-existing user torrent and we would operate on the wrong files.
+    const category = this.options.category;
+    const scoped = category
+      ? items.filter((item) => String(item.category ?? '') === category)
+      : items;
     const normalizedTitle = candidate.title.toLowerCase();
     return (
-      items.find((item) =>
+      scoped.find(
+        (item) => String(item.name ?? '').toLowerCase() === normalizedTitle,
+      ) ??
+      scoped.find((item) =>
         String(item.name ?? '')
           .toLowerCase()
           .includes(normalizedTitle),
-      ) ?? null
+      ) ??
+      null
     );
   }
 

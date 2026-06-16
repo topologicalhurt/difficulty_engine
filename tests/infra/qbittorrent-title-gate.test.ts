@@ -115,6 +115,43 @@ describe('qBittorrent title evidence gate', () => {
     expect(candidate).toBeNull();
   });
 
+  it('keeps results whose plugin omits seeder counts (unknown is not zero)', () => {
+    const request = requestFor('Functional analysis');
+    const result = classifySearchResults(
+      [
+        {
+          // No nbSeeders / seeders field at all -> unknown seeder count.
+          fileName: 'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
+          fileUrl: 'magnet:?xt=urn:btih:functionalanalysis',
+          siteUrl: 'https://www.limetorrents.lol',
+          nbLeechers: 4,
+          fileSize: 22_000,
+        },
+      ],
+      [
+        {
+          enabled: true,
+          fullName: 'LimeTorrents',
+          name: 'limetorrents',
+          supportedCategories: [{ id: 'all', name: 'All categories' }],
+          url: 'https://www.limetorrents.lol',
+        },
+      ],
+      request,
+      'test',
+      { plugin: 'limetorrents' },
+    );
+
+    expect(result.candidates.map((candidate) => candidate.title)).toEqual([
+      'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
+    ]);
+    expect(
+      result.blockedCandidates.flatMap(
+        (blocked) => blocked.blockedReasons ?? [],
+      ),
+    ).not.toContain('zero seeders');
+  });
+
   it('blocks same-author adjacent-topic results that miss the core title phrase', () => {
     const result = classifySearchResults(
       [
