@@ -92,6 +92,24 @@ Baseline captured after Pass 0 of the maintainability campaign.
 - Duplicate top-level symbols: none detected
 - Release hygiene change: documented the `tools/` branch-maintenance helper and README gate policy; final `npm run stabilize`, `npm run perf:ci`, `npm run toc:audit`, and `npm run qbit:search-audit` passed.
 
+## 2026-06-16 Pass 10
+
+- Source files: 368
+- Total source lines: 49,788
+- Files over 250 lines: 48
+- Files over 500 lines: 0
+- Duplicate top-level symbols: none detected
+- Audit-remediation pass: corrected planner-truth defects (no graph lift for
+  zero-prerequisite books, chapter/topic page-range realignment on load,
+  leave-one-out partial pooling, reachable `time_bound` pacing reason);
+  hardened qBittorrent acquisition (unknown vs zero seeders, partial-stall
+  detection, category-scoped torrent identity) and secret handling (no
+  savePath/baseUrl in the persisted enrichment cache key; loopback-only bridge
+  URL); centralized calendar time-grid constants and `snapToTimeGrid` in
+  `src/core/date-constants.ts` and hex-color normalization in
+  `src/core/display-colors.ts` (clearing the two duplicate top-level symbols);
+  and removed dead exports/locals.
+
 ## Tracking Rules
 
 - Update this file after architecture-focused cleanup passes that materially change file counts, near-limit modules, or duplicate-symbol output.
