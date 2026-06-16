@@ -26,6 +26,7 @@ import {
 import { isoTimestamp, systemNowMs } from './cache-time';
 import { qbittorrentPdfRejectionSummary } from './qbittorrent-pdf-eligibility';
 
+import { availabilityHasLiveDownloadActivity } from '../core/document-candidate-availability';
 import type { BookDocumentAvailability, BookDocumentStatus } from '../core/types';
 
 async function selectedTorrentFile(
@@ -121,14 +122,11 @@ function hasNoActiveDownloadProgress(
   availability: BookDocumentAvailability,
 ): boolean {
   // Any incomplete torrent (progress < 1) with no live download activity is
-  // stalled — not just one still at 0%. Using progress <= 0 left a torrent
-  // that downloaded part-way and then lost all peers stuck on 'downloading'
-  // forever, even though the greylist already treats it as unavailable.
+  // stalled — not just one still at 0%. Reuses the canonical live-activity
+  // predicate so this threshold can't drift from the greylist's.
   return (
     availability.progress < 1 &&
-    (availability.seeders ?? 0) <= 0 &&
-    (availability.availability ?? 0) <= 0 &&
-    (availability.downloadSpeedBytesPerSecond ?? 0) <= 0
+    !availabilityHasLiveDownloadActivity(availability)
   );
 }
 

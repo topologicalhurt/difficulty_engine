@@ -13,6 +13,7 @@ import {
   rankAndLimitCandidateQueue,
 } from './document-candidate-queue';
 import {
+  availabilityHasLiveDownloadActivity,
   candidateHasLiveAvailability,
   candidateHasPositiveDownloadEvidence,
   candidateRankingSeeders,
@@ -112,14 +113,9 @@ function isUnavailable(
   if (!value) return false;
   if (USER_PAUSED_STATE_PATTERN.test(value.state ?? '')) return false;
   const progress = value.progress ?? 0;
-  const seeders = value.seeders ?? 0;
-  const availability = value.availability ?? 0;
-  const speed = value.downloadSpeedBytesPerSecond ?? 0;
   return (
     progress < 1 &&
-    seeders <= 0 &&
-    availability <= 0 &&
-    speed <= 0 &&
+    !availabilityHasLiveDownloadActivity(value) &&
     STALLED_STATE_PATTERN.test(value.state ?? '')
   );
 }
