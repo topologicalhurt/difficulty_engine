@@ -1,6 +1,6 @@
 import { sanitizeChapterEntries } from './chapter-titles';
 import type { ChapterTitleEntry } from './chapter-titles';
-import { normalizedIsbn } from './isbn';
+import { persistedIsbn } from './isbn';
 import { normalizeOpenLibraryKey } from './openlibrary-keys';
 import {
   normalizeBookDocumentAcquisition,
@@ -137,11 +137,11 @@ export function normalizeBook(
     short: normalizeString(raw.short, normalizeString(raw.title, id)) || id,
     authors: normalizeStringArray(raw.authors),
     displayGroup: normalizeString(raw.displayGroup, 'Core') || 'Core',
-    manualSeedDifficulty: safeNumber(raw.manualSeedDifficulty, 5),
-    pages: Math.max(1, Math.round(safeNumber(raw.pages, 200))),
+    manualSeedDifficulty: normalizeNumber(raw.manualSeedDifficulty, 5, 1, 10),
+    pages: normalizeNumber(raw.pages, 200, 1, 100000, true),
     subjects: normalizeStringArray(raw.subjects),
     publisher: normalizeString(raw.publisher),
-    isbn: normalizedIsbn(normalizeString(raw.isbn)) || null,
+    isbn: persistedIsbn(normalizeString(raw.isbn)),
     year:
       raw.year == null || raw.year === ''
         ? null

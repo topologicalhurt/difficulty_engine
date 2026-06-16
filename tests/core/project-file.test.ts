@@ -383,7 +383,9 @@ describe('project-file boundary', () => {
       },
     });
     expect(project.constraints.sd).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(project.library.books.alpha.isbn).toBeNull();
+    // A plausible-length ISBN with a bad check digit is preserved for display
+    // round-trip (identity/search still validate via normalizedIsbn).
+    expect(project.library.books.alpha.isbn).toBe('9781234567890');
     expect(project.library.books.alpha.openLibraryKey).toBeNull();
     expect(project.library.books.alpha.openLibraryEditionKey).toBeNull();
     expect(project.library.books.alpha.openLibraryWorkKey).toBe('/works/OL2W');

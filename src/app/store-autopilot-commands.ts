@@ -75,7 +75,18 @@ export function createAutopilotCommands(
           },
         });
       } catch (error) {
-        if (!requests.isCurrent(requestSeq)) return;
+        const latest = context.getState();
+        // Mirror the success-path guard: a concurrent project edit cancels the
+        // shared worker compute (bumping projectRevision) without advancing the
+        // autopilot request sequencer, so guarding only on isCurrent surfaced a
+        // false "Autopilot failed: Planner compute cancelled". Treat a
+        // superseded run as silently abandoned.
+        if (
+          !requests.isCurrent(requestSeq) ||
+          latest.performance.projectRevision !== projectRevision
+        ) {
+          return;
+        }
         context.commitUi('autopilot.propose', {
           autopilotProposal: null,
           banner: {

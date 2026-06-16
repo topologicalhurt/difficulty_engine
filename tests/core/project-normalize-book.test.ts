@@ -2,6 +2,36 @@ import { describe, expect, it } from 'vitest';
 
 import { normalizeProject } from '../../src/core/project-file';
 
+function normalizeOneBook(raw: Record<string, unknown>) {
+  const project = normalizeProject({
+    version: 1,
+    library: { books: { alpha: { title: 'Alpha', short: 'Alpha', ...raw } } },
+    manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+    constraints: {},
+    enrichmentCache: {},
+    uiPreferences: {},
+  });
+  return project.library.books.alpha;
+}
+
+describe('book field normalization bounds', () => {
+  it('clamps manualSeedDifficulty to [1,10] and bounds pages on load', () => {
+    expect(normalizeOneBook({ manualSeedDifficulty: 1e6 }).manualSeedDifficulty).toBe(10);
+    expect(normalizeOneBook({ manualSeedDifficulty: -4 }).manualSeedDifficulty).toBe(1);
+    expect(normalizeOneBook({ pages: 5_000_000 }).pages).toBe(100000);
+    expect(normalizeOneBook({ pages: 0 }).pages).toBe(1);
+  });
+
+  it('preserves a plausible-length ISBN with a bad check digit', () => {
+    // 13 digits, bad checksum -> kept for display round-trip.
+    expect(normalizeOneBook({ isbn: '9781234567890' }).isbn).toBe('9781234567890');
+    // Non-ISBN junk still normalizes to null.
+    expect(normalizeOneBook({ isbn: 'not an isbn' }).isbn).toBeNull();
+    // A valid ISBN-13 is kept as-is.
+    expect(normalizeOneBook({ isbn: '978-0-13-468599-1' }).isbn).toBe('9780134685991');
+  });
+});
+
 describe('book enrichment normalization', () => {
   it('realigns chapter page ranges when a middle chapter is removed on load', () => {
     const project = normalizeProject({

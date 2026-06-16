@@ -38,10 +38,13 @@ function emptyPairSignal(left: CorpusBook, right: CorpusBook): PairSignal {
     coStudyScore: 0,
     prereqAB: 0,
     prereqBA: 0,
+    progressionAB: 0,
+    progressionBA: 0,
     reasonsAB: [],
     reasonsBA: [],
     reference: 0,
     symmetry: 0,
+    sameAuthor: false,
   };
 }
 

@@ -36,6 +36,17 @@ export function normalizedIsbn(value: string | null | undefined): string {
   return isValidIsbn(isbn) ? isbn : '';
 }
 
+// Persisted ISBN for a book record: keep a plausible-length (ISBN-10/13) code
+// even when its check digit fails, so a typo'd or not-yet-validated value
+// round-trips for display instead of being silently erased on every load.
+// Identity and search still gate on normalizedIsbn (which validates).
+export function persistedIsbn(value: string | null | undefined): string | null {
+  const valid = normalizedIsbn(value);
+  if (valid) return valid;
+  const cleaned = cleanedIsbn(value);
+  return cleaned.length === 10 || cleaned.length === 13 ? cleaned : null;
+}
+
 export function isIsbnLikeInput(value: string): boolean {
   const compact = value.replace(/[-\s]/g, '').toUpperCase();
   if (!compact) return false;
