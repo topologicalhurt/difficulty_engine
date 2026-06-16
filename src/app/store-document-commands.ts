@@ -7,7 +7,7 @@ import type {
 } from '../core/types';
 import { documentGreylistKey } from '../core/document-acquisition-state';
 import { isSafeTorrentSource } from '../core/document-source-safety';
-import { bridgeEndpoint } from '../infra/document-bridge-url';
+import { bridgeEndpoint } from '../infra/documents';
 import type { StoreCommandContext } from './store-command-context';
 import { createStoreRequestSequencer } from './store-request-sequencer';
 import {

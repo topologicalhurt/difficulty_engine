@@ -89,6 +89,10 @@ describe('source architecture guardrails', () => {
   it('keeps accidental re-export adapters out of source modules', () => {
     const allowed = new Set([
       'src/index.ts',
+      // Sanctioned public boundary for the document-acquisition module
+      // (qBittorrent + PDF/TOC parsing + document sourcing). External code
+      // imports only from here, keeping the module independently deployable.
+      'src/infra/documents.ts',
       'src/app/wiring/contracts.ts',
       'src/core/defaults.ts',
       'src/core/types/domain.ts',

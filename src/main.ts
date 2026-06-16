@@ -4,7 +4,7 @@ import { createEnrichmentClient } from './infra/enrichment-client';
 import { createLocalIntegrationSettings } from './infra/local-integration-settings';
 import { consoleLogger } from './infra/logger';
 import { createLocalStoragePersistence } from './infra/persistence';
-import { createQBittorrentIntegrationService } from './infra/qbittorrent-provider';
+import { createQBittorrentIntegrationService } from './infra/documents';
 import {
   loadRuntimeAiConnectionPatch,
   loadRuntimeDebugUi,

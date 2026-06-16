@@ -16,10 +16,10 @@ import type {
   QbittorrentIntegrationService,
 } from '../core/types';
 import {
+  bridgeEndpoint,
   chooseSelectedDocumentId,
   mergeDocumentRefs,
-} from '../infra/document-acquisition';
-import { bridgeEndpoint } from '../infra/document-bridge-url';
+} from '../infra/documents';
 
 export function projectWithDocumentRemoved(
   project: PlannerProjectV1,
