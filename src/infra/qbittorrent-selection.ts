@@ -10,6 +10,7 @@ import {
   matchTokens,
   normalizeMatcherText,
 } from '../core/matchers';
+import { clamp } from '../core/utils';
 import { SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA } from './document-candidate-quality';
 import {
   BAD_QBITTORRENT_FILE_NAME_PATTERN,
@@ -294,7 +295,7 @@ export function torrentAvailability(info: TorrentInfo | null): {
     peers,
     // Clamp to a finite [0,1]: an un-clamped NaN (malformed bridge payload)
     // makes `progress < 1` false, letting a dead torrent escape stall detection.
-    progress: Math.min(1, Math.max(0, Number.isFinite(rawProgress) ? rawProgress : 0)),
+    progress: clamp(Number.isFinite(rawProgress) ? rawProgress : 0, 0, 1),
     state: info?.state ?? (info ? 'tracked' : 'unknown'),
     etaSeconds:
       info?.eta == null || info.eta < 0 || !Number.isFinite(info.eta)

@@ -2,6 +2,7 @@ import type {
   BookProgressView,
   OverallProgressView,
 } from '../app/selectors/progress';
+import { clamp } from '../core/utils';
 import { el } from './dom';
 import { formatCssPercent, formatOneDecimal, round0 } from './format';
 
@@ -13,7 +14,7 @@ interface ProgressRenderOptions {
 function progressPercent(
   progress: BookProgressView | OverallProgressView,
 ): number {
-  return Math.max(0, Math.min(100, progress.percent));
+  return clamp(progress.percent, 0, 100);
 }
 
 function progressDetail(

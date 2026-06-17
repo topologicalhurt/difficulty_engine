@@ -1,6 +1,6 @@
 import type { PlannerProjectV1 } from '../core/types';
 import { unique } from '../core/utils';
-import { cloneBookRecord } from './store-helpers';
+import { cloneBookForEdit } from './store-helpers';
 
 export interface BookRelationPatch {
   manualPrereqs?: string[];
@@ -27,7 +27,7 @@ export function withBookRelationPatch(
   const books = Object.fromEntries(
     Object.entries(project.library.books).map(([id, book]) => [
       id,
-      cloneBookRecord(book),
+      cloneBookForEdit(book),
     ]),
   );
   const source = books[sourceId];

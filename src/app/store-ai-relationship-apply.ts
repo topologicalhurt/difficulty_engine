@@ -5,7 +5,7 @@ import type {
   BookRecord,
   PlannerProjectV1,
 } from '../core/types';
-import { cloneBookRecord } from './store-helpers';
+import { cloneBookForEdit } from './store-helpers';
 
 interface AiRelationshipApplyResult {
   project: PlannerProjectV1;
@@ -121,7 +121,7 @@ export function applyAiRelationshipProposalToProject(
   const books = Object.fromEntries(
     Object.entries(project.library.books).map(([id, book]) => [
       id,
-      cloneBookRecord(book),
+      cloneBookForEdit(book),
     ]),
   );
   const preserveManualRelations =

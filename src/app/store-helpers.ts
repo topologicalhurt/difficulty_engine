@@ -14,10 +14,14 @@ import type {
 } from '../core/types';
 import { readPerformanceNowMs } from './performance';
 
-// Deep-enough copy of a book for in-place edit passes (relation patches, AI
-// relationship apply): clones the mutated arrays and the enrichment object so a
-// patched copy never aliases the source's nested state.
-export function cloneBookRecord(book: BookRecord): BookRecord {
+// Copy a book for the relation-edit passes (relation patches, AI relationship
+// apply), cloning exactly the fields those passes REASSIGN — the relation
+// arrays plus the enrichment object's chapters/olSubjects/provenance — so a
+// patched copy never aliases the source's mutated state. Deliberately NOT a
+// full deep clone: other nested fields (documents, enrichment page-range
+// arrays) are shared by reference, so callers must reassign them rather than
+// mutate them in place.
+export function cloneBookForEdit(book: BookRecord): BookRecord {
   return {
     ...book,
     authors: [...book.authors],
