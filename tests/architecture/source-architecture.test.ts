@@ -112,6 +112,21 @@ describe('source architecture guardrails', () => {
     expect(violations).toEqual([]);
   });
 
+  it('routes external document-module use through the documents barrel', () => {
+    // The qBittorrent + PDF/TOC + document-acquisition module is consumed only
+    // via its public barrel (src/infra/documents.ts). No code outside
+    // src/infra may import the module's implementation files directly — this
+    // keeps the module independently deployable behind one stable entry point.
+    const deepEntryPattern =
+      /from '[^']*infra\/(?:document-acquisition|qbittorrent-provider|document-bridge-url)'/;
+    const violations = sourceFiles()
+      .filter((path) => !relativeSourcePath(path).startsWith('src/infra/'))
+      .filter((path) => deepEntryPattern.test(readFileSync(path, 'utf8')))
+      .map(relativeSourcePath);
+
+    expect(violations).toEqual([]);
+  });
+
   it('keeps dropped migration terminology out of shipped source paths and text', () => {
     const forbiddenPattern =
       /\b(deprecated|dropped|legacy|obsolete|transitional)\b|\bbackwards?\s+compatibility\b|\bprototype[-\s]+(?:era|state|implementation|wip)\b/i;

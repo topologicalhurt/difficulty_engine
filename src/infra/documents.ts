@@ -1,5 +1,6 @@
 // Public entry point for the document-acquisition module: the integrated
 // qBittorrent + PDF/TOC parsing + document sourcing subsystem.
+// Full API / host contract / extraction guide: docs/document-acquisition-module.md
 //
 // This barrel is the module's library boundary. Everything outside the module
 // (the public API in src/index.ts, the mount in src/main.ts, and the store
