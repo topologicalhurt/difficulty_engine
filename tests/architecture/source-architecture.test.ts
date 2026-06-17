@@ -115,10 +115,16 @@ describe('source architecture guardrails', () => {
   it('routes external document-module use through the documents barrel', () => {
     // The qBittorrent + PDF/TOC + document-acquisition module is consumed only
     // via its public barrel (src/infra/documents.ts). No code outside
-    // src/infra may import the module's implementation files directly — this
-    // keeps the module independently deployable behind one stable entry point.
+    // src/infra may import any of the module's implementation files directly —
+    // this keeps the module independently deployable behind one stable entry
+    // point. The pattern covers the whole module surface (qbittorrent-*,
+    // document-* parsing/acquisition files, toc-*, pdf-*, the bridge fetch
+    // helper, source-document/completed-document loaders, and the document
+    // enrichment wiring) while exempting the `documents` barrel itself
+    // (no hyphen, so `document-` never matches it) and the separate
+    // metadata-enrichment / AI / provider infra modules.
     const deepEntryPattern =
-      /from '[^']*infra\/(?:document-acquisition|qbittorrent-provider|document-bridge-url)'/;
+      /from '[^']*infra\/(?:qbittorrent-[a-z-]+|document-[a-z-]+|toc-[a-z-]+|pdf-[a-z-]+|bridge-fetch|source-document-candidates|completed-document-loader|enrichment-documents)'/;
     const violations = sourceFiles()
       .filter((path) => !relativeSourcePath(path).startsWith('src/infra/'))
       .filter((path) => deepEntryPattern.test(readFileSync(path, 'utf8')))
