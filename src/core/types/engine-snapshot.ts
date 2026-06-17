@@ -45,6 +45,7 @@ export interface EngineSnapshot {
       unfilledParallelSlots: number;
       parallelFitBlockedDays: number;
       maxFeasibleBooksPerDay: number;
+      maxFeasibleBooksOnBlockedDays: number;
     };
   };
   renderModel: RenderModel;

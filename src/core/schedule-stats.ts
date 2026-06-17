@@ -99,6 +99,8 @@ export function computeScheduleStats(
     unfilledParallelSlots: dayPlan.startability.unfilledParallelSlots,
     parallelFitBlockedDays: dayPlan.startability.parallelFitBlockedDays,
     maxFeasibleBooksPerDay: dayPlan.startability.maxFeasibleBooksPerDay,
+    maxFeasibleBooksOnBlockedDays:
+      dayPlan.startability.maxFeasibleBooksOnBlockedDays,
     backfilledStarts,
     prereqOverlapStarts,
     peakBooks,

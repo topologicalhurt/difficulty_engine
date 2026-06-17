@@ -111,6 +111,7 @@ export interface ScheduleStats {
   unfilledParallelSlots: number;
   parallelFitBlockedDays: number;
   maxFeasibleBooksPerDay: number;
+  maxFeasibleBooksOnBlockedDays: number;
   backfilledStarts: number;
   prereqOverlapStarts: number;
   peakBooks: number;

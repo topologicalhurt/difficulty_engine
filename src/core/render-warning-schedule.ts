@@ -24,6 +24,14 @@ function strictParallelFitWarning(
   const strictMinPg = pageBounds(project.constraints).minPg;
   const dailyBudget = totalBudgetMinutes(project.constraints);
   const slotBudget = slotBudgetMinutes(project.constraints);
+  // "Fit at most M" is the planner's own per-day feasibility result
+  // (day-plan-startability → feasibleCandidateCount), which models the real
+  // read/skim split and each book's remaining pages. Re-deriving it here from a
+  // flat strictMinPg×mpp chunk produced a second, diverging cost model that
+  // could disagree with the schedule the planner actually built. The local
+  // floor-chunk minutes below are only the separate "too big for one slot"
+  // detail — a deliberate floor-vs-slot check, not a fit count.
+  const fitCount = snapshot.scheduleStats.maxFeasibleBooksOnBlockedDays;
   const floorChunks = snapshot.schedulePlan.items
     .filter((item) => !snapshot.dayPlan.byBookStats[item.id]?.hardInfeasible)
     .map((item) => ({
@@ -31,37 +39,23 @@ function strictParallelFitWarning(
       minutes:
         strictMinPg *
         minutesPerPage(item.scheduleDifficulty, project.constraints),
-    }))
+    }));
+  if (!floorChunks.length) return null;
+
+  const overSlotChunks = floorChunks
+    .filter((chunk) => chunk.minutes > slotBudget + 1e-6)
     .sort(
       (left, right) =>
         left.minutes - right.minutes || left.id.localeCompare(right.id),
     );
-  if (!floorChunks.length) return null;
-
-  let usedMinutes = 0;
-  let fitCount = 0;
-  floorChunks.forEach((chunk) => {
-    if (fitCount >= requestedBooks) return;
-    if (usedMinutes + chunk.minutes <= dailyBudget + 1e-6) {
-      usedMinutes += chunk.minutes;
-      fitCount += 1;
-    }
-  });
-  const overSlotCount = floorChunks.filter(
-    (chunk) => chunk.minutes > slotBudget + 1e-6,
-  ).length;
-  if (fitCount >= requestedBooks && overSlotCount === 0) return null;
-
   const largestFloorChunk = Math.max(
     ...floorChunks.map((chunk) => chunk.minutes),
   );
   return createWarning(
     'warn',
     'strict-parallel-floor-conflict',
-    `${requestedBooks} parallel slot(s) are requested, but strict ${strictMinPg} pg chunks fit at most ${fitCount} book(s) inside ${round1(dailyBudget)}m/day. Each slot has ${round1(slotBudget)}m, and ${overSlotCount} book(s) need more than that for ${strictMinPg} pages (up to ${round1(largestFloorChunk)}m). Use relaxed page recommendation, lower min pages, or increase hours/day to fill more slots.`,
-    floorChunks
-      .filter((chunk) => chunk.minutes > slotBudget + 1e-6)
-      .map((chunk) => chunk.id),
+    `${requestedBooks} parallel slot(s) are requested, but strict ${strictMinPg} pg chunks fit at most ${fitCount} book(s) inside ${round1(dailyBudget)}m/day. Each slot has ${round1(slotBudget)}m, and ${overSlotChunks.length} book(s) need more than that for ${strictMinPg} pages (up to ${round1(largestFloorChunk)}m). Use relaxed page recommendation, lower min pages, or increase hours/day to fill more slots.`,
+    overSlotChunks.map((chunk) => chunk.id),
   );
 }
 

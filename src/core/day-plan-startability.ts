@@ -10,6 +10,7 @@ export function createStartabilitySummary(): DayPlanSnapshot['startability'] {
     unfilledParallelSlots: 0,
     parallelFitBlockedDays: 0,
     maxFeasibleBooksPerDay: 0,
+    maxFeasibleBooksOnBlockedDays: 0,
   };
 }
 
@@ -44,5 +45,13 @@ export function recordUnderfilledParallelSlots(
     feasibleBooks <= dayEntries.length
   ) {
     startability.parallelFitBlockedDays += 1;
+    // Track the most books the budget could actually start on a blocked day.
+    // This is the planner-true "fit at most M" the schedule warning reports,
+    // computed with the real read/skim split and remaining pages — never a
+    // separate flat-chunk estimate.
+    startability.maxFeasibleBooksOnBlockedDays = Math.max(
+      startability.maxFeasibleBooksOnBlockedDays,
+      feasibleBooks,
+    );
   }
 }

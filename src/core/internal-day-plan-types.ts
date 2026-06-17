@@ -103,5 +103,6 @@ export interface DayPlanSnapshot {
     unfilledParallelSlots: number;
     parallelFitBlockedDays: number;
     maxFeasibleBooksPerDay: number;
+    maxFeasibleBooksOnBlockedDays: number;
   };
 }

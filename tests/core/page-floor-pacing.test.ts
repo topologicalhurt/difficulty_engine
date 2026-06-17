@@ -458,4 +458,55 @@ describe('page floors and relative pacing', () => {
     );
     expect(relaxedDay1).toHaveLength(2);
   });
+
+  it('reports the planner-true feasible count in the strict-parallel warning', () => {
+    const input = project();
+    input.library.books = {
+      a: book('a', 'A', 6.6, 120, ['alpha']),
+      b: book('b', 'B', 6.6, 120, ['beta']),
+      c: book('c', 'C', 6.6, 120, ['gamma']),
+    };
+    input.constraints = {
+      ...input.constraints,
+      dailyBookMode: 'daily_cohort',
+      schedAlgo: 'fastest',
+      feasibilityMode: 'strict_floor',
+      prereqMode: 'strict',
+      par: 3,
+      hpd: 4.5,
+      minPg: 7,
+      maxPg: 35,
+      bmp: 25,
+      gam: 1.5,
+      boostUnused: false,
+      applyOverlapSkim: false,
+      mutualEnabled: false,
+      autoRD: false,
+    };
+
+    const strict = computeSnapshot(input);
+    const warning = strict.renderModel.warnings.find(
+      (entry) => entry.code === 'strict-parallel-floor-conflict',
+    );
+    expect(warning).toBeTruthy();
+    expect(strict.scheduleStats.parallelFitBlockedDays).toBeGreaterThan(0);
+
+    // The "fit at most M" the warning shows must be the planner's own per-day
+    // feasibility result (maxFeasibleBooksOnBlockedDays), not a second linear
+    // strictMinPg×mpp estimate that ignores the read/skim split and remaining
+    // pages and could disagree with the schedule actually produced.
+    const reported = Number(
+      /fit at most (\d+) book\(s\)/.exec(warning?.message ?? '')?.[1],
+    );
+    expect(reported).toBe(strict.scheduleStats.maxFeasibleBooksOnBlockedDays);
+    // A blocked day fits fewer books than the requested parallel slots, so the
+    // reported count is always a coherent "fewer than requested".
+    expect(reported).toBeLessThan(input.constraints.par);
+    // The count must be the tighter blocked-day feasibility, not the looser
+    // per-day max (which here counts a non-blocked underfilled day where two
+    // books were feasible). Reporting maxFeasibleBooksPerDay would overstate it.
+    expect(strict.scheduleStats.maxFeasibleBooksOnBlockedDays).toBeLessThan(
+      strict.scheduleStats.maxFeasibleBooksPerDay,
+    );
+  });
 });
