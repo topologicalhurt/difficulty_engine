@@ -5,25 +5,11 @@ import type {
   BookRecord,
   PlannerProjectV1,
 } from '../core/types';
+import { cloneBookRecord } from './store-helpers';
 
-export interface AiRelationshipApplyResult {
+interface AiRelationshipApplyResult {
   project: PlannerProjectV1;
   changedBookIds: string[];
-}
-
-function cloneRelationshipBook(book: BookRecord): BookRecord {
-  return {
-    ...book,
-    authors: [...book.authors],
-    subjects: [...book.subjects],
-    manualPrereqs: [...book.manualPrereqs],
-    manualCoStudy: [...book.manualCoStudy],
-    enrichment: {
-      ...book.enrichment,
-      chapters: [...book.enrichment.chapters],
-      olSubjects: [...book.enrichment.olSubjects],
-    },
-  };
 }
 
 function orderedStageIds(proposal: AiRelationshipProposal): string[] {
@@ -135,7 +121,7 @@ export function applyAiRelationshipProposalToProject(
   const books = Object.fromEntries(
     Object.entries(project.library.books).map(([id, book]) => [
       id,
-      cloneRelationshipBook(book),
+      cloneBookRecord(book),
     ]),
   );
   const preserveManualRelations =

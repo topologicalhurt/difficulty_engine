@@ -80,7 +80,7 @@ const SOURCE_PROVIDER_DEFINITIONS = [
   },
 ] as const satisfies readonly SourceProviderDefinition[];
 
-type SourceProviderRow = (typeof SOURCE_PROVIDER_DEFINITIONS)[number] & {
+export type SourceProviderRow = (typeof SOURCE_PROVIDER_DEFINITIONS)[number] & {
   checked: boolean;
 };
 
@@ -92,8 +92,6 @@ function sourceProviderChecked(
     ? state.project.sourceSettings.metadataSources[definition.key]
     : state.project.sourceSettings.documentSources[definition.key];
 }
-
-export type ProjectSourceProviderRow = SourceProviderRow;
 
 export interface ProjectViewModel {
   importExportText: string;
@@ -107,7 +105,7 @@ export interface ProjectViewModel {
   }>;
   sourceSettings: AppState['project']['sourceSettings'];
   readingScopeSettings: ReadingScopeSettings;
-  sourceProviders: ProjectSourceProviderRow[];
+  sourceProviders: SourceProviderRow[];
   contentPreferenceLabel: string;
   qbittorrentConnection: AppState['ui']['qbittorrentConnection'];
   qbittorrentStatus: AppState['ui']['qbittorrentStatus'];

@@ -1,20 +1,17 @@
 import type { EnrichmentRequest } from '../core/types';
 import { normalizedIsbn } from '../core/isbn';
 
-function sorted(values: string[]): string[] {
-  return [...values].sort();
-}
-
 function sourceMaskKey(request: EnrichmentRequest): string {
+  const qbittorrent = request.sourceSettings.qbittorrent;
   return JSON.stringify({
     metadataSources: request.sourceSettings.metadataSources,
     documentSources: request.sourceSettings.documentSources,
     contentPreference: request.sourceSettings.contentPreference,
     qbittorrent: {
-      ...request.sourceSettings.qbittorrent,
-      allowedPlugins: sorted(request.sourceSettings.qbittorrent.allowedPlugins),
-      allowedSites: sorted(request.sourceSettings.qbittorrent.allowedSites),
-      categories: sorted(request.sourceSettings.qbittorrent.categories),
+      ...qbittorrent,
+      allowedPlugins: [...qbittorrent.allowedPlugins].sort(),
+      allowedSites: [...qbittorrent.allowedSites].sort(),
+      categories: [...qbittorrent.categories].sort(),
     },
     // Only whether qBittorrent is enabled participates in cache identity.
     // baseUrl/savePath/category are connection-only (they don't change the

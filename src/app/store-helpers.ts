@@ -6,12 +6,34 @@ import {
 import { serializeProject } from '../core/project-file';
 import type {
   AppState,
+  BookRecord,
   CreatePlannerStoreOptions,
   EnrichmentCacheEntry,
   PlannerProjectV1,
   UiState,
 } from '../core/types';
 import { readPerformanceNowMs } from './performance';
+
+// Deep-enough copy of a book for in-place edit passes (relation patches, AI
+// relationship apply): clones the mutated arrays and the enrichment object so a
+// patched copy never aliases the source's nested state.
+export function cloneBookRecord(book: BookRecord): BookRecord {
+  return {
+    ...book,
+    authors: [...book.authors],
+    subjects: [...book.subjects],
+    manualPrereqs: [...book.manualPrereqs],
+    manualCoStudy: [...book.manualCoStudy],
+    enrichment: {
+      ...book.enrichment,
+      chapters: [...book.enrichment.chapters],
+      olSubjects: [...book.enrichment.olSubjects],
+      provenance: book.enrichment.provenance
+        ? { ...book.enrichment.provenance }
+        : undefined,
+    },
+  };
+}
 
 export type AppPerformanceState = AppState['performance'];
 

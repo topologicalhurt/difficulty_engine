@@ -9,6 +9,7 @@ import {
   PLAN_ZOOM_MIN,
   clampLibraryListWidth,
 } from '../core/constants';
+import { clampZoom } from '../core/utils';
 import type { StoreCommandContext } from './store-command-context';
 import type { WiringContractId } from './wiring/contracts';
 
@@ -88,10 +89,7 @@ export function createUiCommands(
       commitUiPreference('ui.ganttView', { ganttView }, { ganttView });
     },
     setGanttZoom(ganttZoom: number): void {
-      const nextZoom = Math.max(
-        PLAN_ZOOM_MIN,
-        Math.min(PLAN_ZOOM_MAX, Math.round(ganttZoom * 100) / 100),
-      );
+      const nextZoom = clampZoom(ganttZoom, PLAN_ZOOM_MIN, PLAN_ZOOM_MAX);
       commitUiPreference(
         'ui.ganttZoom',
         { ganttZoom: nextZoom },

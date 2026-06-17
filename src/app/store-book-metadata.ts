@@ -2,19 +2,11 @@ import { normalizedIsbn } from '../core/book-identity';
 import { EXAMPLE_BOOK } from '../core/defaults';
 import { normalizeOpenLibraryKey } from '../core/openlibrary-keys';
 import type { BookRecord, BookSearchSuggestion } from '../core/types';
-import { uniqueCompactStrings } from '../core/utils';
+import { shortenLabel, uniqueCompactStrings } from '../core/utils';
 
 const PLACEHOLDER_PAGE_COUNTS = new Set<number>([EXAMPLE_BOOK.pages, 250]);
 const PLACEHOLDER_AUTHORS = new Set(EXAMPLE_BOOK.authors);
 const PLACEHOLDER_SUBJECTS = new Set(EXAMPLE_BOOK.subjects);
-
-function shortLabelFromTitle(title: string): string {
-  const trimmed = title.trim();
-  if (trimmed.length <= 22) {
-    return trimmed;
-  }
-  return `${trimmed.slice(0, 19).trimEnd()}...`;
-}
 
 function incomingPagesOrCurrent(
   currentPages: number,
@@ -63,7 +55,7 @@ export function bookFromSuggestion(
     ...EXAMPLE_BOOK,
     id,
     title: suggestion.title,
-    short: shortLabelFromTitle(suggestion.title),
+    short: shortenLabel(suggestion.title),
     authors: suggestion.authors,
     pages: suggestion.pages ?? 250,
     subjects: suggestion.subjects.slice(0, 12),

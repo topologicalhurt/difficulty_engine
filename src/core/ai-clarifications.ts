@@ -8,7 +8,7 @@ const AI_CLARIFICATION_MESSAGE_LIMIT = 16;
 const AI_CLARIFICATION_WARNING_LIMIT = 6;
 const AI_CLARIFICATION_QUESTION_LIMIT = 6;
 
-export interface NormalizedAiClarificationResponse {
+interface NormalizedAiClarificationResponse {
   question: string | null;
   questions: string[];
   ready: boolean;
@@ -16,7 +16,7 @@ export interface NormalizedAiClarificationResponse {
   warnings: string[];
 }
 
-export interface PendingAiClarificationQuestion {
+interface PendingAiClarificationQuestion {
   messageIndex: number;
   text: string;
 }

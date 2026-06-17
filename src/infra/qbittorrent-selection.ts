@@ -9,7 +9,6 @@ import {
   isbnAppearsInText,
   matchTokens,
   normalizeMatcherText,
-  normalizedIsbnText,
 } from '../core/matchers';
 import { SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA } from './document-candidate-quality';
 import {
@@ -56,10 +55,6 @@ const QBITTORRENT_TITLE_TRAILING_DETAIL_PATTERN =
   /\s*(?::|\(|\s[-–—]\s).*$/;
 const QBITTORRENT_TITLE_RESIDUAL_NOISE_PATTERN =
   /\b(?:pdf|ebook|e-book|retail|truepdf|scan|scanned|gnv64|lnw|z+|by)\b/g;
-
-export function normalizedBookIsbn(value: string | null | undefined): string {
-  return normalizedIsbnText(value);
-}
 
 export function bookMatchScore(
   title: string,

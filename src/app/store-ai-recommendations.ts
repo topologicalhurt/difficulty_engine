@@ -1,7 +1,4 @@
-import {
-  aiModelBelongsToProvider,
-  defaultAiModel,
-} from '../core/ai-provider-registry';
+import { defaultAiModel } from '../core/ai-provider-registry';
 import {
   normalizeAiClarificationAnswer,
   normalizeAiClarificationMessages,
@@ -67,13 +64,6 @@ export function createAiRecommendationCommands(
         ...patch,
       };
       if (patch.provider && patch.model == null) {
-        patchedConnection.model = defaultAiModel(patch.provider);
-      }
-      if (
-        patch.provider &&
-        patch.model == null &&
-        !aiModelBelongsToProvider(patch.provider, patchedConnection.model)
-      ) {
         patchedConnection.model = defaultAiModel(patch.provider);
       }
       const nextConnection = normalizeAiConnectionSettings(patchedConnection);
