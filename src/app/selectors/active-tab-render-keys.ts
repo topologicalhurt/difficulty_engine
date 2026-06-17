@@ -1,4 +1,5 @@
 import type { AppState } from '../../core/types';
+import { calendarViewModelKeys } from './calendar';
 import { selectRenderableActiveView } from './shell';
 
 function selectedCalendarEntryKey(state: AppState): string {
@@ -34,23 +35,10 @@ export function selectActiveTabRenderKeys(state: AppState): readonly unknown[] {
         state.ui.selectedConstraintKey,
       ];
     case 'calendar':
-      // Keep in sync with selectCalendarViewModelMemo's key list: scheduleStats
-      // + constraints drive the export finish date/summary and actuals drive the
-      // per-block performance indicator, so a command that mutates them without
-      // recomputing dayPlan must still re-render this tab.
-      return [
-        activeView,
-        state.snapshot.dayPlan,
-        state.snapshot.scheduleStats,
-        state.project.constraints,
-        state.project.manualOverrides.timeBlocks ?? {},
-        state.project.manualOverrides.actuals,
-        state.project.manualOverrides.calendarActivities ?? {},
-        state.project.library.books,
-        state.ui.calendarLearningMode,
-        state.ui.planColorMode,
-        state.ui.calendarWeekIndex,
-      ];
+      // Reuse the calendar view-model's own key set so the render gate and the
+      // memo can't drift: any slice the view-model starts reading is covered
+      // here automatically.
+      return [activeView, ...calendarViewModelKeys(state)];
     case 'ai':
       return [
         activeView,

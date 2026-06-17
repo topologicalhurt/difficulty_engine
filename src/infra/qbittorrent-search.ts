@@ -137,7 +137,10 @@ function evidenceTitle(
   result: SearchResult,
   request: DocumentAcquisitionRequest,
 ): string {
-  return (result.fileName || request.book.title).slice(0, MAX_EVIDENCE_FIELD_CHARS);
+  return (result.fileName || request.book.title).slice(
+    0,
+    MAX_EVIDENCE_FIELD_CHARS,
+  );
 }
 
 function blockedCandidate(

@@ -374,12 +374,15 @@ function calendarExportSummary(input: {
   return `${input.blockCount} study block(s) in ${input.weekLabel}${unscheduled} · plan finish ${formatPlanFullDate(input.finishDate)}`;
 }
 
-const selectCalendarViewModelMemo = memoizeSelector(
-  'calendar.viewModel',
-  (state: AppState) => [
+// The single source of truth for every state slice the calendar view-model
+// reads. Both the memo below and the active-tab render-key gate consume this,
+// so the two can never drift (a missing slice would serve a stale calendar
+// after a recompute-free command that mutates only that slice). scheduleStats
+// and constraints feed the export summary (finish date) and week/pace layout;
+// actuals feeds the per-block performance indicator.
+export function calendarViewModelKeys(state: AppState): readonly unknown[] {
+  return [
     state.snapshot.dayPlan,
-    // scheduleStats and constraints feed the export summary (finish date) and
-    // week/pace layout; include them so the memo cannot serve a stale view.
     state.snapshot.scheduleStats,
     state.project.constraints,
     state.project.manualOverrides.timeBlocks ?? {},
@@ -389,7 +392,12 @@ const selectCalendarViewModelMemo = memoizeSelector(
     state.ui.calendarLearningMode,
     state.ui.planColorMode,
     state.ui.calendarWeekIndex,
-  ],
+  ];
+}
+
+const selectCalendarViewModelMemo = memoizeSelector(
+  'calendar.viewModel',
+  calendarViewModelKeys,
   (state: AppState): CalendarViewModel => {
     const sourceWeeks = buildCalendarWeeks(state);
     const weekCount = sourceWeeks.length;
