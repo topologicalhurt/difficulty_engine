@@ -126,8 +126,11 @@ export function buildSortedBooks(
       };
     })
     .sort(
+      // Sort by scheduleDifficulty (planner truth), not the visual-only
+      // displayDifficulty, so a display-compression control can never reorder
+      // the list. `eff` remains available as the display value.
       (left, right) =>
-        right.eff - left.eff ||
+        right.timeEff - left.timeEff ||
         left.short.localeCompare(right.short) ||
         corpus.byId[left.id].title.localeCompare(corpus.byId[right.id].title),
     );

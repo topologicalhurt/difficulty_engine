@@ -1,15 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_ACTIVITY_COLOR,
   gradientColor,
   groupColor,
   hashText,
   hslColor,
+  normalizeHexColor,
   normalizedRange,
   PLAN_MONO_GROUP_COLOR_OPTIONS,
 } from '../../src/core/display-colors';
 
 describe('display color helpers', () => {
+  it('normalizes hex colors consistently, trimming whitespace', () => {
+    expect(normalizeHexColor('#ABCDEF', DEFAULT_ACTIVITY_COLOR)).toBe('#abcdef');
+    // Trim so the add path and the load path agree on padded values.
+    expect(normalizeHexColor('  #abcdef  ', DEFAULT_ACTIVITY_COLOR)).toBe(
+      '#abcdef',
+    );
+    expect(normalizeHexColor('not-a-color', DEFAULT_ACTIVITY_COLOR)).toBe(
+      DEFAULT_ACTIVITY_COLOR,
+    );
+    expect(normalizeHexColor(undefined, DEFAULT_ACTIVITY_COLOR)).toBe(
+      DEFAULT_ACTIVITY_COLOR,
+    );
+  });
+
   it('keeps group color hashing deterministic', () => {
     expect(hashText('Electronics')).toBe(hashText('Electronics'));
     expect(groupColor('Electronics')).toBe(groupColor('Electronics'));

@@ -13,6 +13,7 @@ import type {
   ConstraintSet,
   EnrichmentCacheEntry,
   GanttView,
+  CalendarLearningMode,
   PlanColorMode,
   PlannerProjectV1,
   QbittorrentConnectionSettings,
@@ -24,6 +25,7 @@ export type AppView =
   | 'library'
   | 'constraints'
   | 'plan'
+  | 'calendar'
   | 'ai'
   | 'graphs'
   | 'diagnostics'
@@ -61,8 +63,10 @@ export interface UiState {
   activeView: AppView;
   selectedBookId: string | null;
   selectedCalendarEntry: CalendarEntrySelection | null;
+  calendarWeekIndex: number;
   ganttView: GanttView;
   ganttZoom: number;
+  calendarLearningMode: CalendarLearningMode;
   planColorMode: PlanColorMode;
   openConstraintGroups: string[];
   selectedConstraintKey: keyof ConstraintSet | null;

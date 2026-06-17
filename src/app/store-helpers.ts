@@ -6,12 +6,38 @@ import {
 import { serializeProject } from '../core/project-file';
 import type {
   AppState,
+  BookRecord,
   CreatePlannerStoreOptions,
   EnrichmentCacheEntry,
   PlannerProjectV1,
   UiState,
 } from '../core/types';
 import { readPerformanceNowMs } from './performance';
+
+// Copy a book for the relation-edit passes (relation patches, AI relationship
+// apply), cloning exactly the fields those passes REASSIGN — the relation
+// arrays plus the enrichment object's chapters/olSubjects/provenance — so a
+// patched copy never aliases the source's mutated state. Deliberately NOT a
+// full deep clone: other nested fields (documents, enrichment page-range
+// arrays) are shared by reference, so callers must reassign them rather than
+// mutate them in place.
+export function cloneBookForEdit(book: BookRecord): BookRecord {
+  return {
+    ...book,
+    authors: [...book.authors],
+    subjects: [...book.subjects],
+    manualPrereqs: [...book.manualPrereqs],
+    manualCoStudy: [...book.manualCoStudy],
+    enrichment: {
+      ...book.enrichment,
+      chapters: [...book.enrichment.chapters],
+      olSubjects: [...book.enrichment.olSubjects],
+      provenance: book.enrichment.provenance
+        ? { ...book.enrichment.provenance }
+        : undefined,
+    },
+  };
+}
 
 export type AppPerformanceState = AppState['performance'];
 
@@ -83,8 +109,14 @@ export function buildUi(
       ui.selectedBookId ?? DEFAULT_UI_STATE.selectedBookId,
     ),
     selectedCalendarEntry,
+    calendarWeekIndex: Math.max(
+      0,
+      Math.round(ui.calendarWeekIndex ?? DEFAULT_UI_STATE.calendarWeekIndex),
+    ),
     ganttView: ui.ganttView ?? project.uiPreferences.ganttView,
     ganttZoom: ui.ganttZoom ?? project.uiPreferences.ganttZoom,
+    calendarLearningMode:
+      ui.calendarLearningMode ?? project.uiPreferences.calendarLearningMode,
     planColorMode: ui.planColorMode ?? project.uiPreferences.planColorMode,
     planSections: ui.planSections ?? project.uiPreferences.planSections,
     libraryListWidthPx:
@@ -131,7 +163,8 @@ export function buildUi(
     aiRelationshipProposal:
       ui.aiRelationshipProposal ?? DEFAULT_UI_STATE.aiRelationshipProposal,
     autopilotDraft:
-      ui.autopilotDraft ?? createDefaultAutopilotWizardState(project.constraints),
+      ui.autopilotDraft ??
+      createDefaultAutopilotWizardState(project.constraints),
     autopilotProposal:
       ui.autopilotProposal ?? DEFAULT_UI_STATE.autopilotProposal,
     debugUi: ui.debugUi ?? DEFAULT_UI_STATE.debugUi,

@@ -114,7 +114,7 @@ export function calibrateLatentWorkloads(
       latentWorkload: round2(clamp(input.estimate.latentWorkload + shift, 1, 10)),
       reasons: [
         ...input.estimate.reasons,
-        `Evidence-calibrated cohort prior adjusts latent workload by ${round2(shift)} without changing rank order.`,
+        `Evidence-calibrated cohort prior adjusts latent workload by ${round2(shift)} toward the rank-normal target.`,
       ],
     };
   });

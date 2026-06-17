@@ -1,11 +1,11 @@
 import type { QbittorrentSearchIntent } from '../core/types';
 import {
   normalizeMatcherText,
+  normalizedIsbnText,
   sharesAnyMatchToken,
 } from '../core/matchers';
 import { uniqueCompactStrings } from '../core/utils';
 import type { DocumentAcquisitionRequest } from './document-acquisition';
-import { normalizedBookIsbn } from './qbittorrent-selection';
 
 const MAX_QBITTORRENT_SEARCH_PATTERNS = 14;
 const SEARCH_NOISE_WORD_PATTERN =
@@ -151,7 +151,7 @@ export function customQbittorrentSearchQuery(
 export function qbittorrentSearchQueries(
   request: DocumentAcquisitionRequest,
 ): QbittorrentSearchQuery[] {
-  const isbn = normalizedBookIsbn(request.book.isbn);
+  const isbn = normalizedIsbnText(request.book.isbn);
   const seen = new Set<string>();
   const queries: QbittorrentSearchQuery[] = [];
   const searchableTitle = stripAuthorPrefixFromTitle(

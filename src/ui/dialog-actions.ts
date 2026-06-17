@@ -37,6 +37,10 @@ export function runRegisteredDialogAction(
   if (actionId === 'close' || actionId === 'cancel') {
     handlersFor(store).delete(dialogId);
     store.commands.setDialog(null);
+    // Run any registered cancel/close cleanup (e.g. disarming a confirmable
+    // action's re-click window) so dismissing the dialog cannot leave the
+    // destructive action armed for a second click.
+    void handler?.();
     return;
   }
   if (!handler) {

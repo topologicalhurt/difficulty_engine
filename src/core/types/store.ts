@@ -39,12 +39,17 @@ export interface PlannerStoreCommands {
   setActiveView(activeView: AppView): void;
   selectBook(bookId: string | null): void;
   selectCalendarEntry(dateKey: string, bookId: string): void;
+  setCalendarWeekIndex(index: number): void;
   setBanner(banner: UiState['banner']): void;
   setDialog(dialog: UiState['dialog']): void;
   setGanttView(ganttView: UiState['ganttView']): void;
   setGanttZoom(ganttZoom: number): void;
+  setCalendarLearningMode(mode: UiState['calendarLearningMode']): void;
   setPlanColorMode(planColorMode: UiState['planColorMode']): void;
-  setPlanSectionOpen(section: keyof UiState['planSections'], open: boolean): void;
+  setPlanSectionOpen(
+    section: keyof UiState['planSections'],
+    open: boolean,
+  ): void;
   setLibraryListWidth(widthPx: number): void;
   setProjectBackupsEnabled(enabled: boolean): void;
   dismissWarningCode(code: string): void;
@@ -84,6 +89,21 @@ export interface PlannerStoreCommands {
   ): void;
   setCalendarEntryPages(dateKey: string, bookId: string, pages: number): void;
   clearCalendarEntryActual(dateKey: string, bookId: string): void;
+  setCalendarTimeBlock(
+    dateKey: string,
+    bookId: string,
+    startMinute: number,
+    durationMinutes: number,
+  ): void;
+  clearCalendarTimeBlock(dateKey: string, bookId: string): void;
+  addCalendarActivity(
+    input: Partial<
+      NonNullable<
+        PlannerProjectV1['manualOverrides']['calendarActivities']
+      >[string]
+    >,
+  ): void;
+  removeCalendarActivity(activityId: string): void;
   setBookSearchQuery(query: string): void;
   clearBookSearch(): void;
   searchCatalog(query?: string): Promise<void>;

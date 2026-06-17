@@ -1,4 +1,5 @@
-import { sanitizeChapterTitles } from '../core/chapter-titles';
+import { sanitizeChapterEntries, sanitizeChapterTitles } from '../core/chapter-titles';
+import type { ChapterTitleEntry } from '../core/chapter-titles';
 import type {
   BookEnrichment,
   BookRecord,
@@ -120,23 +121,22 @@ function firstCandidateValue<T>(
   return undefined;
 }
 
-function selectedChapterPageRanges(
+// Align page ranges to the sanitized chapter entries by each entry's original
+// index. Matching sanitized titles against raw titles by string equality lost
+// ranges whenever sanitization altered a title (page suffix / dot-leader strip)
+// or filtered/dedup'd an entry; sourceIndex keys survive those transforms.
+function alignedCandidatePageRanges(
   selected: StrategyCandidate | null | undefined,
-  chapters: string[],
+  entries: ChapterTitleEntry[],
 ): Array<ChapterPageRange | null> | undefined {
-  if (!selected?.chapters?.length || !selected.chapterPageRanges?.length) {
+  if (!selected?.chapterPageRanges?.length) {
     return undefined;
   }
-  const remaining = selected.chapters.map((title, index) => ({
-    title,
-    range: selected.chapterPageRanges?.[index] ?? null,
-  }));
-  return chapters.map((chapter) => {
-    const index = remaining.findIndex((entry) => entry.title === chapter);
-    if (index < 0) return null;
-    const [entry] = remaining.splice(index, 1);
-    return entry?.range ?? null;
-  });
+  return entries.map((entry) =>
+    entry.sourceIndex != null
+      ? (selected.chapterPageRanges?.[entry.sourceIndex] ?? null)
+      : null,
+  );
 }
 
 function topicCandidate(candidate: StrategyCandidate): StrategyCandidate | null {
@@ -172,7 +172,7 @@ export function mergeStrategyCandidates(
     ...candidates,
   ]);
   const selectedChapterCandidate = bestChapterCandidate(chapterCandidates);
-  const candidateChapters = sanitizeChapterTitles(
+  const candidateChapterEntries = sanitizeChapterEntries(
     selectedChapterCandidate?.chapters ?? [],
     {
       source:
@@ -181,19 +181,23 @@ export function mergeStrategyCandidates(
           : 'structured',
     },
   );
+  const candidateChapters = candidateChapterEntries.map((entry) => entry.title);
   const chapters = candidateChapters.length
     ? candidateChapters
     : sanitizeChapterTitles(book.enrichment.chapters, { source: 'imported' });
   const chapterPageRanges =
     candidateChapters.length
-      ? selectedChapterPageRanges(selectedChapterCandidate, chapters)
+      ? alignedCandidatePageRanges(
+          selectedChapterCandidate,
+          candidateChapterEntries,
+        )
       : book.enrichment.chapterPageRanges;
   const topicCandidates = compactItems([
     existingTopicCandidate(book),
     ...candidates.map(topicCandidate),
   ]);
   const selectedTopicCandidate = bestChapterCandidate(topicCandidates);
-  const candidateTopics = sanitizeChapterTitles(
+  const candidateTopicEntries = sanitizeChapterEntries(
     selectedTopicCandidate?.chapters ?? [],
     {
       source:
@@ -202,6 +206,7 @@ export function mergeStrategyCandidates(
           : 'structured',
     },
   );
+  const candidateTopics = candidateTopicEntries.map((entry) => entry.title);
   const topics = candidateTopics.length
     ? candidateTopics
     : sanitizeChapterTitles(book.enrichment.topics ?? [], {
@@ -209,7 +214,7 @@ export function mergeStrategyCandidates(
       });
   const topicPageRanges =
     candidateTopics.length
-      ? selectedChapterPageRanges(selectedTopicCandidate, topics)
+      ? alignedCandidatePageRanges(selectedTopicCandidate, candidateTopicEntries)
       : book.enrichment.topicPageRanges;
   const pickCandidateValue = <T>(
     select: (candidate: StrategyCandidate) => T | null | undefined,

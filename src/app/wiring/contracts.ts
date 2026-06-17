@@ -38,14 +38,6 @@ export function getWiringContract(id: WiringContractId): WiringContract {
   return contractMatch;
 }
 
-export function contractIdsForCommand(
-  command: WiringContract['command'],
-): string[] {
-  return WIRING_CONTRACTS.filter((item) => item.command === command).map(
-    (item) => item.id,
-  );
-}
-
 export function commandNamesWithContracts(): Array<WiringContract['command']> {
   return Array.from(
     new Set(WIRING_CONTRACTS.map((item) => item.command)),

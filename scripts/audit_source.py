@@ -87,6 +87,11 @@ APPROVED_REEXPORT_FILES = {
     "src/core/internal-types.ts",
     "src/core/types.ts",
     "src/core/types/snapshot.ts",
+    # Public entry point (library boundary) for the document-acquisition module:
+    # the integrated qBittorrent + PDF/TOC subsystem. Everything outside the
+    # module imports from here rather than its implementation files. Mirrored in
+    # the vitest re-export allowlist (tests/architecture/source-architecture.test.ts).
+    "src/infra/documents.ts",
 }
 APP_UI_IMPORT_ALLOWLIST = {
     "src/app/mount.ts": {"src/ui/svelte/AppShell.svelte"},
@@ -142,6 +147,7 @@ def main() -> int:
 
     ignored_artifact_roots = {
         ".git",
+        ".claude",
         "node_modules",
         "coverage",
         "test-results",

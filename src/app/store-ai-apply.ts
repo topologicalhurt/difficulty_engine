@@ -6,9 +6,10 @@ import type {
   BookRecord,
   PlannerProjectV1,
 } from '../core/types';
+import { shortenLabel } from '../core/utils';
 import { nextBookId } from './store-helpers';
 
-export interface AiProposalApplyResult {
+interface AiProposalApplyResult {
   project: PlannerProjectV1;
   addedIds: string[];
   removedIds: string[];
@@ -27,10 +28,6 @@ export function hasApplicableAiProposal(
   );
 }
 
-function shortLabel(title: string): string {
-  return title.length <= 22 ? title : `${title.slice(0, 19).trimEnd()}...`;
-}
-
 function bookFromProposal(
   id: string,
   proposal: AiRecommendedBook,
@@ -40,7 +37,7 @@ function bookFromProposal(
     ...EXAMPLE_BOOK,
     id,
     title: proposal.title,
-    short: shortLabel(proposal.title),
+    short: shortenLabel(proposal.title),
     authors: proposal.authors,
     displayGroup: proposal.displayGroup,
     manualSeedDifficulty: proposal.manualSeedDifficulty,
@@ -157,7 +154,6 @@ export function applyAiProposalToProject(
   project: PlannerProjectV1,
   proposal: AiRecommendationProposal,
 ): AiProposalApplyResult {
-  const existingBookIds = new Set(Object.keys(project.library.books));
   const refLookup = new Map<string, string>();
   const candidateIds = nextIds(project, proposal.books.length);
   const removedIds = safeRemoveIds(project, proposal);
@@ -177,7 +173,6 @@ export function applyAiProposalToProject(
     }
     const id = candidateIds[addedIds.length];
     refLookup.set(bookProposal.proposalId, id);
-    existingBookIds.forEach((existingId) => refLookup.set(existingId, existingId));
     books[id] = bookFromProposal(id, bookProposal, nextPlanOrder(books));
     addedIds.push(id);
   });

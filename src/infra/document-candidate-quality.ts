@@ -3,16 +3,13 @@ import {
   candidateHasLiveAvailability,
   candidateRankingSeeders,
 } from '../core/document-candidate-availability';
+import { clamp } from '../core/utils';
 
 export const EXACT_DOCUMENT_MATCH_SCORE = 0.92;
 export const SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA = 0.15;
 export const DOCUMENT_SEEDER_SCORE_CAP = 120;
 const DOCUMENT_SPEED_SCORE_CAP_BYTES_PER_SECOND = 2 * 1024 * 1024;
 const DOCUMENT_REASONABLE_ETA_SECONDS = 60 * 60;
-
-function bounded(value: number, min = 0, max = 1): number {
-  return Math.max(min, Math.min(max, value));
-}
 
 function availabilityQuality(
   candidate: Pick<
@@ -36,7 +33,7 @@ function availabilityQuality(
   const liveAvailability =
     !hasLiveAvailability || availability?.availability == null
       ? null
-      : bounded(availability.availability);
+      : clamp(availability.availability, 0, 1);
   const speed =
     !hasLiveAvailability || availability?.downloadSpeedBytesPerSecond == null
       ? null
@@ -44,14 +41,14 @@ function availabilityQuality(
   const speedScore =
     speed == null
       ? null
-      : bounded(speed / DOCUMENT_SPEED_SCORE_CAP_BYTES_PER_SECOND);
+      : clamp(speed / DOCUMENT_SPEED_SCORE_CAP_BYTES_PER_SECOND, 0, 1);
   const eta = hasLiveAvailability ? availability?.etaSeconds : null;
   const etaScore =
     eta == null || eta < 0 || !Number.isFinite(eta)
       ? null
-      : bounded(1 - eta / DOCUMENT_REASONABLE_ETA_SECONDS);
+      : clamp(1 - eta / DOCUMENT_REASONABLE_ETA_SECONDS, 0, 1);
   const progressScore = hasLiveAvailability
-    ? bounded(availability?.progress ?? 0)
+    ? clamp(availability?.progress ?? 0, 0, 1)
     : 0;
   const knownScores = [
     liveAvailability,

@@ -293,6 +293,7 @@ export function extractExplicitTocChapters(
     entries,
     (title) => NUMBERED_HEADER_PATTERN.test(title),
     hasConsistentChapterSequence,
+    chapterSequenceValue,
   );
   const chapters = removeMarkerOnlyDuplicates(
     chapterLevelEntries.map((entry) => entry.title),

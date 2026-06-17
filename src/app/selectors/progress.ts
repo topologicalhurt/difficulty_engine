@@ -1,5 +1,5 @@
 import type { AppState, BookRecord, CalendarEntry } from '../../core/types';
-import { round1 } from '../../core/utils';
+import { clamp, round1 } from '../../core/utils';
 import { memoizeSelector } from './memo';
 
 export type ProgressStatus =
@@ -36,10 +36,6 @@ export interface OverallProgressView {
 export interface ProgressSummaryView {
   byBook: Record<string, BookProgressView>;
   overall: OverallProgressView;
-}
-
-function clampPercent(value: number): number {
-  return Math.max(0, Math.min(100, value));
 }
 
 function progressPagesForEntry(entry: CalendarEntry): number {
@@ -121,7 +117,7 @@ function progressForBook(
     : Math.min(totalPages, round1(logged.pages));
   const remainingPages = Math.max(0, round1(totalPages - readPages));
   const percent = totalPages
-    ? clampPercent(round1((readPages / totalPages) * 100))
+    ? clamp(round1((readPages / totalPages) * 100), 0, 100)
     : 0;
   const status = progressStatus(Boolean(book?.ignored), readPages, totalPages);
   const label = `${round1(readPages)} / ${round1(totalPages)} pages`;
@@ -198,7 +194,7 @@ function overallProgressFromMap(
   const readPages = progress.reduce((sum, item) => sum + item.readPages, 0);
   const remainingPages = Math.max(0, round1(totalPages - readPages));
   const percent = totalPages
-    ? clampPercent(round1((readPages / totalPages) * 100))
+    ? clamp(round1((readPages / totalPages) * 100), 0, 100)
     : 0;
   const completeBooks = progress.filter(
     (item) => item.status === 'complete',

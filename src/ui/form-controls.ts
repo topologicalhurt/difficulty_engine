@@ -89,17 +89,6 @@ export function selectInput(
   return select;
 }
 
-export function datalistControl(
-  id: string,
-  options: string[],
-): HTMLDataListElement {
-  return el(
-    'datalist',
-    { id },
-    ...options.map((option) => el('option', { value: option })),
-  );
-}
-
 export function textInputControl(
   options: TextControlOptions,
 ): HTMLInputElement {

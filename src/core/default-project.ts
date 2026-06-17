@@ -8,7 +8,6 @@ import { defaultAiModel } from './ai-provider-registry';
 import {
   createDefaultQbittorrentConnectionSettings,
   createDefaultQbittorrentStatus,
-  createDefaultSourceSettings,
 } from './default-source-settings';
 import type {
   AiConnectionSettings,
@@ -18,7 +17,6 @@ import type {
   BookRecord,
   ConstraintSet,
   ReadingScopeSettings,
-  PlannerProjectV1,
   UiState,
   UiPreferences,
 } from './types';
@@ -166,6 +164,7 @@ export function createDefaultAutopilotWizardState(
 const DEFAULT_UI_PREFERENCES: UiPreferences = {
   ganttView: 'plan',
   ganttZoom: 1,
+  calendarLearningMode: 'cognitive_default',
   planColorMode: 'category_mono',
   planSections: {
     gantt: true,
@@ -188,8 +187,10 @@ export const DEFAULT_UI_STATE: UiState = {
   activeView: 'plan',
   selectedBookId: null,
   selectedCalendarEntry: null,
+  calendarWeekIndex: 0,
   ganttView: DEFAULT_UI_PREFERENCES.ganttView,
   ganttZoom: DEFAULT_UI_PREFERENCES.ganttZoom,
+  calendarLearningMode: DEFAULT_UI_PREFERENCES.calendarLearningMode,
   planColorMode: DEFAULT_UI_PREFERENCES.planColorMode,
   planSections: { ...DEFAULT_UI_PREFERENCES.planSections },
   libraryListWidthPx: DEFAULT_UI_PREFERENCES.libraryListWidthPx,
@@ -247,18 +248,6 @@ export const DEFAULT_UI_STATE: UiState = {
   debugUi: false,
   banner: null,
   dialog: null,
-};
-
-export const EMPTY_PROJECT: PlannerProjectV1 = {
-  version: 1,
-  library: { books: {} },
-  enrichmentCache: {},
-  manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
-  constraints: DEFAULT_CONSTRAINTS,
-  aiRecommendationSettings: createDefaultAiRecommendationSettings(),
-  sourceSettings: createDefaultSourceSettings(),
-  readingScopeSettings: createDefaultReadingScopeSettings(),
-  uiPreferences: createDefaultUiPreferences(),
 };
 
 export const EXAMPLE_BOOK: BookRecord = {

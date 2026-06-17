@@ -1,4 +1,5 @@
 import type { AppState } from '../../core/types';
+import { calendarViewModelKeys } from './calendar';
 import { selectRenderableActiveView } from './shell';
 
 function selectedCalendarEntryKey(state: AppState): string {
@@ -6,9 +7,7 @@ function selectedCalendarEntryKey(state: AppState): string {
   return entry ? `${entry.dateKey}:${entry.bookId}` : '';
 }
 
-export function selectActiveTabRenderKeys(
-  state: AppState,
-): readonly unknown[] {
+export function selectActiveTabRenderKeys(state: AppState): readonly unknown[] {
   const activeView = selectRenderableActiveView(state);
   switch (activeView) {
     case 'library':
@@ -35,6 +34,11 @@ export function selectActiveTabRenderKeys(
         state.ui.openConstraintGroups,
         state.ui.selectedConstraintKey,
       ];
+    case 'calendar':
+      // Reuse the calendar view-model's own key set so the render gate and the
+      // memo can't drift: any slice the view-model starts reading is covered
+      // here automatically.
+      return [activeView, ...calendarViewModelKeys(state)];
     case 'ai':
       return [
         activeView,

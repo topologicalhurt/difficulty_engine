@@ -35,6 +35,10 @@ export type ChapterTitleSource =
 export interface ChapterTitleEntry {
   title: string;
   pageStart?: number;
+  /** Index of this entry in the pre-sanitized input array, so callers can
+   *  realign positionally-keyed metadata (e.g. chapterPageRanges) after
+   *  filtering/dedup drops or reorders entries. */
+  sourceIndex?: number;
 }
 
 const MAX_CHAPTER_TITLE_LENGTH = 140;
@@ -222,14 +226,14 @@ export function sanitizeChapterEntries(
   const seen = new Set<string>();
   const chapters: ChapterTitleEntry[] = [];
   const source = options.source ?? 'structured';
-  values.forEach((value) => {
+  values.forEach((value, index) => {
     const title = stripPlainPageSuffix(normalizeChapterTitle(value));
     const key = title.toLowerCase();
     if (!isLikelyChapterTitle(title, source) || seen.has(key)) {
       return;
     }
     seen.add(key);
-    chapters.push({ title, pageStart: numericPageSuffix(value) });
+    chapters.push({ title, pageStart: numericPageSuffix(value), sourceIndex: index });
   });
   return chapters.slice(0, options.limit ?? 80);
 }

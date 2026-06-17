@@ -1,4 +1,24 @@
+import {
+  DAY_MINUTES,
+  MAX_TIME_BLOCK_DURATION_MINUTES,
+  MIN_TIME_BLOCK_DURATION_MINUTES,
+  TIME_BLOCK_GRANULARITY_MINUTES,
+  snapToTimeGrid as snapCalendarMinutes,
+} from '../core/date-constants';
+import {
+  DEFAULT_ACTIVITY_COLOR,
+  normalizeHexColor,
+} from '../core/display-colors';
+import { normalizeWeekdays } from '../core/project-normalize-primitives';
 import type { PlannerProjectV1 } from '../core/types';
+import {
+  DEFAULT_ACTIVITY_DURATION_MINUTES,
+  DEFAULT_ACTIVITY_START_MINUTE,
+} from '../core/project-normalize-overrides';
+
+type CalendarActivityMap = NonNullable<
+  PlannerProjectV1['manualOverrides']['calendarActivities']
+>;
 
 export function removeBookFromDeferred(
   entries: Record<string, string[]>,
@@ -27,6 +47,150 @@ export function removeBookFromActuals(
       })
       .filter(([, byBook]) => Object.keys(byBook).length > 0),
   );
+}
+
+export function removeBookFromTimeBlocks(
+  entries: PlannerProjectV1['manualOverrides']['timeBlocks'],
+  bookId: string,
+): PlannerProjectV1['manualOverrides']['timeBlocks'] {
+  return Object.fromEntries(
+    Object.entries(entries ?? {})
+      .map(([dateKey, byBook]) => {
+        const next = { ...byBook };
+        delete next[bookId];
+        return [dateKey, next] as const;
+      })
+      .filter(([, byBook]) => Object.keys(byBook).length > 0),
+  );
+}
+
+function nextCalendarActivityId(project: PlannerProjectV1): string {
+  const existing = new Set(
+    Object.keys(project.manualOverrides.calendarActivities ?? {}),
+  );
+  let index = existing.size + 1;
+  while (existing.has(`activity-${index}`)) index += 1;
+  return `activity-${index}`;
+}
+
+function normalizeActivityDays(days: number[] | undefined): number[] {
+  // Reuse the canonical weekday normalizer the load/normalize path uses, so the
+  // add-command and a save+reload agree: truncate to integers, keep 0..6,
+  // dedup+sort, and fall back to the work-week when nothing valid remains.
+  return normalizeWeekdays(days, [1, 2, 3, 4, 5]);
+}
+
+function normalizeDailyDurations(
+  days: number[],
+  dailyDurations: Record<string, number> | undefined,
+  fallbackMinutes: number,
+): Record<string, number> {
+  return Object.fromEntries(
+    days.map((day) => {
+      const raw = dailyDurations?.[String(day)] ?? dailyDurations?.[day];
+      const minutes =
+        typeof raw === 'number' && Number.isFinite(raw)
+          ? snapCalendarMinutes(raw)
+          : fallbackMinutes;
+      return [
+        String(day),
+        Math.max(
+          MIN_TIME_BLOCK_DURATION_MINUTES,
+          Math.min(MAX_TIME_BLOCK_DURATION_MINUTES, minutes),
+        ),
+      ];
+    }),
+  );
+}
+
+export function withCalendarActivity(
+  project: PlannerProjectV1,
+  input: Partial<CalendarActivityMap[string]>,
+): PlannerProjectV1 {
+  const activities = project.manualOverrides.calendarActivities ?? {};
+  // Sanitize a supplied id the same way the load/normalize path does, so an
+  // id with special characters round-trips identically and stays addressable
+  // by removeCalendarActivity after a save+reload.
+  const id =
+    (input.id ?? '').trim().replace(/[^a-z0-9_-]/gi, '') ||
+    nextCalendarActivityId(project);
+  const mode =
+    input.mode === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly';
+  const days = normalizeActivityDays(input.days);
+  const durationMinutes = Math.max(
+    MIN_TIME_BLOCK_DURATION_MINUTES,
+    Math.min(
+      MAX_TIME_BLOCK_DURATION_MINUTES,
+      snapCalendarMinutes(
+        input.durationMinutes ?? DEFAULT_ACTIVITY_DURATION_MINUTES,
+      ),
+    ),
+  );
+  const dailyDurations = normalizeDailyDurations(
+    days,
+    input.dailyDurations,
+    durationMinutes,
+  );
+  const sessionsPerWeek = Math.max(
+    1,
+    Math.min(21, Math.round(input.sessionsPerWeek ?? days.length)),
+  );
+  const fixedWeeklyMinutes = days.reduce(
+    (total, day) => total + (dailyDurations[String(day)] ?? durationMinutes),
+    0,
+  );
+  const flexibleWeeklyMinutes = durationMinutes * sessionsPerWeek;
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      calendarActivities: {
+        ...activities,
+        [id]: {
+          id,
+          title: input.title?.trim() || 'Activity',
+          color: normalizeHexColor(input.color, DEFAULT_ACTIVITY_COLOR),
+          mode,
+          days,
+          startMinute: normalizeHourMinute(
+            input.startMinute ?? DEFAULT_ACTIVITY_START_MINUTE,
+          ),
+          durationMinutes,
+          dailyDurations,
+          weeklyMinutes:
+            mode === 'fixed_weekly'
+              ? fixedWeeklyMinutes
+              : flexibleWeeklyMinutes,
+          sessionsPerWeek,
+          rotationStepDays: Math.max(
+            0,
+            Math.min(6, Math.round(input.rotationStepDays ?? 0)),
+          ),
+          rotationIntervalWeeks: Math.max(
+            1,
+            Math.min(12, Math.round(input.rotationIntervalWeeks ?? 1)),
+          ),
+        },
+      },
+    },
+  };
+}
+
+export function withoutCalendarActivity(
+  project: PlannerProjectV1,
+  activityId: string,
+): PlannerProjectV1 {
+  const calendarActivities = {
+    ...(project.manualOverrides.calendarActivities ?? {}),
+  };
+  delete calendarActivities[activityId];
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      calendarActivities,
+    },
+  };
 }
 
 function withoutDeferredBook(
@@ -196,6 +360,69 @@ export function withoutCalendarEntryOverride(
       ...project.manualOverrides,
       actuals,
       deferred: withoutDeferredBook(project, dateKey, bookId),
+    },
+  };
+}
+
+function normalizeHourMinute(value: number): number {
+  return Math.max(
+    0,
+    Math.min(
+      DAY_MINUTES - TIME_BLOCK_GRANULARITY_MINUTES,
+      snapCalendarMinutes(value),
+    ),
+  );
+}
+
+export function withCalendarTimeBlock(
+  project: PlannerProjectV1,
+  dateKey: string,
+  bookId: string,
+  startMinute: number,
+  durationMinutes: number,
+): PlannerProjectV1 {
+  const start = normalizeHourMinute(startMinute);
+  const duration = Math.max(
+    MIN_TIME_BLOCK_DURATION_MINUTES,
+    Math.min(
+      MAX_TIME_BLOCK_DURATION_MINUTES,
+      snapCalendarMinutes(durationMinutes),
+    ),
+  );
+  const timeBlocksByDate = project.manualOverrides.timeBlocks ?? {};
+  const byDate = { ...(timeBlocksByDate[dateKey] ?? {}) };
+  byDate[bookId] = {
+    startMinute: start,
+    durationMinutes: Math.min(duration, DAY_MINUTES - start),
+  };
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      timeBlocks: {
+        ...timeBlocksByDate,
+        [dateKey]: byDate,
+      },
+    },
+  };
+}
+
+export function withoutCalendarTimeBlock(
+  project: PlannerProjectV1,
+  dateKey: string,
+  bookId: string,
+): PlannerProjectV1 {
+  const timeBlocksByDate = project.manualOverrides.timeBlocks ?? {};
+  const byDate = { ...(timeBlocksByDate[dateKey] ?? {}) };
+  delete byDate[bookId];
+  const timeBlocks = { ...timeBlocksByDate };
+  if (Object.keys(byDate).length) timeBlocks[dateKey] = byDate;
+  else delete timeBlocks[dateKey];
+  return {
+    ...project,
+    manualOverrides: {
+      ...project.manualOverrides,
+      timeBlocks,
     },
   };
 }

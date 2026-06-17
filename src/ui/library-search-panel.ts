@@ -30,7 +30,17 @@ function scheduleSearch(store: PlannerStore, query: string): void {
 }
 
 function currentDraft(store: PlannerStore, state: AppState): string {
-  return draftQueries.get(store) ?? state.ui.bookSearchQuery;
+  const draft = draftQueries.get(store);
+  if (draft == null) return state.ui.bookSearchQuery;
+  // Once the committed query catches up with the in-progress draft, stop
+  // shadowing it — otherwise the draft would win forever and hide later
+  // store-driven changes to the search query (e.g. after a search resolves
+  // or the query is cleared by another flow).
+  if (draft === state.ui.bookSearchQuery) {
+    draftQueries.delete(store);
+    return state.ui.bookSearchQuery;
+  }
+  return draft;
 }
 
 function searchHint(query: string): string {

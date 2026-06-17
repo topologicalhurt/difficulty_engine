@@ -20,8 +20,11 @@ const MAX_WARNINGS = 6;
 const MAX_PROJECT_SETTING_SUGGESTIONS = 8;
 const MAX_BOOK_ORDER_REFS = 5000;
 
+const AI_PROMPT_MAX_CHARS = 4000;
+
 export function sanitizeAiPrompt(value: string): string {
-  return normalizeString(value).replace(/\s+/g, ' ');
+  // Collapse whitespace and cap length so no AI path sends an unbounded prompt.
+  return normalizeString(value).replace(/\s+/g, ' ').slice(0, AI_PROMPT_MAX_CHARS);
 }
 
 export function normalizeAiPromptDraft(value: string): string {
@@ -108,10 +111,26 @@ export function normalizeAiRecommendationProposal(
   },
 ): AiRecommendationProposal {
   const rawBooks = Array.isArray(response.books) ? response.books : [];
+  // Disambiguate colliding proposalIds (the model may repeat an id/slug) so
+  // each added book gets a distinct order anchor — otherwise a bookOrder ref
+  // would resolve to only one of them and drop the others' intended position.
+  const seenProposalIds = new Set<string>();
   const books = rawBooks
     .map((entry, index) => normalizeBookProposal(entry, index))
     .filter((entry): entry is AiRecommendedBook => Boolean(entry))
-    .slice(0, meta.maxSuggestions);
+    .slice(0, meta.maxSuggestions)
+    .map((book) => {
+      let uniqueId = book.proposalId;
+      let suffix = 2;
+      while (seenProposalIds.has(uniqueId)) {
+        uniqueId = `${book.proposalId}-${suffix}`;
+        suffix += 1;
+      }
+      seenProposalIds.add(uniqueId);
+      return uniqueId === book.proposalId
+        ? book
+        : { ...book, proposalId: uniqueId };
+    });
   const warnings = normalizeStringArray(response.warnings).slice(
     0,
     MAX_WARNINGS,

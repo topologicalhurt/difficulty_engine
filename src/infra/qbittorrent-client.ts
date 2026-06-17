@@ -1,7 +1,9 @@
 import type {
+  Logger,
   QbittorrentConnectionSettings,
   QbittorrentPluginInfo,
 } from '../core/types';
+import { fetchWithTimeout } from './bridge-fetch';
 import type { DocumentCandidate } from './document-acquisition';
 import {
   bridgeDocumentExists,
@@ -16,6 +18,7 @@ import {
   bridgeDataRootMatchesSavePath,
   DEFAULT_QBITTORRENT_TIMEOUT_MS,
   isAbsoluteStoragePath,
+  parseQbittorrentJsonArray,
   requestQbittorrentApi,
   trimQbittorrentBaseUrl,
 } from './qbittorrent-http';
@@ -40,6 +43,8 @@ export interface QBittorrentProviderOptions {
   timeoutMs?: number;
   metadataPollAttempts?: number;
   metadataPollIntervalMs?: number;
+  /** Optional structured logger for best-effort inventory/search diagnostics. */
+  logger?: Logger;
 }
 
 const DEFAULT_METADATA_POLL_ATTEMPTS = 8;
@@ -112,9 +117,14 @@ export class QBittorrentClient {
     if (isAbsoluteStoragePath(this.options.savePath))
       return this.options.savePath;
     if (this.bridgeDataRoot) return this.bridgeDataRoot;
-    const response = await this.fetchImpl(`${this.baseUrl}/__health`).catch(
-      () => null,
-    );
+    // Time-bound the probe (mirroring every other bridge call) so a wedged
+    // local bridge cannot hang addTorrent/acquisition on this fetch.
+    const response = await fetchWithTimeout(
+      this.fetchImpl,
+      `${this.baseUrl}/__health`,
+      { headers: { Accept: 'application/json' } },
+      this.timeoutMs,
+    ).catch(() => null);
     if (!response?.ok) return this.options.savePath;
     const payload = (await response.json().catch(() => null)) as {
       dataRoot?: string;
@@ -166,13 +176,25 @@ export class QBittorrentClient {
       );
       if (exact) return exact;
     }
+    // No resolvable hash (e.g. an HTTPS .torrent source): match by name, but
+    // only among torrents this app added (its category). Otherwise a short or
+    // generic candidate title (e.g. "Physics") could bind to an unrelated
+    // pre-existing user torrent and we would operate on the wrong files.
+    const category = this.options.category;
+    const scoped = category
+      ? items.filter((item) => String(item.category ?? '') === category)
+      : items;
     const normalizedTitle = candidate.title.toLowerCase();
     return (
-      items.find((item) =>
+      scoped.find(
+        (item) => String(item.name ?? '').toLowerCase() === normalizedTitle,
+      ) ??
+      scoped.find((item) =>
         String(item.name ?? '')
           .toLowerCase()
           .includes(normalizedTitle),
-      ) ?? null
+      ) ??
+      null
     );
   }
 
@@ -197,14 +219,14 @@ export class QBittorrentClient {
 
   async listTorrents(): Promise<TorrentInfo[]> {
     const response = await this.api('/torrents/info');
-    return (await response.json()) as TorrentInfo[];
+    return parseQbittorrentJsonArray<TorrentInfo>(response, '/torrents/info');
   }
 
   async torrentFiles(hash: string): Promise<TorrentFile[]> {
     const response = await this.api(
       `/torrents/files?${new URLSearchParams({ hash }).toString()}`,
     );
-    return (await response.json()) as TorrentFile[];
+    return parseQbittorrentJsonArray<TorrentFile>(response, '/torrents/files');
   }
 
   async setFilePriority(
@@ -294,13 +316,13 @@ export class QBittorrentClient {
   async listPlugins(): Promise<QbittorrentPluginInfo[]> {
     await this.login();
     const response = await this.api('/search/plugins');
-    const items = (await response.json()) as Array<{
+    const items = await parseQbittorrentJsonArray<{
       enabled?: boolean;
       fullName?: string;
       name?: string;
       supportedCategories?: Array<{ id?: string; name?: string }>;
       url?: string;
-    }>;
+    }>(response, '/search/plugins');
     return normalizeQbittorrentPlugins(items);
   }
 

@@ -90,7 +90,11 @@ function compactBook(
 }
 
 function compactRelations(state: AppState): AiRecommendationRelationContext[] {
-  return state.snapshot.relations
+  // Copy before sorting: Array.prototype.sort mutates in place, and
+  // state.snapshot.relations is the shared engine snapshot that selectors read
+  // in engine order. Sorting it directly would silently reorder rendered graph
+  // edges and library relations every time AI context is built.
+  return [...state.snapshot.relations]
     .sort(
       (left, right) =>
         left.from.localeCompare(right.from) ||

@@ -1,26 +1,27 @@
 import type { EnrichmentRequest } from '../core/types';
 import { normalizedIsbn } from '../core/isbn';
 
-function sorted(values: string[]): string[] {
-  return [...values].sort();
-}
-
 function sourceMaskKey(request: EnrichmentRequest): string {
+  const qbittorrent = request.sourceSettings.qbittorrent;
   return JSON.stringify({
     metadataSources: request.sourceSettings.metadataSources,
     documentSources: request.sourceSettings.documentSources,
     contentPreference: request.sourceSettings.contentPreference,
     qbittorrent: {
-      ...request.sourceSettings.qbittorrent,
-      allowedPlugins: sorted(request.sourceSettings.qbittorrent.allowedPlugins),
-      allowedSites: sorted(request.sourceSettings.qbittorrent.allowedSites),
-      categories: sorted(request.sourceSettings.qbittorrent.categories),
+      ...qbittorrent,
+      allowedPlugins: [...qbittorrent.allowedPlugins].sort(),
+      allowedSites: [...qbittorrent.allowedSites].sort(),
+      categories: [...qbittorrent.categories].sort(),
     },
+    // Only whether qBittorrent is enabled participates in cache identity.
+    // baseUrl/savePath/category are connection-only (they don't change the
+    // metadata enrichment result; document state is fingerprinted separately
+    // in documentCacheKey). Keeping them out of the key prevents the absolute
+    // local savePath from being persisted into enrichmentCache[*].cacheKey and
+    // exported in project JSON, and stops benign connection edits from
+    // invalidating every cached enrichment entry.
     qbittorrentConnection: {
       enabled: Boolean(request.qbittorrentConnection?.enabled),
-      baseUrl: request.qbittorrentConnection?.baseUrl ?? '',
-      savePath: request.qbittorrentConnection?.savePath ?? '',
-      category: request.qbittorrentConnection?.category ?? '',
     },
     bridgeDocuments: request.skipBridgeDocuments ? 'metadata-only' : 'enabled',
   });

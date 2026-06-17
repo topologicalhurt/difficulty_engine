@@ -13,6 +13,7 @@ import {
   rankAndLimitCandidateQueue,
 } from './document-candidate-queue';
 import {
+  availabilityHasLiveDownloadActivity,
   candidateHasLiveAvailability,
   candidateHasPositiveDownloadEvidence,
   candidateRankingSeeders,
@@ -112,14 +113,9 @@ function isUnavailable(
   if (!value) return false;
   if (USER_PAUSED_STATE_PATTERN.test(value.state ?? '')) return false;
   const progress = value.progress ?? 0;
-  const seeders = value.seeders ?? 0;
-  const availability = value.availability ?? 0;
-  const speed = value.downloadSpeedBytesPerSecond ?? 0;
   return (
     progress < 1 &&
-    seeders <= 0 &&
-    availability <= 0 &&
-    speed <= 0 &&
+    !availabilityHasLiveDownloadActivity(value) &&
     STALLED_STATE_PATTERN.test(value.state ?? '')
   );
 }
@@ -326,15 +322,27 @@ export function mergeDocumentCandidateQueue(
     const queuedAt = candidate.queuedAt ?? now;
     const lastSeenAt = isFresh ? now : (candidate.lastSeenAt ?? queuedAt);
     const penalty = entry?.penalty ?? 0;
-    const baseQuality =
-      candidate.qualityScore == null
-        ? fallbackCandidateQuality(candidate)
-        : candidate.qualityScore + (candidate.greylistPenalty ?? 0);
+    // Prefer the persisted intrinsic base. Falling back to
+    // qualityScore + greylistPenalty only works while the prior penalty did not
+    // clamp qualityScore to 0; once it did, that sum recovers the penalty, not
+    // the (lower) true base, and re-evaluation would inflate the score.
+    const baseQuality = Math.max(
+      0,
+      Math.min(
+        1,
+        candidate.baseQualityScore != null
+          ? candidate.baseQualityScore
+          : candidate.qualityScore == null
+            ? fallbackCandidateQuality(candidate)
+            : candidate.qualityScore + (candidate.greylistPenalty ?? 0),
+      ),
+    );
     const queued: BookDocumentCandidateOption = {
       ...candidate,
       greylistKey: key,
       greylistPenalty: penalty,
       greylistReason: entry?.lastReason,
+      baseQualityScore: baseQuality,
       qualityScore: Math.max(0, baseQuality - penalty),
       retryable: true,
       queuedAt,
@@ -462,6 +470,10 @@ export function normalizeDocumentAcquisitionState(
         greylistKey: key,
         greylistPenalty: penalty,
         greylistReason: normalizedGreylist[key]?.lastReason,
+        baseQualityScore:
+          candidate.baseQualityScore == null
+            ? undefined
+            : Math.max(0, Math.min(1, candidate.baseQualityScore)),
         qualityScore: Math.max(0, candidate.qualityScore ?? 0),
         retryable: candidate.retryable ?? true,
       };

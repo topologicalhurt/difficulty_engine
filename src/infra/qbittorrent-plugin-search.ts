@@ -50,7 +50,7 @@ async function runLimited<T>(
   return results;
 }
 
-function emptySearchResult(): PluginSearchCandidateResult {
+export function emptySearchResult(): PluginSearchCandidateResult {
   return { candidates: [], blockedCandidates: [], searchAttempts: [] };
 }
 

@@ -1,5 +1,21 @@
 import { clamp } from './utils';
 
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+
+/** Canonical #rrggbb fallback for calendar activity blocks. */
+export const DEFAULT_ACTIVITY_COLOR = '#4fb3ff';
+
+/**
+ * Validate a #rrggbb color string, trimming surrounding whitespace first so the
+ * add/edit and load/normalize paths agree, and falling back when invalid.
+ */
+export function normalizeHexColor(value: unknown, fallback: string): string {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  return HEX_COLOR_PATTERN.test(normalized)
+    ? normalized.toLowerCase()
+    : fallback;
+}
+
 const FLAT_RANGE_EPSILON = 1e-9;
 const NEUTRAL_RANGE_PERCENT = 0.5;
 const DEFAULT_GROUP_HUE_START = 0;

@@ -24,6 +24,7 @@ function renderPlanColorSelect(
     {
       className: 'select-input plan-color-select',
       ariaLabel: 'Plan color mode',
+      focusKey: 'plan:colorMode',
       onChange: (event) => {
         store.commands.setPlanColorMode(
           (event.target as HTMLSelectElement).value as PlanColorMode,
@@ -46,6 +47,7 @@ function renderEmptyDayPolicySelect(
     {
       className: 'select-input plan-fill-select',
       ariaLabel: 'Empty day behavior',
+      focusKey: 'plan:emptyDayPolicy',
       onChange: (event) => {
         store.commands.updateConstraint(
           'emptyDayPolicy',

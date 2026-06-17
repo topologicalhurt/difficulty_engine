@@ -67,6 +67,11 @@ export interface BookDocumentCandidateOption {
   availabilitySource?: BookDocumentAvailabilitySource;
   matchScore?: number;
   qualityScore?: number;
+  // The intrinsic quality before any greylist penalty is subtracted. Persisted
+  // so re-evaluation can re-derive the penalized qualityScore from the true
+  // base — reconstructing it as qualityScore + greylistPenalty loses
+  // information whenever a prior penalty had clamped qualityScore to 0.
+  baseQualityScore?: number;
   qualityReason?: string;
   greylistKey?: string;
   greylistPenalty?: number;

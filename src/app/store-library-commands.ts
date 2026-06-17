@@ -9,6 +9,7 @@ import type {
 import {
   removeBookFromActuals,
   removeBookFromDeferred,
+  removeBookFromTimeBlocks,
 } from './calendar-overrides';
 import {
   bookFromSuggestion,
@@ -198,6 +199,10 @@ export function createLibraryCommands(
           ),
           actuals: removeBookFromActuals(
             state.project.manualOverrides.actuals,
+            id,
+          ),
+          timeBlocks: removeBookFromTimeBlocks(
+            state.project.manualOverrides.timeBlocks,
             id,
           ),
         },

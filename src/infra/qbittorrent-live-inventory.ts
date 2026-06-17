@@ -72,6 +72,10 @@ export interface QbittorrentBookInventoryMatch {
   candidate: DocumentCandidate;
 }
 
+// Cap per-torrent file processing: torrent metadata (file list) is
+// attacker-authored, and the eligibility/evidence passes run regex work per
+// file, so a crafted torrent with a huge file list must not amplify CPU.
+const MAX_TORRENT_FILES = 2000;
 const PAUSED_STATE_PATTERN = /(?:paused|stopped|queued)/i;
 const METADATA_PENDING_STATE_PATTERN = /(?:metaDL|checkingResumeData)/i;
 const LIVE_STALLED_STATE_PATTERN = /(?:stalledDL|error|missingFiles|unknown)/i;
@@ -120,7 +124,7 @@ export function normalizeLiveTorrent(
   info: TorrentInfo,
   files: TorrentFile[] = [],
 ): QbittorrentLiveTorrent {
-  const normalizedFiles = files.map(normalizeLiveFile);
+  const normalizedFiles = files.slice(0, MAX_TORRENT_FILES).map(normalizeLiveFile);
   const availability = torrentAvailability(info);
   const sourceUrl = torrentSourceUrl(info);
   return {

@@ -41,7 +41,15 @@ export function runConfirmableAction(
     options.id,
     now + (options.windowMs ?? DEFAULT_CONFIRMATION_WINDOW_MS),
   );
-  registerDialogAction(store, options.id, 'confirm', options.action);
+  // Clear the re-click window whenever the dialog resolves, so neither the
+  // Confirm button nor Cancel leaves the action armed for a stray second click.
+  registerDialogAction(store, options.id, 'confirm', () => {
+    pendingConfirmations(store).delete(options.id);
+    options.action();
+  });
+  registerDialogAction(store, options.id, 'cancel', () => {
+    pendingConfirmations(store).delete(options.id);
+  });
   store.commands.setDialog({
     id: options.id,
     title: options.title ?? 'Confirm action',

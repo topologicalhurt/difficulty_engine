@@ -64,16 +64,34 @@ export function candidatePeersForDisplay(
   );
 }
 
+// Canonical "this torrent has live download activity" check (peers/seeders/
+// availability/speed). Shared by stall detection, greylist availability, and
+// candidate evidence so the threshold arithmetic can't drift between them.
+export function availabilityHasLiveDownloadActivity(
+  availability:
+    | {
+        seeders?: number | null;
+        availability?: number | null;
+        downloadSpeedBytesPerSecond?: number | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  return (
+    (availability?.seeders ?? 0) > 0 ||
+    (availability?.availability ?? 0) > 0 ||
+    (availability?.downloadSpeedBytesPerSecond ?? 0) > 0
+  );
+}
+
 export function candidateHasPositiveDownloadEvidence(
   candidate: DocumentCandidateAvailabilityLike,
 ): boolean {
   const availability = candidate.availability;
   if (candidateHasLiveAvailability(candidate)) {
-    return Boolean(
-      (availability?.seeders ?? 0) > 0 ||
-        (availability?.availability ?? 0) > 0 ||
-        (availability?.downloadSpeedBytesPerSecond ?? 0) > 0 ||
-        (availability?.progress ?? 0) >= 1,
+    return (
+      availabilityHasLiveDownloadActivity(availability) ||
+      (availability?.progress ?? 0) >= 1
     );
   }
   return (candidateSearchSeeders(candidate) ?? 0) > 0;

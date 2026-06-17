@@ -5,16 +5,15 @@ import {
 } from '../core/source-settings-policy';
 import type { AcquiredDocument } from './document-acquisition';
 import { isoTimestamp } from './cache-time';
-import { bridgeDocumentEndpoint } from './document-bridge-url';
 import { extractDocumentChapters } from './document-text-extractor';
 import {
+  readBridgeByteDocument,
+  readBridgeTextDocument,
   requestBridgeEmbeddedPdfText,
   requestBridgePdfStructure,
   requestBridgeOcrToc,
 } from './qbittorrent-document-api';
 
-const DOCUMENT_TEXT_ENDPOINT = '/documents/read-text';
-const DOCUMENT_BYTES_ENDPOINT = '/documents/read-bytes';
 const MIN_OCR_TOC_CONFIDENCE = 0.65;
 const REUSABLE_DOCUMENT_STATUSES = new Set<BookDocumentRef['status']>([
   'complete',
@@ -36,40 +35,6 @@ function canReuseDocument(
   return TEXT_KINDS.has(document.contentKind) || document.contentKind === 'pdf';
 }
 
-async function readBridgeText(
-  fetchImpl: typeof fetch,
-  baseUrl: string,
-  storagePath: string,
-  signal?: AbortSignal,
-): Promise<string | undefined> {
-  const response = await fetchImpl(
-    bridgeDocumentEndpoint(baseUrl, DOCUMENT_TEXT_ENDPOINT, storagePath),
-    {
-      headers: { Accept: 'text/plain' },
-      signal,
-    },
-  );
-  if (!response.ok) return undefined;
-  const text = await response.text();
-  return text.trim() ? text : undefined;
-}
-
-async function readBridgeBytes(
-  fetchImpl: typeof fetch,
-  baseUrl: string,
-  storagePath: string,
-  signal?: AbortSignal,
-): Promise<Uint8Array | undefined> {
-  const response = await fetchImpl(
-    bridgeDocumentEndpoint(baseUrl, DOCUMENT_BYTES_ENDPOINT, storagePath),
-    {
-      headers: { Accept: 'application/pdf,application/octet-stream' },
-      signal,
-    },
-  );
-  return response.ok ? new Uint8Array(await response.arrayBuffer()) : undefined;
-}
-
 export async function loadCompletedDocumentRefs(
   request: EnrichmentRequest,
   fetchImpl: typeof fetch,
@@ -83,17 +48,18 @@ export async function loadCompletedDocumentRefs(
   const acquired: AcquiredDocument[] = [];
   for (const document of documents) {
     try {
-      const text = TEXT_KINDS.has(document.contentKind)
-        ? await readBridgeText(
+      const rawText = TEXT_KINDS.has(document.contentKind)
+        ? await readBridgeTextDocument(
             fetchImpl,
             baseUrl,
             document.storagePath,
             request.signal,
           ).catch(() => undefined)
         : undefined;
+      const text = rawText && rawText.trim() ? rawText : undefined;
       const bytes =
         document.contentKind === 'pdf'
-          ? await readBridgeBytes(
+          ? await readBridgeByteDocument(
               fetchImpl,
               baseUrl,
               document.storagePath,

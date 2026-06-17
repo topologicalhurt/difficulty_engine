@@ -1,4 +1,8 @@
-const PDF_TITLE_PATTERN = /\/Title\s*\(([^)]{4,180})\)/g;
+// decodePdfBytes unescapes \( \) before this runs, so a title can contain one
+// level of literal nested parens, e.g. "Chapter 1 (Intro) Signals". Allow a
+// balanced (...) group (and any escape, defensively) in the body so the title
+// is captured in full instead of truncating at the first inner ')'.
+const PDF_TITLE_PATTERN = /\/Title\s*\(((?:\\.|\([^()]*\)|[^()\\]){4,180})\)/g;
 const PDF_HEX_TITLE_PATTERN = /\/Title\s*<([0-9a-f\s]{8,360})>/gi;
 const PDF_OUTLINE_SCAN_CHARS = 260_000;
 const OUTLINE_MARKER_PATTERN =

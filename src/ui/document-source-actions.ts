@@ -1,7 +1,6 @@
 import type {
   BookDocumentAvailability,
   BookDocumentBlockedCandidateOption,
-  BookDocumentRef,
 } from '../core/types';
 import { isSafeTorrentSource } from '../core/document-source-safety';
 
@@ -20,13 +19,4 @@ export function blockedCandidateCanBeAdded(
     candidate.retryableAsUserOwned === true ||
     isSafeTorrentSource(candidate.sourceUrl)
   );
-}
-
-export function documentSourceForRefresh(document: BookDocumentRef): string {
-  if (document.sourceUrl && isSafeTorrentSource(document.sourceUrl)) {
-    return document.sourceUrl;
-  }
-  return document.torrentHash
-    ? `magnet:?xt=urn:btih:${document.torrentHash}`
-    : '';
 }

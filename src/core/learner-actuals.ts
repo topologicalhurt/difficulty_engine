@@ -309,7 +309,15 @@ function entriesForEpochTarget(
       const dates = new Set(epoch.dateKeys);
       const books = new Set(epoch.bookIds);
       entries.forEach((entry) => {
-        if (dates.has(entry.dateKey) && books.has(entry.bookId)) {
+        // Leave-one-out: the pooled group for a target is built from its
+        // cohort PEERS only. Including the target's own entries would
+        // double-count its measured pace (book-local lift + group lift derived
+        // partly from the same book), over-correcting its scheduleDifficulty.
+        if (
+          entry.bookId !== targetBookId &&
+          dates.has(entry.dateKey) &&
+          books.has(entry.bookId)
+        ) {
           selected.push(entry);
         }
       });
@@ -327,17 +335,6 @@ export function buildLearnerActualsEvidence(input: {
   const entries = actualEntries(input.project);
   const epochs = buildStudyEpochs(input.byDate, input.project.constraints.par);
   const byBookId: Record<string, LearnerActualsForBook> = {};
-  const projectGroup =
-    mode === 'project_partial_pooling'
-      ? summarizeGroupEvidence({
-          mode,
-          entries: entries.filter((entry) =>
-            input.activeBookIds.includes(entry.bookId),
-          ),
-          expectedDifficultyByBook: input.expectedDifficultyByBook,
-          project: input.project,
-        })
-      : null;
 
   input.activeBookIds.forEach((bookId) => {
     const book = bookEvidence(
@@ -346,6 +343,10 @@ export function buildLearnerActualsEvidence(input: {
       input.expectedDifficultyByBook,
       input.project,
     );
+    // Both pooling modes build a leave-one-out group (the target's own entries
+    // are excluded) so a book that also has direct evidence is not corrected
+    // twice by its own logged pace. A lone logged book therefore pools into
+    // nothing, honoring "one book read ahead must not recalibrate the plan".
     const group =
       mode === 'epoch_partial_pooling'
         ? summarizeGroupEvidence({
@@ -354,7 +355,18 @@ export function buildLearnerActualsEvidence(input: {
             expectedDifficultyByBook: input.expectedDifficultyByBook,
             project: input.project,
           })
-        : projectGroup ?? disabledGroupEvidence(mode);
+        : mode === 'project_partial_pooling'
+          ? summarizeGroupEvidence({
+              mode,
+              entries: entries.filter(
+                (entry) =>
+                  entry.bookId !== bookId &&
+                  input.activeBookIds.includes(entry.bookId),
+              ),
+              expectedDifficultyByBook: input.expectedDifficultyByBook,
+              project: input.project,
+            })
+          : disabledGroupEvidence(mode);
     byBookId[bookId] = { book, group };
   });
 

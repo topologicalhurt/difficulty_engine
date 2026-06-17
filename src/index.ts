@@ -6,14 +6,12 @@ export { createEnrichmentClient } from './infra/enrichment-client';
 export { createLocalIntegrationSettings } from './infra/local-integration-settings';
 export {
   choosePreferredDocumentCandidate,
+  createQBittorrentIntegrationService,
+  createQBittorrentProvider,
   defaultDocumentAcquisitionPolicy,
   disabledDocumentAcquisitionProvider,
   isLawfulDocumentCandidate,
-} from './infra/document-acquisition';
-export {
-  createQBittorrentIntegrationService,
-  createQBittorrentProvider,
-} from './infra/qbittorrent-provider';
+} from './infra/documents';
 export type {
   AcquiredDocument,
   DocumentAccessBasis,
@@ -23,5 +21,5 @@ export type {
   DocumentCandidate,
   DocumentContentKind,
   DocumentStorageAdapter,
-} from './infra/document-acquisition';
+} from './infra/documents';
 export type * from './core/types';

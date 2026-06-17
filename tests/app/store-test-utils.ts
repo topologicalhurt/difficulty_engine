@@ -148,7 +148,13 @@ export function makeProject(
     library: {
       books: options.books ?? { 'book-1': makeBook() },
     },
-    manualOverrides: { schedule: {}, deferred: {}, actuals: {} },
+    manualOverrides: {
+      schedule: {},
+      deferred: {},
+      actuals: {},
+      timeBlocks: {},
+      calendarActivities: {},
+    },
     constraints: {
       ...DEFAULT_CONSTRAINTS,
       sd: '2026-01-05',

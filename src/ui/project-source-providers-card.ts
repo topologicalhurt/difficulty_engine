@@ -1,13 +1,13 @@
 import type {
   ProjectViewModel,
-  ProjectSourceProviderRow,
+  SourceProviderRow,
 } from '../app/selectors/project';
 import type { PlannerStore, SourceSettings } from '../core/types';
 import { card, el } from './dom';
 import { sourceCheckbox } from './project-view-controls';
 
 function sourceProviderPatch(
-  row: ProjectSourceProviderRow,
+  row: SourceProviderRow,
   sourceSettings: SourceSettings,
   checked: boolean,
 ): Partial<SourceSettings> {

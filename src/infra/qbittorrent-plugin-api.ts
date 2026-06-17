@@ -1,4 +1,7 @@
 import type { QbittorrentPluginInfo } from '../core/types';
+import {
+  parseQbittorrentJsonObject,
+} from './qbittorrent-http';
 import type { SearchResultsResponse } from './qbittorrent-types';
 
 export type QbittorrentApi = (
@@ -67,7 +70,10 @@ export async function startQbittorrentSearch(
     body,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   });
-  const payload = (await response.json()) as { id?: number };
+  const payload = await parseQbittorrentJsonObject<{ id?: number }>(
+    response,
+    '/search/start',
+  );
   return payload.id ?? null;
 }
 
@@ -84,7 +90,10 @@ export async function readQbittorrentSearchResults(
       offset: String(offset),
     }).toString()}`,
   );
-  return (await response.json()) as SearchResultsResponse;
+  return parseQbittorrentJsonObject<SearchResultsResponse>(
+    response,
+    '/search/results',
+  );
 }
 
 export async function deleteQbittorrentSearch(

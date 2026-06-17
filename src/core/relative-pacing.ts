@@ -68,11 +68,17 @@ function pageTargetBindingReason(input: {
   maxFeasible: number;
   maxPg: number;
   slotTimeBound: number;
+  dayTimeBound: number;
   evidenceConfidence: number;
 }): PacingBindingReason {
   if (input.evidenceConfidence < 0.35) return 'insufficient_evidence';
-  if (input.maxFeasible < input.floor) {
-    return input.slotTimeBound < input.floor ? 'parallel_slot' : 'time_bound';
+  if (input.slotTimeBound < input.floor) {
+    // A single parallel slot's time budget cannot fit even the page floor.
+    // If the *whole-day* budget also cannot fit the floor, the binding cause is
+    // the time budget; otherwise the parallel split is what binds. (Comparing
+    // against slotTimeBound alone would always read as parallel_slot, leaving
+    // the time_bound case unreachable.)
+    return input.dayTimeBound < input.floor ? 'time_bound' : 'parallel_slot';
   }
   if (input.desired < input.floor && input.final >= input.floor) {
     return 'floor_bound';
@@ -163,6 +169,7 @@ export function computeRelativePacingTargets(
             maxFeasible,
             maxPg: bounds.maxPg,
             slotTimeBound,
+            dayTimeBound,
             evidenceConfidence,
           }),
         },

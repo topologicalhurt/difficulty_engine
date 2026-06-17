@@ -1,5 +1,6 @@
-import type { BookRecord, PlannerProjectV1 } from '../core/types';
+import type { PlannerProjectV1 } from '../core/types';
 import { unique } from '../core/utils';
+import { cloneBookForEdit } from './store-helpers';
 
 export interface BookRelationPatch {
   manualPrereqs?: string[];
@@ -17,24 +18,6 @@ function validLinkedIds(
     .sort();
 }
 
-function cloneBook(book: BookRecord): BookRecord {
-  return {
-    ...book,
-    authors: [...book.authors],
-    subjects: [...book.subjects],
-    manualPrereqs: [...book.manualPrereqs],
-    manualCoStudy: [...book.manualCoStudy],
-    enrichment: {
-      ...book.enrichment,
-      chapters: [...book.enrichment.chapters],
-      olSubjects: [...book.enrichment.olSubjects],
-      provenance: book.enrichment.provenance
-        ? { ...book.enrichment.provenance }
-        : undefined,
-    },
-  };
-}
-
 export function withBookRelationPatch(
   project: PlannerProjectV1,
   sourceId: string,
@@ -44,7 +27,7 @@ export function withBookRelationPatch(
   const books = Object.fromEntries(
     Object.entries(project.library.books).map(([id, book]) => [
       id,
-      cloneBook(book),
+      cloneBookForEdit(book),
     ]),
   );
   const source = books[sourceId];

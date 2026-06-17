@@ -1,3 +1,4 @@
+import { clampZoom } from '../core/utils';
 import { button, el, panel } from './dom';
 import { formatPercent } from './format';
 
@@ -23,8 +24,8 @@ function stateFor(id: string): GraphViewportState {
   return initial;
 }
 
-function clampZoom(zoom: number): number {
-  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(zoom * 100) / 100));
+function clampViewportZoom(zoom: number): number {
+  return clampZoom(zoom, MIN_ZOOM, MAX_ZOOM);
 }
 
 function applyTransform(content: HTMLElement, state: GraphViewportState): void {
@@ -48,7 +49,7 @@ function attachPanZoom(
 
   frame.addEventListener('wheel', (event) => {
     event.preventDefault();
-    const nextZoom = clampZoom(
+    const nextZoom = clampViewportZoom(
       state.zoom + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP),
     );
     if (nextZoom === state.zoom) {
@@ -138,12 +139,12 @@ export function renderInteractiveGraphCard(
       el('div', { className: 'detail-spacer' }),
       viewportButton('Fit', reset),
       viewportButton('−', () => {
-        state.zoom = clampZoom(state.zoom - ZOOM_STEP);
+        state.zoom = clampViewportZoom(state.zoom - ZOOM_STEP);
         refresh();
       }),
       zoomButton,
       viewportButton('+', () => {
-        state.zoom = clampZoom(state.zoom + ZOOM_STEP);
+        state.zoom = clampViewportZoom(state.zoom + ZOOM_STEP);
         refresh();
       }),
     ),

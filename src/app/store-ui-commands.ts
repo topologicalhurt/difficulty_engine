@@ -9,6 +9,7 @@ import {
   PLAN_ZOOM_MIN,
   clampLibraryListWidth,
 } from '../core/constants';
+import { clampZoom } from '../core/utils';
 import type { StoreCommandContext } from './store-command-context';
 import type { WiringContractId } from './wiring/contracts';
 
@@ -21,10 +22,12 @@ export function createUiCommands(
   | 'setActiveView'
   | 'selectBook'
   | 'selectCalendarEntry'
+  | 'setCalendarWeekIndex'
   | 'setBanner'
   | 'setDialog'
   | 'setGanttView'
   | 'setGanttZoom'
+  | 'setCalendarLearningMode'
   | 'setPlanColorMode'
   | 'setPlanSectionOpen'
   | 'setLibraryListWidth'
@@ -71,6 +74,11 @@ export function createUiCommands(
         selectedCalendarEntry: { dateKey, bookId },
       });
     },
+    setCalendarWeekIndex(index: number): void {
+      context.commitUi('ui.calendarWeekIndex', {
+        calendarWeekIndex: Math.max(0, Math.round(index)),
+      });
+    },
     setBanner(banner: UiState['banner']): void {
       context.commitUi('ui.banner', { banner });
     },
@@ -81,14 +89,18 @@ export function createUiCommands(
       commitUiPreference('ui.ganttView', { ganttView }, { ganttView });
     },
     setGanttZoom(ganttZoom: number): void {
-      const nextZoom = Math.max(
-        PLAN_ZOOM_MIN,
-        Math.min(PLAN_ZOOM_MAX, Math.round(ganttZoom * 100) / 100),
-      );
+      const nextZoom = clampZoom(ganttZoom, PLAN_ZOOM_MIN, PLAN_ZOOM_MAX);
       commitUiPreference(
         'ui.ganttZoom',
         { ganttZoom: nextZoom },
         { ganttZoom: nextZoom },
+      );
+    },
+    setCalendarLearningMode(mode): void {
+      commitUiPreference(
+        'ui.calendarLearningMode',
+        { calendarLearningMode: mode },
+        { calendarLearningMode: mode },
       );
     },
     setPlanColorMode(planColorMode: UiState['planColorMode']): void {

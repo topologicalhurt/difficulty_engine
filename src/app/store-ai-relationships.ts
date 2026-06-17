@@ -2,6 +2,7 @@ import {
   normalizeAiRelationshipProposal,
   normalizeAiRelationshipWizard,
 } from '../core/ai-relationships';
+import { sanitizeAiPrompt } from '../core/ai-recommendations';
 import type {
   CreatePlannerStoreOptions,
   PlannerStoreCommands,
@@ -42,17 +43,11 @@ export function createAiRelationshipCommands(
           state.ui.aiRelationshipWizard,
         ),
         aiRelationshipProposal: null,
-        aiRelationshipStatus: requestWasLoading
-          ? {
-              state: 'idle',
-              message:
-                'Relationship wizard changed. Request a new progression proposal.',
-            }
-          : {
-              state: 'idle',
-              message:
-                'Relationship wizard changed. Request a new progression proposal.',
-            },
+        aiRelationshipStatus: {
+          state: 'idle',
+          message:
+            'Relationship wizard changed. Request a new progression proposal.',
+        },
       });
     },
     async requestAiRelationshipReorganization(): Promise<void> {
@@ -121,7 +116,7 @@ export function createAiRelationshipCommands(
           wizard,
           settings: state.project.aiRecommendationSettings,
           clarifications: state.ui.aiClarificationMessages,
-          prompt: state.ui.aiPrompt,
+          prompt: sanitizeAiPrompt(state.ui.aiPrompt),
         });
         if (!requests.isCurrent(requestSequence)) return;
         const currentState = context.getState();

@@ -6,10 +6,7 @@ import type {
   BookDocumentBlockedCandidateOption,
   QbittorrentSearchIntent,
 } from '../core/types';
-import {
-  authorAppearsInText,
-  isbnAppearsInText,
-} from '../core/matchers';
+import { authorAppearsInText, isbnAppearsInText } from '../core/matchers';
 import { isSafeTorrentSource } from '../core/document-source-safety';
 import type { QbittorrentPluginInfo } from '../core/types';
 import { currentIsoTimestamp } from '../core/time';
@@ -63,13 +60,15 @@ function sourceUrl(result: SearchResult): string {
   return result.fileUrl ?? result.descrLink ?? '';
 }
 
+// Plugin results are scraped from arbitrary third-party indexers, so a single
+// field can be arbitrarily large. Clamp each before the matcher passes
+// (NFKD-normalize + several regex passes + token sets) to bound CPU per result.
+const MAX_EVIDENCE_FIELD_CHARS = 512;
+
 function searchResultEvidenceText(result: SearchResult): string {
-  return [
-    result.fileName,
-    result.fileUrl,
-    result.descrLink,
-    result.siteUrl,
-  ].join(' ');
+  return [result.fileName, result.fileUrl, result.descrLink, result.siteUrl]
+    .map((value) => (value ?? '').slice(0, MAX_EVIDENCE_FIELD_CHARS))
+    .join(' ');
 }
 
 function hasRequiredAuthorEvidence(
@@ -129,6 +128,18 @@ function searchResultSourceIsAllowed(
   );
 }
 
+// Title evidence is the filename (or the book title), capped to a bounded
+// length so attacker-authored metadata can't blow up the matcher passes.
+function evidenceTitle(
+  result: SearchResult,
+  request: DocumentAcquisitionRequest,
+): string {
+  return (result.fileName || request.book.title).slice(
+    0,
+    MAX_EVIDENCE_FIELD_CHARS,
+  );
+}
+
 function blockedCandidate(
   result: SearchResult,
   request: DocumentAcquisitionRequest,
@@ -136,7 +147,7 @@ function blockedCandidate(
   reasons: string[],
   meta: { intent?: QbittorrentSearchIntent; pattern?: string; plugin?: string },
 ): BookDocumentBlockedCandidateOption | null {
-  const title = result.fileName || request.book.title;
+  const title = evidenceTitle(result, request);
   const url = sourceUrl(result);
   if (!url && !title) return null;
   const seeders = seedersFromSearchResult(result);
@@ -148,7 +159,6 @@ function blockedCandidate(
     plugin: meta.plugin,
     pattern: meta.pattern,
   };
-  const numericSeeders = seeders ?? 0;
   const matchScore = bookMatchScore(title, request);
   const contentKind = contentKindFromUrl(title || url);
   const retryableAsUserOwned =
@@ -159,7 +169,10 @@ function blockedCandidate(
     !reasons.includes('plugin error') &&
     !reasons.includes('missing distinctive title token') &&
     isSafeTorrentSource(url) &&
-    numericSeeders >= MIN_PLUGIN_SEEDERS &&
+    // Unknown (null) seeders must not read as zero — consistent with not
+    // blocking unknown-seeder results as "zero seeders". Only a KNOWN count
+    // below the floor disqualifies the retry path.
+    (seeders == null || seeders >= MIN_PLUGIN_SEEDERS) &&
     matchScore >= MIN_USER_OWNED_RETRY_SCORE &&
     hasRequiredAuthorEvidence(result, request) &&
     !BAD_FILE_NAME_PATTERN.test(title);
@@ -207,7 +220,7 @@ export function classifySearchResults(
   const candidates: DocumentCandidate[] = [];
   const blockedCandidates: BookDocumentBlockedCandidateOption[] = [];
   results.forEach((result, index) => {
-    const title = result.fileName || request.book.title;
+    const title = evidenceTitle(result, request);
     const detectedContentKind = contentKindFromUrl(title || sourceUrl(result));
     const seeders = seedersFromSearchResult(result);
     const peers = peersFromSearchResult(result);
@@ -240,7 +253,7 @@ export function classifySearchResults(
       searchResultLooksNonPdfOnly(result)
         ? 'qBittorrent document acquisition requires PDF files'
         : '',
-      numericSeeders < MIN_PLUGIN_SEEDERS ? 'zero seeders' : '',
+      seeders != null && seeders < MIN_PLUGIN_SEEDERS ? 'zero seeders' : '',
       matchScore < MIN_TORRENT_MATCH_SCORE ? 'weak title match' : '',
       !hasRequiredQbittorrentTitleEvidence(
         searchResultEvidenceText(result),

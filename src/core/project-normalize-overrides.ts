@@ -1,14 +1,33 @@
-import type { PlannerProjectV1 } from './types';
+import {
+  DAY_MINUTES,
+  MAX_TIME_BLOCK_DURATION_MINUTES,
+  MIN_TIME_BLOCK_DURATION_MINUTES,
+  TIME_BLOCK_GRANULARITY_MINUTES,
+  snapToTimeGrid,
+} from './date-constants';
+import { DEFAULT_ACTIVITY_COLOR, normalizeHexColor } from './display-colors';
+import type { CalendarActivityMode, PlannerProjectV1 } from './types';
 import { unique } from './utils';
 import {
   normalizeBoolean,
   normalizeDateKey,
   normalizeNumber,
+  normalizeString,
   normalizeStringArray,
+  normalizeWeekdays,
 } from './project-normalize-primitives';
 
 const MAX_ACTUAL_MINUTES_PER_ENTRY = 24 * 60;
 const MAX_ACTUAL_PAGES_PER_ENTRY = 10000;
+// Shared activity defaults so the add/edit command path and the load/normalize
+// path agree. Previously a missing startMinute defaulted to 18:00 when added
+// but 00:00 on reload, and durationMinutes to 120 vs 30 — silently changing an
+// imported/AI-authored activity's placement across a save+reload.
+export const DEFAULT_ACTIVITY_START_MINUTE = 18 * 60;
+export const DEFAULT_ACTIVITY_DURATION_MINUTES = 2 * 60;
+const MAX_ACTIVITY_TITLE_LENGTH = 80;
+const MAX_ACTIVITY_WEEKLY_MINUTES = 7 * 12 * 60;
+const MAX_ACTIVITY_SESSIONS_PER_WEEK = 21;
 
 export function normalizeManualSchedule(
   value: unknown,
@@ -133,5 +152,195 @@ export function normalizeActualOverrides(
         ([dateKey, byBook]) =>
           Boolean(dateKey) && Object.keys(byBook).length > 0,
       ),
+  );
+}
+
+function normalizeClockMinute(value: unknown): number {
+  const minute = normalizeNumber(value, 0, 0, DAY_MINUTES - 1, true);
+  return Math.min(
+    DAY_MINUTES - TIME_BLOCK_GRANULARITY_MINUTES,
+    snapToTimeGrid(minute),
+  );
+}
+
+function normalizeCalendarDuration(value: unknown, fallback: number): number {
+  const duration = normalizeNumber(
+    value,
+    fallback,
+    MIN_TIME_BLOCK_DURATION_MINUTES,
+    MAX_TIME_BLOCK_DURATION_MINUTES,
+    true,
+  );
+  return Math.max(
+    MIN_TIME_BLOCK_DURATION_MINUTES,
+    Math.min(MAX_TIME_BLOCK_DURATION_MINUTES, snapToTimeGrid(duration)),
+  );
+}
+
+export function normalizeTimeBlockOverrides(
+  value: unknown,
+  validIds: Set<string>,
+): PlannerProjectV1['manualOverrides']['timeBlocks'] {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .map(([dateKey, rawByBook]) => {
+        const date = normalizeDateKey(dateKey, '');
+        const byBook =
+          rawByBook && typeof rawByBook === 'object'
+            ? Object.fromEntries(
+                Object.entries(rawByBook as Record<string, unknown>)
+                  .filter(([id]) => validIds.has(id))
+                  .map(([id, rawBlock]) => {
+                    const raw =
+                      rawBlock && typeof rawBlock === 'object'
+                        ? (rawBlock as Record<string, unknown>)
+                        : {};
+                    const startMinute = normalizeClockMinute(raw.startMinute);
+                    const durationMinutes = normalizeCalendarDuration(
+                      raw.durationMinutes,
+                      TIME_BLOCK_GRANULARITY_MINUTES,
+                    );
+                    return [
+                      id,
+                      {
+                        startMinute,
+                        durationMinutes: Math.min(
+                          durationMinutes,
+                          DAY_MINUTES - startMinute,
+                        ),
+                      },
+                    ] as const;
+                  }),
+              )
+            : {};
+        return [date, byBook] as const;
+      })
+      .filter(
+        ([dateKey, byBook]) =>
+          Boolean(dateKey) && Object.keys(byBook).length > 0,
+      ),
+  );
+}
+
+function normalizeActivityMode(value: unknown): CalendarActivityMode {
+  return value === 'flexible_weekly' ? 'flexible_weekly' : 'fixed_weekly';
+}
+
+function normalizeActivityDailyDurations(
+  value: unknown,
+  days: number[],
+  fallbackMinutes: number,
+): Record<string, number> {
+  const source =
+    value && typeof value === 'object'
+      ? (value as Record<string, unknown>)
+      : {};
+  return Object.fromEntries(
+    days.map((day) => [
+      String(day),
+      normalizeCalendarDuration(source[String(day)], fallbackMinutes),
+    ]),
+  );
+}
+
+export function normalizeCalendarActivityOverrides(
+  value: unknown,
+): PlannerProjectV1['manualOverrides']['calendarActivities'] {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .map(([fallbackId, rawActivity]) => {
+        const raw =
+          rawActivity && typeof rawActivity === 'object'
+            ? (rawActivity as Record<string, unknown>)
+            : {};
+        // Prefer the (already-unique) map key when the activity's own id
+        // sanitizes to empty, so an activity is never silently discarded on
+        // load.
+        const id =
+          normalizeString(raw.id, fallbackId).replace(/[^a-z0-9_-]/gi, '') ||
+          fallbackId.replace(/[^a-z0-9_-]/gi, '');
+        const title = normalizeString(raw.title, 'Activity').slice(
+          0,
+          MAX_ACTIVITY_TITLE_LENGTH,
+        );
+        const mode = normalizeActivityMode(raw.mode);
+        const durationMinutes = normalizeCalendarDuration(
+          raw.durationMinutes,
+          DEFAULT_ACTIVITY_DURATION_MINUTES,
+        );
+        const days = normalizeWeekdays(raw.days, [1, 2, 3, 4, 5]);
+        const sessionsPerWeek = normalizeNumber(
+          raw.sessionsPerWeek,
+          Math.max(
+            1,
+            raw.weeklyMinutes == null
+              ? days.length
+              : Math.ceil(
+                  normalizeNumber(
+                    raw.weeklyMinutes,
+                    durationMinutes,
+                    MIN_TIME_BLOCK_DURATION_MINUTES,
+                    MAX_ACTIVITY_WEEKLY_MINUTES,
+                    true,
+                  ) / durationMinutes,
+                ),
+          ),
+          1,
+          MAX_ACTIVITY_SESSIONS_PER_WEEK,
+          true,
+        );
+        const dailyDurations = normalizeActivityDailyDurations(
+          raw.dailyDurations,
+          days,
+          durationMinutes,
+        );
+        const fixedWeeklyMinutes = days.reduce(
+          (total, day) =>
+            total + (dailyDurations[String(day)] ?? durationMinutes),
+          0,
+        );
+        const weeklyMinutes =
+          mode === 'fixed_weekly'
+            ? fixedWeeklyMinutes
+            : durationMinutes * sessionsPerWeek;
+        return [
+          id,
+          {
+            id,
+            title: title || 'Activity',
+            color: normalizeHexColor(raw.color, DEFAULT_ACTIVITY_COLOR),
+            mode,
+            days,
+            startMinute: normalizeClockMinute(
+              raw.startMinute ?? DEFAULT_ACTIVITY_START_MINUTE,
+            ),
+            durationMinutes,
+            dailyDurations,
+            weeklyMinutes,
+            sessionsPerWeek,
+            rotationStepDays: normalizeNumber(
+              raw.rotationStepDays,
+              0,
+              0,
+              6,
+              true,
+            ),
+            rotationIntervalWeeks: normalizeNumber(
+              raw.rotationIntervalWeeks,
+              1,
+              1,
+              12,
+              true,
+            ),
+          },
+        ] as const;
+      })
+      .filter(([id]) => Boolean(id)),
   );
 }

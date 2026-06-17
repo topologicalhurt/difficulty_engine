@@ -9,8 +9,8 @@ import {
   isbnAppearsInText,
   matchTokens,
   normalizeMatcherText,
-  normalizedIsbnText,
 } from '../core/matchers';
+import { clamp } from '../core/utils';
 import { SIGNIFICANT_DOCUMENT_MATCH_SCORE_DELTA } from './document-candidate-quality';
 import {
   BAD_QBITTORRENT_FILE_NAME_PATTERN,
@@ -56,10 +56,6 @@ const QBITTORRENT_TITLE_TRAILING_DETAIL_PATTERN =
   /\s*(?::|\(|\s[-–—]\s).*$/;
 const QBITTORRENT_TITLE_RESIDUAL_NOISE_PATTERN =
   /\b(?:pdf|ebook|e-book|retail|truepdf|scan|scanned|gnv64|lnw|z+|by)\b/g;
-
-export function normalizedBookIsbn(value: string | null | undefined): string {
-  return normalizedIsbnText(value);
-}
 
 export function bookMatchScore(
   title: string,
@@ -293,10 +289,13 @@ export function torrentAvailability(info: TorrentInfo | null): {
 } {
   const seeders = info?.num_seeds == null ? null : Math.max(0, info.num_seeds);
   const peers = info?.num_leechs == null ? null : Math.max(0, info.num_leechs);
+  const rawProgress = Number(info?.progress);
   return {
     seeders,
     peers,
-    progress: info?.progress ?? 0,
+    // Clamp to a finite [0,1]: an un-clamped NaN (malformed bridge payload)
+    // makes `progress < 1` false, letting a dead torrent escape stall detection.
+    progress: clamp(Number.isFinite(rawProgress) ? rawProgress : 0, 0, 1),
     state: info?.state ?? (info ? 'tracked' : 'unknown'),
     etaSeconds:
       info?.eta == null || info.eta < 0 || !Number.isFinite(info.eta)

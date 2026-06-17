@@ -51,8 +51,24 @@ describe('enrichment client degradation', () => {
         baseUrl: 'http://127.0.0.1:8787',
         username: '',
         password: 'not-part-of-cache-key',
-        savePath: 'output/data/documents',
+        savePath: '/Users/someone/output/data/documents',
         category: 'difficulty-engine',
+        timeoutMs: 10000,
+      },
+    });
+    // Connection-only fields (baseUrl/savePath/category) must NOT vary the key:
+    // they don't change metadata enrichment results, and the absolute savePath
+    // would otherwise leak into the persisted/exported project JSON.
+    const otherConnectionKey = stableEnrichmentCacheKey({
+      book,
+      sourceSettings,
+      qbittorrentConnection: {
+        enabled: true,
+        baseUrl: 'http://192.168.1.50:9091',
+        username: '',
+        password: 'secret',
+        savePath: '/Users/other/Downloads',
+        category: 'other-category',
         timeoutMs: 10000,
       },
     });
@@ -60,7 +76,9 @@ describe('enrichment client degradation', () => {
     expect(
       new Set([baseKey, contentPreferenceKey, pluginKey, connectionKey]).size,
     ).toBe(4);
+    expect(connectionKey).toBe(otherConnectionKey);
     expect(connectionKey).not.toContain('not-part-of-cache-key');
+    expect(connectionKey).not.toContain('/Users/someone');
   });
 
   it('varies search in-flight keys when Open Library is disabled', () => {

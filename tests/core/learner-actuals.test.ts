@@ -95,6 +95,25 @@ describe('learner actuals partial pooling', () => {
     expect(result.group.residualLift).toBeLessThan(0);
   });
 
+  it('excludes a book from its own pooled group (leave-one-out)', () => {
+    const result = evidence('epoch_partial_pooling', {
+      '2026-01-05': {
+        intro: { minutes: 5, pages: 40, done: true },
+        systems: { minutes: 8, pages: 40, done: true },
+      },
+    });
+
+    // The unlogged book pools both logged peers.
+    expect(result.byBookId.advanced.group.bookCount).toBe(2);
+    // Each logged book's group is built from the OTHER logged book only, never
+    // its own entries — so it is never corrected twice by its own pace. With a
+    // single remaining peer there is no consensus, so no group lift applies.
+    expect(result.byBookId.intro.group.bookCount).toBe(1);
+    expect(result.byBookId.intro.group.residualLift).toBe(0);
+    expect(result.byBookId.systems.group.bookCount).toBe(1);
+    expect(result.byBookId.systems.group.residualLift).toBe(0);
+  });
+
   it('does not pool a single outlier into the epoch', () => {
     const result = evidence('epoch_partial_pooling', {
       '2026-01-05': {

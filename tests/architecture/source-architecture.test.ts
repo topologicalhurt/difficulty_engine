@@ -89,6 +89,10 @@ describe('source architecture guardrails', () => {
   it('keeps accidental re-export adapters out of source modules', () => {
     const allowed = new Set([
       'src/index.ts',
+      // Sanctioned public boundary for the document-acquisition module
+      // (qBittorrent + PDF/TOC parsing + document sourcing). External code
+      // imports only from here, keeping the module independently deployable.
+      'src/infra/documents.ts',
       'src/app/wiring/contracts.ts',
       'src/core/defaults.ts',
       'src/core/types/domain.ts',
@@ -103,6 +107,56 @@ describe('source architecture guardrails', () => {
           readFileSync(path, 'utf8'),
         ),
       )
+      .map(relativeSourcePath);
+
+    expect(violations).toEqual([]);
+  });
+
+  it('routes external document-module use through the documents barrel', () => {
+    // The qBittorrent + PDF/TOC + document-acquisition module is consumed only
+    // via its public barrel (src/infra/documents.ts). No code outside
+    // src/infra may import any of the module's implementation files directly —
+    // this keeps the module independently deployable behind one stable entry
+    // point. The pattern covers the whole module surface (qbittorrent-*,
+    // document-* parsing/acquisition files, toc-*, pdf-*, the bridge fetch
+    // helper, source-document/completed-document loaders, and the document
+    // enrichment wiring) while exempting the `documents` barrel itself
+    // (no hyphen, so `document-` never matches it) and the separate
+    // metadata-enrichment / AI / provider infra modules.
+    const deepEntryPattern =
+      /from '[^']*infra\/(?:qbittorrent-[a-z-]+|document-[a-z-]+|toc-[a-z-]+|pdf-[a-z-]+|bridge-fetch|source-document-candidates|completed-document-loader|enrichment-documents)'/;
+    const violations = sourceFiles()
+      .filter((path) => !relativeSourcePath(path).startsWith('src/infra/'))
+      .filter((path) => deepEntryPattern.test(readFileSync(path, 'utf8')))
+      .map(relativeSourcePath);
+
+    expect(violations).toEqual([]);
+  });
+
+  it('routes every document-module network call through the shared timeout helpers', () => {
+    // Production contract (docs/document-acquisition-module.md): no network
+    // call in the module can hang — every fetch is wrapped with a timeout. The
+    // only two files allowed to invoke the underlying fetch directly are the
+    // wrappers themselves: bridge-fetch.ts (fetchWithTimeout) and
+    // qbittorrent-http.ts (withQbittorrentTimeout). Any other module file that
+    // calls fetchImpl()/globalThis.fetch() directly bypasses the timeout and
+    // fails this guard.
+    const moduleFilePattern =
+      /^src\/infra\/(?:qbittorrent-|document-|toc-|pdf-|bridge-fetch|source-document|completed-document|enrichment-documents)/;
+    const timeoutWrapperOwners = new Set([
+      'src/infra/bridge-fetch.ts',
+      'src/infra/qbittorrent-http.ts',
+    ]);
+    const rawFetchPattern = /\b(?:fetchImpl|globalThis\.fetch)\s*\(/;
+    const violations = sourceFiles()
+      .filter((path) =>
+        moduleFilePattern.test(relativeSourcePath(path).replace(/\\/g, '/')),
+      )
+      .filter(
+        (path) =>
+          !timeoutWrapperOwners.has(relativeSourcePath(path).replace(/\\/g, '/')),
+      )
+      .filter((path) => rawFetchPattern.test(readFileSync(path, 'utf8')))
       .map(relativeSourcePath);
 
     expect(violations).toEqual([]);

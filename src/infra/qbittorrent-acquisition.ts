@@ -26,6 +26,7 @@ import {
 import { isoTimestamp, systemNowMs } from './cache-time';
 import { qbittorrentPdfRejectionSummary } from './qbittorrent-pdf-eligibility';
 
+import { availabilityHasLiveDownloadActivity } from '../core/document-candidate-availability';
 import type { BookDocumentAvailability, BookDocumentStatus } from '../core/types';
 
 async function selectedTorrentFile(
@@ -120,15 +121,16 @@ const TORRENT_STALL_GRACE_MS = 10 * 60 * 1000;
 function hasNoActiveDownloadProgress(
   availability: BookDocumentAvailability,
 ): boolean {
+  // Any incomplete torrent (progress < 1) with no live download activity is
+  // stalled — not just one still at 0%. Reuses the canonical live-activity
+  // predicate so this threshold can't drift from the greylist's.
   return (
-    availability.progress <= 0 &&
-    (availability.seeders ?? 0) <= 0 &&
-    (availability.availability ?? 0) <= 0 &&
-    (availability.downloadSpeedBytesPerSecond ?? 0) <= 0
+    availability.progress < 1 &&
+    !availabilityHasLiveDownloadActivity(availability)
   );
 }
 
-function statusAfterGrace(
+export function statusAfterGrace(
   status: BookDocumentStatus,
   availability: BookDocumentAvailability,
   createdAt: string,
