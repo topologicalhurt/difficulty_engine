@@ -17,6 +17,7 @@ import type {
   BookDocumentBlockedCandidateOption,
   BookDocumentSearchAttempt,
   EnrichmentRequest,
+  Logger,
 } from '../core/types';
 import {
   qbittorrentDocumentSourceEnabled,
@@ -156,12 +157,34 @@ function userProvidedTorrentCandidate(
   };
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function emptySearchResult(): {
+  candidates: DocumentCandidate[];
+  blockedCandidates: BookDocumentBlockedCandidateOption[];
+  searchAttempts: BookDocumentSearchAttempt[];
+} {
+  return { candidates: [], blockedCandidates: [], searchAttempts: [] };
+}
+
 async function localTorrentCandidates(
   client: QBittorrentClient,
   request: DocumentAcquisitionRequest,
   preferredCategory?: string,
+  logger?: Logger,
 ): Promise<DocumentCandidate[]> {
   const inventory = await readQbittorrentLiveInventory(client);
+  // Surface per-torrent file-read failures: otherwise a torrent silently
+  // becomes a non-candidate (zero eligible files) with no diagnostic trail.
+  if (logger && inventory.errors.length) {
+    logger.warn('qbittorrent.live_inventory.file_read_failed', {
+      bookId: request.book.id,
+      errorCount: inventory.errors.length,
+      errors: inventory.errors.slice(0, 5),
+    });
+  }
   const priorityFor = contentKindPriorityForPreference(
     request.policy.contentPreference,
   );
@@ -217,12 +240,31 @@ export function createQBittorrentProvider(
       const manualCandidate = userProvidedTorrentCandidate(request);
       if (manualCandidate) candidates.push(manualCandidate);
       candidates.push(
-        ...(await localTorrentCandidates(client, request, options.category).catch(
-          () => [],
-        )),
+        ...(await localTorrentCandidates(
+          client,
+          request,
+          options.category,
+          options.logger,
+        ).catch((error) => {
+          options.logger?.warn('qbittorrent.live_inventory.unavailable', {
+            bookId: request.book.id,
+            error: errorMessage(error),
+          });
+          return [];
+        })),
       );
       if (qbittorrentSearchPluginsEnabled(request.policy.sourceSettings)) {
-        const search = await pluginSearchCandidates(client, request);
+        // A flaky plugin/login must not discard the local + manual candidates
+        // already gathered — degrade the secondary source, don't abort.
+        const search = await pluginSearchCandidates(client, request).catch(
+          (error) => {
+            options.logger?.warn('qbittorrent.plugin_search.failed', {
+              bookId: request.book.id,
+              error: errorMessage(error),
+            });
+            return emptySearchResult();
+          },
+        );
         candidates.push(...search.candidates);
       }
       const priorityFor = contentKindPriorityForPreference(
@@ -259,12 +301,28 @@ export function createQBittorrentProvider(
       const search = qbittorrentSearchPluginsEnabled(
         request.policy.sourceSettings,
       )
-        ? await pluginSearchCandidates(client, request, customQuery)
-        : { candidates: [], blockedCandidates: [], searchAttempts: [] };
+        ? await pluginSearchCandidates(client, request, customQuery).catch(
+            (error) => {
+              options.logger?.warn('qbittorrent.plugin_search.failed', {
+                bookId: request.book.id,
+                error: errorMessage(error),
+              });
+              return emptySearchResult();
+            },
+          )
+        : emptySearchResult();
       const localCandidates = await localTorrentCandidates(
         client,
         request,
-      ).catch(() => []);
+        options.category,
+        options.logger,
+      ).catch((error) => {
+        options.logger?.warn('qbittorrent.live_inventory.unavailable', {
+          bookId: request.book.id,
+          error: errorMessage(error),
+        });
+        return [];
+      });
       const manualCandidate = userProvidedTorrentCandidate(request);
       return {
         ...search,

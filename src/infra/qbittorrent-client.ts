@@ -1,4 +1,5 @@
 import type {
+  Logger,
   QbittorrentConnectionSettings,
   QbittorrentPluginInfo,
 } from '../core/types';
@@ -17,6 +18,7 @@ import {
   bridgeDataRootMatchesSavePath,
   DEFAULT_QBITTORRENT_TIMEOUT_MS,
   isAbsoluteStoragePath,
+  parseQbittorrentJsonArray,
   requestQbittorrentApi,
   trimQbittorrentBaseUrl,
 } from './qbittorrent-http';
@@ -41,6 +43,8 @@ export interface QBittorrentProviderOptions {
   timeoutMs?: number;
   metadataPollAttempts?: number;
   metadataPollIntervalMs?: number;
+  /** Optional structured logger for best-effort inventory/search diagnostics. */
+  logger?: Logger;
 }
 
 const DEFAULT_METADATA_POLL_ATTEMPTS = 8;
@@ -215,14 +219,14 @@ export class QBittorrentClient {
 
   async listTorrents(): Promise<TorrentInfo[]> {
     const response = await this.api('/torrents/info');
-    return (await response.json()) as TorrentInfo[];
+    return parseQbittorrentJsonArray<TorrentInfo>(response, '/torrents/info');
   }
 
   async torrentFiles(hash: string): Promise<TorrentFile[]> {
     const response = await this.api(
       `/torrents/files?${new URLSearchParams({ hash }).toString()}`,
     );
-    return (await response.json()) as TorrentFile[];
+    return parseQbittorrentJsonArray<TorrentFile>(response, '/torrents/files');
   }
 
   async setFilePriority(
@@ -312,13 +316,13 @@ export class QBittorrentClient {
   async listPlugins(): Promise<QbittorrentPluginInfo[]> {
     await this.login();
     const response = await this.api('/search/plugins');
-    const items = (await response.json()) as Array<{
+    const items = await parseQbittorrentJsonArray<{
       enabled?: boolean;
       fullName?: string;
       name?: string;
       supportedCategories?: Array<{ id?: string; name?: string }>;
       url?: string;
-    }>;
+    }>(response, '/search/plugins');
     return normalizeQbittorrentPlugins(items);
   }
 

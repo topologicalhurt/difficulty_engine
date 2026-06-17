@@ -293,10 +293,13 @@ export function torrentAvailability(info: TorrentInfo | null): {
 } {
   const seeders = info?.num_seeds == null ? null : Math.max(0, info.num_seeds);
   const peers = info?.num_leechs == null ? null : Math.max(0, info.num_leechs);
+  const rawProgress = Number(info?.progress);
   return {
     seeders,
     peers,
-    progress: info?.progress ?? 0,
+    // Clamp to a finite [0,1]: an un-clamped NaN (malformed bridge payload)
+    // makes `progress < 1` false, letting a dead torrent escape stall detection.
+    progress: Math.min(1, Math.max(0, Number.isFinite(rawProgress) ? rawProgress : 0)),
     state: info?.state ?? (info ? 'tracked' : 'unknown'),
     etaSeconds:
       info?.eta == null || info.eta < 0 || !Number.isFinite(info.eta)

@@ -125,6 +125,7 @@ function documentProvider(
     category: request.qbittorrentConnection.category,
     timeoutMs: request.qbittorrentConnection.timeoutMs,
     fetchImpl: options.fetchImpl,
+    logger: options.logger,
   });
 }
 

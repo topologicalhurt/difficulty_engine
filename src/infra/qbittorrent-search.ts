@@ -63,13 +63,15 @@ function sourceUrl(result: SearchResult): string {
   return result.fileUrl ?? result.descrLink ?? '';
 }
 
+// Plugin results are scraped from arbitrary third-party indexers, so a single
+// field can be arbitrarily large. Clamp each before the matcher passes
+// (NFKD-normalize + several regex passes + token sets) to bound CPU per result.
+const MAX_EVIDENCE_FIELD_CHARS = 512;
+
 function searchResultEvidenceText(result: SearchResult): string {
-  return [
-    result.fileName,
-    result.fileUrl,
-    result.descrLink,
-    result.siteUrl,
-  ].join(' ');
+  return [result.fileName, result.fileUrl, result.descrLink, result.siteUrl]
+    .map((value) => (value ?? '').slice(0, MAX_EVIDENCE_FIELD_CHARS))
+    .join(' ');
 }
 
 function hasRequiredAuthorEvidence(
@@ -136,7 +138,10 @@ function blockedCandidate(
   reasons: string[],
   meta: { intent?: QbittorrentSearchIntent; pattern?: string; plugin?: string },
 ): BookDocumentBlockedCandidateOption | null {
-  const title = result.fileName || request.book.title;
+  const title = (result.fileName || request.book.title).slice(
+    0,
+    MAX_EVIDENCE_FIELD_CHARS,
+  );
   const url = sourceUrl(result);
   if (!url && !title) return null;
   const seeders = seedersFromSearchResult(result);
@@ -207,7 +212,10 @@ export function classifySearchResults(
   const candidates: DocumentCandidate[] = [];
   const blockedCandidates: BookDocumentBlockedCandidateOption[] = [];
   results.forEach((result, index) => {
-    const title = result.fileName || request.book.title;
+    const title = (result.fileName || request.book.title).slice(
+    0,
+    MAX_EVIDENCE_FIELD_CHARS,
+  );
     const detectedContentKind = contentKindFromUrl(title || sourceUrl(result));
     const seeders = seedersFromSearchResult(result);
     const peers = peersFromSearchResult(result);
