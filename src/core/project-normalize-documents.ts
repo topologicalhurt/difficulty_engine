@@ -122,6 +122,10 @@ function normalizeCandidateOption(
       raw.qualityScore == null
         ? undefined
         : normalizeNumber(raw.qualityScore, 0, 0, 1),
+    baseQualityScore:
+      raw.baseQualityScore == null
+        ? undefined
+        : normalizeNumber(raw.baseQualityScore, 0, 0, 1),
     qualityReason: normalizeString(raw.qualityReason) || undefined,
     greylistKey: normalizeString(raw.greylistKey) || undefined,
     greylistPenalty:
