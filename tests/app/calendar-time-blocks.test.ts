@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { makeStore } from './store-test-utils';
+import { selectCalendarViewModel } from '../../src/app/selectors/calendar';
+import { makeBook, makeProject, makeStore } from './store-test-utils';
 
 function firstPlannedEntry(store: ReturnType<typeof makeStore>): {
   dateKey: string;
@@ -84,5 +85,56 @@ describe('calendar time block commands', () => {
     expect(
       store.selectors.getProject().manualOverrides.calendarActivities,
     ).toEqual({});
+  });
+
+  it('keeps a pinned study block where the user dropped it instead of letting an auto-placed block evict it', () => {
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          'book-1': makeBook({
+            id: 'book-1',
+            title: 'Alpha',
+            short: 'Alpha',
+            pages: 120,
+          }),
+          'book-2': makeBook({
+            id: 'book-2',
+            title: 'Beta',
+            short: 'Beta',
+            pages: 120,
+          }),
+        },
+        // Enough daily budget for both books to study in parallel each day.
+        constraints: {
+          par: 2,
+          dailyBookMode: 'daily_cohort',
+          hpd: 6,
+          minPg: 5,
+          bmp: 15,
+        },
+      }),
+    });
+    // Find a day where both books study in parallel.
+    const before = selectCalendarViewModel(store.selectors.getState());
+    const day = before.weeks[0]?.days.find((cell) => cell.blocks.length >= 2);
+    if (!day) throw new Error('Expected a day with two parallel study blocks.');
+    // The second block (higher lane) is the one an earlier auto-placed block
+    // could displace. Pin it to 08:00 — exactly the default focus-window start
+    // where the first, unpinned book auto-places.
+    const pinnedBookId = day.blocks[1].bookId;
+    store.commands.setCalendarTimeBlock(day.key, pinnedBookId, 8 * 60, 60);
+
+    const after = selectCalendarViewModel(store.selectors.getState());
+    const pinnedDay = after.weeks[0].days.find((cell) => cell.key === day.key);
+    const pinnedBlock = pinnedDay?.blocks.find(
+      (block) => block.bookId === pinnedBookId,
+    );
+    const otherBlock = pinnedDay?.blocks.find(
+      (block) => block.bookId !== pinnedBookId,
+    );
+    // The override is honored; the unpinned book is placed around it.
+    expect(pinnedBlock?.startMinute).toBe(8 * 60);
+    expect(pinnedBlock?.persisted).toBe(true);
+    expect(otherBlock?.startMinute).not.toBe(8 * 60);
   });
 });

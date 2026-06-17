@@ -86,4 +86,38 @@ describe('calendar activity default consistency', () => {
       }) ?? {};
     expect(normalized['activity-1']).toBeDefined();
   });
+
+  it('normalizes activity days like the load path (empty falls back, fractions truncate)', () => {
+    // All-invalid days must fall back to the work-week (matching the load
+    // path), not collapse to [] — which would render no blocks until a
+    // save+reload silently restored Mon–Fri.
+    const allInvalid = withCalendarActivity(makeProject(), {
+      title: 'Invalid days',
+      days: [99, -3],
+    });
+    const invalidId =
+      Object.keys(allInvalid.manualOverrides.calendarActivities ?? {})[0] ?? '';
+    expect(
+      allInvalid.manualOverrides.calendarActivities?.[invalidId]?.days,
+    ).toEqual([1, 2, 3, 4, 5]);
+
+    // Fractional weekdays truncate to integers (the load path uses Math.trunc),
+    // so dailyDurations keys still line up after a round-trip.
+    const fractional = withCalendarActivity(makeProject(), {
+      title: 'Fractional days',
+      days: [1.5, 3, 3],
+    });
+    const fracId =
+      Object.keys(fractional.manualOverrides.calendarActivities ?? {})[0] ?? '';
+    expect(
+      fractional.manualOverrides.calendarActivities?.[fracId]?.days,
+    ).toEqual([1, 3]);
+
+    // The add result already matches a save+reload through the load path.
+    const reloaded =
+      normalizeCalendarActivityOverrides(
+        fractional.manualOverrides.calendarActivities,
+      ) ?? {};
+    expect(reloaded[fracId]?.days).toEqual([1, 3]);
+  });
 });

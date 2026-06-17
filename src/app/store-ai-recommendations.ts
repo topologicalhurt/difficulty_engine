@@ -419,7 +419,7 @@ export function createAiRecommendationCommands(
             hasActionableBooks || proposal.projectSettings.length
               ? {
                   state: 'ready',
-                  message: `${proposal.books.length} addition(s), ${proposal.removeBookIds.length} removal(s), and ${proposal.projectSettings.length} project setting suggestion(s) ready for review.`,
+                  message: `${proposal.books.length} addition(s), ${proposal.removeBookIds.length} removal(s), ${proposal.bookOrder.length} reorder hint(s), and ${proposal.projectSettings.length} project setting suggestion(s) ready for review.`,
                 }
               : {
                   state: 'failed',

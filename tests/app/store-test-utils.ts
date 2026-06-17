@@ -153,6 +153,7 @@ export function makeProject(
       deferred: {},
       actuals: {},
       timeBlocks: {},
+      calendarActivities: {},
     },
     constraints: {
       ...DEFAULT_CONSTRAINTS,

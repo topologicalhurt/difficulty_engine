@@ -4,7 +4,7 @@ import type {
   CalendarLearningMode,
 } from '../../core/types';
 import { minutesPerPage } from '../../core/constraints';
-import { compareChain, compareNumberAsc, compareText } from '../../core/sort';
+import { compareText } from '../../core/sort';
 import { round1 } from '../../core/utils';
 import {
   activityRows,
@@ -269,56 +269,68 @@ function dayBlocks(
     key: week.key,
     label: week.label,
     days: week.days.map((day) => {
-      const entries = day.sortedEntries
-        .slice()
-        .sort((left, right) =>
-          compareChain(
-            compareNumberAsc(left.lane, right.lane),
-            compareText(left.short, right.short),
-          ),
-        );
+      // day.sortedEntries is already ordered by lane then short in
+      // buildCalendarWeeks; reuse it directly instead of re-sorting.
+      const entries = day.sortedEntries;
       const occupied = (activityBlocksByDate.get(day.key) ?? []).map(
         intervalFromActivity,
       );
       const blocks: HourlyCalendarBlock[] = [];
       const unscheduledBlocks: HourlyCalendarUnscheduledBlock[] = [];
-      entries.forEach((entry) => {
+      const resolved = entries.map((entry) => {
         const override =
           state.project.manualOverrides.timeBlocks?.[day.key]?.[entry.bookId];
         const durationMinutes = Math.min(
           override?.durationMinutes ?? durationForEntry(entry),
           24 * 60,
         );
+        return { entry, override, durationMinutes };
+      });
+      // Pass 1 — reserve every persisted override that fits BEFORE any
+      // auto-placement, so an auto-placed block can never displace a
+      // user-dragged one (the contract: user-dragged blocks stay authoritative).
+      // Two overrides that genuinely overlap still conflict; the earlier (by
+      // lane/short) wins and the later falls through to auto-placement below.
+      const placement = new Map<string, number>();
+      resolved.forEach(({ entry, override, durationMinutes }) => {
         const overrideStart = override?.startMinute;
-        const overrideFits =
-          overrideStart != null &&
-          !overlaps(overrideStart, durationMinutes, occupied);
-        const startMinute =
-          overrideFits && overrideStart != null
-            ? overrideStart
-            : nextAvailableStart(
-                durationMinutes,
-                occupied,
-                state.ui.calendarLearningMode,
-              );
-        if (startMinute == null) {
-          unscheduledBlocks.push({
-            id: `${day.key}:${entry.bookId}:unscheduled`,
-            dateKey: day.key,
-            bookId: entry.bookId,
-            short: entry.short,
-            title:
-              state.project.library.books[entry.bookId]?.title ?? entry.short,
-            durationMinutes,
-            reason:
-              'No free same-day slot remains after fixed activities and study blocks.',
-          });
-          return;
-        }
+        if (overrideStart == null) return;
+        if (overlaps(overrideStart, durationMinutes, occupied)) return;
         occupied.push({
-          startMinute,
-          endMinute: Math.min(24 * 60, startMinute + durationMinutes),
+          startMinute: overrideStart,
+          endMinute: Math.min(24 * 60, overrideStart + durationMinutes),
         });
+        placement.set(entry.bookId, overrideStart);
+      });
+      // Pass 2 — auto-place the rest around the reserved overrides, emitting
+      // blocks in the original lane/short order.
+      resolved.forEach(({ entry, override, durationMinutes }) => {
+        let startMinute = placement.get(entry.bookId) ?? null;
+        if (startMinute == null) {
+          startMinute = nextAvailableStart(
+            durationMinutes,
+            occupied,
+            state.ui.calendarLearningMode,
+          );
+          if (startMinute == null) {
+            unscheduledBlocks.push({
+              id: `${day.key}:${entry.bookId}:unscheduled`,
+              dateKey: day.key,
+              bookId: entry.bookId,
+              short: entry.short,
+              title:
+                state.project.library.books[entry.bookId]?.title ?? entry.short,
+              durationMinutes,
+              reason:
+                'No free same-day slot remains after fixed activities and study blocks.',
+            });
+            return;
+          }
+          occupied.push({
+            startMinute,
+            endMinute: Math.min(24 * 60, startMinute + durationMinutes),
+          });
+        }
         blocks.push(
           blockForEntry({
             state,

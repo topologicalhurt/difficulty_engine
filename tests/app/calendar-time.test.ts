@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { nextAvailableStart } from '../../src/app/selectors/calendar-time';
+import {
+  formatClockMinute,
+  nextAvailableStart,
+} from '../../src/app/selectors/calendar-time';
+
+describe('clock-minute formatting', () => {
+  it('renders an end-of-day boundary as 00:00, not the invalid 24:00', () => {
+    expect(formatClockMinute(24 * 60)).toBe('00:00');
+    expect(formatClockMinute(0)).toBe('00:00');
+    expect(formatClockMinute(23 * 60 + 30)).toBe('23:30');
+    expect(formatClockMinute(8 * 60)).toBe('08:00');
+  });
+});
 
 describe('hourly calendar focus windows', () => {
   it('packs evening focus into evening-to-night before falling back to daytime', () => {

@@ -19,19 +19,29 @@ const CALENDAR_WEEKDAY_OPTIONS = [
   { value: 0, label: 'Sun' },
 ];
 
+function numberFromInput(
+  input: HTMLInputElement | null | undefined,
+  fallback: number,
+): number {
+  // An empty/blank field must fall back to the intended default. Number('')
+  // is 0 (finite), so without this guard a cleared "Start hour" or per-day
+  // hours field would silently become 00:00 / the 15-minute floor instead of
+  // the intended default.
+  const raw = input?.value?.trim();
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function numericInput(
   container: HTMLElement,
   selector: string,
   fallback: number,
 ): number {
-  const input = container.querySelector<HTMLInputElement>(selector);
-  // An empty/blank field must fall back to the intended default. Number('')
-  // is 0 (finite), so without this guard a cleared "Start hour" would silently
-  // become 00:00 instead of the 18:00 default.
-  const raw = input?.value?.trim();
-  if (!raw) return fallback;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return numberFromInput(
+    container.querySelector<HTMLInputElement>(selector),
+    fallback,
+  );
 }
 
 function readTextControl(
@@ -66,13 +76,10 @@ function selectedDailyDurations(
       ),
     ]
       .filter((input) => selected.has(input.dataset.activityDayHours ?? ''))
-      .map((input) => {
-        const value = Number(input.value);
-        return [
-          input.dataset.activityDayHours ?? '',
-          Math.max(0.25, Number.isFinite(value) ? value : 2) * 60,
-        ];
-      }),
+      .map((input) => [
+        input.dataset.activityDayHours ?? '',
+        Math.max(0.25, numberFromInput(input, 2)) * 60,
+      ]),
   );
 }
 
@@ -131,10 +138,11 @@ function inertNumberInput(options: {
   min: number | string;
   max: number | string;
   step: number | string;
+  focusKey?: string;
 }): HTMLInputElement {
   return numberInputControl({
     ...options,
-    focusKey: `calendar:${options.className}`,
+    focusKey: options.focusKey ?? `calendar:${options.className}`,
     onChange: () => undefined,
   });
 }
@@ -157,6 +165,10 @@ function weekdayCheckbox(day: { value: number; label: string }): HTMLElement {
 function weekdayHoursInput(day: { value: number; label: string }): HTMLElement {
   const input = inertNumberInput({
     className: 'calendar-activity-day-hours-input',
+    // Each weekday needs a distinct focus key — they share a className for
+    // styling, but a shared focusKey makes restoreFocus (first-match) refocus
+    // the wrong day's field after a mid-edit re-render.
+    focusKey: `calendar:calendar-activity-day-hours-input:${day.value}`,
     value: 2,
     min: 0.25,
     max: 12,

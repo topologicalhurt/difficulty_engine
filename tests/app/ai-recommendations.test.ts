@@ -142,6 +142,44 @@ describe('AI recommendations store flow', () => {
     expect(store.exportProject()).not.toContain('local-secret');
   });
 
+  it('reports a reorder-only proposal as ready and names the reorder in the banner', async () => {
+    const provider: AiRecommendationProvider = {
+      recommend: vi.fn(async () => ({
+        summary: 'Reorder the existing plan.',
+        books: [],
+        projectSettings: [],
+        bookOrder: ['book-2', 'book-1'],
+        warnings: [],
+      })),
+    };
+    const store = makeStore({
+      initialProject: makeProject({
+        books: {
+          'book-1': makeBook({ id: 'book-1', title: 'Alpha', planOrder: 0 }),
+          'book-2': makeBook({ id: 'book-2', title: 'Beta', planOrder: 1 }),
+        },
+      }),
+      aiRecommendationProvider: provider,
+    });
+    store.commands.updateAiLocalSettings({
+      enabled: true,
+      apiKey: 'local-secret',
+      model: 'gpt-test',
+    });
+    store.commands.setAiRecommendationPrompt('reorder my plan');
+    await store.commands.requestAiRecommendations();
+
+    const status = store.selectors.getState().ui.aiStatus;
+    // A pure reorder is actionable; the banner must not read as an all-zero
+    // no-op ("0 addition(s), 0 removal(s), ... 0 project setting suggestion(s)").
+    expect(status.state).toBe('ready');
+    expect(status.message).toContain('2 reorder hint(s)');
+    expect(store.selectors.getState().ui.aiProposal?.bookOrder).toEqual([
+      'book-2',
+      'book-1',
+    ]);
+  });
+
   it('does not rewrite manual relations on skipped matching books', () => {
     const project = makeProject({
       books: {

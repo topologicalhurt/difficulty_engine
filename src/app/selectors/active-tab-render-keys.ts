@@ -34,10 +34,17 @@ export function selectActiveTabRenderKeys(state: AppState): readonly unknown[] {
         state.ui.selectedConstraintKey,
       ];
     case 'calendar':
+      // Keep in sync with selectCalendarViewModelMemo's key list: scheduleStats
+      // + constraints drive the export finish date/summary and actuals drive the
+      // per-block performance indicator, so a command that mutates them without
+      // recomputing dayPlan must still re-render this tab.
       return [
         activeView,
         state.snapshot.dayPlan,
+        state.snapshot.scheduleStats,
+        state.project.constraints,
         state.project.manualOverrides.timeBlocks ?? {},
+        state.project.manualOverrides.actuals,
         state.project.manualOverrides.calendarActivities ?? {},
         state.project.library.books,
         state.ui.calendarLearningMode,

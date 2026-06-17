@@ -66,6 +66,42 @@ describe('calendar view', () => {
     expect(rotationField.style.display).toBe('');
   });
 
+  it('gives each weekday hours input a distinct focus key and falls back when one is cleared', () => {
+    const store = makeStore();
+    const form = renderActivitySettings(
+      selectCalendarViewModel(store.selectors.getState()),
+      store,
+    );
+
+    // Finding 1: each per-day hours input needs a unique focus key, otherwise
+    // restoreFocus (first-match) refocuses the wrong weekday after a re-render.
+    const dayInputs = [
+      ...form.querySelectorAll<HTMLInputElement>('[data-activity-day-hours]'),
+    ];
+    expect(dayInputs).toHaveLength(7);
+    expect(new Set(dayInputs.map((input) => input.dataset.focusKey)).size).toBe(
+      7,
+    );
+
+    // Finding 5: clearing a checked weekday's hours field must fall back to the
+    // 2h activity default, not the 15-minute floor (Number('') is a finite 0).
+    const monday = form.querySelector<HTMLInputElement>(
+      '[data-activity-day-hours="1"]',
+    );
+    if (!monday) throw new Error('Expected a Monday per-day hours input.');
+    monday.value = '';
+    const addButton = [...form.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === 'Add activity',
+    );
+    if (!addButton) throw new Error('Expected an Add activity button.');
+    addButton.dispatchEvent(new Event('click'));
+
+    const activity = Object.values(
+      store.selectors.getProject().manualOverrides.calendarActivities ?? {},
+    )[0];
+    expect(activity?.dailyDurations?.['1']).toBe(120);
+  });
+
   it('pages the hourly calendar by week instead of mounting the full plan', () => {
     const store = makeStore();
     store.commands.setActiveView('calendar');

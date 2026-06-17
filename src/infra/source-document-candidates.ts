@@ -6,7 +6,11 @@ import type {
 } from '../core/types';
 import { compactItems } from '../core/utils';
 import { documentSourceEnabled } from '../core/source-settings-policy';
-import { fetchWithTimeout, readLimitedResponseBytes } from './bridge-fetch';
+import {
+  BRIDGE_DOCUMENT_MAX_BYTES,
+  fetchWithTimeout,
+  readLimitedResponseBytes,
+} from './bridge-fetch';
 import { extractDocumentChapters } from './document-text-extractor';
 import type { AcquiredDocument } from './document-acquisition';
 import { isPdfDocument } from './qbittorrent-file-kinds';
@@ -16,7 +20,8 @@ import type {
   PageAnchorEvidence,
 } from './toc-page-ranges';
 
-const DIRECT_DOCUMENT_MAX_BYTES = 8 * 1024 * 1024;
+// The buffered-document byte cap is shared with the bridge document reads so
+// the two surfaces that use readLimitedResponseBytes enforce one limit.
 const DIRECT_DOCUMENT_TIMEOUT_MS = 30_000;
 
 export interface SourceDocumentContext {
@@ -116,7 +121,7 @@ export async function sourceDocumentCandidate(
     const contentType = response.headers.get('content-type') ?? '';
     const bytes = await readLimitedResponseBytes(
       response,
-      DIRECT_DOCUMENT_MAX_BYTES,
+      BRIDGE_DOCUMENT_MAX_BYTES,
     );
     if (!bytes) return null;
     const extraction = isPdfDocument(sourcePath, contentType)

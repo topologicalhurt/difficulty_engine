@@ -152,6 +152,63 @@ describe('qBittorrent title evidence gate', () => {
     ).not.toContain('zero seeders');
   });
 
+  it('offers an unknown-seeder soft-blocked result as retryable-as-user-owned', () => {
+    const sourceSettings = createDefaultSourceSettings();
+    sourceSettings.documentSources.qbittorrent = true;
+    sourceSettings.qbittorrent.searchPlugins = true;
+    sourceSettings.qbittorrent.allowedPlugins = ['limetorrents'];
+    sourceSettings.qbittorrent.allowedSites = [];
+    // Force a soft "unknown access basis" block on an otherwise-good result.
+    sourceSettings.qbittorrent.requireKnownAccessBasis = true;
+    const request = {
+      book: {
+        ...EXAMPLE_BOOK,
+        title: 'Functional Analysis',
+        short: 'Functional Analysis',
+        authors: ['Elias M. Stein'],
+        isbn: null,
+        sourcePath: null,
+      },
+      policy: {
+        ...defaultDocumentAcquisitionPolicy(),
+        enabled: true,
+        sourceSettings,
+      },
+    };
+    const result = classifySearchResults(
+      [
+        {
+          // No seeder field at all -> unknown (not zero) seeder count.
+          fileName: 'Stein Functional Analysis 2011',
+          fileUrl: 'magnet:?xt=urn:btih:functionalanalysis',
+          siteUrl: 'https://www.limetorrents.lol',
+          nbLeechers: 3,
+          fileSize: 22_000,
+        },
+      ],
+      [
+        {
+          enabled: true,
+          fullName: 'LimeTorrents',
+          name: 'limetorrents',
+          supportedCategories: [{ id: 'all', name: 'All categories' }],
+          url: 'https://www.limetorrents.lol',
+        },
+      ],
+      request,
+      'test',
+      { plugin: 'limetorrents' },
+    );
+
+    const blocked = result.blockedCandidates[0];
+    expect(blocked?.blockedReasons).toContain('unknown access basis');
+    expect(blocked?.blockedReasons ?? []).not.toContain('zero seeders');
+    expect(blocked?.seeders ?? null).toBeNull();
+    // Unknown seeders must not disqualify the retry path (the gate previously
+    // coerced null -> 0, so 0 >= 1 was false and the row was never retryable).
+    expect(blocked?.retryableAsUserOwned).toBe(true);
+  });
+
   it('blocks same-author adjacent-topic results that miss the core title phrase', () => {
     const result = classifySearchResults(
       [

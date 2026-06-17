@@ -6,7 +6,7 @@ import {
   snapToTimeGrid as snapCalendarMinutes,
 } from '../core/date-constants';
 import { DEFAULT_ACTIVITY_COLOR, normalizeHexColor } from '../core/display-colors';
-import { compareNumberAsc } from '../core/sort';
+import { normalizeWeekdays } from '../core/project-normalize-primitives';
 import type { PlannerProjectV1 } from '../core/types';
 import {
   DEFAULT_ACTIVITY_DURATION_MINUTES,
@@ -71,11 +71,10 @@ function nextCalendarActivityId(project: PlannerProjectV1): string {
 }
 
 function normalizeActivityDays(days: number[] | undefined): number[] {
-  return days?.length
-    ? [...new Set(days)]
-        .filter((day) => Number.isFinite(day) && day >= 0 && day <= 6)
-        .sort(compareNumberAsc)
-    : [1, 2, 3, 4, 5];
+  // Reuse the canonical weekday normalizer the load/normalize path uses, so the
+  // add-command and a save+reload agree: truncate to integers, keep 0..6,
+  // dedup+sort, and fall back to the work-week when nothing valid remains.
+  return normalizeWeekdays(days, [1, 2, 3, 4, 5]);
 }
 
 function normalizeDailyDurations(

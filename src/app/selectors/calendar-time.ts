@@ -126,24 +126,30 @@ export function nextAvailableStart(
     return null;
   }
   const window = focusWindow(mode);
-  const candidates = [
-    ...denseCandidates(window, durationMinutes, occupied),
-    ...fallbackCandidates(window, durationMinutes),
-  ];
   const seen = new Set<number>();
-  for (const start of candidates) {
-    if (seen.has(start) || start + durationMinutes > DAY_MINUTES) {
-      continue;
+  const firstFitting = (candidates: number[]): number | null => {
+    for (const start of candidates) {
+      if (seen.has(start) || start + durationMinutes > DAY_MINUTES) {
+        continue;
+      }
+      seen.add(start);
+      if (!overlaps(start, durationMinutes, occupied)) return start;
     }
-    seen.add(start);
-    if (!overlaps(start, durationMinutes, occupied)) return start;
-  }
-  return null;
+    return null;
+  };
+  // Try the in-window dense slots first; only build the (larger) out-of-window
+  // fallback set when no dense slot is free.
+  const dense = firstFitting(denseCandidates(window, durationMinutes, occupied));
+  if (dense != null) return dense;
+  return firstFitting(fallbackCandidates(window, durationMinutes));
 }
 
 export function formatClockMinute(minute: number): string {
-  const hours = Math.floor(minute / 60);
-  const minutes = minute % 60;
+  // Wrap end-of-day so a block ending at exactly 24:00 reads 00:00 (matching
+  // the ICS rollover) rather than the invalid "24:00".
+  const wrapped = ((minute % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+  const hours = Math.floor(wrapped / 60);
+  const minutes = wrapped % 60;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 

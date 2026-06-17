@@ -131,6 +131,15 @@ function searchResultSourceIsAllowed(
   );
 }
 
+// Title evidence is the filename (or the book title), capped to a bounded
+// length so attacker-authored metadata can't blow up the matcher passes.
+function evidenceTitle(
+  result: SearchResult,
+  request: DocumentAcquisitionRequest,
+): string {
+  return (result.fileName || request.book.title).slice(0, MAX_EVIDENCE_FIELD_CHARS);
+}
+
 function blockedCandidate(
   result: SearchResult,
   request: DocumentAcquisitionRequest,
@@ -138,10 +147,7 @@ function blockedCandidate(
   reasons: string[],
   meta: { intent?: QbittorrentSearchIntent; pattern?: string; plugin?: string },
 ): BookDocumentBlockedCandidateOption | null {
-  const title = (result.fileName || request.book.title).slice(
-    0,
-    MAX_EVIDENCE_FIELD_CHARS,
-  );
+  const title = evidenceTitle(result, request);
   const url = sourceUrl(result);
   if (!url && !title) return null;
   const seeders = seedersFromSearchResult(result);
@@ -153,7 +159,6 @@ function blockedCandidate(
     plugin: meta.plugin,
     pattern: meta.pattern,
   };
-  const numericSeeders = seeders ?? 0;
   const matchScore = bookMatchScore(title, request);
   const contentKind = contentKindFromUrl(title || url);
   const retryableAsUserOwned =
@@ -164,7 +169,10 @@ function blockedCandidate(
     !reasons.includes('plugin error') &&
     !reasons.includes('missing distinctive title token') &&
     isSafeTorrentSource(url) &&
-    numericSeeders >= MIN_PLUGIN_SEEDERS &&
+    // Unknown (null) seeders must not read as zero — consistent with not
+    // blocking unknown-seeder results as "zero seeders". Only a KNOWN count
+    // below the floor disqualifies the retry path.
+    (seeders == null || seeders >= MIN_PLUGIN_SEEDERS) &&
     matchScore >= MIN_USER_OWNED_RETRY_SCORE &&
     hasRequiredAuthorEvidence(result, request) &&
     !BAD_FILE_NAME_PATTERN.test(title);
@@ -212,10 +220,7 @@ export function classifySearchResults(
   const candidates: DocumentCandidate[] = [];
   const blockedCandidates: BookDocumentBlockedCandidateOption[] = [];
   results.forEach((result, index) => {
-    const title = (result.fileName || request.book.title).slice(
-    0,
-    MAX_EVIDENCE_FIELD_CHARS,
-  );
+    const title = evidenceTitle(result, request);
     const detectedContentKind = contentKindFromUrl(title || sourceUrl(result));
     const seeders = seedersFromSearchResult(result);
     const peers = peersFromSearchResult(result);
