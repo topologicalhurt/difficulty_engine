@@ -73,8 +73,9 @@ describe('calendar activity default consistency', () => {
     // A partial (e.g. imported/AI) activity missing those fields must normalize
     // to the SAME defaults the add path uses — not 00:00 / 30 minutes.
     const normalized =
-      normalizeCalendarActivityOverrides({ 'activity-1': { title: 'Imported' } }) ??
-      {};
+      normalizeCalendarActivityOverrides({
+        'activity-1': { title: 'Imported' },
+      }) ?? {};
     expect(normalized['activity-1']?.startMinute).toBe(18 * 60);
     expect(normalized['activity-1']?.durationMinutes).toBe(120);
   });

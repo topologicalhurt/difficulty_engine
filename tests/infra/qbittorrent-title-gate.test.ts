@@ -121,7 +121,8 @@ describe('qBittorrent title evidence gate', () => {
       [
         {
           // No nbSeeders / seeders field at all -> unknown seeder count.
-          fileName: 'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
+          fileName:
+            'Stein E Lectures in Analysis Vol 4 Functional Analysis 2012',
           fileUrl: 'magnet:?xt=urn:btih:functionalanalysis',
           siteUrl: 'https://www.limetorrents.lol',
           nbLeechers: 4,

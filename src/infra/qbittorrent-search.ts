@@ -6,10 +6,7 @@ import type {
   BookDocumentBlockedCandidateOption,
   QbittorrentSearchIntent,
 } from '../core/types';
-import {
-  authorAppearsInText,
-  isbnAppearsInText,
-} from '../core/matchers';
+import { authorAppearsInText, isbnAppearsInText } from '../core/matchers';
 import { isSafeTorrentSource } from '../core/document-source-safety';
 import type { QbittorrentPluginInfo } from '../core/types';
 import { currentIsoTimestamp } from '../core/time';

@@ -18,7 +18,8 @@ function aiProvider(): AiRecommendationProvider {
           currentValue: '18',
           suggestedValue: '24',
           confidence: 0.9,
-          rationale: 'The stated deadline expectation benefits from a longer timeline.',
+          rationale:
+            'The stated deadline expectation benefits from a longer timeline.',
         },
       ],
       books: [
@@ -503,7 +504,9 @@ describe('AI recommendations store flow', () => {
       enabled: true,
       apiKey: 'local-secret',
     });
-    store.commands.setAiRecommendationPrompt('recommend electronics next steps');
+    store.commands.setAiRecommendationPrompt(
+      'recommend electronics next steps',
+    );
     await store.commands.requestAiRecommendations();
 
     expect(store.selectors.getState().ui.aiProposal?.books).toHaveLength(2);

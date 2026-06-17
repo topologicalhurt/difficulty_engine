@@ -5,7 +5,10 @@ import {
   TIME_BLOCK_GRANULARITY_MINUTES,
   snapToTimeGrid as snapCalendarMinutes,
 } from '../core/date-constants';
-import { DEFAULT_ACTIVITY_COLOR, normalizeHexColor } from '../core/display-colors';
+import {
+  DEFAULT_ACTIVITY_COLOR,
+  normalizeHexColor,
+} from '../core/display-colors';
 import { normalizeWeekdays } from '../core/project-normalize-primitives';
 import type { PlannerProjectV1 } from '../core/types';
 import {
@@ -364,7 +367,10 @@ export function withoutCalendarEntryOverride(
 function normalizeHourMinute(value: number): number {
   return Math.max(
     0,
-    Math.min(DAY_MINUTES - TIME_BLOCK_GRANULARITY_MINUTES, snapCalendarMinutes(value)),
+    Math.min(
+      DAY_MINUTES - TIME_BLOCK_GRANULARITY_MINUTES,
+      snapCalendarMinutes(value),
+    ),
   );
 }
 
@@ -378,7 +384,10 @@ export function withCalendarTimeBlock(
   const start = normalizeHourMinute(startMinute);
   const duration = Math.max(
     MIN_TIME_BLOCK_DURATION_MINUTES,
-    Math.min(MAX_TIME_BLOCK_DURATION_MINUTES, snapCalendarMinutes(durationMinutes)),
+    Math.min(
+      MAX_TIME_BLOCK_DURATION_MINUTES,
+      snapCalendarMinutes(durationMinutes),
+    ),
   );
   const timeBlocksByDate = project.manualOverrides.timeBlocks ?? {};
   const byDate = { ...(timeBlocksByDate[dateKey] ?? {}) };

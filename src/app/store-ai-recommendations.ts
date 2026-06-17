@@ -1,4 +1,7 @@
-import { aiModelBelongsToProvider, defaultAiModel } from '../core/ai-provider-registry';
+import {
+  aiModelBelongsToProvider,
+  defaultAiModel,
+} from '../core/ai-provider-registry';
 import {
   normalizeAiClarificationAnswer,
   normalizeAiClarificationMessages,
@@ -22,7 +25,10 @@ import {
   buildAiRecommendationContext,
   contextDigest,
 } from './ai-recommendation-context';
-import { applyAiProposalToProject, hasApplicableAiProposal } from './store-ai-apply';
+import {
+  applyAiProposalToProject,
+  hasApplicableAiProposal,
+} from './store-ai-apply';
 import type { StoreCommandContext } from './store-command-context';
 import {
   aiRequestContextChanged,
@@ -86,14 +92,13 @@ export function createAiRecommendationCommands(
               message: 'AI provider settings updated.',
             },
         aiRelationshipProposal: null,
-        aiClarificationStatus:
-          clarificationWasLoading
-            ? {
-                state: 'idle',
-                message:
-                  'AI provider settings changed. Ask clarifying questions again.',
-              }
-            : state.ui.aiClarificationStatus,
+        aiClarificationStatus: clarificationWasLoading
+          ? {
+              state: 'idle',
+              message:
+                'AI provider settings changed. Ask clarifying questions again.',
+            }
+          : state.ui.aiClarificationStatus,
         aiRelationshipStatus:
           state.ui.aiRelationshipStatus.state === 'loading'
             ? {
@@ -159,7 +164,8 @@ export function createAiRecommendationCommands(
         aiRelationshipProposal: null,
         aiRelationshipStatus: {
           state: 'idle',
-          message: 'Prompt changed. Generate again to refresh the plan proposal.',
+          message:
+            'Prompt changed. Generate again to refresh the plan proposal.',
         },
         aiClarificationMessages: [],
         aiClarificationAnswers: {},
@@ -170,7 +176,8 @@ export function createAiRecommendationCommands(
             }
           : {
               state: 'idle',
-              message: 'Prompt changed. Generate again to refresh clarification.',
+              message:
+                'Prompt changed. Generate again to refresh clarification.',
             },
       });
     },
@@ -210,7 +217,8 @@ export function createAiRecommendationCommands(
         context.commitUi('ai.clarificationRequest', {
           aiClarificationStatus: {
             state: 'failed',
-            message: 'Enable the AI provider before asking clarifying questions.',
+            message:
+              'Enable the AI provider before asking clarifying questions.',
           },
         });
         return;
@@ -219,7 +227,8 @@ export function createAiRecommendationCommands(
         context.commitUi('ai.clarificationRequest', {
           aiClarificationStatus: {
             state: 'failed',
-            message: 'Add a local AI API key before asking clarifying questions.',
+            message:
+              'Add a local AI API key before asking clarifying questions.',
           },
         });
         return;
@@ -254,7 +263,8 @@ export function createAiRecommendationCommands(
           context.commitUi('ai.clarificationRequest', {
             aiClarificationStatus: {
               state: 'idle',
-              message: 'Planner context changed. Ask clarifying questions again.',
+              message:
+                'Planner context changed. Ask clarifying questions again.',
             },
           });
           return;
@@ -309,7 +319,8 @@ export function createAiRecommendationCommands(
       context.commitUi('ai.clarificationClear', {
         aiClarificationStatus: {
           state: 'idle',
-          message: 'Ask clarifying questions before requesting recommendations.',
+          message:
+            'Ask clarifying questions before requesting recommendations.',
         },
         aiClarificationMessages: [],
         aiClarificationAnswers: {},

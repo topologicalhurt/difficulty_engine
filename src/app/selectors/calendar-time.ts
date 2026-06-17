@@ -22,7 +22,10 @@ export interface OccupiedInterval {
 export function clampStartMinute(value: number): number {
   return Math.max(
     0,
-    Math.min(DAY_MINUTES - PLACEMENT_GRANULARITY_MINUTES, snapToTimeGrid(value)),
+    Math.min(
+      DAY_MINUTES - PLACEMENT_GRANULARITY_MINUTES,
+      snapToTimeGrid(value),
+    ),
   );
 }
 
@@ -139,7 +142,9 @@ export function nextAvailableStart(
   };
   // Try the in-window dense slots first; only build the (larger) out-of-window
   // fallback set when no dense slot is free.
-  const dense = firstFitting(denseCandidates(window, durationMinutes, occupied));
+  const dense = firstFitting(
+    denseCandidates(window, durationMinutes, occupied),
+  );
   if (dense != null) return dense;
   return firstFitting(fallbackCandidates(window, durationMinutes));
 }
