@@ -32,7 +32,10 @@ import {
   type QBittorrentProviderOptions,
 } from './qbittorrent-client';
 import { checkQbittorrentBridgeHealth } from './qbittorrent-bridge-health';
-import { pluginSearchCandidates } from './qbittorrent-plugin-search';
+import {
+  emptySearchResult,
+  pluginSearchCandidates,
+} from './qbittorrent-plugin-search';
 import { contentKindFromUrl } from './qbittorrent-file-kinds';
 import {
   compareDocumentCandidateQuality,
@@ -159,14 +162,6 @@ function userProvidedTorrentCandidate(
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function emptySearchResult(): {
-  candidates: DocumentCandidate[];
-  blockedCandidates: BookDocumentBlockedCandidateOption[];
-  searchAttempts: BookDocumentSearchAttempt[];
-} {
-  return { candidates: [], blockedCandidates: [], searchAttempts: [] };
 }
 
 async function localTorrentCandidates(
