@@ -133,6 +133,35 @@ describe('source architecture guardrails', () => {
     expect(violations).toEqual([]);
   });
 
+  it('routes every document-module network call through the shared timeout helpers', () => {
+    // Production contract (docs/document-acquisition-module.md): no network
+    // call in the module can hang — every fetch is wrapped with a timeout. The
+    // only two files allowed to invoke the underlying fetch directly are the
+    // wrappers themselves: bridge-fetch.ts (fetchWithTimeout) and
+    // qbittorrent-http.ts (withQbittorrentTimeout). Any other module file that
+    // calls fetchImpl()/globalThis.fetch() directly bypasses the timeout and
+    // fails this guard.
+    const moduleFilePattern =
+      /^src\/infra\/(?:qbittorrent-|document-|toc-|pdf-|bridge-fetch|source-document|completed-document|enrichment-documents)/;
+    const timeoutWrapperOwners = new Set([
+      'src/infra/bridge-fetch.ts',
+      'src/infra/qbittorrent-http.ts',
+    ]);
+    const rawFetchPattern = /\b(?:fetchImpl|globalThis\.fetch)\s*\(/;
+    const violations = sourceFiles()
+      .filter((path) =>
+        moduleFilePattern.test(relativeSourcePath(path).replace(/\\/g, '/')),
+      )
+      .filter(
+        (path) =>
+          !timeoutWrapperOwners.has(relativeSourcePath(path).replace(/\\/g, '/')),
+      )
+      .filter((path) => rawFetchPattern.test(readFileSync(path, 'utf8')))
+      .map(relativeSourcePath);
+
+    expect(violations).toEqual([]);
+  });
+
   it('keeps dropped migration terminology out of shipped source paths and text', () => {
     const forbiddenPattern =
       /\b(deprecated|dropped|legacy|obsolete|transitional)\b|\bbackwards?\s+compatibility\b|\bprototype[-\s]+(?:era|state|implementation|wip)\b/i;
