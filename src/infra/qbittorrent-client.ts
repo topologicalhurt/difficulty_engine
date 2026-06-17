@@ -2,6 +2,7 @@ import type {
   QbittorrentConnectionSettings,
   QbittorrentPluginInfo,
 } from '../core/types';
+import { fetchWithTimeout } from './bridge-fetch';
 import type { DocumentCandidate } from './document-acquisition';
 import {
   bridgeDocumentExists,
@@ -112,9 +113,14 @@ export class QBittorrentClient {
     if (isAbsoluteStoragePath(this.options.savePath))
       return this.options.savePath;
     if (this.bridgeDataRoot) return this.bridgeDataRoot;
-    const response = await this.fetchImpl(`${this.baseUrl}/__health`).catch(
-      () => null,
-    );
+    // Time-bound the probe (mirroring every other bridge call) so a wedged
+    // local bridge cannot hang addTorrent/acquisition on this fetch.
+    const response = await fetchWithTimeout(
+      this.fetchImpl,
+      `${this.baseUrl}/__health`,
+      { headers: { Accept: 'application/json' } },
+      this.timeoutMs,
+    ).catch(() => null);
     if (!response?.ok) return this.options.savePath;
     const payload = (await response.json().catch(() => null)) as {
       dataRoot?: string;

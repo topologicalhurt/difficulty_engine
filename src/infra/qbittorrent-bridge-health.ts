@@ -2,6 +2,7 @@ import type {
   QbittorrentBridgeHealth,
   QbittorrentConnectionSettings,
 } from '../core/types';
+import { fetchWithTimeout } from './bridge-fetch';
 import {
   bridgeDataRootMatchesSavePath,
   DEFAULT_QBITTORRENT_TIMEOUT_MS,
@@ -24,26 +25,6 @@ function sanitizedUrl(value: string | undefined): string | undefined {
     return parsed.toString().replace(/\/$/, '');
   } catch {
     return undefined;
-  }
-}
-
-async function fetchWithTimeout(
-  fetchImpl: typeof fetch,
-  url: string,
-  timeoutMs: number,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = globalThis.setTimeout(
-    () => controller.abort(new Error('Bridge health request timed out')),
-    timeoutMs,
-  );
-  try {
-    return await fetchImpl(url, {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-  } finally {
-    globalThis.clearTimeout(timeout);
   }
 }
 
@@ -72,6 +53,7 @@ export async function checkQbittorrentBridgeHealth(
     healthResponse = await fetchWithTimeout(
       fetchImpl,
       `${baseUrl}/__health`,
+      { headers: { Accept: 'application/json' } },
       timeoutMs,
     );
   } catch {
